@@ -71,7 +71,7 @@ fi
 
 note ""
 note "Connect your tools inside the app once it runs (all optional, Settings page):"
-note "  · ProPresenter — host + port 51417 (enable its Network API first)"
+note "  · ProPresenter — enable its Network API, then Find it (or use the host + port ProPresenter shows in Preferences → Network)"
 note "  · Planning Center — a Personal Access Token from any PCO admin"
 note "  · Public URL — your own domain/tunnel, once you have one (Browser Access)"
 note "  · Audio input, Avantis IP, MIDI ports, GA4 — each per its Settings card"

@@ -77,9 +77,9 @@ export function ConnectCard() {
           <span className="chip">Not connected</span>
         </div>
         <p className="muted">
-          ProPresenter can only be connected from the booth Mac itself — this
-          browser view is along for the ride. Once the booth connects, the live
-          widgets here light up on their own.
+          ProPresenter connects from the Mac running ProDeck, not from a
+          browser — this view is along for the ride. Once that Mac connects, the
+          live widgets here light up on their own.
         </p>
       </div>
     );

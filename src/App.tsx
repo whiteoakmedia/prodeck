@@ -101,6 +101,18 @@ function Shell() {
     () => localStorage.getItem("prodeck.navHidden") === "1",
   );
   const { settings } = useProDeck();
+  // A fresh install (nothing connected yet) opens on Setup, not an empty
+  // dashboard — the first thing a downloader sees should be the guided path,
+  // not a blank grid. Runs once, only when truly unconfigured; a configured
+  // booth always opens on Dashboard.
+  const firstRouteDone = useRef(false);
+  useEffect(() => {
+    if (IS_WEB || firstRouteDone.current || settings === null) return;
+    firstRouteDone.current = true;
+    const fresh = !settings.pp_host?.trim() && !settings.pco_app_id && !settings.web_enabled;
+    if (fresh) setPage("setup");
+  }, [settings === null]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const checklists = useChecklists();
   const chat = useChat();
   const overdueCount = checklists.overdue().length;
@@ -423,8 +435,8 @@ function WebGate({ children }: { children: ReactNode }) {
         {/* "view & control" oversold the member tier — most phones sign in
             with the crew password and get a viewer + chat + check-in. */}
         <p className="muted">
-          Enter the password from the booth. The crew password gets you in; the
-          admin password also unlocks booth controls.
+          Enter the password set on the ProDeck computer. The member password
+          gets you in; the admin password also unlocks controls.
         </p>
         <input
           className="input"

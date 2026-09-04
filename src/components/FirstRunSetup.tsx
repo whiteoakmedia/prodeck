@@ -129,9 +129,12 @@ export function FirstRunSetup() {
           <>
             <h2>Connect ProPresenter</h2>
             <p className="fr-lead">
-              On the ProPresenter machine, turn on{" "}
-              <strong>Preferences → Network → Enable Network</strong>, then scan
-              or enter its address here.
+              On the ProPresenter computer, open{" "}
+              <strong>Preferences → Network</strong> and turn on{" "}
+              <strong>Enable Network</strong>. Then press{" "}
+              <strong>Find</strong> below — it discovers the address and port for
+              you. (Entering them by hand is the fallback; ProPresenter's Network
+              screen shows the exact port to use.)
             </p>
             <ConnectCard />
             <div className="fr-actions">
@@ -152,9 +155,11 @@ export function FirstRunSetup() {
           <>
             <h2>Connect Planning Center</h2>
             <p className="fr-lead">
-              Create a <strong>Personal Access Token</strong> at{" "}
-              <code>api.planningcenteronline.com</code> (any Services admin
-              account) and paste the pair here. It stays on this machine.
+              Sign in at{" "}
+              <code>api.planningcenteronline.com</code> as any Planning Center
+              admin, open <strong>Personal Access Tokens</strong>, create one,
+              and paste the Application ID and Secret here. It stays on this
+              machine and is never sent anywhere else.
             </p>
             <label className="field">
               <span>Application ID</span>
