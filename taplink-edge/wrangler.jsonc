@@ -1,0 +1,16 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "taplink-edge",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-01",
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["TapState"] }
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "TAP_STATE", "class_name": "TapState" }]
+  },
+  // Optional custom domain for the discs (short URLs on your own zone):
+  // Workers "custom domain" creates the DNS record automatically.
+  // "routes": [{ "pattern": "go.yourchurch.org", "custom_domain": true }],
+  "observability": { "enabled": true }
+}

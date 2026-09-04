@@ -1,0 +1,11 @@
+{
+  "default": "https://cornerstonecheshire.churchcenter.com/people/forms/566700",
+  "ttl_minutes": 180,
+  "keywords": {
+    "go": { "url": "https://pushpay.com/g/cornerstonecheshire?src=hpp", "ttl_minutes": 15 },
+    "connect": "https://cornerstonecheshire.churchcenter.com/people/forms/566700",
+    "notes": "https://faithnotes.cloud/cornerstonechurchcheshire",
+    "prayer": "https://cornerstonecheshire.churchcenter.com/people/forms/963472",
+    "groups": "https://cornerstonecheshire.churchcenter.com/groups/small-groups?enrollment=open_signup,request_to_join&filter=enrollment"
+  }
+}

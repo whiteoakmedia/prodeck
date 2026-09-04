@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>ProDeck uses an audio input for the SPL meter, RTA analyzer, and live captions.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>ProDeck connects to ProPresenter and discovers NDI and stage display devices on your local network.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_pro-presenter._tcp</string>
+		<string>_pro-dj-link._tcp</string>
+		<string>_ndi._tcp</string>
+		<string>_http._tcp</string>
+	</array>
+</dict>
+</plist>

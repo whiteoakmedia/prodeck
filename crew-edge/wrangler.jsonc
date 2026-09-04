@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "crew-edge",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-01",
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["CrewState"] }],
+  "durable_objects": {
+    "bindings": [{ "name": "CREW_STATE", "class_name": "CrewState" }]
+  },
+  // Front door: the worker owns the whole zone. Booth-up traffic passes
+  // through to the tunnel; booth-down GETs get the static shell below.
+  // Fill in YOUR zone to serve the app + booth-off fallback from your own
+  // domain; without routes the worker deploys to its workers.dev URL only.
+  // Keep local values in wrangler.local.jsonc (gitignored) — install-local.sh
+  // prefers it automatically.
+  // "routes": [{ "pattern": "booth.yourchurch.org/*", "zone_name": "yourchurch.org" }],
+  // The app's built dist/, uploaded on every deploy. run_worker_first so the
+  // worker can prefer the live booth over the static copy.
+  "assets": {
+    "directory": "../dist",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "observability": { "enabled": true }
+}

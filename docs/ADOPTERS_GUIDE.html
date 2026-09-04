@@ -1,0 +1,412 @@
+<title>ProDeck Adopter's Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #0f141d;
+    --panel: #171e29;
+    --panel-2: #1d2634;
+    --border: #2b3949;
+    --border-hi: #3a4c60;
+    --text: #edf2f9;
+    --muted: #93a3b7;
+    --faint: #5f7286;
+    --accent: #5b8def;
+    --accent-soft: rgba(91, 141, 239, 0.14);
+    --good: #3fcf8e;
+    --good-soft: rgba(63, 207, 142, 0.13);
+    --warn: #f0b43e;
+    --warn-soft: rgba(240, 180, 62, 0.12);
+    --bad: #ff5348;
+    --bad-soft: rgba(255, 83, 72, 0.12);
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f2f4f8; --panel: #ffffff; --panel-2: #eaeef4;
+      --border: #d5dce6; --border-hi: #b9c4d3;
+      --text: #17222f; --muted: #56657a; --faint: #8a97a9;
+      --accent: #3565c9; --accent-soft: rgba(53, 101, 201, 0.10);
+      --good: #178a58; --good-soft: rgba(23, 138, 88, 0.10);
+      --warn: #a37414; --warn-soft: rgba(163, 116, 20, 0.11);
+      --bad: #cc3529; --bad-soft: rgba(204, 53, 41, 0.09);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f2f4f8; --panel: #ffffff; --panel-2: #eaeef4;
+    --border: #d5dce6; --border-hi: #b9c4d3;
+    --text: #17222f; --muted: #56657a; --faint: #8a97a9;
+    --accent: #3565c9; --accent-soft: rgba(53, 101, 201, 0.10);
+    --good: #178a58; --good-soft: rgba(23, 138, 88, 0.10);
+    --warn: #a37414; --warn-soft: rgba(163, 116, 20, 0.11);
+    --bad: #cc3529; --bad-soft: rgba(204, 53, 41, 0.09);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: var(--sans); font-size: 15.5px; line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 48px 28px 120px; }
+
+  .mast { padding: 8px 0 30px; border-bottom: 1px solid var(--border); margin-bottom: 34px; }
+  .mast-eyebrow {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 14px;
+  }
+  h1 {
+    font-size: clamp(30px, 5vw, 42px); font-weight: 700; letter-spacing: -0.025em;
+    line-height: 1.08; margin: 0 0 14px; text-wrap: balance;
+  }
+  .mast p { color: var(--muted); max-width: 62ch; margin: 0 0 6px; }
+  .mast-meta {
+    display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 18px;
+    font-family: var(--mono); font-size: 12px; color: var(--faint);
+  }
+  .mast-meta b { color: var(--muted); font-weight: 500; }
+
+  .part {
+    margin-top: 64px; font-family: var(--mono); font-size: 12px; font-weight: 600;
+    letter-spacing: 0.24em; text-transform: uppercase; color: var(--accent);
+    border-bottom: 2px solid var(--accent); padding-bottom: 8px;
+  }
+
+  .toc { columns: 2; column-gap: 40px; margin: 26px 0 10px; padding: 0; list-style: none; }
+  .toc li { break-inside: avoid; margin: 0 0 7px; padding-left: 34px; position: relative; }
+  .toc a { color: var(--text); text-decoration: none; font-weight: 500; font-size: 14px; }
+  .toc a:hover { color: var(--accent); }
+  .toc .n {
+    position: absolute; left: 0; top: 1px; font-family: var(--mono);
+    font-size: 11.5px; color: var(--faint); font-variant-numeric: tabular-nums;
+  }
+  @media (max-width: 640px) { .toc { columns: 1; } }
+
+  section { margin-top: 58px; scroll-margin-top: 24px; }
+  h2 {
+    display: flex; align-items: baseline; gap: 14px;
+    font-size: 21px; font-weight: 700; letter-spacing: -0.015em;
+    margin: 0 0 6px; padding-bottom: 10px; border-bottom: 1px solid var(--border);
+    text-wrap: balance;
+  }
+  h2 .n { font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--accent); }
+  h3 {
+    font-family: var(--mono); font-size: 11.5px; font-weight: 600;
+    letter-spacing: 0.16em; text-transform: uppercase; color: var(--faint);
+    margin: 30px 0 10px;
+  }
+  p { margin: 10px 0; max-width: 68ch; }
+  li { margin: 5px 0; }
+  ul, ol { padding-left: 22px; max-width: 66ch; }
+  strong { font-weight: 600; }
+  .lead { color: var(--muted); }
+
+  code {
+    font-family: var(--mono); font-size: 0.88em;
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 5px; padding: 1px 6px; white-space: nowrap;
+  }
+  pre {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; overflow-x: auto; font-family: var(--mono);
+    font-size: 12.5px; line-height: 1.7; margin: 14px 0;
+  }
+  pre code { background: none; border: none; padding: 0; white-space: pre; }
+  pre .c { color: var(--faint); }
+
+  .call {
+    border: 1px solid var(--border); border-left: 3px solid var(--accent);
+    background: var(--panel); border-radius: 10px; padding: 13px 17px; margin: 16px 0;
+  }
+  .call p { margin: 4px 0; }
+  .call.warn { border-left-color: var(--warn); background: var(--warn-soft); }
+  .call.bad  { border-left-color: var(--bad);  background: var(--bad-soft); }
+  .call.good { border-left-color: var(--good); background: var(--good-soft); }
+  .call-t {
+    font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+    letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 4px;
+  }
+  .call .call-t      { color: var(--accent); }
+  .call.warn .call-t { color: var(--warn); }
+  .call.bad .call-t  { color: var(--bad); }
+  .call.good .call-t { color: var(--good); }
+
+  .tblwrap { overflow-x: auto; margin: 14px 0; border: 1px solid var(--border); border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th {
+    text-align: left; font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint);
+    padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--panel);
+    white-space: nowrap;
+  }
+  td { padding: 9px 14px; border-bottom: 1px solid var(--border); vertical-align: top; background: var(--panel); }
+  tr:last-child td { border-bottom: none; }
+  td.m { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+  .tight td { line-height: 1.5; }
+
+  .chip {
+    display: inline-block; font-family: var(--mono); font-size: 10px; font-weight: 600;
+    letter-spacing: 0.1em; padding: 2px 8px; border-radius: 5px; white-space: nowrap;
+  }
+  .chip.req  { background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent); }
+  .chip.opt  { background: var(--panel-2); color: var(--muted); border: 1px solid var(--border-hi); }
+  .chip.ok   { background: var(--good-soft); color: var(--good); border: 1px solid var(--good); }
+  .chip.deg  { background: var(--warn-soft); color: var(--warn); border: 1px solid var(--warn); }
+  .chip.dead { background: var(--bad-soft); color: var(--bad); border: 1px solid var(--bad); }
+
+  a { color: var(--accent); }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .up { display: inline-block; margin-top: 20px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; text-decoration: none; color: var(--faint); }
+  .up:hover { color: var(--accent); }
+</style>
+
+<div class="wrap">
+
+<header class="mast" id="top">
+  <p class="mast-eyebrow">For review · from Zach Green, Cornerstone Church (Cheshire, CT)</p>
+  <h1>ProDeck Adopter's Guide</h1>
+  <p>ProDeck is a production-booth hub I built for my church: one app that ties ProPresenter, Planning Center, the audio consoles, NFC "tap" discs, crew phones, and the livestream into dashboards for the booth, phones, and kiosk screens.</p>
+  <p>This guide is honest about what you'd be adopting. <strong>Part I</strong> is the evaluation — what it does, what it assumes, and what's tuned to my room. <strong>Part II</strong> is the adoption — everything your tech person needs to stand it up in your environment without me on the phone.</p>
+  <div class="mast-meta">
+    <span><b>Source</b> github.com/whiteoakmedia/prodeck (public)</span>
+    <span><b>Version</b> 0.9.66</span>
+    <span><b>Contact</b> zach@whiteoakmedia.io</span>
+  </div>
+</header>
+
+<ol class="toc">
+  <li><span class="n">01</span><a href="#honest">What you'd actually be adopting</a></li>
+  <li><span class="n">02</span><a href="#features">Feature tour, with requirements</a></li>
+  <li><span class="n">03</span><a href="#stack">The stack it assumes</a></li>
+  <li><span class="n">04</span><a href="#mine">What's specific to my church</a></li>
+  <li><span class="n">05</span><a href="#limits">Limitations, stated plainly</a></li>
+  <li><span class="n">06</span><a href="#fit">Fit checklist &amp; effort estimate</a></li>
+  <li><span class="n">07</span><a href="#phase0">Phase 0 — try it on a spare Mac</a></li>
+  <li><span class="n">08</span><a href="#phase1">Phase 1 — the booth install</a></li>
+  <li><span class="n">09</span><a href="#phase2">Phase 2 — your own cloud</a></li>
+  <li><span class="n">10</span><a href="#phase3">Phase 3 — the extras</a></li>
+  <li><span class="n">11</span><a href="#care">Ongoing care &amp; staying current</a></li>
+</ol>
+
+<p class="part">Part I — Evaluate</p>
+
+<!-- ============================================================ 1 -->
+<section id="honest">
+  <h2><span class="n">01</span>What you'd actually be adopting</h2>
+  <p>Not a product. ProDeck is <strong>one church's custom tool</strong>: no vendor, no support contract, no license fee, and one maintainer (me), whose priority is my own Sunday. You'd be adopting a codebase — a well-documented one, but a codebase. The realistic ways to hold it:</p>
+  <ul>
+    <li><strong>You have (or can borrow) a developer:</strong> fork the repo, and it's genuinely yours. The stack is mainstream — Rust + React in a Tauri desktop shell, plus two small Cloudflare Workers — and a competent full-stack dev is productive in it within a week.</li>
+    <li><strong>You don't:</strong> it still works — the core booth features run for years untouched (mine has no license checks and nothing that expires) — but bugs stay bugs and integrations drift as ProPresenter and Planning Center evolve. Go in with eyes open.</li>
+  </ul>
+  <p>What it costs to run: a Mac in the booth, and if you want the phone/remote features, a Cloudflare account (free tier is enough) plus a domain (~$10/yr). That's the entire bill.</p>
+</section>
+
+<!-- ============================================================ 2 -->
+<section id="features">
+  <h2><span class="n">02</span>Feature tour, with requirements</h2>
+  <p class="lead">Every feature is independent — adopt the rows you want, ignore the rest. <span class="chip req">CORE</span> needs only the booth Mac + ProPresenter + Planning Center. <span class="chip opt">+ X</span> names the extra dependency.</p>
+
+  <h3>Booth</h3>
+  <div class="tblwrap"><table class="tight">
+    <tr><th>Feature</th><th>Needs</th><th>What it does</th></tr>
+    <tr><td><strong>Dashboards</strong></td><td><span class="chip req">CORE</span></td><td>Drag-and-drop widget grids (rundown, now/next, slide grid, clocks, timers, readiness lights…), multiple named layouts, role templates. Same UI serves the booth screen, browsers, phones, kiosks.</td></tr>
+    <tr><td><strong>Show flow</strong></td><td><span class="chip req">CORE</span></td><td>The PCO rundown with computed wall-clock start times, per-song key/leader/mic chips, live-item tracking that follows what's actually on the screens.</td></tr>
+    <tr><td><strong>Service tracking &amp; reports</strong></td><td><span class="chip req">CORE</span></td><td>Planned vs. actual timing per item, bucketed per service time; rehearsals kept out of Sunday stats; saved reports.</td></tr>
+    <tr><td><strong>Clear dock</strong></td><td><span class="chip req">CORE</span></td><td>One-tap ProPresenter layer clears (slide/media/props/messages/…) pinned to every page.</td></tr>
+    <tr><td><strong>SPL + RTA metering</strong></td><td><span class="chip opt">+ audio input</span></td><td>Calibrated house SPL, RTA, history graphs, per-service loudness records. Built for Dante Virtual Soundcard; any CoreAudio input works.</td></tr>
+    <tr><td><strong>Console mirror</strong></td><td><span class="chip opt">+ A&amp;H Avantis</span></td><td>Channel names/mutes/faders on dashboards, mic names pushed to the desk weekly. <strong>Avantis-family protocol only</strong> — other desks mean new code.</td></tr>
+    <tr><td><strong>Song-key MIDI send</strong></td><td><span class="chip opt">+ MIDI route</span></td><td>Sends the live song's key as a MIDI program change (I target Waves LV1 scenes). Generic PC/CC sender — usable against anything that takes MIDI.</td></tr>
+    <tr><td><strong>Stage feed preview</strong></td><td><span class="chip opt">+ NDI</span></td><td>Any NDI source as a dashboard tile (LAN only, by design).</td></tr>
+  </table></div>
+
+  <h3>Crew &amp; cloud</h3>
+  <div class="tblwrap"><table class="tight">
+    <tr><td><strong>Crew phone app</strong></td><td><span class="chip opt">+ cloud</span></td><td>Installable web app: dashboards, plan, chat, push pages. Poster-QR signup with booth approval; names self-heal against PCO.</td></tr>
+    <tr><td><strong>Paging &amp; call times</strong></td><td><span class="chip opt">+ cloud</span></td><td>Page a person or team (phones buzz), scheduled call-time pages per PCO team, booth↔stage messages, confidence banner.</td></tr>
+    <tr><td><strong>Check-in</strong></td><td><span class="chip opt">+ cloud</span></td><td>Crew auto-marked arrived when their phone joins your network (or by geofence); arrival board against call times.</td></tr>
+    <tr><td><strong>Booth-off fallback</strong></td><td><span class="chip opt">+ cloud</span></td><td>When the booth Mac is off, your domain still serves a read-only plan + working chat + signup from Cloudflare's edge.</td></tr>
+    <tr><td><strong>Kiosk mode</strong></td><td><span class="chip opt">+ cloud</span></td><td>URL-parameter kiosks: office screens, a "what's next" switcher dashboard for a touchscreen at the video position.</td></tr>
+  </table></div>
+
+  <h3>Lobby &amp; stream</h3>
+  <div class="tblwrap"><table class="tight">
+    <tr><td><strong>TapLink NFC discs</strong></td><td><span class="chip opt">+ cloud + NFC tags</span></td><td>The flagship trick: NFC discs in the lobby all open one link whose destination follows the service — a slide with <code>tap: give</code> in its ProPresenter notes retargets every disc to your giving page the moment it goes live. Manual override, auto-release, tap analytics.</td></tr>
+    <tr><td><strong>Lobby TV auto-announcements</strong></td><td><span class="chip req">CORE</span></td><td>Drives a ProPresenter announcement playlist for lobby screens.</td></tr>
+    <tr><td><strong>Live viewer count</strong></td><td><span class="chip opt">+ GA4</span></td><td>Realtime "watching now" from the Google Analytics tag on your stream's watch page (matches GA4's own realtime screen). Works with Church Online Platform or any watch page you can tag.</td></tr>
+    <tr><td><strong>Stream Deck</strong></td><td><span class="chip opt">+ Companion</span></td><td>Tap-disc keys with live state, dB and check-in readouts, page navigation, via Bitfocus Companion.</td></tr>
+  </table></div>
+</section>
+
+<!-- ============================================================ 3 -->
+<section id="stack">
+  <h2><span class="n">03</span>The stack it assumes</h2>
+  <div class="tblwrap"><table>
+    <tr><th>Component</th><th>Requirement</th></tr>
+    <tr><td><strong>A Mac in the booth</strong></td><td><span class="chip req">REQUIRED</span> Apple Silicon, always on, always awake. This is the server for everything. There is no Windows or Linux build.</td></tr>
+    <tr><td><strong>ProPresenter 7</strong></td><td><span class="chip req">REQUIRED</span> with the network API enabled (Preferences → Network). ProDeck reads slides/playlists/notes and triggers over it.</td></tr>
+    <tr><td><strong>Planning Center Services</strong></td><td><span class="chip req">REQUIRED</span> — plans, teams, and scheduling are the backbone. You create a free Personal Access Token under a PCO admin.</td></tr>
+    <tr><td><strong>Cloudflare + a domain</strong></td><td><span class="chip opt">OPTIONAL</span> — only for the crew/cloud/tap features. Free plan suffices; the domain is the only recurring cost.</td></tr>
+    <tr><td>Dante / audio interface</td><td><span class="chip opt">OPTIONAL</span> — SPL features take any input the Mac can hear.</td></tr>
+    <tr><td>Allen &amp; Heath Avantis</td><td><span class="chip opt">OPTIONAL</span> — console mirror is Avantis-protocol-specific.</td></tr>
+    <tr><td>NDI source, Stream Deck, NFC tags (NTAG213+), GA4 on your watch page</td><td><span class="chip opt">OPTIONAL</span> — one feature each.</td></tr>
+  </table></div>
+</section>
+
+<!-- ============================================================ 4 -->
+<section id="mine">
+  <h2><span class="n">04</span>What's specific to my church</h2>
+  <p class="lead">The honest answer to "how personalized is this?" — in three tiers.</p>
+
+  <h3>Tier 1 — just settings (change in the app, no code)</h3>
+  <p>ProPresenter host, PCO credentials, all passwords and tokens, GA4 property/key, church coordinates, SPL calibration, MIDI ports and channels, Avantis host, audio channel routing, mic-position templates, checklists, call-time schedules, tap keyword→URL mappings, dashboard layouts. <strong>None of my values ship in the repo</strong> — a fresh install starts blank.</p>
+
+  <h3>Tier 2 — four hardcoded spots (one find-and-replace each)</h3>
+  <div class="tblwrap"><table>
+    <tr><th>File</th><th>What's mine</th><th>Change to</th></tr>
+    <tr><td class="m">src/lib/tauri.ts</td><td class="m">PUBLIC_URL = "https://prodeck.live"</td><td>Your domain</td></tr>
+    <tr><td class="m">src-tauri/src/edge.rs</td><td class="m">EDGE_PUSH_URL = "https://prodeck.live/edge/push"</td><td>Your domain + <code>/edge/push</code></td></tr>
+    <tr><td class="m">crew-edge/wrangler.jsonc</td><td class="m">routes: prodeck.live/*</td><td>Your domain/zone</td></tr>
+    <tr><td class="m">src-tauri/tauri.conf.json</td><td class="m">updater endpoint (my GitHub releases)</td><td>Your fork's releases — or delete the updater block and install by hand</td></tr>
+  </table></div>
+
+  <h3>Tier 3 — shaped by my room (works for you, but review it)</h3>
+  <ul>
+    <li><strong>Console + key-send:</strong> the desk mirror speaks Avantis; the key-send exists because my FOH runs Waves LV1 with per-key scenes. Different desk or workflow → skip or rewrite those modules.</li>
+    <li><strong>Sunday shape:</strong> multi-service logic (auto-advance 8:00 → 9:30 → …), rehearsal-vs-service bucketing, and the readiness checklist reflect a multi-service Sunday with a volunteer crew. All configurable, but the shape is baked in.</li>
+    <li><strong>Legacy migration shims:</strong> two tiny startup routines migrate data from the app's earlier internal name — harmless on a fresh install, and documented in <code>src-tauri/src/lib.rs</code> and <code>src/main.tsx</code>.</li>
+  </ul>
+</section>
+
+<!-- ============================================================ 5 -->
+<section id="limits">
+  <h2><span class="n">05</span>Limitations, stated plainly</h2>
+  <ul>
+    <li><strong>macOS only.</strong> The booth app is a Mac app. (Browsers/phones/kiosks connecting to it can be anything.)</li>
+    <li><strong>Single maintainer, no test suite.</strong> I fix what breaks on my Sundays. Your bugs are your fork's bugs unless we agree otherwise.</li>
+    <li><strong>Security model is passwords-over-HTTPS.</strong> Admin/member tiers, secrets never sent to browsers, admin actions gated server-side — sane, but it has never had a professional audit. If you expose it on your own domain, that's your risk to own.</li>
+    <li><strong>Self-signed, unnotarized app.</strong> macOS will warn on first launch; mic/screen permissions are pinned to the signing certificate you create (Part II covers this).</li>
+    <li><strong>Integrations track today's APIs</strong> — ProPresenter 7's network API, PCO API v2, GA4 Data API v1. Vendors move; someone has to move with them eventually.</li>
+    <li><strong>The viewer count is web-player-only.</strong> GA4 can't see Facebook/YouTube simulcast viewers, and the widget says so on its face.</li>
+  </ul>
+</section>
+
+<!-- ============================================================ 6 -->
+<section id="fit">
+  <h2><span class="n">06</span>Fit checklist &amp; effort estimate</h2>
+  <h3>You're a good fit if…</h3>
+  <ul>
+    <li>ProPresenter 7 and Planning Center Services are already your Sunday backbone</li>
+    <li>You can dedicate one always-on Mac to the booth</li>
+    <li>Someone on or near your team can run terminal commands from a recipe (Part II is exactly that)</li>
+    <li>You want the tap discs, crew phones, or unified dashboards badly enough to own a codebase</li>
+  </ul>
+  <h3>Think twice if…</h3>
+  <ul>
+    <li>You need vendor support and SLAs — this has neither</li>
+    <li>Your booth is Windows-only</li>
+    <li>You mainly want the console features but don't run an Avantis</li>
+  </ul>
+  <h3>Realistic effort (for a comfortable tech volunteer)</h3>
+  <div class="tblwrap"><table>
+    <tr><th>Milestone</th><th>Time</th></tr>
+    <tr><td>Phase 0 — running on a spare Mac against Pro + PCO</td><td>an afternoon</td></tr>
+    <tr><td>Phase 1 — permanent booth install (signing, watchdog)</td><td>half a day</td></tr>
+    <tr><td>Phase 2 — your domain, workers, tunnel, crew phones</td><td>a day, mostly waiting on DNS</td></tr>
+    <tr><td>Phase 3 — discs, deck, kiosks, GA4 (each independent)</td><td>1–3 hours each</td></tr>
+  </table></div>
+</section>
+
+<p class="part">Part II — Adopt</p>
+
+<!-- ============================================================ 7 -->
+<section id="phase0">
+  <h2><span class="n">07</span>Phase 0 — try it on a spare Mac</h2>
+  <p class="lead">Zero commitment: dev mode on any Apple Silicon Mac on your church network. No signing, no cloud, no install.</p>
+  <pre><code><span class="c"># prerequisites (one-time): Xcode command-line tools, Rust, Node 20+</span>
+xcode-select --install
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+brew install node   <span class="c"># or nodejs.org installer</span>
+
+<span class="c"># get the code (after I've added you to the repo)</span>
+git clone https://github.com/whiteoakmedia/prodeck.git
+cd prodeck
+bash scripts/setup.sh   <span class="c"># prereqs + config + dev mode, all guided</span></code></pre>
+  <p>First run opens a setup wizard. Point it at ProPresenter (the Pro machine's IP, port <code>51417</code>, network API enabled in Pro's preferences) and paste a PCO Personal Access Token (create at <code>api.planningcenteronline.com</code> under any admin account). That's enough to evaluate everything tagged <span class="chip req">CORE</span> in §2 — dashboards, show flow, slide grid, tracking, clear dock — plus SPL if you pick an audio input.</p>
+  <div class="call">
+    <p class="call-t">Evaluate against a real week</p>
+    <p>Load next Sunday's actual plan and leave a dashboard up through a midweek rehearsal. The value shows up in use, not in a demo click-through.</p>
+  </div>
+</section>
+
+<!-- ============================================================ 8 -->
+<section id="phase1">
+  <h2><span class="n">08</span>Phase 1 — the booth install</h2>
+  <p class="lead">Makes it permanent: a signed build that survives crashes and reboots unattended.</p>
+  <h3>1 · Create your signing identity (once)</h3>
+  <p>Keychain Access → Certificate Assistant → Create a Certificate: name it (e.g. <code>YourChurch ProDeck</code>), identity type <em>Self-Signed Root</em>, certificate type <em>Code Signing</em>. macOS pins microphone/screen permissions to this identity — keep using the same one forever, and never re-sign with hardened runtime (the install script refuses it for you).</p>
+  <h3>2 · Create your updater keypair (once, optional)</h3>
+  <pre><code>npm run tauri signer generate -- -w ~/.prodeck/updater.key</code></pre>
+  <p>Put the printed <em>public</em> key into <code>src-tauri/tauri.conf.json</code> → <code>plugins.updater.pubkey</code>, and point the endpoint at your own fork's releases — or delete the updater block entirely and install by hand each time. Guard the private key like a password: whoever holds it can ship code to your booth.</p>
+  <h3>3 · Build, sign, install</h3>
+  <pre><code>TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.prodeck/updater.key)" npm run tauri build
+codesign --force --deep --sign "YourChurch ProDeck" \
+  src-tauri/target/release/bundle/macos/ProDeck.app
+bash scripts/install-local.sh   <span class="c"># atomic swap into /Applications + watchdog handoff</span></code></pre>
+  <p><strong>Prefer a double-click installer?</strong> <code>bash scripts/build-dmg.sh</code> produces a drag-to-Applications <code>ProDeck.dmg</code> — hand it to anyone, no terminal needed to install (only to build). For an always-on booth, the script path below adds crash-relaunch and keep-alive that a plain drag-install does not.</p>
+    <p>Edit the identity name at the top of <code>scripts/install-local.sh</code> to match yours. The script expects the watchdog LaunchAgent from step 4 to exist.</p>
+  <h3>4 · The three LaunchAgents</h3>
+  <p>Ready-made templates live in <code>deploy/launchagents/</code> — <code>scripts/setup.sh --install</code> installs and loads them for you. For reference:</p>
+  <div class="tblwrap"><table>
+    <tr><th>Plist</th><th>Purpose · ProgramArguments</th></tr>
+    <tr><td class="m">com.prodeck.watchdog.plist</td><td>Relaunch on crash · <code>/Applications/ProDeck.app/Contents/MacOS/prodeck</code>, <code>RunAtLoad</code> true, <code>KeepAlive.SuccessfulExit</code> false, <code>ThrottleInterval</code> 10</td></tr>
+    <tr><td class="m">com.prodeck.caffeinate.plist</td><td>Never sleep · <code>/usr/bin/caffeinate -s</code>, <code>KeepAlive</code> true</td></tr>
+    <tr><td class="m">com.prodeck.cloudflared.plist</td><td>Phase 2 only — the tunnel (§9)</td></tr>
+  </table></div>
+  <p>Finish by enabling Browser Access in Settings (pick your admin + member passwords) and giving the booth Mac a DHCP reservation — do the ProPresenter Mac too, and skip the single most recurring failure I ever had.</p>
+</section>
+
+<!-- ============================================================ 9 -->
+<section id="phase2">
+  <h2><span class="n">09</span>Phase 2 — your own cloud</h2>
+  <p class="lead">Unlocks: crew phones anywhere, booth-off fallback, tap discs, kiosks beyond the LAN. Needs a Cloudflare account (free) and a domain on it.</p>
+  <ol>
+    <li><strong>Domain onto Cloudflare.</strong> Buy or transfer any domain; add it as a zone.</li>
+    <li><strong>Make the four Tier-2 edits from §4</strong> — your domain into <code>PUBLIC_URL</code>, <code>EDGE_PUSH_URL</code>, and <code>crew-edge/wrangler.jsonc</code>'s route.</li>
+    <li><strong>Deploy the two workers.</strong> In <code>crew-edge/</code> and <code>taplink-edge/</code>: <code>npx wrangler login</code> then <code>npx wrangler deploy</code>. Set each worker's secrets with <code>npx wrangler secret put &lt;NAME&gt;</code> — the names are listed at the top of each worker's <code>src/index.ts</code> (admin token, PCO pair for the edge fallback, tap tokens).</li>
+    <li><strong>Tunnel the booth.</strong> <code>brew install cloudflared</code>, then <code>cloudflared tunnel login</code>, <code>cloudflared tunnel create booth</code>, and a config at <code>~/.cloudflared/config.yml</code> routing your hostname → <code>http://localhost:8088</code>. Add the DNS route (<code>cloudflared tunnel route dns booth yourdomain.com</code>) and wrap it in the <code>com.prodeck.cloudflared</code> LaunchAgent. <em>Tunnel only the gateway port — never video.</em></li>
+    <li><strong>Wire the booth to the edge:</strong> Settings → paste the edge admin token you chose in step 3. From then on <code>install-local.sh</code> keeps the edge's fallback copy in sync on every install.</li>
+    <li><strong>Verify booth-off mode:</strong> quit ProDeck (watchdog off for a minute) and load your domain from a phone on cellular — you should get the read-only plan + chat. Restart, and it's live again.</li>
+  </ol>
+</section>
+
+<!-- ============================================================ 10 -->
+<section id="phase3">
+  <h2><span class="n">10</span>Phase 3 — the extras</h2>
+  <div class="tblwrap"><table class="tight">
+    <tr><th>Feature</th><th>Setup</th></tr>
+    <tr><td><strong>Tap discs</strong></td><td>Buy NTAG213+ stickers/discs, write each with your tap URL (any NFC-writer phone app), map keywords → URLs in the TapLink widget's editor, then put <code>tap: keyword</code> in ProPresenter slide notes. Discs are dumb pointers — all logic is server-side, so you can add discs forever without rewriting them.</td></tr>
+    <tr><td><strong>Stream Deck</strong></td><td>Install Bitfocus Companion on the booth Mac, add an HTTP connection pointed at <code>localhost:8088</code> with your admin password as the <code>prodeck_token</code> variable. The gateway's deck endpoints (<code>deck-state</code>, tap actions, readouts) are documented in <code>src-tauri/src/web.rs</code>.</td></tr>
+    <tr><td><strong>Kiosks</strong></td><td>Any screen with a browser: <code>https://yourdomain/?kiosk=&lt;dashboard name&gt;&amp;token=&lt;member password&gt;</code>. Windows auto-boot recipe is in <code>OFFICE_KIOSK.md</code> in the repo.</td></tr>
+    <tr><td><strong>Live viewers</strong></td><td>Make a GA4 property for your watch page, put its tag on the page (Church Online has a built-in GA4 integration), create a Google Cloud service account with the Analytics Data API enabled, grant it Viewer on the property, drop its JSON key on the booth Mac, fill in Settings → Live Viewers. Full recipe with the exact error messages you'll hit is in the repo's <code>ga4.rs</code> header comments.</td></tr>
+    <tr><td><strong>SPL calibration</strong></td><td>Play pink noise, read a real SPL meter at FOH, and adjust the calibration offset in Settings until they agree. Mine is meaningless in your room.</td></tr>
+  </table></div>
+</section>
+
+<!-- ============================================================ 11 -->
+<section id="care">
+  <h2><span class="n">11</span>Ongoing care &amp; staying current</h2>
+  <ul>
+    <li><strong>Fork, don't track.</strong> Fork the repo and make your Tier-2 edits on your fork. Pull from mine when something looks worth taking — my commits are messaged plainly. Nothing forces us to stay in sync.</li>
+    <li><strong>Back up two things off the booth Mac:</strong> the data folder <code>~/Library/Application Support/ProDeck/</code> (all settings, layouts, reports, crew accounts — <code>settings.json</code> inside it holds every secret) and your updater key. Your fork covers the code.</li>
+    <li><strong>Write your own succession page.</strong> I keep a companion "run and maintain this if I'm gone" handbook for my team; do the same on day one, while the setup is fresh. Ask me for my template.</li>
+    <li><strong>When something breaks Sunday morning:</strong> the app self-restarts on crash; ProPresenter reconnects are the most common fix; and nothing in ProDeck can take down ProPresenter, your consoles, or your stream — it fails soft, by design.</li>
+  </ul>
+  <div class="call good">
+    <p class="call-t">Where I land on it</p>
+    <p>If the tap discs, crew phones, or one-glance dashboards solve a real problem for your team, the adoption cost is a few honest days and a codebase to own. If they don't, skip it without guilt — everything underneath (Pro, PCO, your consoles, your stream) already works without it. Questions to zach@whiteoakmedia.io.</p>
+  </div>
+  <a class="up" href="#top">↑ Back to contents</a>
+</section>
+
+</div>

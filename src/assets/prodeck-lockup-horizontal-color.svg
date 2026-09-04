@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 104" width="600" height="104">
+  <title>ProDeck — designed by Zach Green</title>
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><title>ProDeck</title><creator>Zach Green</creator><rights>Cornerstone Church, Cheshire</rights></metadata>
+  <g transform="translate(0 4)" fill="none">
+    <rect x="11.25" y="11.25" width="25.5" height="77.5" rx="7.25" stroke="#eef3fa" stroke-width="10.5"></rect>
+    <rect x="53.25" y="63.25" width="35.5" height="25.5" rx="7.25" stroke="#eef3fa" stroke-width="10.5"></rect>
+    <rect x="48" y="6" width="46" height="46" rx="16" fill="#5b8def"></rect>
+  </g>
+  <text x="134" y="74" text-anchor="start" font-family="IBM Plex Sans, sans-serif" font-weight="600" font-size="82" letter-spacing="-2.46" fill="#eef3fa">ProDeck</text>
+  <text x="137" y="96" text-anchor="start" font-family="IBM Plex Mono, monospace" font-weight="400" font-size="16" letter-spacing="2.88" fill="#92a2b6" opacity="1">BY ZACH GREEN</text>
+</svg>

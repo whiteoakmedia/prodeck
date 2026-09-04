@@ -1,0 +1,39 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Rust build output (huge) and wrangler caches
+src-tauri/target
+.wrangler
+
+# Never commit credentials
+*.key
+*.pem
+.dev.vars
+.env
+ga4-key.json
+
+# Per-site local config (your identifiers, domain, update feed) — never committed
+src-tauri/tauri.local.conf.json
+crew-edge/wrangler.local.jsonc

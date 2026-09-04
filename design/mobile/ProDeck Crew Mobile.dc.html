@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="design_doc_mode" content="canvas">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    body { margin:0; background:#0a0e14; color:#eef3fa; font-family:'IBM Plex Sans', system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+    a { color:#79a4f6; text-decoration:none; }
+    a:hover { color:#a8c4fa; }
+    @keyframes pdPulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.35; transform:scale(.82); } }
+  </style>
+</helmet>
+
+<section style="padding:56px 56px 24px;display:flex;flex-direction:column;gap:40px">
+
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:820px">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#6d7f95">ProDeck Crew PWA · hi-fi pass 2 · the rest of the eleven</div>
+    <div style="font-size:34px;font-weight:600;letter-spacing:-0.02em">Sunday, checklists, oversight, first run</div>
+    <div style="font-size:16px;line-height:1.55;color:#92a2b6;text-wrap:pretty">S01–S03 and S08–S11. Same grid, same reach rules: anything a volunteer does mid-service lives below the halfway line. “Got it” and “Read” replace ACK everywhere.</div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:44px;align-items:flex-start">
+
+    <div data-screen-label="S03" style="display:flex;flex-direction:column;gap:14px;width:375px">
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;color:#6d7f95">S03 · MEMBER</div>
+        <div style="font-size:17px;font-weight:600;letter-spacing:-0.01em">Home — the Sunday screen</div>
+      </div>
+      <div style="width:375px;height:812px;background:#0e131b;border-radius:44px;box-shadow:0 0 0 1px #232f3e, 0 30px 60px rgba(0,0,0,.55);overflow:hidden;display:flex;flex-direction:column">
+        <div style="flex:0 0 auto;height:50px;padding:15px 28px 0;display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:14px;font-weight:600;letter-spacing:-0.01em">9:41</div>
+          <div style="display:flex;align-items:center;gap:6px"><div style="width:17px;height:11px;border-radius:2px;background:#eef3fa"></div><div style="width:15px;height:11px;border-radius:2px;background:#eef3fa"></div><div style="width:25px;height:11px;border-radius:3px;background:#eef3fa"></div></div>
+        </div>
+        <div style="flex:0 0 auto;padding:8px 20px 16px;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;flex-direction:column;gap:2px">
+            <div style="font-size:24px;font-weight:600;letter-spacing:-0.025em">Morning, Nate</div>
+            <div style="font-size:12.5px;color:#92a2b6">Sun 2 Aug · 2nd service</div>
+          </div>
+          <div style="width:42px;height:42px;border-radius:13px;background:#1d2b3a;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#92a2b6">NR</div>
+        </div>
+        <div style="flex:1;overflow:hidden;padding:0 20px;display:flex;flex-direction:column;gap:12px">
+          <div style="border-radius:20px;background:#161d28;padding:18px;display:flex;align-items:center;gap:18px">
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:38px;font-weight:500;letter-spacing:-0.03em;line-height:1;color:#79a4f6">T-24</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.14em;color:#6d7f95">TO COUNT-IN</div>
+            </div>
+            <div style="width:1px;height:44px;background:#232f3e"></div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:3px">
+              <div style="font-size:14.5px;font-weight:600">Service starts 10:05</div>
+              <div style="font-size:12.5px;color:#92a2b6">Plan locked · 6 items ahead of you</div>
+            </div>
+          </div>
+          <div style="border-radius:20px;background:#1a2740;box-shadow:inset 0 0 0 1px #2f4874;padding:18px;display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.16em;color:#79a4f6">MY NEXT DUTY</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#a8c4fa">IN 19 MIN</div>
+            </div>
+            <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <div style="font-size:26px;font-weight:600;letter-spacing:-0.02em">Mic 4</div>
+                <div style="font-size:13.5px;color:#c9d6e6">Arrive 10:00 · stage left</div>
+              </div>
+              <div style="height:44px;border-radius:14px;background:#5b8def;color:#0e131b;font-size:14.5px;font-weight:600;display:flex;align-items:center;justify-content:center;padding:0 18px">Details</div>
+            </div>
+          </div>
+          <div style="border-radius:20px;background:#161d28;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div style="font-size:14.5px;font-weight:600">My checklist</div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;color:#f0b429;background:#2a1f1a;border-radius:6px;padding:4px 8px">1 OVERDUE</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#92a2b6">4/7</div>
+              </div>
+            </div>
+            <div style="height:6px;border-radius:3px;background:#222d3b;overflow:hidden;display:flex"><div style="width:57%;background:#5b8def"></div></div>
+          </div>
+          <div style="display:flex;gap:12px">
+            <div style="flex:1;border-radius:20px;background:#161d28;padding:16px 18px;display:flex;flex-direction:column;gap:8px">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.14em;color:#6d7f95">UNREAD</div>
+              <div style="display:flex;align-items:baseline;gap:8px">
+                <div style="font-size:24px;font-weight:600;letter-spacing:-0.02em">6</div>
+                <div style="font-size:12.5px;color:#92a2b6">messages</div>
+              </div>
+              <div style="font-size:12.5px;color:#92a2b6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Sunday Team, Camera</div>
+            </div>
+            <div style="flex:1;border-radius:20px;background:#161d28;padding:16px 18px;display:flex;flex-direction:column;gap:8px">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.14em;color:#6d7f95">TAPLINK</div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:9px;height:9px;border-radius:5px;background:#3fcf8e"></div>
+                <div style="font-size:15px;font-weight:600">4 discs live</div>
+              </div>
+              <div style="font-size:12.5px;color:#92a2b6">Lobby, cafe, kids ×2</div>
+            </div>
+          </div>
+          <div style="border-radius:20px;background:#161d28;padding:14px 18px;display:flex;align-items:center;gap:14px">
+            <div style="display:flex;align-items:center;gap:8px"><div style="width:9px;height:9px;border-radius:5px;background:#3fcf8e"></div><div style="font-size:12.5px;color:#c9d6e6">Booth online</div></div>
+            <div style="width:1px;height:16px;background:#232f3e"></div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#92a2b6">SLIDE 12</div>
+            <div style="width:1px;height:16px;background:#232f3e"></div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#92a2b6">84 dB</div>
+          </div>
+        </div>
+        <div style="flex:0 0 auto;padding:14px 20px 12px;display:flex;align-items:center;gap:12px">
+          <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+            <div style="font-size:14.5px;font-weight:600">Not checked in</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6d7f95">EXPECTED 10:00</div>
+          </div>
+          <div style="height:52px;border-radius:17px;background:#5b8def;color:#0e131b;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center;padding:0 26px">I'm here</div>
+        </div>
+        <dc-import name="CrewNav" active="home" badge="6" hint-size="375px,90px"></dc-import>
+      </div>
+      <div style="font-size:13px;line-height:1.55;color:#92a2b6;text-wrap:pretty">Reading order is fixed by urgency: clock, my duty, my checklist, everyone else's noise. Only the duty card is accent-filled, so the two-second glance always lands there. Check-in is the one control on Home: a bar pinned directly above the nav, in thumb reach, showing the roster's expected time. Once tapped it collapses to a green “Checked in 9:41” line and the same item ticks itself on S08. Everything else on Home is read-only status.</div>
+    </div>
+
+    <div data-screen-label="S08" style="display:flex;flex-direction:column;gap:14px;width:375px">
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;color:#6d7f95">S08 · MEMBER</div>
+        <div style="font-size:17px;font-weight:600;letter-spacing:-0.01em">My checklist</div>
+      </div>
+      <div style="width:375px;height:812px;background:#0e131b;border-radius:44px;box-shadow:0 0 0 1px #232f3e, 0 30px 60px rgba(0,0,0,.55);overflow:hidden;display:flex;flex-direction:column">
+        <div style="flex:0 0 auto;height:50px;padding:15px 28px 0;display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:14px;font-weight:600;letter-spacing:-0.01em">9:41</div>
+          <div style="display:flex;align-items:center;gap:6px"><div style="width:17px;height:11px;border-radius:2px;background:#eef3fa"></div><div style="width:15px;height:11px;border-radius:2px;background:#eef3fa"></div><div style="width:25px;height:11px;border-radius:3px;background:#eef3fa"></div></div>
+        </div>
+        <div style="flex:0 0 auto;padding:8px 20px 14px;display:flex;align-items:flex-end;justify-content:space-between">
+          <div style="display:flex;flex-direction:column;gap:2px">
+            <div style="font-size:24px;font-weight:600;letter-spacing:-0.025em">Checklist</div>
+            <div style="font-size:12.5px;color:#92a2b6">Camera 1 · 4 of 7 done</div>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#79a4f6">T-24 · 9:41</div>
+        </div>
+        <div style="flex:1;overflow:hidden;padding:0 20px;display:flex;flex-direction:column;gap:9px">
+          <div style="border-radius:18px;background:#1a2740;box-shadow:inset 0 0 0 1px #2f4874;padding:16px;display:flex;align-items:center;gap:14px">
+            <div style="flex:1;display:flex;flex-direction:column;gap:3px">
+              <div style="font-size:16px;font-weight:600">I'm here</div>
+              <div style="font-size:12.5px;color:#c9d6e6">Expected 9:15 · tells the booth</div>
+            </div>
+            <div style="height:46px;border-radius:15px;background:#5b8def;color:#0e131b;font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:center;padding:0 20px">Check in</div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:center;min-height:60px;padding:12px 14px;border-radius:16px;background:#131a24">
+            <div style="width:24px;height:24px;border-radius:12px;background:#3fcf8e;color:#0e131b;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 auto">✓</div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+              <div style="font-size:14.5px;font-weight:500;color:#92a2b6;text-decoration:line-through">Battery + tape on Mic 4</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6d7f95">T-45 · 9:15 · done 9:12</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:center;min-height:60px;padding:12px 14px;border-radius:16px;background:#131a24">
+            <div style="width:24px;height:24px;border-radius:12px;background:#3fcf8e;color:#0e131b;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 auto">✓</div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+              <div style="font-size:14.5px;font-weight:500;color:#92a2b6;text-decoration:line-through">Line check with A2</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6d7f95">T-30 · 9:30 · done 9:28</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:16px;background:#2a1f1a;box-shadow:inset 0 0 0 1px #4a3520">
+            <div style="display:flex;gap:12px;align-items:center">
+              <div style="width:24px;height:24px;border-radius:8px;box-shadow:inset 0 0 0 1.5px #f0b429;flex:0 0 auto"></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+                <div style="font-size:15px;font-weight:600">Cable confidence monitor</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#f0b429">T-20 · 9:40 · 1 min overdue</div>
+              </div>
+            </div>
+            <div style="border-radius:11px;background:#1d1610;padding:10px 12px;font-size:12.5px;line-height:1.45;color:#c2a878">Note · spare SDI in drawer 2, the short one is dead</div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:center;min-height:60px;padding:12px 14px;border-radius:16px;background:#161d28">
+            <div style="width:24px;height:24px;border-radius:8px;box-shadow:inset 0 0 0 1.5px #3a4a5e;flex:0 0 auto"></div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+              <div style="font-size:15px;font-weight:600">Stage left clear of cases</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6d7f95">T-10 · 9:50</div>
+            </div>
+            <div style="font-size:12.5px;color:#6d7f95">Note</div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:center;min-height:60px;padding:12px 14px;border-radius:16px;background:#161d28">
+            <div style="width:24px;height:24px;border-radius:8px;box-shadow:inset 0 0 0 1.5px #3a4a5e;flex:0 0 auto"></div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+              <div style="font-size:15px;font-weight:600">Standby for count-in</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6d7f95">T-0 · 10:05</div>
+            </div>
+            <div style="font-size:12.5px;color:#6d7f95">Note</div>
+          </div>
+        </div>
+        <dc-import name="CrewNav" active="checklist" badge="6" hint-size="375px,90px"></dc-import>
+      </div>
+      <div style="font-size:13px;line-height:1.55;color:#92a2b6;text-wrap:pretty">Check-in is pinned as item zero and is the only accent card. Overdue rows tint their whole panel amber rather than shouting with a badge, so a glance across the list reads as one warm block. Done items sink to a darker panel and keep their completion time for the leader board.</div>
+    </div>
+
+    <div data-screen-label="S09" style="display:flex;flex-direction:column;gap:14px;width:375px">
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;color:#6d7f95">S09 · ADMIN</div>
+        <div style="font-size:17px;font-weight:600;letter-spacing:-0.01em">Leader board</div>
+      </div>
+      <div style="width:375px;height:812px;background:#0e131b;border-radius:44px;box-shadow:0 0 0 1px #232f3e, 0 30px 60px rgba(0,0,0,.55);overflow:hidden;display:flex;flex-direction:column">
+        <div style="flex:0 0 auto;height:50px;padding:15px 28px 0;display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:14px;font-weight:600;letter-spacing:-0.01em">9:41</div>
+          <div style="display:flex;align-items:center;gap:6px"><div style="width:17px;height:11px;border-radius:2px;background:#eef3fa"></div><div style="width:15px;height:11px;border-radius:2px;background:#eef3fa"></div><div style="width:25px;height:11px;border-radius:3px;background:#eef3fa"></div></div>
+        </div>
+        <div style="flex:0 0 auto;padding:8px 20px 14px;display:flex;align-items:flex-end;justify-content:space-between">
+          <div style="display:flex;flex-direction:column;gap:2px">
+            <div style="font-size:24px;font-weight:600;letter-spacing:-0.025em">Leader board</div>
+            <div style="font-size:12.5px;color:#92a2b6">12 on shift · 2 need attention</div>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#79a4f6">T-24</div>
+        </div>
+        <div style="flex:1;overflow:hidden;padding:0 20px;display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;gap:10px">
+            <div style="flex:1;border-radius:16px;background:#161d28;padding:13px 14px;display:flex;flex-direction:column;gap:5px">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:#6d7f95">ON SITE</div>
+              <div style="font-size:20px;font-weight:600;letter-spacing:-0.02em">9<span style="font-size:13px;color:#92a2b6;font-weight:500">/12</span></div>
+            </div>
+            <div style="flex:1;border-radius:16px;background:#161d28;padding:13px 14px;display:flex;flex-direction:column;gap:5px">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:#6d7f95">ON TRACK</div>
+              <div style="font-size:20px;font-weight:600;letter-spacing:-0.02em;color:#3fcf8e">7</div>
+            </div>
+            <div style="flex:1;border-radius:16px;background:#161d28;padding:13px 14px;display:flex;flex-direction:column;gap:5px">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.14em;color:#6d7f95">ISSUES</div>
+              <div style="font-size:20px;font-weight:600;letter-spacing:-0.02em;color:#f0b429">2</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.16em;color:#6d7f95">NEEDS ATTENTION</div>
+            <div style="border-radius:16px;background:#241519;box-shadow:inset 0 0 0 1px #52242a;padding:14px;display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:10px;height:10px;border-radius:5px;background:#e0645b"></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+                  <div style="font-size:15px;font-weight:600">Sam Okoye</div>
+                  <div style="font-size:12.5px;color:#d8a19c">Audio A2 · expected 8:45, not arrived</div>
+                </div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#e0645b">0/6</div>
+              </div>
+              <div style="display:flex;gap:9px">
+                <div style="flex:1;height:44px;border-radius:13px;box-shadow:inset 0 0 0 1.5px #e0645b;color:#e0645b;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center">Nudge</div>
+                <div style="flex:1;height:44px;border-radius:13px;background:#161d28;color:#c9d6e6;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center">Reassign</div>
+              </div>
+            </div>
+            <div style="border-radius:16px;background:#2a1f1a;box-shadow:inset 0 0 0 1px #4a3520;padding:14px;display:flex;align-items:center;gap:12px">
+              <div style="width:10px;height:10px;border-radius:5px;background:#f0b429"></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+                <div style="font-size:15px;font-weight:600">Marcus Hale</div>
+                <div style="font-size:12.5px;color:#c2a878">Camera 2 · on site 9:02 · 1 overdue</div>
+              </div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#f0b429">3/6</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.16em;color:#6d7f95">ON TRACK</div>
+            <div style="display:flex;align-items:center;gap:12px;min-height:52px;padding:0 14px;border-radius:15px;background:#161d28">
+              <div style="width:10px;height:10px;border-radius:5px;background:#3fcf8e"></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:1px"><div style="font-size:14.5px;font-weight:500">Nate Ruiz</div><div style="font-size:12px;color:#92a2b6">Camera 1 · on site 8:52</div></div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#3fcf8e">6/6</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;min-height:52px;padding:0 14px;border-radius:15px;background:#161d28">
+              <div style="width:10px;height:10px;border-radius:5px;background:#3fcf8e"></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:1px"><div style="font-size:14.5px;font-weight:500">Dana Whitfield</div><div style="font-size:12px;color:#92a2b6">Audio A1 · on site 8:40</div></div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#3fcf8e">5/5</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;min-height:52px;padding:0 14px;border-radius:15px;background:#161d28">
+              <div style="width:10px;height:10px;border-radius:5px;background:#3fcf8e"></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:1px"><div style="font-size:14.5px;font-weight:500">Priya Nair</div><div style="font-size:12px;color:#92a2b6">Host · on site 8:35</div></div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#3fcf8e">4/4</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;min-height:52px;padding:0 14px;border-radius:15px;background:#161d28">
+              <div style="width:10px;height:10px;border-radius:5px;background:#3fcf8e"></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:1px"><div style="font-size:14.5px;font-weight:500">Bea Lindqvist</div><div style="font-size:12px;color:#92a2b6">Kids lead · on site 8:20</div></div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#3fcf8e">7/7</div>
+            </div>
+          </div>
+        </div>
+        <dc-import name="CrewNav" active="more" badge="6" hint-size="375px,90px"></dc-import>
+      </div>
+      <div style="font-size:13px;line-height:1.55;color:#92a2b6;text-wrap:pretty">Sorted by exception, not alphabetically: red, amber, then everyone who is fine — collapsed to one line each. Arrival compares against the Planning Center roster time, so “not arrived” is a fact, not a guess. Nudge sends a page pre-filled with the role and the missing item.</div>
+    </div>
+
+    <div data-screen-label="S10" style="display:flex;flex-direction:column;gap:14px;width:375px">
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;color:#6d7f95">S10 · POLISH PASS</div>
+        <div style="font-size:17px;font-weight:600;letter-spacing:-0.01em">Dashboards</div>
+      </div>
+      <div style="width:375px;height:812px;background:#0e131b;border-radius:44px;box-shadow:0 0 0 1px #232f3e, 0 30px 60px rgba(0,0,0,.55);overflow:hidden;display:flex;flex-direction:column">
+        <div style="flex:0 0 auto;height:50px;padding:15px 28px 0;display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:14px;font-weight:600;letter-spacing:-0.01em">9:41</div>
+          <div style="display:flex;align-items:center;gap:6px"><div style="width:17px;height:11px;border-radius:2px;background:#eef3fa"></div><div style="width:15px;height:11px;border-radius:2px;background:#eef3fa"></div><div style="width:25px;height:11px;border-radius:3px;background:#eef3fa"></div></div>
+        </div>
+        <div style="flex:0 0 auto;padding:8px 20px 12px;display:flex;flex-direction:column;gap:12px">
+          <div style="font-size:24px;font-weight:600;letter-spacing:-0.025em">Dashboards</div>
+          <div style="display:flex;background:#131a24;border-radius:13px;padding:3px;box-shadow:inset 0 0 0 1px #232f3e">
+            <div style="flex:1;height:34px;border-radius:10px;background:#5b8def;color:#0e131b;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center">Booth</div>
+            <div style="flex:1;height:34px;border-radius:10px;color:#92a2b6;font-size:13px;font-weight:500;display:flex;align-items:center;justify-content:center">Stage</div>
+            <div style="flex:1;height:34px;border-radius:10px;color:#92a2b6;font-size:13px;font-weight:500;display:flex;align-items:center;justify-content:center">Office</div>
+          </div>
+        </div>
+        <div style="flex:1;overflow:hidden;padding:0 20px;display:flex;flex-direction:column;gap:12px">
+          <div style="border-radius:20px;background:#161d28;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.16em;color:#6d7f95">SPL · HOUSE</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#3fcf8e">WITHIN LIMIT</div>
+            </div>
+            <div style="display:flex;align-items:flex-end;gap:12px">
+              <div style="font-size:34px;font-weight:600;letter-spacing:-0.03em;line-height:1">84<span style="font-size:15px;color:#92a2b6;font-weight:500"> dBA</span></div>
+              <div style="flex:1;display:flex;align-items:flex-end;gap:3px;height:44px">
+                <div style="flex:1;height:38%;border-radius:2px;background:#2f4874"></div>
+                <div style="flex:1;height:52%;border-radius:2px;background:#2f4874"></div>
+                <div style="flex:1;height:44%;border-radius:2px;background:#2f4874"></div>
+                <div style="flex:1;height:66%;border-radius:2px;background:#3d5c8f"></div>
+                <div style="flex:1;height:58%;border-radius:2px;background:#3d5c8f"></div>
+                <div style="flex:1;height:78%;border-radius:2px;background:#5b8def"></div>
+                <div style="flex:1;height:62%;border-radius:2px;background:#5b8def"></div>
+                <div style="flex:1;height:88%;border-radius:2px;background:#79a4f6"></div>
+                <div style="flex:1;height:70%;border-radius:2px;background:#5b8def"></div>
+                <div style="flex:1;height:54%;border-radius:2px;background:#3d5c8f"></div>
+              </div>
+            </div>
+          </div>
+          <div style="border-radius:20px;background:#161d28;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.16em;color:#6d7f95">PROPRESENTER</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#92a2b6">SLIDE 12/31</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;gap:12px;align-items:baseline"><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#79a4f6;flex:0 0 42px">NOW</div><div style="flex:1;font-size:15.5px;font-weight:600;letter-spacing:-0.01em">Song 3 · chorus 2</div></div>
+              <div style="height:1px;background:#232f3e"></div>
+              <div style="display:flex;gap:12px;align-items:baseline"><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#6d7f95;flex:0 0 42px">NEXT</div><div style="flex:1;font-size:15.5px;font-weight:500;color:#92a2b6;letter-spacing:-0.01em">Announcements</div></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px">
+            <div style="flex:1;border-radius:20px;background:#161d28;padding:16px 18px;display:flex;flex-direction:column;gap:8px">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.14em;color:#6d7f95">GIVING TODAY</div>
+              <div style="font-size:26px;font-weight:600;letter-spacing:-0.025em;line-height:1">£1,240</div>
+              <div style="font-size:12.5px;color:#92a2b6">18 taps · 4 discs</div>
+            </div>
+            <div style="flex:1;border-radius:20px;background:#161d28;padding:16px 18px;display:flex;flex-direction:column;gap:8px">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.14em;color:#6d7f95">MIDI / OSC</div>
+              <div style="display:flex;align-items:center;gap:8px"><div style="width:9px;height:9px;border-radius:5px;background:#3fcf8e"></div><div style="font-size:15px;font-weight:600">Rig armed</div></div>
+              <div style="font-size:12.5px;color:#92a2b6">3 cues mapped</div>
+            </div>
+          </div>
+          <div style="border-radius:20px;background:#161d28;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.16em;color:#6d7f95">NDI CAMERAS</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#92a2b6">4 FEEDS</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <div style="flex:1;aspect-ratio:16/10;border-radius:11px;background:repeating-linear-gradient(135deg,#1b2430 0 6px,#202b38 6px 12px);display:flex;align-items:flex-end;padding:7px"><div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:#6d7f95">CAM 1</div></div>
+              <div style="flex:1;aspect-ratio:16/10;border-radius:11px;background:repeating-linear-gradient(135deg,#1b2430 0 6px,#202b38 6px 12px);display:flex;align-items:flex-end;padding:7px"><div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:#6d7f95">CAM 2</div></div>
+              <div style="flex:1;aspect-ratio:16/10;border-radius:11px;background:repeating-linear-gradient(135deg,#1b2430 0 6px,#202b38 6px 12px);display:flex;align-items:flex-end;padding:7px"><div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:#6d7f95">CAM 3</div></div>
+              <div style="flex:1;aspect-ratio:16/10;border-radius:11px;background:repeating-linear-gradient(135deg,#1b2430 0 6px,#202b38 6px 12px);display:flex;align-items:flex-end;padding:7px"><div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:#6d7f95">CAM 4</div></div>
+            </div>
+          </div>
+        </div>
+        <dc-import name="CrewNav" active="dash" badge="6" hint-size="375px,90px"></dc-import>
+      </div>
+      <div style="font-size:13px;line-height:1.55;color:#92a2b6;text-wrap:pretty">Polish only, no new features: widget headers become mono 10.5 with the status value right-aligned on the same line, panels go to 20 px radius and 12 px gaps, and the last widget clears the nav by 16 px instead of tucking under it. Camera tiles are placeholders — drop real NDI stills in.</div>
+    </div>
+
+    <div data-screen-label="S11" style="display:flex;flex-direction:column;gap:14px;width:375px">
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;color:#6d7f95">S11 · ALL ROLES</div>
+        <div style="font-size:17px;font-weight:600;letter-spacing:-0.01em">Booth offline</div>
+      </div>
+      <div style="width:375px;height:812px;background:#0e131b;border-radius:44px;box-shadow:0 0 0 1px #232f3e, 0 30px 60px rgba(0,0,0,.55);overflow:hidden;display:flex;flex-direction:column">
+        <div style="flex:0 0 auto;height:50px;padding:15px 28px 0;display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:14px;font-weight:600;letter-spacing:-0.01em">9:41</div>
+          <div style="display:flex;align-items:center;gap:6px"><div style="width:17px;height:11px;border-radius:2px;background:#eef3fa"></div><div style="width:15px;height:11px;border-radius:2px;background:#eef3fa"></div><div style="width:25px;height:11px;border-radius:3px;background:#eef3fa"></div></div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:0 36px">
+          <div style="opacity:.55"><dc-import name="ProDeckMark" variant="f" size="88" tone="white" hint-size="88px,88px"></dc-import></div>
+          <div style="display:flex;flex-direction:column;gap:10px;align-items:center">
+            <div style="font-size:25px;font-weight:600;letter-spacing:-0.02em;text-align:center;line-height:1.25">Command Center offline</div>
+            <div style="font-size:14.5px;line-height:1.5;color:#92a2b6;text-align:center;text-wrap:pretty">Reconnecting — attempt 3. Your checklist below still works and syncs when the booth is back.</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:9px;padding:9px 14px;border-radius:12px;background:#161d28">
+            <div style="width:9px;height:9px;border-radius:5px;background:#f0b429;animation:pdPulse 1.4s ease-in-out infinite"></div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#92a2b6">LAST SYNC 9:04</div>
+          </div>
+        </div>
+        <div style="flex:0 0 auto;padding:0 20px 30px;display:flex;flex-direction:column;gap:12px">
+          <div style="height:56px;border-radius:18px;background:#5b8def;color:#0e131b;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center">Open cached checklist</div>
+          <div style="height:56px;border-radius:18px;box-shadow:inset 0 0 0 1.5px #2b3849;color:#c9d6e6;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center">Retry now</div>
+        </div>
+      </div>
+      <div style="font-size:13px;line-height:1.55;color:#92a2b6;text-wrap:pretty">Mirrors the desktop splash but gives the volunteer somewhere to go — the cached checklist. Nav is hidden because nothing else is reachable. The mark sits at 55% opacity: present, not alarming.</div>
+    </div>
+
+    <div data-screen-label="S01a" style="display:flex;flex-direction:column;gap:14px;width:375px">
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;color:#6d7f95">S01a · FIRST VISIT · iOS</div>
+        <div style="font-size:17px;font-weight:600;letter-spacing:-0.01em">Install onboarding</div>
+      </div>
+      <div style="width:375px;height:812px;background:#0e131b;border-radius:44px;box-shadow:0 0 0 1px #232f3e, 0 30px 60px rgba(0,0,0,.55);overflow:hidden;display:flex;flex-direction:column">
+        <div style="flex:0 0 auto;height:50px;padding:15px 28px 0;display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:14px;font-weight:600;letter-spacing:-0.01em">9:41</div>
+          <div style="display:flex;align-items:center;gap:6px"><div style="width:17px;height:11px;border-radius:2px;background:#eef3fa"></div><div style="width:15px;height:11px;border-radius:2px;background:#eef3fa"></div><div style="width:25px;height:11px;border-radius:3px;background:#eef3fa"></div></div>
+        </div>
+        <div style="flex:1;padding:28px 24px 0;display:flex;flex-direction:column;gap:26px">
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <dc-import name="ProDeckMark" variant="f" size="52" tone="color" hint-size="52px,52px"></dc-import>
+            <div style="display:flex;flex-direction:column;gap:9px">
+              <div style="font-size:28px;font-weight:600;letter-spacing:-0.025em;line-height:1.15;text-wrap:pretty">Add ProDeck to your Home Screen</div>
+              <div style="font-size:14.5px;line-height:1.5;color:#92a2b6;text-wrap:pretty">Three taps, once. Safari can't send you pages until ProDeck lives on your Home Screen.</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;gap:14px;align-items:center;padding:14px;border-radius:16px;background:#161d28">
+              <div style="width:30px;height:30px;border-radius:10px;background:#22405f;color:#a8c4fa;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;display:flex;align-items:center;justify-content:center;flex:0 0 auto">1</div>
+              <div style="flex:1;font-size:14.5px;line-height:1.4">Tap <span style="font-weight:600">Share</span> in the Safari toolbar below</div>
+            </div>
+            <div style="display:flex;gap:14px;align-items:center;padding:14px;border-radius:16px;background:#161d28">
+              <div style="width:30px;height:30px;border-radius:10px;background:#22405f;color:#a8c4fa;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;display:flex;align-items:center;justify-content:center;flex:0 0 auto">2</div>
+              <div style="flex:1;font-size:14.5px;line-height:1.4">Choose <span style="font-weight:600">Add to Home Screen</span></div>
+            </div>
+            <div style="display:flex;gap:14px;align-items:center;padding:14px;border-radius:16px;background:#161d28">
+              <div style="width:30px;height:30px;border-radius:10px;background:#22405f;color:#a8c4fa;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;display:flex;align-items:center;justify-content:center;flex:0 0 auto">3</div>
+              <div style="flex:1;font-size:14.5px;line-height:1.4">Open ProDeck from your Home Screen and allow <span style="font-weight:600">Notifications</span></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;padding:14px;border-radius:16px;background:#131a24;box-shadow:inset 0 0 0 1px #232f3e">
+            <div style="width:9px;height:9px;border-radius:5px;background:#f0b429;margin-top:5px;flex:0 0 auto"></div>
+            <div style="flex:1;font-size:13px;line-height:1.5;color:#92a2b6;text-wrap:pretty">Notifications are how pages reach you when your phone is in your pocket. Without them ProDeck is silent.</div>
+          </div>
+        </div>
+        <div style="flex:0 0 auto;padding:0 24px 30px;display:flex;flex-direction:column;gap:12px">
+          <div style="height:56px;border-radius:18px;background:#5b8def;color:#0e131b;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center">I've added it — continue</div>
+          <div style="text-align:center;font-size:13.5px;color:#6d7f95">Show me again</div>
+        </div>
+      </div>
+      <div style="font-size:13px;line-height:1.55;color:#92a2b6;text-wrap:pretty">The only hand-holding screen in the app, and it earns it: without Home Screen install iOS delivers no web push, which kills paging. Detect the platform and show one variant only — never both.</div>
+    </div>
+
+    <div data-screen-label="S01b" style="display:flex;flex-direction:column;gap:14px;width:375px">
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;color:#6d7f95">S01b · FIRST VISIT · ANDROID</div>
+        <div style="font-size:17px;font-weight:600;letter-spacing:-0.01em">Install onboarding</div>
+      </div>
+      <div style="width:360px;height:800px;background:#0e131b;border-radius:36px;box-shadow:0 0 0 1px #232f3e, 0 30px 60px rgba(0,0,0,.55);overflow:hidden;display:flex;flex-direction:column">
+        <div style="flex:0 0 auto;height:38px;padding:11px 20px 0;display:flex;align-items:center;justify-content:space-between">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:500">9:41</div>
+          <div style="display:flex;align-items:center;gap:5px"><div style="width:13px;height:10px;border-radius:2px;background:#eef3fa"></div><div style="width:13px;height:10px;border-radius:2px;background:#eef3fa"></div><div style="width:20px;height:10px;border-radius:2px;background:#eef3fa"></div></div>
+        </div>
+        <div style="flex:1;padding:26px 22px 0;display:flex;flex-direction:column;gap:24px">
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <dc-import name="ProDeckMark" variant="f" size="52" tone="color" hint-size="52px,52px"></dc-import>
+            <div style="display:flex;flex-direction:column;gap:9px">
+              <div style="font-size:27px;font-weight:600;letter-spacing:-0.025em;line-height:1.15;text-wrap:pretty">Install ProDeck on this phone</div>
+              <div style="font-size:14.5px;line-height:1.5;color:#92a2b6;text-wrap:pretty">Chrome can install ProDeck in one tap. It runs full-screen and can buzz you for pages.</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;gap:14px;align-items:center;padding:14px;border-radius:16px;background:#161d28">
+              <div style="width:30px;height:30px;border-radius:10px;background:#22405f;color:#a8c4fa;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;display:flex;align-items:center;justify-content:center;flex:0 0 auto">1</div>
+              <div style="flex:1;font-size:14.5px;line-height:1.4">Tap <span style="font-weight:600">Install</span> below, or Chrome's menu → Install app</div>
+            </div>
+            <div style="display:flex;gap:14px;align-items:center;padding:14px;border-radius:16px;background:#161d28">
+              <div style="width:30px;height:30px;border-radius:10px;background:#22405f;color:#a8c4fa;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;display:flex;align-items:center;justify-content:center;flex:0 0 auto">2</div>
+              <div style="flex:1;font-size:14.5px;line-height:1.4">Open it from your app drawer</div>
+            </div>
+            <div style="display:flex;gap:14px;align-items:center;padding:14px;border-radius:16px;background:#161d28">
+              <div style="width:30px;height:30px;border-radius:10px;background:#22405f;color:#a8c4fa;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;display:flex;align-items:center;justify-content:center;flex:0 0 auto">3</div>
+              <div style="flex:1;font-size:14.5px;line-height:1.4">Allow <span style="font-weight:600">Notifications</span> when asked</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;padding:14px;border-radius:16px;background:#131a24;box-shadow:inset 0 0 0 1px #232f3e">
+            <div style="width:9px;height:9px;border-radius:5px;background:#f0b429;margin-top:5px;flex:0 0 auto"></div>
+            <div style="flex:1;font-size:13px;line-height:1.5;color:#92a2b6;text-wrap:pretty">Battery optimisation can delay pages. We'll ask to exempt ProDeck after your first Sunday.</div>
+          </div>
+        </div>
+        <div style="flex:0 0 auto;padding:0 22px 26px;display:flex;flex-direction:column;gap:12px">
+          <div style="height:56px;border-radius:18px;background:#5b8def;color:#0e131b;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center">Install</div>
+          <div style="text-align:center;font-size:13.5px;color:#6d7f95">Continue in the browser</div>
+        </div>
+      </div>
+      <div style="font-size:13px;line-height:1.55;color:#92a2b6;text-wrap:pretty">Drawn at 360×800 to prove the small-Android case: same type sizes, 22 px gutters instead of 24, three-step list unchanged. Chrome's own install prompt does step one, so the button triggers it directly.</div>
+    </div>
+
+    <div data-screen-label="S02a" style="display:flex;flex-direction:column;gap:14px;width:375px">
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;color:#6d7f95">S02a · FIRST RUN</div>
+        <div style="font-size:17px;font-weight:600;letter-spacing:-0.01em">Join — name and PIN</div>
+      </div>
+      <div style="width:375px;height:812px;background:#0e131b;border-radius:44px;box-shadow:0 0 0 1px #232f3e, 0 30px 60px rgba(0,0,0,.55);overflow:hidden;display:flex;flex-direction:column">
+        <div style="flex:0 0 auto;height:50px;padding:15px 28px 0;display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:14px;font-weight:600;letter-spacing:-0.01em">9:41</div>
+          <div style="display:flex;align-items:center;gap:6px"><div style="width:17px;height:11px;border-radius:2px;background:#eef3fa"></div><div style="width:15px;height:11px;border-radius:2px;background:#eef3fa"></div><div style="width:25px;height:11px;border-radius:3px;background:#eef3fa"></div></div>
+        </div>
+        <div style="flex:1;padding:20px 24px 0;display:flex;flex-direction:column;gap:22px">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="font-size:24px;font-weight:600;letter-spacing:-0.025em">Set your PIN</div>
+            <div style="font-size:14px;line-height:1.5;color:#92a2b6">Nate Ruiz · Camera team</div>
+          </div>
+          <div style="display:flex;gap:14px;justify-content:center;padding:6px 0">
+            <div style="width:16px;height:16px;border-radius:8px;background:#5b8def"></div>
+            <div style="width:16px;height:16px;border-radius:8px;background:#5b8def"></div>
+            <div style="width:16px;height:16px;border-radius:8px;background:#5b8def"></div>
+            <div style="width:16px;height:16px;border-radius:8px;box-shadow:inset 0 0 0 1.5px #3a4a5e"></div>
+          </div>
+          <div style="font-size:13px;color:#6d7f95;text-align:center">Four digits — unlocks ProDeck on this phone only</div>
+          <div style="display:flex;flex-wrap:wrap;gap:14px;justify-content:center;padding-top:4px">
+            <div style="width:74px;height:74px;border-radius:37px;background:#161d28;display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:500;letter-spacing:-0.02em">1</div>
+            <div style="width:74px;height:74px;border-radius:37px;background:#161d28;display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:500;letter-spacing:-0.02em">2</div>
+            <div style="width:74px;height:74px;border-radius:37px;background:#161d28;display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:500;letter-spacing:-0.02em">3</div>
+            <div style="width:74px;height:74px;border-radius:37px;background:#161d28;display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:500;letter-spacing:-0.02em">4</div>
+            <div style="width:74px;height:74px;border-radius:37px;background:#161d28;display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:500;letter-spacing:-0.02em">5</div>
+            <div style="width:74px;height:74px;border-radius:37px;background:#161d28;display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:500;letter-spacing:-0.02em">6</div>
+            <div style="width:74px;height:74px;border-radius:37px;background:#161d28;display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:500;letter-spacing:-0.02em">7</div>
+            <div style="width:74px;height:74px;border-radius:37px;background:#161d28;display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:500;letter-spacing:-0.02em">8</div>
+            <div style="width:74px;height:74px;border-radius:37px;background:#161d28;display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:500;letter-spacing:-0.02em">9</div>
+            <div style="width:74px;height:74px"></div>
+            <div style="width:74px;height:74px;border-radius:37px;background:#161d28;display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:500;letter-spacing:-0.02em">0</div>
+            <div style="width:74px;height:74px;border-radius:37px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#92a2b6">⌫</div>
+          </div>
+        </div>
+        <div style="flex:0 0 auto;padding:12px 24px 30px">
+          <div style="height:56px;border-radius:18px;background:#161d28;color:#4d5a6b;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center">Confirm PIN</div>
+        </div>
+      </div>
+      <div style="font-size:13px;line-height:1.55;color:#92a2b6;text-wrap:pretty">Keypad, not a text field: 74 px circles, thumb-height, no keyboard animation to wait for. Name and role come from the Planning Center roster match, so first run is PIN-only for most volunteers.</div>
+    </div>
+
+    <div data-screen-label="S02b" style="display:flex;flex-direction:column;gap:14px;width:375px">
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;color:#6d7f95">S02b · RETURNING + PENDING</div>
+        <div style="font-size:17px;font-weight:600;letter-spacing:-0.01em">Unlock · waiting for approval</div>
+      </div>
+      <div style="width:375px;height:812px;background:#0e131b;border-radius:44px;box-shadow:0 0 0 1px #232f3e, 0 30px 60px rgba(0,0,0,.55);overflow:hidden;display:flex;flex-direction:column">
+        <div style="flex:0 0 auto;height:50px;padding:15px 28px 0;display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:14px;font-weight:600;letter-spacing:-0.01em">9:41</div>
+          <div style="display:flex;align-items:center;gap:6px"><div style="width:17px;height:11px;border-radius:2px;background:#eef3fa"></div><div style="width:15px;height:11px;border-radius:2px;background:#eef3fa"></div><div style="width:25px;height:11px;border-radius:3px;background:#eef3fa"></div></div>
+        </div>
+        <div style="flex:1;padding:28px 24px 0;display:flex;flex-direction:column;gap:20px">
+          <div style="border-radius:20px;background:#2a1f1a;box-shadow:inset 0 0 0 1px #4a3520;padding:18px;display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:9px;height:9px;border-radius:5px;background:#f0b429;animation:pdPulse 1.4s ease-in-out infinite"></div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.16em;color:#f0b429">WAITING FOR BOOTH</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:7px">
+              <div style="font-size:19px;font-weight:600;letter-spacing:-0.015em;line-height:1.3">Zach needs to approve you</div>
+              <div style="font-size:13.5px;line-height:1.5;color:#c2a878;text-wrap:pretty">Requested 8:52. You'll get a notification the moment you're in — you can close this.</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:14px;align-items:center;padding-top:6px">
+            <dc-import name="ProDeckMark" variant="f" size="46" tone="color" hint-size="46px,46px"></dc-import>
+            <div style="font-size:20px;font-weight:600;letter-spacing:-0.02em">Welcome back, Nate</div>
+            <div style="display:flex;gap:14px;justify-content:center;padding:2px 0">
+              <div style="width:16px;height:16px;border-radius:8px;background:#5b8def"></div>
+              <div style="width:16px;height:16px;border-radius:8px;background:#5b8def"></div>
+              <div style="width:16px;height:16px;border-radius:8px;box-shadow:inset 0 0 0 1.5px #3a4a5e"></div>
+              <div style="width:16px;height:16px;border-radius:8px;box-shadow:inset 0 0 0 1.5px #3a4a5e"></div>
+            </div>
+            <div style="font-size:13px;color:#6d7f95">Enter your PIN</div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:14px;justify-content:center">
+            <div style="width:74px;height:74px;border-radius:37px;background:#161d28;display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:500">1</div>
+            <div style="width:74px;height:74px;border-radius:37px;background:#161d28;display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:500">2</div>
+            <div style="width:74px;height:74px;border-radius:37px;background:#161d28;display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:500">3</div>
+            <div style="width:74px;height:74px;border-radius:37px;background:#161d28;display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:500">4</div>
+            <div style="width:74px;height:74px;border-radius:37px;background:#161d28;display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:500">5</div>
+            <div style="width:74px;height:74px;border-radius:37px;background:#161d28;display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:500">6</div>
+            <div style="width:74px;height:74px;border-radius:37px;background:#161d28;display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:500">7</div>
+            <div style="width:74px;height:74px;border-radius:37px;background:#161d28;display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:500">8</div>
+            <div style="width:74px;height:74px;border-radius:37px;background:#161d28;display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:500">9</div>
+            <div style="width:74px;height:74px;border-radius:37px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#6d7f95;text-align:center;line-height:1.2">Forgot</div>
+            <div style="width:74px;height:74px;border-radius:37px;background:#161d28;display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:500">0</div>
+            <div style="width:74px;height:74px;border-radius:37px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#92a2b6">⌫</div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:13px;line-height:1.55;color:#92a2b6;text-wrap:pretty">Two states in one frame for review: the pending banner (new join) sits above the returning-user unlock. Unlock has no confirm button — the fourth digit submits. “Forgot” takes the place of the unused keypad cell rather than adding a row.</div>
+    </div>
+
+  </div>
+</section>
+
+<section style="padding:24px 56px 96px;display:flex;flex-direction:column;gap:40px">
+
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:820px">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#6d7f95">ProDeck Crew PWA · hi-fi pass 1 · critical path</div>
+    <div style="font-size:34px;font-weight:600;letter-spacing:-0.02em">Chat, pages and read receipts</div>
+    <div style="font-size:16px;line-height:1.55;color:#92a2b6;text-wrap:pretty">375×812, iOS standalone safe areas, every primary action in the bottom third. Screens 4–7 of 11 — the build's critical path — plus the bottom nav and component sheet. Reference frames by their screen number (S04, S05a…). Home, checklist, leader board, dashboards, install onboarding and the offline state follow next.</div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:44px;align-items:flex-start">
+
+    <div data-screen-label="S04" style="display:flex;flex-direction:column;gap:14px;width:375px">
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;color:#6d7f95">S04 · MEMBER</div>
+        <div style="font-size:17px;font-weight:600;letter-spacing:-0.01em">Chat — channel list</div>
+      </div>
+      <div style="width:375px;height:812px;background:#0e131b;border-radius:44px;box-shadow:0 0 0 1px #232f3e, 0 30px 60px rgba(0,0,0,.55);overflow:hidden;display:flex;flex-direction:column">
+        <div style="flex:0 0 auto;height:50px;padding:15px 28px 0;display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:14px;font-weight:600;letter-spacing:-0.01em">9:41</div>
+          <div style="display:flex;align-items:center;gap:6px"><div style="width:17px;height:11px;border-radius:2px;background:#eef3fa"></div><div style="width:15px;height:11px;border-radius:2px;background:#eef3fa"></div><div style="width:25px;height:11px;border-radius:3px;background:#eef3fa"></div></div>
+        </div>
+        <div style="flex:0 0 auto;padding:8px 20px 14px;display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:28px;font-weight:600;letter-spacing:-0.025em">Chat</div>
+          <div style="width:44px;height:44px;border-radius:14px;background:#161d28;box-shadow:inset 0 0 0 1px #232f3e;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:400;color:#79a4f6">+</div>
+        </div>
+        <div style="flex:0 0 auto;margin:0 20px 16px;padding:11px 14px;border-radius:14px;background:#161d28;display:flex;align-items:center;gap:10px">
+          <div style="width:8px;height:8px;border-radius:4px;background:#f0b429"></div>
+          <div style="font-size:12.5px;color:#92a2b6;line-height:1.35">Quiet hours until 6:00 — pages still ring</div>
+        </div>
+        <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:6px;padding:0 20px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.16em;color:#6d7f95;padding:4px 2px">TEAM</div>
+          <div style="display:flex;gap:12px;align-items:center;padding:10px 12px;border-radius:16px;background:#161d28;min-height:44px">
+            <div style="width:42px;height:42px;border-radius:13px;background:#22405f;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#a8c4fa">ST</div>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+              <div style="font-size:15px;font-weight:600;letter-spacing:-0.01em">Sunday Team</div>
+              <div style="font-size:13px;color:#92a2b6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Zach: Doors in 10, houselights 30%</div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6d7f95">9:12</div>
+              <div style="min-width:20px;height:20px;border-radius:10px;background:#5b8def;color:#0e131b;font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:500;display:flex;align-items:center;justify-content:center;padding:0 6px">3</div>
+            </div>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.16em;color:#6d7f95;padding:10px 2px 4px">MY ROLES</div>
+          <div style="display:flex;gap:12px;align-items:center;padding:10px 12px;border-radius:16px;background:#161d28;min-height:44px">
+            <div style="width:42px;height:42px;border-radius:13px;background:#1d2b3a;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#92a2b6">CA</div>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+              <div style="font-size:15px;font-weight:600;letter-spacing:-0.01em">Camera</div>
+              <div style="font-size:13px;color:#92a2b6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Nate: Cam 2 iris looks hot</div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6d7f95">8:58</div>
+              <div style="min-width:20px;height:20px;border-radius:10px;background:#5b8def;color:#0e131b;font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:500;display:flex;align-items:center;justify-content:center;padding:0 6px">1</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:center;padding:10px 12px;border-radius:16px;background:#161d28;min-height:44px">
+            <div style="width:42px;height:42px;border-radius:13px;background:#1d2b3a;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#92a2b6">AU</div>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+              <div style="font-size:15px;font-weight:600;letter-spacing:-0.01em">Audio</div>
+              <div style="font-size:13px;color:#92a2b6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Mic 4 swapped for the kids item</div>
+            </div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6d7f95">8:41</div>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.16em;color:#6d7f95;padding:10px 2px 4px">DIRECT</div>
+          <div style="display:flex;gap:12px;align-items:center;padding:10px 12px;border-radius:16px;background:#161d28;min-height:44px">
+            <div style="width:42px;height:42px;border-radius:13px;background:#22405f;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#a8c4fa">ZG</div>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+              <div style="display:flex;align-items:center;gap:7px">
+                <div style="font-size:15px;font-weight:600;letter-spacing:-0.01em">Zach Green</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.12em;color:#79a4f6;background:#1a2740;border-radius:5px;padding:2px 5px">BOOTH</div>
+              </div>
+              <div style="font-size:13px;color:#92a2b6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Can you cover confidence?</div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6d7f95">8:47</div>
+              <div style="min-width:20px;height:20px;border-radius:10px;background:#5b8def;color:#0e131b;font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:500;display:flex;align-items:center;justify-content:center;padding:0 6px">2</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:center;padding:10px 12px;border-radius:16px;background:#161d28;min-height:44px">
+            <div style="width:42px;height:42px;border-radius:13px;background:#1d2b3a;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#92a2b6">PN</div>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+              <div style="font-size:15px;font-weight:600;letter-spacing:-0.01em">Priya N.</div>
+              <div style="font-size:13px;color:#92a2b6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Running about 5 late</div>
+            </div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6d7f95">8:30</div>
+          </div>
+        </div>
+        <dc-import name="CrewNav" active="chat" badge="6" hint-size="375px,90px"></dc-import>
+      </div>
+      <div style="font-size:13px;line-height:1.55;color:#92a2b6;text-wrap:pretty">Rows are 62 px tall — comfortably past 44 pt with the avatar as the hit area anchor. Unread count sits at the row's right edge so the thumb never covers it. Quiet-hours strip is informational only; it never suppresses a page.</div>
+    </div>
+
+    <div data-screen-label="S05a" style="display:flex;flex-direction:column;gap:14px;width:375px">
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;color:#6d7f95">S05a · MEMBER</div>
+        <div style="font-size:17px;font-weight:600;letter-spacing:-0.01em">Chat — thread</div>
+      </div>
+      <div style="width:375px;height:812px;background:#0e131b;border-radius:44px;box-shadow:0 0 0 1px #232f3e, 0 30px 60px rgba(0,0,0,.55);overflow:hidden;display:flex;flex-direction:column">
+        <div style="flex:0 0 auto;height:50px;padding:15px 28px 0;display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:14px;font-weight:600;letter-spacing:-0.01em">9:41</div>
+          <div style="display:flex;align-items:center;gap:6px"><div style="width:17px;height:11px;border-radius:2px;background:#eef3fa"></div><div style="width:15px;height:11px;border-radius:2px;background:#eef3fa"></div><div style="width:25px;height:11px;border-radius:3px;background:#eef3fa"></div></div>
+        </div>
+        <div style="flex:0 0 auto;padding:6px 16px 12px;display:flex;align-items:center;gap:10px;box-shadow:0 1px 0 #1c2634">
+          <div style="width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;color:#79a4f6;font-weight:400">‹</div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:1px">
+            <div style="font-size:17px;font-weight:600;letter-spacing:-0.015em">Sunday Team</div>
+            <div style="font-size:12px;color:#92a2b6">12 members · 4 on site</div>
+          </div>
+        </div>
+        <div style="flex:1;overflow:hidden;padding:16px;display:flex;flex-direction:column;gap:14px;justify-content:flex-end">
+          <div style="display:flex;justify-content:center">
+            <div style="max-width:300px;border-radius:12px;box-shadow:inset 0 0 0 1px #2b3849;padding:8px 12px;display:flex;flex-direction:column;gap:3px;align-items:center">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#79a4f6">→ STAGE · 8:58</div>
+              <div style="font-size:13px;color:#92a2b6;text-align:center">Wrap in 2</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-end">
+            <div style="width:32px;height:32px;border-radius:11px;background:#1d2b3a;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:600;color:#92a2b6">NT</div>
+            <div style="max-width:262px;display:flex;flex-direction:column;gap:4px">
+              <div style="display:flex;gap:8px;align-items:baseline"><div style="font-size:12.5px;font-weight:600;color:#a8c4fa">Nate</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#6d7f95">8:59</div></div>
+              <div style="background:#1b2430;border-radius:16px;border-bottom-left-radius:6px;padding:10px 13px;font-size:14.5px;line-height:1.4;text-wrap:pretty">Cam 2 is running hot, dropping iris a stop.</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-end">
+            <div style="width:32px;height:32px;border-radius:11px;background:#1d2b3a;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:600;color:#92a2b6">PN</div>
+            <div style="max-width:262px;display:flex;flex-direction:column;gap:4px">
+              <div style="display:flex;gap:8px;align-items:baseline"><div style="font-size:12.5px;font-weight:600;color:#a8c4fa">Priya</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#6d7f95">9:01</div></div>
+              <div style="background:#1b2430;border-radius:16px;border-bottom-left-radius:6px;padding:10px 13px;font-size:14.5px;line-height:1.4;text-wrap:pretty">Kids item moved to after announcements.</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:flex-end">
+            <div style="max-width:250px;display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+              <div style="background:#5b8def;color:#0e131b;border-radius:16px;border-bottom-right-radius:6px;padding:10px 13px;font-size:14.5px;line-height:1.4;font-weight:500">Copy — Mic 4 is ready.</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#6d7f95">9:02 · read</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:center">
+            <div style="max-width:300px;border-radius:12px;box-shadow:inset 0 0 0 1px #2b3849;padding:8px 12px;display:flex;flex-direction:column;gap:3px;align-items:center">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#79a4f6">→ CONFIDENCE · 9:04</div>
+              <div style="font-size:13px;color:#92a2b6;text-align:center">Next: Song 3</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:2px 0">
+            <div style="flex:1;height:1px;background:#2b3849"></div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.18em;color:#79a4f6">NEW</div>
+            <div style="flex:1;height:1px;background:#2b3849"></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-end">
+            <div style="width:32px;height:32px;border-radius:11px;background:#22405f;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:600;color:#a8c4fa">ZG</div>
+            <div style="max-width:262px;display:flex;flex-direction:column;gap:4px">
+              <div style="display:flex;gap:8px;align-items:baseline"><div style="font-size:12.5px;font-weight:600;color:#a8c4fa">Zach</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#6d7f95">9:05</div></div>
+              <div style="background:#1b2430;border-radius:16px;border-bottom-left-radius:6px;padding:10px 13px;font-size:14.5px;line-height:1.4;text-wrap:pretty">Standby for offering, 90 seconds.</div>
+            </div>
+          </div>
+        </div>
+        <div style="flex:0 0 auto;padding:10px 16px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 -1px 0 #1c2634">
+          <div style="flex:1;height:46px;border-radius:23px;background:#161d28;box-shadow:inset 0 0 0 1px #232f3e;display:flex;align-items:center;padding:0 16px;font-size:14.5px;color:#6d7f95">Message Sunday Team</div>
+          <div style="width:46px;height:46px;border-radius:23px;background:#5b8def;display:flex;align-items:center;justify-content:center;font-size:21px;color:#0e131b;font-weight:600">↑</div>
+        </div>
+        <dc-import name="CrewNav" active="chat" badge="4" hint-size="375px,90px"></dc-import>
+      </div>
+      <div style="font-size:13px;line-height:1.55;color:#92a2b6;text-wrap:pretty">Stage and confidence sends render as centred outlined rows, not bubbles — they're broadcast records, not conversation. Own messages use accent-on-dark for full-sun legibility. Transition: push from the right, header title cross-fades.</div>
+    </div>
+
+    <div data-screen-label="S05b" style="display:flex;flex-direction:column;gap:14px;width:375px">
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;color:#6d7f95">S05b · ADMIN</div>
+        <div style="font-size:17px;font-weight:600;letter-spacing:-0.01em">Chat — thread with sends</div>
+      </div>
+      <div style="width:375px;height:812px;background:#0e131b;border-radius:44px;box-shadow:0 0 0 1px #232f3e, 0 30px 60px rgba(0,0,0,.55);overflow:hidden;display:flex;flex-direction:column">
+        <div style="flex:0 0 auto;height:50px;padding:15px 28px 0;display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:14px;font-weight:600;letter-spacing:-0.01em">9:41</div>
+          <div style="display:flex;align-items:center;gap:6px"><div style="width:17px;height:11px;border-radius:2px;background:#eef3fa"></div><div style="width:15px;height:11px;border-radius:2px;background:#eef3fa"></div><div style="width:25px;height:11px;border-radius:3px;background:#eef3fa"></div></div>
+        </div>
+        <div style="flex:0 0 auto;padding:6px 16px 12px;display:flex;align-items:center;gap:10px;box-shadow:0 1px 0 #1c2634">
+          <div style="width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;color:#79a4f6;font-weight:400">‹</div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:1px">
+            <div style="font-size:17px;font-weight:600;letter-spacing:-0.015em">Sunday Team</div>
+            <div style="font-size:12px;color:#92a2b6">12 members · 4 on site</div>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.12em;color:#79a4f6;background:#1a2740;border-radius:5px;padding:3px 6px">ADMIN</div>
+        </div>
+        <div style="flex:1;overflow:hidden;padding:16px;display:flex;flex-direction:column;gap:14px;justify-content:flex-end">
+          <div style="display:flex;gap:10px;align-items:flex-end">
+            <div style="width:32px;height:32px;border-radius:11px;background:#1d2b3a;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:600;color:#92a2b6">NT</div>
+            <div style="max-width:262px;display:flex;flex-direction:column;gap:4px">
+              <div style="display:flex;gap:8px;align-items:baseline"><div style="font-size:12.5px;font-weight:600;color:#a8c4fa">Nate</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#6d7f95">9:01</div></div>
+              <div style="background:#1b2430;border-radius:16px;border-bottom-left-radius:6px;padding:10px 13px;font-size:14.5px;line-height:1.4;text-wrap:pretty">Ready on cam 1 whenever.</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:center">
+            <div style="width:100%;border-radius:14px;box-shadow:inset 0 0 0 1px #2b3849;padding:11px 14px;display:flex;flex-direction:column;gap:5px">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#79a4f6">YOU → STAGE · 9:03</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#3fcf8e">ON DISPLAY 41s</div>
+              </div>
+              <div style="font-size:14.5px;line-height:1.35">Hold — offering still running</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:center">
+            <div style="width:100%;border-radius:14px;box-shadow:inset 0 0 0 1px #2b3849;padding:11px 14px;display:flex;flex-direction:column;gap:5px">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#79a4f6">YOU → CONFIDENCE · 9:05</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6d7f95">CLEARED</div>
+              </div>
+              <div style="font-size:14.5px;line-height:1.35">Verse 2 then chorus twice</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:center">
+            <div style="width:100%;border-radius:14px;background:#2a1f1a;box-shadow:inset 0 0 0 1px #4a3520;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#f0b429">PAGE → CAMERA (3) · 9:06</div>
+                <div style="font-size:14.5px;line-height:1.35">Need you in the booth now</div>
+              </div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#3fcf8e;white-space:nowrap">2/3 read</div>
+            </div>
+          </div>
+        </div>
+        <div style="flex:0 0 auto;padding:10px 16px 14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 -1px 0 #1c2634">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="flex:1;display:flex;background:#131a24;border-radius:12px;padding:3px;box-shadow:inset 0 0 0 1px #232f3e">
+              <div style="flex:1;height:32px;border-radius:9px;background:#5b8def;color:#0e131b;font-size:12.5px;font-weight:600;display:flex;align-items:center;justify-content:center">Team</div>
+              <div style="flex:1;height:32px;border-radius:9px;color:#92a2b6;font-size:12.5px;font-weight:500;display:flex;align-items:center;justify-content:center">Stage</div>
+              <div style="flex:1;height:32px;border-radius:9px;color:#92a2b6;font-size:12.5px;font-weight:500;display:flex;align-items:center;justify-content:center">Confidence</div>
+            </div>
+            <div style="height:38px;border-radius:12px;box-shadow:inset 0 0 0 1.5px #f0b429;color:#f0b429;font-size:12.5px;font-weight:600;display:flex;align-items:center;justify-content:center;padding:0 14px">Page</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="flex:1;height:46px;border-radius:23px;background:#161d28;box-shadow:inset 0 0 0 1px #232f3e;display:flex;align-items:center;padding:0 16px;font-size:14.5px;color:#6d7f95">Send to Team</div>
+            <div style="width:46px;height:46px;border-radius:23px;background:#5b8def;display:flex;align-items:center;justify-content:center;font-size:21px;color:#0e131b;font-weight:600">↑</div>
+          </div>
+        </div>
+        <dc-import name="CrewNav" active="chat" badge="4" hint-size="375px,90px"></dc-import>
+      </div>
+      <div style="font-size:13px;line-height:1.55;color:#92a2b6;text-wrap:pretty">Destination is a persistent segmented control directly above the field, so the operator always sees where the next message lands. Stage/confidence sends show live display status; the amber Page button is deliberately a different shape and colour from send — it is never hit by accident.</div>
+    </div>
+
+    <div data-screen-label="S06a" style="display:flex;flex-direction:column;gap:14px;width:375px">
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;color:#6d7f95">S06a · ADMIN</div>
+        <div style="font-size:17px;font-weight:600;letter-spacing:-0.01em">Page composer</div>
+      </div>
+      <div style="width:375px;height:812px;background:#0e131b;border-radius:44px;box-shadow:0 0 0 1px #232f3e, 0 30px 60px rgba(0,0,0,.55);overflow:hidden;display:flex;flex-direction:column">
+        <div style="flex:0 0 auto;height:50px;padding:15px 28px 0;display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:14px;font-weight:600;letter-spacing:-0.01em">9:41</div>
+          <div style="display:flex;align-items:center;gap:6px"><div style="width:17px;height:11px;border-radius:2px;background:#eef3fa"></div><div style="width:15px;height:11px;border-radius:2px;background:#eef3fa"></div><div style="width:25px;height:11px;border-radius:3px;background:#eef3fa"></div></div>
+        </div>
+        <div style="flex:0 0 auto;padding:6px 20px 14px;display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:15px;font-weight:500;color:#92a2b6">Cancel</div>
+          <div style="font-size:17px;font-weight:600;letter-spacing:-0.015em">Send a page</div>
+          <div style="width:52px"></div>
+        </div>
+        <div style="flex:1;overflow:hidden;padding:0 20px;display:flex;flex-direction:column;gap:22px">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="min-height:88px;border-radius:18px;background:#161d28;box-shadow:inset 0 0 0 1px #232f3e;padding:14px 16px;font-size:18px;line-height:1.35;font-weight:500">Need you in the booth now<span style="color:#5b8def">|</span></div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <div style="border-radius:11px;box-shadow:inset 0 0 0 1px #2b3849;color:#92a2b6;font-size:12.5px;padding:7px 12px">Standby</div>
+              <div style="border-radius:11px;box-shadow:inset 0 0 0 1px #2b3849;color:#92a2b6;font-size:12.5px;padding:7px 12px">Go to black</div>
+              <div style="border-radius:11px;box-shadow:inset 0 0 0 1px #2b3849;color:#92a2b6;font-size:12.5px;padding:7px 12px">Mic check</div>
+              <div style="border-radius:11px;box-shadow:inset 0 0 0 1px #2b3849;color:#92a2b6;font-size:12.5px;padding:7px 12px">Cam 2 hot</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.16em;color:#6d7f95">RECIPIENTS</div>
+            <div style="display:flex;background:#131a24;border-radius:13px;padding:3px;box-shadow:inset 0 0 0 1px #232f3e">
+              <div style="flex:1;height:36px;border-radius:10px;color:#92a2b6;font-size:13.5px;font-weight:500;display:flex;align-items:center;justify-content:center">Person</div>
+              <div style="flex:1;height:36px;border-radius:10px;background:#5b8def;color:#0e131b;font-size:13.5px;font-weight:600;display:flex;align-items:center;justify-content:center">Role</div>
+              <div style="flex:1;height:36px;border-radius:10px;color:#92a2b6;font-size:13.5px;font-weight:500;display:flex;align-items:center;justify-content:center">Everyone</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;gap:12px;min-height:48px;padding:0 14px;border-radius:15px;background:#1a2740;box-shadow:inset 0 0 0 1px #2f4874">
+                <div style="width:22px;height:22px;border-radius:7px;background:#5b8def;color:#0e131b;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center">✓</div>
+                <div style="flex:1;font-size:15px;font-weight:600">Camera</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#92a2b6">3 on shift</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;min-height:48px;padding:0 14px;border-radius:15px;background:#1a2740;box-shadow:inset 0 0 0 1px #2f4874">
+                <div style="width:22px;height:22px;border-radius:7px;background:#5b8def;color:#0e131b;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center">✓</div>
+                <div style="flex:1;font-size:15px;font-weight:600">Audio</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#92a2b6">2 on shift</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;min-height:48px;padding:0 14px;border-radius:15px;background:#161d28;box-shadow:inset 0 0 0 1px #232f3e">
+                <div style="width:22px;height:22px;border-radius:7px;box-shadow:inset 0 0 0 1.5px #3a4a5e"></div>
+                <div style="flex:1;font-size:15px;font-weight:500;color:#92a2b6">Hosts</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#6d7f95">4 on shift</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;min-height:48px;padding:0 14px;border-radius:15px;background:#161d28;box-shadow:inset 0 0 0 1px #232f3e">
+                <div style="width:22px;height:22px;border-radius:7px;box-shadow:inset 0 0 0 1.5px #3a4a5e"></div>
+                <div style="flex:1;font-size:15px;font-weight:500;color:#92a2b6">Kids</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#6d7f95">5 on shift</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="flex:0 0 auto;padding:16px 20px 34px;display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;align-items:center;gap:12px;min-height:48px;padding:0 16px;border-radius:15px;background:#161d28">
+            <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+              <div style="font-size:14.5px;font-weight:600">Buzz until read</div>
+              <div style="font-size:12px;color:#92a2b6">Repeats every 20s for 2 min</div>
+            </div>
+            <div style="width:48px;height:29px;border-radius:15px;background:#5b8def;display:flex;align-items:center;justify-content:flex-end;padding:0 3px"><div style="width:23px;height:23px;border-radius:12px;background:#0e131b"></div></div>
+          </div>
+          <div style="height:60px;border-radius:20px;background:#f0b429;color:#221803;font-size:18px;font-weight:700;letter-spacing:-0.01em;display:flex;align-items:center;justify-content:center;gap:10px">Send page to 5</div>
+        </div>
+      </div>
+      <div style="font-size:13px;line-height:1.55;color:#92a2b6;text-wrap:pretty">Composer is a full-screen sheet with no bottom nav — it is a modal task. Presets exist because most pages are one of five phrases and typing one-handed mid-service is the failure mode. Send button counts the actual recipients so a mis-selected role is caught before the buzz.</div>
+    </div>
+
+    <div data-screen-label="S06b" style="display:flex;flex-direction:column;gap:14px;width:375px">
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;color:#6d7f95">S06b · ADMIN</div>
+        <div style="font-size:17px;font-weight:600;letter-spacing:-0.01em">Read tracking</div>
+      </div>
+      <div style="width:375px;height:812px;background:#0e131b;border-radius:44px;box-shadow:0 0 0 1px #232f3e, 0 30px 60px rgba(0,0,0,.55);overflow:hidden;display:flex;flex-direction:column">
+        <div style="flex:0 0 auto;height:50px;padding:15px 28px 0;display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:14px;font-weight:600;letter-spacing:-0.01em">9:41</div>
+          <div style="display:flex;align-items:center;gap:6px"><div style="width:17px;height:11px;border-radius:2px;background:#eef3fa"></div><div style="width:15px;height:11px;border-radius:2px;background:#eef3fa"></div><div style="width:25px;height:11px;border-radius:3px;background:#eef3fa"></div></div>
+        </div>
+        <div style="flex:0 0 auto;padding:6px 16px 14px;display:flex;align-items:center;gap:10px">
+          <div style="width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;color:#79a4f6;font-weight:400">‹</div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:1px">
+            <div style="font-size:17px;font-weight:600;letter-spacing:-0.015em">Page · 9:06</div>
+            <div style="font-size:12px;color:#92a2b6">Camera, Audio · buzz on</div>
+          </div>
+        </div>
+        <div style="flex:1;overflow:hidden;padding:0 20px;display:flex;flex-direction:column;gap:20px">
+          <div style="border-radius:18px;background:#161d28;padding:16px;display:flex;flex-direction:column;gap:14px">
+            <div style="font-size:17px;font-weight:600;line-height:1.35;letter-spacing:-0.01em">Need you in the booth now</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:baseline;justify-content:space-between">
+                <div style="font-size:13px;color:#92a2b6">3 of 5 read</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#6d7f95">38s elapsed</div>
+              </div>
+              <div style="height:6px;border-radius:3px;background:#222d3b;overflow:hidden;display:flex"><div style="width:60%;background:#3fcf8e"></div></div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.16em;color:#6d7f95">WAITING · 2</div>
+            <div style="display:flex;align-items:center;gap:12px;min-height:56px;padding:0 14px;border-radius:15px;background:#2a1f1a;box-shadow:inset 0 0 0 1px #4a3520">
+              <div style="width:11px;height:11px;border-radius:6px;background:#f0b429;animation:pdPulse 1.5s ease-in-out infinite"></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+                <div style="font-size:15px;font-weight:600">Marcus Hale</div>
+                <div style="font-size:12.5px;color:#92a2b6">Camera 2 · last seen 9:02</div>
+              </div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#f0b429">38s</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;min-height:56px;padding:0 14px;border-radius:15px;background:#2a1f1a;box-shadow:inset 0 0 0 1px #4a3520">
+              <div style="width:11px;height:11px;border-radius:6px;background:#f0b429;animation:pdPulse 1.5s ease-in-out infinite .4s"></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+                <div style="font-size:15px;font-weight:600">Dana Whitfield</div>
+                <div style="font-size:12.5px;color:#92a2b6">Audio A2 · on site</div>
+              </div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#f0b429">38s</div>
+            </div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.16em;color:#6d7f95;padding-top:8px">READ · 3</div>
+            <div style="display:flex;align-items:center;gap:12px;min-height:52px;padding:0 14px;border-radius:15px;background:#161d28">
+              <div style="width:22px;height:22px;border-radius:11px;background:#3fcf8e;color:#0e131b;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center">✓</div>
+              <div style="flex:1;font-size:15px;font-weight:500">Nate Ruiz</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#3fcf8e">9:06:04 · 4s</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;min-height:52px;padding:0 14px;border-radius:15px;background:#161d28">
+              <div style="width:22px;height:22px;border-radius:11px;background:#3fcf8e;color:#0e131b;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center">✓</div>
+              <div style="flex:1;font-size:15px;font-weight:500">Priya Nair</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#3fcf8e">9:06:07 · 7s</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;min-height:52px;padding:0 14px;border-radius:15px;background:#161d28">
+              <div style="width:22px;height:22px;border-radius:11px;background:#3fcf8e;color:#0e131b;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center">✓</div>
+              <div style="flex:1;font-size:15px;font-weight:500">Sam Okoye</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#3fcf8e">9:06:19 · 19s</div>
+            </div>
+          </div>
+        </div>
+        <div style="flex:0 0 auto;padding:16px 20px 34px;display:flex;gap:12px">
+          <div style="flex:1;height:56px;border-radius:18px;box-shadow:inset 0 0 0 1.5px #f0b429;color:#f0b429;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center">Re-buzz 2</div>
+          <div style="flex:0 0 116px;height:56px;border-radius:18px;background:#161d28;color:#92a2b6;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center">Done</div>
+        </div>
+      </div>
+      <div style="font-size:13px;line-height:1.55;color:#92a2b6;text-wrap:pretty">Waiting sits above acknowledged — the unresolved half is what the operator came for. Amber dots pulse at 1.5s; everything else is static so the eye goes straight to them. Rows carry role and last-seen so a no-show is diagnosable without leaving the screen.</div>
+    </div>
+
+    <div data-screen-label="S07a" style="display:flex;flex-direction:column;gap:14px;width:375px">
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;color:#6d7f95">S07a · MEMBER</div>
+        <div style="font-size:17px;font-weight:600;letter-spacing:-0.01em">Incoming page — full takeover</div>
+      </div>
+      <div style="width:375px;height:812px;background:#14100a;border-radius:44px;box-shadow:0 0 0 1px #4a3520, 0 30px 60px rgba(0,0,0,.55);overflow:hidden;display:flex;flex-direction:column">
+        <div style="flex:0 0 auto;height:50px;padding:15px 28px 0;display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:14px;font-weight:600;letter-spacing:-0.01em;color:#f0b429">9:41</div>
+          <div style="display:flex;align-items:center;gap:6px"><div style="width:17px;height:11px;border-radius:2px;background:#f0b429"></div><div style="width:15px;height:11px;border-radius:2px;background:#f0b429"></div><div style="width:25px;height:11px;border-radius:3px;background:#f0b429"></div></div>
+        </div>
+        <div style="flex:1;padding:36px 28px 0;display:flex;flex-direction:column;gap:22px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:10px;height:10px;border-radius:5px;background:#f0b429;animation:pdPulse 1.2s ease-in-out infinite"></div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.18em;color:#f0b429">PAGE · 9:06</div>
+          </div>
+          <div style="font-size:38px;font-weight:600;line-height:1.12;letter-spacing:-0.03em;text-wrap:pretty;color:#fdf6e6">Need you in the booth now</div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:40px;height:40px;border-radius:13px;background:#3a2a15;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:600;color:#f0b429">ZG</div>
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <div style="font-size:15.5px;font-weight:600;color:#fdf6e6">Zach Green</div>
+              <div style="font-size:12.5px;color:#c2a878">Booth · buzzing until you confirm</div>
+            </div>
+          </div>
+        </div>
+        <div style="flex:0 0 auto;padding:0 20px 30px;display:flex;flex-direction:column;gap:16px">
+          <div style="height:268px;border-radius:32px;background:#3fcf8e;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+            <div style="font-size:96px;line-height:1;font-weight:700;color:#08281b">✓</div>
+            <div style="font-size:26px;font-weight:700;letter-spacing:.02em;color:#08281b">Got it</div>
+          </div>
+          <div style="text-align:center;font-size:13px;color:#c2a878">Tap anywhere in the green to confirm</div>
+        </div>
+      </div>
+      <div style="font-size:13px;line-height:1.55;color:#92a2b6;text-wrap:pretty">The confirm target is 335×268 — the whole bottom third, hittable with a thumb without looking. Amber tints the entire frame so the state is obvious in peripheral vision; green appears nowhere else in the app at this size. Transition: fades up over whatever screen was showing, no dismiss gesture.</div>
+    </div>
+
+    <div data-screen-label="S07b" style="display:flex;flex-direction:column;gap:14px;width:375px">
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;color:#6d7f95">S07b · NOTIFICATION ANATOMY</div>
+        <div style="font-size:17px;font-weight:600;letter-spacing:-0.01em">Lock screen</div>
+      </div>
+      <div style="width:375px;height:812px;background:#141a22;border-radius:44px;box-shadow:0 0 0 1px #232f3e, 0 30px 60px rgba(0,0,0,.55);overflow:hidden;display:flex;flex-direction:column;padding:0">
+        <div style="flex:0 0 auto;padding:64px 0 0;display:flex;flex-direction:column;align-items:center;gap:4px">
+          <div style="font-size:19px;font-weight:500;color:#c9d6e6">Sunday, 2 August</div>
+          <div style="font-size:76px;font-weight:500;letter-spacing:-0.03em;line-height:1.1">9:06</div>
+        </div>
+        <div style="flex:1;padding:40px 14px 0;display:flex;flex-direction:column;gap:16px">
+          <div style="border-radius:22px;background:rgba(238,243,250,.1);box-shadow:inset 0 0 0 1px rgba(238,243,250,.09);overflow:hidden">
+            <div style="padding:14px 16px 12px;display:flex;gap:12px">
+              <div style="width:38px;height:38px;border-radius:11px;background:#161d28;display:flex;align-items:center;justify-content:center;flex:0 0 auto">
+                <dc-import name="ProDeckMark" variant="f" size="24" tone="color" hint-size="24px,24px"></dc-import>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:3px">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+                  <div style="font-size:14.5px;font-weight:600;letter-spacing:-0.01em">ProDeck · Page</div>
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#92a2b6">now</div>
+                </div>
+                <div style="font-size:14px;line-height:1.35;color:#dbe5f1;text-wrap:pretty">Zach: Need you in the booth now</div>
+              </div>
+            </div>
+            <div style="display:flex;border-top:1px solid rgba(238,243,250,.1)">
+              <div style="flex:1;height:46px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:600;color:#3fcf8e;border-right:1px solid rgba(238,243,250,.1)">✓ Got it</div>
+              <div style="flex:1;height:46px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:500;color:#79a4f6">Open</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:9px;padding:6px 4px">
+            <div style="display:flex;gap:12px;align-items:baseline"><div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.14em;color:#6d7f95;flex:0 0 68px">TITLE</div><div style="font-size:12.5px;color:#92a2b6;flex:1">Always “ProDeck · Page” — never the message, so it reads at a glance</div></div>
+            <div style="display:flex;gap:12px;align-items:baseline"><div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.14em;color:#6d7f95;flex:0 0 68px">BODY</div><div style="font-size:12.5px;color:#92a2b6;flex:1">Sender first name, colon, page text — 64 chars before truncation</div></div>
+            <div style="display:flex;gap:12px;align-items:baseline"><div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.14em;color:#6d7f95;flex:0 0 68px">ACTIONS</div><div style="font-size:12.5px;color:#92a2b6;flex:1">“Got it” resolves without opening the app; Open launches S07a</div></div>
+            <div style="display:flex;gap:12px;align-items:baseline"><div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.14em;color:#6d7f95;flex:0 0 68px">SOUND</div><div style="font-size:12.5px;color:#92a2b6;flex:1">Critical-alert channel, repeats every 20s while buzz is on</div></div>
+            <div style="display:flex;gap:12px;align-items:baseline"><div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.14em;color:#6d7f95;flex:0 0 68px">ANDROID</div><div style="font-size:12.5px;color:#92a2b6;flex:1">Same anatomy, high-importance channel “Pages”, ongoing until read</div></div>
+          </div>
+        </div>
+        <div style="flex:0 0 auto;padding:0 0 12px;display:flex;justify-content:center"><div style="width:134px;height:5px;border-radius:3px;background:rgba(238,243,250,.35)"></div></div>
+      </div>
+      <div style="font-size:13px;line-height:1.55;color:#92a2b6;text-wrap:pretty">Notification actions carry the ACK so a volunteer never has to unlock. This is also why install onboarding (S01) insists on Add to Home Screen — iOS won't deliver web push otherwise.</div>
+    </div>
+
+    <div style="width:100%;display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start;padding-top:12px">
+
+      <div style="flex:1 1 420px;background:#0f151e;border:1px solid #1e2836;border-radius:22px;padding:30px;display:flex;flex-direction:column;gap:22px">
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;color:#6d7f95">BOTTOM NAV</div>
+          <div style="font-size:17px;font-weight:600;letter-spacing:-0.01em">Five tabs, badge on Chat only</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div style="width:375px;border-radius:18px;overflow:hidden;background:#0e131b">
+            <dc-import name="CrewNav" active="home" badge="6" hint-size="375px,90px"></dc-import>
+          </div>
+          <div style="width:375px;border-radius:18px;overflow:hidden;background:#0e131b">
+            <dc-import name="CrewNav" active="checklist" badge="" hint-size="375px,90px"></dc-import>
+          </div>
+        </div>
+        <div style="font-size:13px;line-height:1.6;color:#92a2b6;text-wrap:pretty">Nav is 22 px above the home indicator, 68 px of it tappable. Badges only ever appear on Chat (unread messages) — pages take over the screen instead, and checklist overdue shows as an amber dot, not a count. At 360 px wide the labels hold; below that they drop to icon-only.</div>
+      </div>
+
+      <div style="flex:1 1 420px;background:#0f151e;border:1px solid #1e2836;border-radius:22px;padding:30px;display:flex;flex-direction:column;gap:26px">
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;color:#6d7f95">COMPONENT SHEET</div>
+          <div style="font-size:17px;font-weight:600;letter-spacing:-0.01em">Buttons, chips, states</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.16em;color:#6d7f95">BUTTONS · 56 PX</div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px">
+            <div style="height:56px;border-radius:18px;background:#5b8def;color:#0e131b;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center;padding:0 26px">Primary</div>
+            <div style="height:56px;border-radius:18px;background:#f0b429;color:#221803;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 26px">Page</div>
+            <div style="height:56px;border-radius:18px;box-shadow:inset 0 0 0 1.5px #2b3849;color:#c9d6e6;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center;padding:0 26px">Secondary</div>
+            <div style="height:56px;border-radius:18px;background:#161d28;color:#4d5a6b;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center;padding:0 26px">Disabled</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.16em;color:#6d7f95">CHIPS</div>
+          <div style="display:flex;flex-wrap:wrap;gap:9px;align-items:center">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;color:#79a4f6;background:#1a2740;border-radius:6px;padding:4px 8px">ADMIN</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;color:#79a4f6;background:#1a2740;border-radius:6px;padding:4px 8px">→ STAGE</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;color:#f0b429;background:#2a1f1a;border-radius:6px;padding:4px 8px">OVERDUE</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;color:#3fcf8e;background:#14291f;border-radius:6px;padding:4px 8px">ON SITE</div>
+            <div style="border-radius:11px;box-shadow:inset 0 0 0 1px #2b3849;color:#92a2b6;font-size:12.5px;padding:7px 12px">Preset</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.16em;color:#6d7f95">READ STATES</div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+            <div style="display:flex;align-items:center;gap:9px;height:44px;padding:0 14px;border-radius:14px;background:#2a1f1a;box-shadow:inset 0 0 0 1px #4a3520"><div style="width:11px;height:11px;border-radius:6px;background:#f0b429;animation:pdPulse 1.5s ease-in-out infinite"></div><div style="font-size:13.5px;color:#f0b429;font-weight:500">Waiting</div></div>
+            <div style="display:flex;align-items:center;gap:9px;height:44px;padding:0 14px;border-radius:14px;background:#161d28"><div style="width:20px;height:20px;border-radius:10px;background:#3fcf8e;color:#0e131b;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">✓</div><div style="font-size:13.5px;color:#3fcf8e;font-weight:500">Read 4s</div></div>
+            <div style="display:flex;align-items:center;gap:9px;height:44px;padding:0 14px;border-radius:14px;background:#241519;box-shadow:inset 0 0 0 1px #52242a"><div style="width:11px;height:11px;border-radius:6px;background:#e0645b"></div><div style="font-size:13.5px;color:#e0645b;font-weight:500">No response 2m</div></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.16em;color:#6d7f95">BADGES &amp; TOAST</div>
+          <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+            <div style="min-width:20px;height:20px;border-radius:10px;background:#5b8def;color:#0e131b;font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:500;display:flex;align-items:center;justify-content:center;padding:0 6px">3</div>
+            <div style="min-width:20px;height:20px;border-radius:10px;background:#5b8def;color:#0e131b;font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:500;display:flex;align-items:center;justify-content:center;padding:0 6px">12</div>
+            <div style="min-width:20px;height:20px;border-radius:10px;background:#5b8def;color:#0e131b;font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:500;display:flex;align-items:center;justify-content:center;padding:0 6px">9+</div>
+            <div style="width:10px;height:10px;border-radius:5px;background:#f0b429"></div>
+            <div style="flex:1 1 240px;min-height:48px;border-radius:15px;background:#1b2430;box-shadow:inset 0 0 0 1px #2b3849;display:flex;align-items:center;gap:10px;padding:0 14px"><div style="width:18px;height:18px;border-radius:9px;background:#3fcf8e;color:#0e131b;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">✓</div><div style="font-size:13.5px;color:#dbe5f1">Page sent to 5</div></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

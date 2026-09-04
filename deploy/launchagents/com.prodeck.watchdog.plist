@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Keeps ProDeck running: launchd relaunches it within ~10s of any crash.
+       Quitting the app on purpose just triggers a relaunch — that IS the
+       supported way to restart it. -->
+  <key>Label</key><string>com.prodeck.watchdog</string>
+  <key>ProgramArguments</key>
+  <array><string>/Applications/ProDeck.app/Contents/MacOS/prodlink-clone</string></array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>
+  <key>ThrottleInterval</key><integer>10</integer>
+</dict>
+</plist>

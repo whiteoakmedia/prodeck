@@ -1,0 +1,85 @@
+/* ProDeck Crew mobile — design tokens, verbatim from design/mobile/README.md.
+   Scoped so the desktop app keeps its own theme variables.
+
+   .crew-takeover and .crew-sheet carry the tokens too: pages must work from a
+   tablet, a full-size browser, and the BOOTH DESKTOP, none of which have a
+   .crew ancestor to inherit from. They're listed separately rather than nested
+   inside .crew so they don't pick up its full-height flex layout. */
+
+.crew,
+.crew-takeover,
+.crew-sheet {
+  --bg: #0e131b;
+  --panel: #161d28;
+  --panel-sunk: #131a24;
+  --panel-raised: #1b2430;
+  --border: #232f3e;
+  --border-soft: #1c2634;
+  --border-mid: #2b3849;
+  --control-outline: #3a4a5e;
+  --text: #eef3fa;
+  --text-soft: #c9d6e6;
+  --muted: #92a2b6;
+  --dim: #6d7f95;
+  --disabled-text: #4d5a6b;
+  --accent: #5b8def;
+  --accent-hi: #79a4f6;
+  --accent-quiet: #22405f;
+  --accent-quiet-2: #1a2740;
+  --accent-line: #2f4874;
+  --success: #3fcf8e;
+  --success-quiet: #14291f;
+  --warn: #f0b429;
+  --warn-bg: #2a1f1a;
+  --warn-bg-deep: #14100a;
+  --warn-line: #4a3520;
+  --warn-text: #c2a878;
+  --warn-heading: #fdf6e6;
+  --danger: #e0645b;
+  --danger-bg: #241519;
+  --danger-line: #52242a;
+  --track: #222d3b;
+
+  --font-sans: "IBM Plex Sans", -apple-system, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* The app's main texture: times, counts, IDs, status words are ALWAYS mono. */
+:is(.crew, .crew-takeover, .crew-sheet) .mono {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+:is(.crew, .crew-takeover, .crew-sheet) .mono-data {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Borders never affect layout (inset shadow, not border). */
+:is(.crew, .crew-takeover, .crew-sheet) .edge {
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+/* pdPulse — the app's single animation (waiting/page dots). */
+@keyframes pdPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.82); }
+}
+:is(.crew, .crew-takeover, .crew-sheet) .pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  display: inline-block;
+  animation: pdPulse 1.5s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.crew, .crew-takeover, .crew-sheet) .pulse-dot { animation: none; }
+}

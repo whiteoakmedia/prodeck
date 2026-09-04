@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="design_doc_mode" content="canvas">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    body { margin:0; background:#0e131b; color:#eef3fa; font-family:'IBM Plex Sans', system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+    a { color:#79a4f6; text-decoration:none; }
+    a:hover { color:#a8c4fa; }
+  </style>
+</helmet>
+
+<section style="padding:56px 56px 24px;display:flex;flex-direction:column;gap:32px">
+
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:780px">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#6d7f95">ProDeck · Final · Deck, 2A weight on 2B crop</div>
+    <div style="font-size:34px;font-weight:600;letter-spacing:-0.02em">The mark, and everything around it</div>
+    <div style="font-size:16px;line-height:1.55;color:#92a2b6;text-wrap:pretty">Stroke 10.5, canvas crop 6, corner radius 35% of each tile. Master SVGs and PNG exports are cut and in <code style="font-family:'IBM Plex Mono',monospace;font-size:14px;color:#79a4f6">exports/</code>.</div>
+  </div>
+
+  <div id="3a" style="display:flex;flex-wrap:wrap;gap:24px;align-items:stretch">
+
+    <div style="flex:1 1 520px;background:#0b1017;border:1px solid #1c2634;border-radius:22px;padding:56px;display:flex;align-items:center;justify-content:center;gap:44px">
+      <dc-import name="ProDeckMark" variant="f" size="240" tone="color" accent="{{ accent }}" hint-size="240px,240px"></dc-import>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <div style="font-size:82px;font-weight:600;letter-spacing:-0.035em;line-height:1">ProDeck</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:15px;letter-spacing:.2em;color:#92a2b6">BY ZACH GREEN</div>
+      </div>
+    </div>
+
+    <div style="flex:0 0 300px;background:#0f151e;border:1px solid #1e2836;border-radius:22px;padding:28px;display:flex;flex-direction:column;gap:18px;align-items:center;justify-content:center">
+      <div style="width:200px;height:200px;border-radius:45px;background:#161d28;box-shadow:inset 0 0 0 1px rgba(238,243,250,.07), 0 18px 40px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center">
+        <dc-import name="ProDeckMark" variant="f" size="120" tone="color" accent="{{ accent }}" hint-size="120px,120px"></dc-import>
+      </div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6d7f95">app icon · 1024 master</div>
+    </div>
+
+    <div style="width:100%;display:flex;flex-wrap:wrap;gap:16px">
+      <div style="flex:1 1 300px;background:#0b1017;border:1px solid #1c2634;border-radius:16px;padding:26px;display:flex;flex-direction:column;gap:18px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6d7f95">Full colour · on #0e131b</div>
+        <div style="display:flex;align-items:center;gap:16px">
+          <dc-import name="ProDeckMark" variant="f" size="56" tone="color" accent="{{ accent }}" hint-size="56px,56px"></dc-import>
+          <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-start">
+          <div style="font-size:34px;font-weight:600;letter-spacing:-0.03em;line-height:1.1">ProDeck</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.2em;color:#92a2b6">BY ZACH GREEN</div>
+        </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding-top:6px">
+          <dc-import name="ProDeckMark" variant="f" size="60" tone="color" accent="{{ accent }}" hint-size="60px,60px"></dc-import>
+          <div style="display:flex;flex-direction:column;gap:2px;align-items:center">
+          <div style="font-size:24px;font-weight:600;letter-spacing:-0.02em;line-height:1.1">ProDeck</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.2em;color:#92a2b6">BY ZACH GREEN</div>
+        </div>
+        </div>
+      </div>
+      <div style="flex:1 1 300px;background:#000;border:1px solid #1c2634;border-radius:16px;padding:26px;display:flex;flex-direction:column;gap:18px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6d7f95">All white · one colour</div>
+        <div style="display:flex;align-items:center;gap:16px">
+          <dc-import name="ProDeckMark" variant="f" size="56" tone="white" hint-size="56px,56px"></dc-import>
+          <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-start">
+          <div style="font-size:34px;font-weight:600;letter-spacing:-0.03em;line-height:1.1;color:#fff">ProDeck</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.2em;color:rgba(255,255,255,.7)">BY ZACH GREEN</div>
+        </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding-top:6px">
+          <dc-import name="ProDeckMark" variant="f" size="60" tone="white" hint-size="60px,60px"></dc-import>
+          <div style="display:flex;flex-direction:column;gap:2px;align-items:center">
+          <div style="font-size:24px;font-weight:600;letter-spacing:-0.02em;line-height:1.1;color:#fff">ProDeck</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.2em;color:rgba(255,255,255,.7)">BY ZACH GREEN</div>
+        </div>
+        </div>
+      </div>
+      <div style="flex:1 1 300px;background:#eef3fa;border-radius:16px;padding:26px;display:flex;flex-direction:column;gap:18px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#59697d">All dark · documents</div>
+        <div style="display:flex;align-items:center;gap:16px">
+          <dc-import name="ProDeckMark" variant="f" size="56" tone="dark" hint-size="56px,56px"></dc-import>
+          <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-start">
+          <div style="font-size:34px;font-weight:600;letter-spacing:-0.03em;line-height:1.1;color:#0e131b">ProDeck</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.2em;color:rgba(14,19,27,.62)">BY ZACH GREEN</div>
+        </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding-top:6px">
+          <dc-import name="ProDeckMark" variant="f" size="60" tone="dark" hint-size="60px,60px"></dc-import>
+          <div style="display:flex;flex-direction:column;gap:2px;align-items:center">
+          <div style="font-size:24px;font-weight:600;letter-spacing:-0.02em;line-height:1.1;color:#0e131b">ProDeck</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.2em;color:rgba(14,19,27,.62)">BY ZACH GREEN</div>
+        </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="width:100%;background:#0f151e;border:1px solid #1e2836;border-radius:22px;padding:34px 36px;display:flex;flex-wrap:wrap;gap:36px">
+      <div style="flex:0 0 220px;display:flex;flex-direction:column;gap:12px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6d7f95">Clearspace</div>
+        <div style="border:1px dashed #33445c;border-radius:10px;padding:20px;display:inline-flex;align-self:flex-start">
+          <dc-import name="ProDeckMark" variant="f" size="80" tone="color" accent="{{ accent }}" hint-size="80px,80px"></dc-import>
+        </div>
+        <div style="font-size:13px;line-height:1.5;color:#92a2b6">¼ of the mark height on all four sides. Nothing crosses it — not text, not a panel edge.</div>
+      </div>
+      <div style="flex:0 0 240px;display:flex;flex-direction:column;gap:12px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6d7f95">Minimum sizes</div>
+        <div style="display:flex;gap:22px;align-items:flex-end;padding:8px 0">
+          <div style="display:flex;flex-direction:column;gap:8px;align-items:center">
+            <dc-import name="ProDeckMark" variant="a5" size="16" tone="color" accent="{{ accent }}" hint-size="16px,16px"></dc-import>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6d7f95">16</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;align-items:center">
+            <dc-import name="ProDeckMark" variant="a5" size="24" tone="color" accent="{{ accent }}" hint-size="24px,24px"></dc-import>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6d7f95">24</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;align-items:center">
+            <dc-import name="ProDeckMark" variant="f" size="40" tone="color" accent="{{ accent }}" hint-size="40px,40px"></dc-import>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6d7f95">40</div>
+          </div>
+        </div>
+        <div style="font-size:13px;line-height:1.5;color:#92a2b6">Mark 16 px, lockup 20 px tall. Below 24 px swap to the pixel-tuned <code style="font-family:'IBM Plex Mono',monospace;font-size:12px">-small</code> drawing.</div>
+      </div>
+      <div style="flex:1 1 300px;display:flex;flex-direction:column;gap:12px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6d7f95">Do &amp; don't</div>
+        <div style="display:flex;gap:34px;font-size:13px;line-height:1.75;color:#92a2b6">
+          <div style="display:flex;flex-direction:column">
+            <div><span style="color:#3fcf8e">✓</span> One accent tile, always the top-right</div>
+            <div><span style="color:#3fcf8e">✓</span> Recolour the whole mark, or nothing</div>
+            <div><span style="color:#3fcf8e">✓</span> Keep BY ZACH GREEN locked to the wordmark</div>
+          </div>
+          <div style="display:flex;flex-direction:column">
+            <div><span style="color:#e06b6b">✕</span> Rotate, skew or outline the cue tile</div>
+            <div><span style="color:#e06b6b">✕</span> Add a gradient, glow or drop shadow</div>
+            <div><span style="color:#e06b6b">✕</span> Detach, re-set or re-space the credit line</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="width:100%;background:#0f151e;border:1px solid #1e2836;border-radius:22px;padding:30px 36px;display:flex;flex-wrap:wrap;gap:40px">
+      <div style="flex:1 1 260px;display:flex;flex-direction:column;gap:8px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6d7f95">Vector masters · exports/</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;line-height:1.85;color:#92a2b6">prodeck-mark-{color,white,dark}.svg<br>prodeck-mark-small-{…}.svg<br>prodeck-wordmark-{…}.svg<br>prodeck-lockup-horizontal-{…}.svg<br>prodeck-lockup-stacked-{…}.svg</div>
+      </div>
+      <div style="flex:1 1 220px;display:flex;flex-direction:column;gap:8px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6d7f95">Raster</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;line-height:1.85;color:#92a2b6">prodeck-icon-1024.png<br>prodeck-icon-512.png<br>prodeck-icon-192.png<br>prodeck-favicon-32.png</div>
+      </div>
+      <div style="flex:1 1 280px;display:flex;flex-direction:column;gap:8px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6d7f95">Notes for the ramp</div>
+        <div style="font-size:13px;line-height:1.6;color:#92a2b6;text-wrap:pretty">Icon PNGs are full-bleed squares on #161d28 — let macOS apply the squircle mask. Wordmark SVGs carry live IBM Plex Sans SemiBold (OFL, embeddable); outline them before handing to a printer. Geometry is a 100-unit grid, single 10.5 stroke, so redraws stay exact. Author credit is set in IBM Plex Mono at 18% of the wordmark size, tracked +.2em, and is locked into every lockup; every file also carries <code style="font-family:'IBM Plex Mono',monospace;font-size:12px">dc:creator “Zach Green”</code> in its metadata. Icon-only exports below 128 px omit the visible line — it is unreadable at those sizes — and carry the credit in metadata instead.</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section style="padding:24px 56px;display:flex;flex-direction:column;gap:36px">
+
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:760px">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#6d7f95">ProDeck · Round 2 · refining Deck</div>
+    <div style="font-size:34px;font-weight:600;letter-spacing:-0.02em">Three tunings of the Deck mark</div>
+    <div style="font-size:16px;line-height:1.55;color:#92a2b6;text-wrap:pretty">Same idea, three dials: stroke weight, canvas crop, corner softness. Pick one — or mix (e.g. <a href="#2a">2a</a> weight with <a href="#2c">2c</a> radii) and I'll cut finals.</div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:stretch">
+
+    <div id="2a" style="width:560px;background:#0f151e;border:1px solid #1e2836;border-radius:22px;padding:32px;display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;align-items:flex-start;gap:14px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;letter-spacing:.1em;color:#0e131b;background:#5b8def;border-radius:6px;padding:5px 9px;margin-top:3px">2A</div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <div style="font-size:21px;font-weight:600;letter-spacing:-0.01em">Weight — stroke 9 → 10.5</div>
+          <div style="font-size:14px;line-height:1.5;color:#92a2b6;max-width:400px;text-wrap:pretty">Holds up across a room on the office TV and stops the outlines going grey at 32 px.</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;align-items:center">
+        <div style="flex:1;background:#0b1017;border:1px solid #1c2634;border-radius:16px;padding:28px;display:flex;align-items:center;justify-content:center">
+          <dc-import name="ProDeckMark" variant="a2" size="148" tone="color" accent="{{ accent }}" hint-size="148px,148px"></dc-import>
+        </div>
+        <div style="width:132px;height:132px;border-radius:30px;background:#161d28;box-shadow:inset 0 0 0 1px rgba(238,243,250,.07);display:flex;align-items:center;justify-content:center">
+          <dc-import name="ProDeckMark" variant="a2" size="78" tone="color" accent="{{ accent }}" hint-size="78px,78px"></dc-import>
+        </div>
+      </div>
+      <div style="display:flex;gap:22px;align-items:flex-end">
+        <dc-import name="ProDeckMark" variant="a2" size="16" tone="color" accent="{{ accent }}" hint-size="16px,16px"></dc-import>
+        <dc-import name="ProDeckMark" variant="a2" size="32" tone="color" accent="{{ accent }}" hint-size="32px,32px"></dc-import>
+        <dc-import name="ProDeckMark" variant="a2" size="48" tone="white" hint-size="48px,48px"></dc-import>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
+          <dc-import name="ProDeckMark" variant="a2" size="36" tone="color" accent="{{ accent }}" hint-size="36px,36px"></dc-import>
+          <div style="font-size:27px;font-weight:600;letter-spacing:-0.03em">ProDeck</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="2b" style="width:560px;background:#0f151e;border:1px solid #1e2836;border-radius:22px;padding:32px;display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;align-items:flex-start;gap:14px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;letter-spacing:.1em;color:#0e131b;background:#5b8def;border-radius:6px;padding:5px 9px;margin-top:3px">2B</div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <div style="font-size:21px;font-weight:600;letter-spacing:-0.01em">Crop — tighter margin, bigger cue</div>
+          <div style="font-size:14px;line-height:1.5;color:#92a2b6;max-width:400px;text-wrap:pretty">Fills more of the squircle, so the Dock icon reads at the same optical size as neighbours instead of looking shy.</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;align-items:center">
+        <div style="flex:1;background:#0b1017;border:1px solid #1c2634;border-radius:16px;padding:28px;display:flex;align-items:center;justify-content:center">
+          <dc-import name="ProDeckMark" variant="a3" size="148" tone="color" accent="{{ accent }}" hint-size="148px,148px"></dc-import>
+        </div>
+        <div style="width:132px;height:132px;border-radius:30px;background:#161d28;box-shadow:inset 0 0 0 1px rgba(238,243,250,.07);display:flex;align-items:center;justify-content:center">
+          <dc-import name="ProDeckMark" variant="a3" size="82" tone="color" accent="{{ accent }}" hint-size="82px,82px"></dc-import>
+        </div>
+      </div>
+      <div style="display:flex;gap:22px;align-items:flex-end">
+        <dc-import name="ProDeckMark" variant="a3" size="16" tone="color" accent="{{ accent }}" hint-size="16px,16px"></dc-import>
+        <dc-import name="ProDeckMark" variant="a3" size="32" tone="color" accent="{{ accent }}" hint-size="32px,32px"></dc-import>
+        <dc-import name="ProDeckMark" variant="a3" size="48" tone="white" hint-size="48px,48px"></dc-import>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
+          <dc-import name="ProDeckMark" variant="a3" size="36" tone="color" accent="{{ accent }}" hint-size="36px,36px"></dc-import>
+          <div style="font-size:27px;font-weight:600;letter-spacing:-0.03em">ProDeck</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="2c" style="width:560px;background:#0f151e;border:1px solid #1e2836;border-radius:22px;padding:32px;display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;align-items:flex-start;gap:14px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;letter-spacing:.1em;color:#0e131b;background:#5b8def;border-radius:6px;padding:5px 9px;margin-top:3px">2C</div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <div style="font-size:21px;font-weight:600;letter-spacing:-0.01em">Softer — radii matched to the squircle</div>
+          <div style="font-size:14px;line-height:1.5;color:#92a2b6;max-width:400px;text-wrap:pretty">Corners follow the app's own panel curvature. Warmer, slightly less instrument-panel.</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;align-items:center">
+        <div style="flex:1;background:#0b1017;border:1px solid #1c2634;border-radius:16px;padding:28px;display:flex;align-items:center;justify-content:center">
+          <dc-import name="ProDeckMark" variant="a4" size="148" tone="color" accent="{{ accent }}" hint-size="148px,148px"></dc-import>
+        </div>
+        <div style="width:132px;height:132px;border-radius:30px;background:#161d28;box-shadow:inset 0 0 0 1px rgba(238,243,250,.07);display:flex;align-items:center;justify-content:center">
+          <dc-import name="ProDeckMark" variant="a4" size="78" tone="color" accent="{{ accent }}" hint-size="78px,78px"></dc-import>
+        </div>
+      </div>
+      <div style="display:flex;gap:22px;align-items:flex-end">
+        <dc-import name="ProDeckMark" variant="a4" size="16" tone="color" accent="{{ accent }}" hint-size="16px,16px"></dc-import>
+        <dc-import name="ProDeckMark" variant="a4" size="32" tone="color" accent="{{ accent }}" hint-size="32px,32px"></dc-import>
+        <dc-import name="ProDeckMark" variant="a4" size="48" tone="white" hint-size="48px,48px"></dc-import>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
+          <dc-import name="ProDeckMark" variant="a4" size="36" tone="color" accent="{{ accent }}" hint-size="36px,36px"></dc-import>
+          <div style="font-size:27px;font-weight:600;letter-spacing:-0.03em">ProDeck</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="width:560px;background:#0f151e;border:1px solid #1e2836;border-radius:22px;padding:32px;display:flex;flex-direction:column;gap:22px">
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6d7f95">Hand-tuned 16 / 32 px</div>
+        <div style="font-size:21px;font-weight:600;letter-spacing:-0.01em">A separate pixel-grid drawing</div>
+        <div style="font-size:14px;line-height:1.5;color:#92a2b6;max-width:420px;text-wrap:pretty">Below 24 px the outlines are dropped and all three tiles go solid on whole pixels — the silhouette survives where a 1.4 px stroke wouldn't.</div>
+      </div>
+      <div style="display:flex;gap:34px;align-items:flex-end">
+        <div style="display:flex;flex-direction:column;gap:9px;align-items:center">
+          <dc-import name="ProDeckMark" variant="a5" size="16" tone="color" accent="{{ accent }}" hint-size="16px,16px"></dc-import>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6d7f95">16</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:9px;align-items:center">
+          <dc-import name="ProDeckMark" variant="a5" size="32" tone="color" accent="{{ accent }}" hint-size="32px,32px"></dc-import>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6d7f95">32</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:9px;align-items:center">
+          <dc-import name="ProDeckMark" variant="a5" size="112" tone="color" accent="{{ accent }}" hint-size="112px,112px"></dc-import>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6d7f95">enlarged view</div>
+        </div>
+      </div>
+      <div style="font-size:13px;line-height:1.6;color:#92a2b6;border-top:1px solid #1e2836;padding-top:16px;text-wrap:pretty">Recommendation: <strong style="color:#eef3fa;font-weight:600">2A weight on the 2B crop</strong>, keeping the round-1 radii — heaviest presence in the Dock and on the TV, and the cue tile stays the loudest element. Say the word and I'll cut the master set (mark / wordmark / horizontal / stacked × full-colour, all-white, all-dark) plus the 1024, 512, 192 and 32 px exports.</div>
+    </div>
+
+  </div>
+</section>
+
+<section style="padding:24px 56px 96px;display:flex;flex-direction:column;gap:36px">
+
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:760px">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#6d7f95">ProDeck · Round 1 · two concept directions</div>
+    <div style="font-size:34px;font-weight:600;letter-spacing:-0.02em">A mark that doesn't panic on Sunday morning</div>
+    <div style="font-size:16px;line-height:1.55;color:#92a2b6;text-wrap:pretty">Both directions are drawn on a 100-unit grid with a single 9-unit stroke weight, sit square in the macOS squircle, and hold identity in one colour. Reference them in chat as <a href="#1a">1a</a> or <a href="#1b">1b</a>.</div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start">
+
+    <div id="1a" style="width:880px;background:#0f151e;border:1px solid #1e2836;border-radius:22px;padding:40px;display:flex;flex-direction:column;gap:38px">
+      <div style="display:flex;align-items:flex-start;gap:16px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;letter-spacing:.1em;color:#0e131b;background:#5b8def;border-radius:6px;padding:5px 9px;margin-top:4px">1A</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="font-size:26px;font-weight:600;letter-spacing:-0.01em">Deck — three surfaces, one live cue</div>
+          <div style="font-size:15px;line-height:1.55;color:#92a2b6;max-width:600px;text-wrap:pretty">The dashboard metaphor, literally: a panel layout where one tile is lit. Silhouette is asymmetric, so it never reads as a generic grid icon at 16 px.</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:24px;align-items:stretch">
+        <div style="flex:0 0 300px;background:#0b1017;border:1px solid #1c2634;border-radius:16px;display:flex;align-items:center;justify-content:center;padding:44px">
+          <dc-import name="ProDeckMark" variant="a" size="200" tone="color" accent="{{ accent }}" hint-size="200px,200px"></dc-import>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:16px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6d7f95">Lockups</div>
+          <div style="background:#0b1017;border:1px solid #1c2634;border-radius:16px;padding:26px 28px;display:flex;align-items:center;gap:18px">
+            <dc-import name="ProDeckMark" variant="a" size="52" tone="color" accent="{{ accent }}" hint-size="52px,52px"></dc-import>
+            <div style="font-size:40px;font-weight:600;letter-spacing:-0.03em">ProDeck</div>
+          </div>
+          <div style="background:#0b1017;border:1px solid #1c2634;border-radius:16px;padding:26px;display:flex;flex-direction:column;align-items:center;gap:14px">
+            <dc-import name="ProDeckMark" variant="a" size="62" tone="color" accent="{{ accent }}" hint-size="62px,62px"></dc-import>
+            <div style="font-size:26px;font-weight:600;letter-spacing:-0.02em">ProDeck</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6d7f95">macOS app icon · 1024 master · squircle</div>
+        <div style="display:flex;gap:28px;align-items:flex-end">
+          <div style="display:flex;flex-direction:column;gap:10px;align-items:center">
+            <div style="width:190px;height:190px;border-radius:43px;background:#161d28;box-shadow:inset 0 0 0 1px rgba(238,243,250,.07), 0 18px 40px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center">
+              <dc-import name="ProDeckMark" variant="a" size="112" tone="color" accent="{{ accent }}" hint-size="112px,112px"></dc-import>
+            </div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6d7f95">graphite</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px;align-items:center">
+            <div style="width:190px;height:190px;border-radius:43px;background:{{ accent }};box-shadow:0 18px 40px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center">
+              <dc-import name="ProDeckMark" variant="a" size="112" tone="dark" hint-size="112px,112px"></dc-import>
+            </div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6d7f95">signal</div>
+          </div>
+          <div style="flex:1;display:flex;gap:20px;align-items:flex-end;justify-content:flex-end;padding-bottom:26px">
+            <div style="display:flex;flex-direction:column;gap:9px;align-items:center">
+              <dc-import name="ProDeckMark" variant="a" size="16" tone="color" accent="{{ accent }}" hint-size="16px,16px"></dc-import>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6d7f95">16</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:9px;align-items:center">
+              <dc-import name="ProDeckMark" variant="a" size="32" tone="color" accent="{{ accent }}" hint-size="32px,32px"></dc-import>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6d7f95">32</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:9px;align-items:center">
+              <dc-import name="ProDeckMark" variant="a" size="64" tone="color" accent="{{ accent }}" hint-size="64px,64px"></dc-import>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6d7f95">64</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6d7f95">In place</div>
+        <div style="display:flex;gap:16px;align-items:stretch">
+          <div style="flex:0 0 220px;background:#0b1017;border:1px solid #1c2634;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <dc-import name="ProDeckMark" variant="a" size="30" tone="color" accent="{{ accent }}" hint-size="30px,30px"></dc-import>
+              <div style="font-size:15px;font-weight:600;letter-spacing:-0.01em">ProDeck</div>
+            </div>
+            <div style="height:1px;background:#1c2634"></div>
+            <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:#92a2b6">
+              <div>Service plan</div>
+              <div style="color:#eef3fa">Cue stack</div>
+              <div>Audio &amp; SPL</div>
+              <div>Cameras</div>
+            </div>
+            <div style="margin-top:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6d7f95">sidebar · 30 px</div>
+          </div>
+          <div style="flex:1;background:#0b1017;border:1px solid #1c2634;border-radius:14px;padding:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px">
+            <dc-import name="ProDeckMark" variant="a" size="64" tone="color" accent="{{ accent }}" hint-size="64px,64px"></dc-import>
+            <div style="display:flex;flex-direction:column;gap:5px;align-items:center"><div style="font-size:17px;font-weight:600">Sign in to ProDeck</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.2em;color:#6d7f95">BY ZACH GREEN</div></div>
+            <div style="width:180px;height:34px;border-radius:8px;background:#161d28;border:1px solid #24303f"></div>
+            <div style="width:180px;height:34px;border-radius:8px;background:{{ accent }}"></div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6d7f95">login · 64 px</div>
+          </div>
+          <div style="flex:1;background:#0b1017;border:1px solid #1c2634;border-radius:14px;padding:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px">
+            <dc-import name="ProDeckMark" variant="a" size="96" tone="white" hint-size="96px,96px"></dc-import>
+            <div style="display:flex;flex-direction:column;gap:2px;align-items:center"><div style="font-size:19px;font-weight:500;color:#92a2b6">Command Center offline</div><div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.2em;color:#6d7f95">BY ZACH GREEN</div></div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6d7f95">kiosk · 96 px</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6d7f95">One colour · clearspace</div>
+        <div style="display:flex;gap:16px">
+          <div style="flex:1;background:#000;border:1px solid #1c2634;border-radius:14px;padding:28px;display:flex;align-items:center;gap:18px">
+            <dc-import name="ProDeckMark" variant="a" size="64" tone="white" hint-size="64px,64px"></dc-import>
+            <div style="font-size:30px;font-weight:600;letter-spacing:-0.03em;color:#fff">ProDeck</div>
+          </div>
+          <div style="flex:1;background:#eef3fa;border-radius:14px;padding:28px;display:flex;align-items:center;gap:18px">
+            <dc-import name="ProDeckMark" variant="a" size="64" tone="dark" hint-size="64px,64px"></dc-import>
+            <div style="font-size:30px;font-weight:600;letter-spacing:-0.03em;color:#0e131b">ProDeck</div>
+          </div>
+          <div style="flex:0 0 210px;background:#0b1017;border:1px solid #1c2634;border-radius:14px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:8px">
+            <div style="border:1px dashed #33445c;border-radius:8px;padding:16px;display:flex">
+              <dc-import name="ProDeckMark" variant="a" size="64" tone="color" accent="{{ accent }}" hint-size="64px,64px"></dc-import>
+            </div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6d7f95">clearspace = ¼ mark height</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:28px;font-size:13px;color:#92a2b6;flex-wrap:wrap">
+          <div>Min size 16 px (icon) · 20 px (lockup)</div>
+          <div>Don't rotate, outline the filled tile, or add a second accent</div>
+          <div>Wordmark: IBM Plex Sans SemiBold, −3% tracking (OFL)</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="1b" style="width:880px;background:#0f151e;border:1px solid #1e2836;border-radius:22px;padding:40px;display:flex;flex-direction:column;gap:38px">
+      <div style="display:flex;align-items:flex-start;gap:16px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;letter-spacing:.1em;color:#0e131b;background:#5b8def;border-radius:6px;padding:5px 9px;margin-top:4px">1B</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="font-size:26px;font-weight:600;letter-spacing:-0.01em">Cue — a signal leaving the booth</div>
+          <div style="font-size:15px;line-height:1.55;color:#92a2b6;max-width:600px;text-wrap:pretty">Concentric squircles radiating from a go-cue. Perfectly square, perfectly centred, calm — and it inherits the app's own rounded-panel geometry rather than importing a new shape language.</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:24px;align-items:stretch">
+        <div style="flex:0 0 300px;background:#0b1017;border:1px solid #1c2634;border-radius:16px;display:flex;align-items:center;justify-content:center;padding:44px">
+          <dc-import name="ProDeckMark" variant="b" size="200" tone="color" accent="{{ accent }}" hint-size="200px,200px"></dc-import>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:16px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6d7f95">Lockups</div>
+          <div style="background:#0b1017;border:1px solid #1c2634;border-radius:16px;padding:26px 28px;display:flex;align-items:center;gap:18px">
+            <dc-import name="ProDeckMark" variant="b" size="52" tone="color" accent="{{ accent }}" hint-size="52px,52px"></dc-import>
+            <div style="font-size:40px;font-weight:600;letter-spacing:-0.03em">ProDeck</div>
+          </div>
+          <div style="background:#0b1017;border:1px solid #1c2634;border-radius:16px;padding:26px;display:flex;flex-direction:column;align-items:center;gap:14px">
+            <dc-import name="ProDeckMark" variant="b" size="62" tone="color" accent="{{ accent }}" hint-size="62px,62px"></dc-import>
+            <div style="font-size:26px;font-weight:600;letter-spacing:-0.02em">ProDeck</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6d7f95">macOS app icon · 1024 master · squircle</div>
+        <div style="display:flex;gap:28px;align-items:flex-end">
+          <div style="display:flex;flex-direction:column;gap:10px;align-items:center">
+            <div style="width:190px;height:190px;border-radius:43px;background:#161d28;box-shadow:inset 0 0 0 1px rgba(238,243,250,.07), 0 18px 40px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center">
+              <dc-import name="ProDeckMark" variant="b" size="118" tone="color" accent="{{ accent }}" hint-size="118px,118px"></dc-import>
+            </div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6d7f95">graphite</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px;align-items:center">
+            <div style="width:190px;height:190px;border-radius:43px;background:{{ accent }};box-shadow:0 18px 40px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center">
+              <dc-import name="ProDeckMark" variant="b" size="118" tone="dark" hint-size="118px,118px"></dc-import>
+            </div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6d7f95">signal</div>
+          </div>
+          <div style="flex:1;display:flex;gap:20px;align-items:flex-end;justify-content:flex-end;padding-bottom:26px">
+            <div style="display:flex;flex-direction:column;gap:9px;align-items:center">
+              <dc-import name="ProDeckMark" variant="b" size="16" tone="color" accent="{{ accent }}" hint-size="16px,16px"></dc-import>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6d7f95">16</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:9px;align-items:center">
+              <dc-import name="ProDeckMark" variant="b" size="32" tone="color" accent="{{ accent }}" hint-size="32px,32px"></dc-import>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6d7f95">32</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:9px;align-items:center">
+              <dc-import name="ProDeckMark" variant="b" size="64" tone="color" accent="{{ accent }}" hint-size="64px,64px"></dc-import>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6d7f95">64</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6d7f95">In place</div>
+        <div style="display:flex;gap:16px;align-items:stretch">
+          <div style="flex:0 0 220px;background:#0b1017;border:1px solid #1c2634;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <dc-import name="ProDeckMark" variant="b" size="30" tone="color" accent="{{ accent }}" hint-size="30px,30px"></dc-import>
+              <div style="font-size:15px;font-weight:600;letter-spacing:-0.01em">ProDeck</div>
+            </div>
+            <div style="height:1px;background:#1c2634"></div>
+            <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:#92a2b6">
+              <div>Service plan</div>
+              <div style="color:#eef3fa">Cue stack</div>
+              <div>Audio &amp; SPL</div>
+              <div>Cameras</div>
+            </div>
+            <div style="margin-top:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6d7f95">sidebar · 30 px</div>
+          </div>
+          <div style="flex:1;background:#0b1017;border:1px solid #1c2634;border-radius:14px;padding:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px">
+            <dc-import name="ProDeckMark" variant="b" size="64" tone="color" accent="{{ accent }}" hint-size="64px,64px"></dc-import>
+            <div style="display:flex;flex-direction:column;gap:5px;align-items:center"><div style="font-size:17px;font-weight:600">Sign in to ProDeck</div><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.2em;color:#6d7f95">BY ZACH GREEN</div></div>
+            <div style="width:180px;height:34px;border-radius:8px;background:#161d28;border:1px solid #24303f"></div>
+            <div style="width:180px;height:34px;border-radius:8px;background:{{ accent }}"></div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6d7f95">login · 64 px</div>
+          </div>
+          <div style="flex:1;background:#0b1017;border:1px solid #1c2634;border-radius:14px;padding:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px">
+            <dc-import name="ProDeckMark" variant="b" size="96" tone="white" hint-size="96px,96px"></dc-import>
+            <div style="display:flex;flex-direction:column;gap:2px;align-items:center"><div style="font-size:19px;font-weight:500;color:#92a2b6">Command Center offline</div><div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.2em;color:#6d7f95">BY ZACH GREEN</div></div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6d7f95">kiosk · 96 px</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6d7f95">One colour · clearspace</div>
+        <div style="display:flex;gap:16px">
+          <div style="flex:1;background:#000;border:1px solid #1c2634;border-radius:14px;padding:28px;display:flex;align-items:center;gap:18px">
+            <dc-import name="ProDeckMark" variant="b" size="64" tone="white" hint-size="64px,64px"></dc-import>
+            <div style="font-size:30px;font-weight:600;letter-spacing:-0.03em;color:#fff">ProDeck</div>
+          </div>
+          <div style="flex:1;background:#eef3fa;border-radius:14px;padding:28px;display:flex;align-items:center;gap:18px">
+            <dc-import name="ProDeckMark" variant="b" size="64" tone="dark" hint-size="64px,64px"></dc-import>
+            <div style="font-size:30px;font-weight:600;letter-spacing:-0.03em;color:#0e131b">ProDeck</div>
+          </div>
+          <div style="flex:0 0 210px;background:#0b1017;border:1px solid #1c2634;border-radius:14px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:8px">
+            <div style="border:1px dashed #33445c;border-radius:8px;padding:16px;display:flex">
+              <dc-import name="ProDeckMark" variant="b" size="64" tone="color" accent="{{ accent }}" hint-size="64px,64px"></dc-import>
+            </div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6d7f95">clearspace = ¼ mark height</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:28px;font-size:13px;color:#92a2b6;flex-wrap:wrap">
+          <div>Min size 16 px — strokes step to 10 units below 24 px</div>
+          <div>Don't fill the outer ring or add a third ring</div>
+          <div>Wordmark: IBM Plex Sans SemiBold, −3% tracking (OFL)</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#5b8def&quot;,&quot;options&quot;:[&quot;#5b8def&quot;,&quot;#79a4f6&quot;,&quot;#3fcf8e&quot;,&quot;#c9d6e6&quot;],&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent || '#5b8def' };
+  }
+}
+</script>
+</body>
+</html>
