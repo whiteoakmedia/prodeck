@@ -36,11 +36,17 @@ ProPresenter, and Planning Center, and add the rest when you want it.
 
 1. **[Download ProDeck.dmg](../../releases/latest)** from the latest release.
 2. Open it and drag **ProDeck** to Applications.
-3. First open only: right-click ProDeck → **Open** (or System Settings →
-   Privacy & Security → **Open Anyway**). macOS asks once because the app is
-   free and unsigned — after that it opens normally.
+3. First open only, on modern macOS (Sequoia/Tahoe): **double-click ProDeck**
+   → you'll see "not opened" → open **System Settings → Privacy & Security**,
+   scroll to the bottom, and click **Open Anyway** next to ProDeck → confirm.
+   You only do this once. macOS asks because the app is free and not
+   Apple-notarized — the code itself is open here for anyone to read.
 
 That's it — no toolchain, no terminal. Apple Silicon Mac required.
+
+> **Why the extra click?** Apple charges $99/yr for the Developer ID that
+> removes this prompt. Until ProDeck is notarized, macOS treats it like any
+> other free unsigned app: safe to run, but you approve it once in Settings.
 
 Then connect your tools inside the app (all in Settings, all optional): the
 first-run walkthrough covers ProPresenter, Planning Center, and browser access;
