@@ -75,12 +75,42 @@ export function pageTone() {
   tone(0.78, 1760, 320, 0.55, "square");
 }
 
-/** Vibrate where supported (Android). Safe no-op elsewhere. */
-export function buzz(pattern: number | number[]) {
-  if (!IS_WEB) return;
+/** Vibrate where supported (Android). Safe no-op elsewhere. Returns whether
+ *  the device actually took the pattern, so callers can lean on sound when
+ *  it didn't (every iPhone — WebKit has no Vibration API). */
+export function buzz(pattern: number | number[]): boolean {
+  if (!IS_WEB) return false;
   try {
-    (navigator as any).vibrate?.(pattern);
+    return (navigator as any).vibrate?.(pattern) === true;
   } catch {
-    /* not supported */
+    return false; /* not supported */
   }
+}
+
+/**
+ * Page vibration, escalating the longer it goes unconfirmed.
+ *
+ * Perceived strength on Android is all duration and duty cycle — the API has
+ * no intensity control — so these get longer and denser rather than "harder".
+ * Stage 0 already lands heavier than the old single pattern; by stage 2 the
+ * phone is buzzing almost continuously.
+ *
+ * IMPORTANT: navigator.vibrate() CANCELS whatever is still running, so a
+ * caller must let the pattern finish before firing the next one. The old
+ * loop re-triggered every 1.8 s against a 2.44 s pattern, which meant the
+ * long closing pulse — the part you actually feel through a pocket — was cut
+ * off every single time. Use PAGE_BUZZ_STAGES with patternMs() to schedule.
+ */
+export const PAGE_BUZZ_STAGES: number[][] = [
+  // Three solid hits, ending long.
+  [550, 110, 550, 110, 1200],
+  // A sharp stutter to catch attention, then two heavy pulses.
+  [90, 70, 90, 70, 90, 70, 1400, 160, 1400],
+  // Relentless: near-continuous until someone confirms.
+  [1700, 150, 1700, 150, 1700],
+];
+
+/** Total wall time of a vibration pattern, including its gaps. */
+export function patternMs(pattern: number[]): number {
+  return pattern.reduce((a, b) => a + b, 0);
 }

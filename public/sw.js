@@ -104,8 +104,13 @@ self.addEventListener("push", (event) => {
       renotify: !!data.page,
       requireInteraction: !!data.page,
       // Android honors vibrate on the notification itself (iOS buzzes on its
-      // own): urgent triple for pages, a short tap for everything else.
-      vibrate: data.page ? [400, 150, 400, 150, 600] : [150],
+      // own schedule): pages get a long, heavy pattern — a locked phone in a
+      // pocket is the normal case for a page, and the short triple we used to
+      // send was easy to miss under a service. Chat stays a single light tap
+      // so the two are never confused. Numbers are on/off pairs in ms.
+      vibrate: data.page
+        ? [600, 120, 600, 120, 1300, 150, 1300, 150, 900]
+        : [150],
       // S07b: confirm without opening the app. That is the whole point on a
       // Sunday — phone at hip, one tap, back to work.
       actions: data.page

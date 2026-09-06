@@ -3,7 +3,7 @@ import { usePages } from "../pagesStore";
 import { usePco, isDeclined } from "../pcoStore";
 import { IS_WEB, identityList, checkinList, type CrewPage, type CrewUser } from "../lib/tauri";
 import { CREW_SESSION_KEY } from "../chatStore";
-import { buzz, pageTone } from "../lib/sound";
+import { buzz, pageTone, PAGE_BUZZ_STAGES, patternMs } from "../lib/sound";
 
 // S06a / S06b / S07a — pages (design/mobile/README.md).
 
@@ -48,13 +48,31 @@ export function CrewPageTakeover() {
   // comes from the push notification; the louder tone is the in-app punch.)
   useEffect(() => {
     if (!incoming) return;
-    ring();
-    const iv = setInterval(ring, 1800);
-    function ring() {
-      pageTone();
-      buzz([600, 120, 600, 120, 1000]);
-    }
-    return () => clearInterval(iv);
+    // Two independent clocks. The siren keeps a steady urgent cadence, while
+    // the vibration escalates AND is scheduled off its own pattern length:
+    // navigator.vibrate() cancels whatever is still running, so re-firing on
+    // a fixed interval shorter than the pattern used to chop off the long
+    // closing pulse — the strongest part of the buzz — every time.
+    pageTone();
+    const toneIv = setInterval(pageTone, 1900);
+
+    let stage = 0;
+    let buzzTimer: number | undefined;
+    const shake = () => {
+      const pattern = PAGE_BUZZ_STAGES[Math.min(stage, PAGE_BUZZ_STAGES.length - 1)];
+      buzz(pattern);
+      stage += 1;
+      // Let it play out, then a short breath so successive rounds are felt as
+      // separate demands rather than one long mush.
+      buzzTimer = window.setTimeout(shake, patternMs(pattern) + 550);
+    };
+    shake();
+
+    return () => {
+      clearInterval(toneIv);
+      if (buzzTimer !== undefined) clearTimeout(buzzTimer);
+      buzz(0); // stop mid-pattern the instant it's confirmed
+    };
   }, [incoming?.id]);
   // Mounted app-wide, not just in the phone shell: a tablet or a full-size
   // browser renders the DESKTOP shell, and a page that only appears under 760px

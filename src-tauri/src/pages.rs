@@ -24,12 +24,27 @@ use tauri::{AppHandle, Emitter, Manager};
 use crate::identity::IdentityState;
 
 const HISTORY_CAP: usize = 50;
-/// "Buzz until read": re-fire every 20s for 2 minutes (design S07b). Bounded on
-/// purpose — an unanswered page must not buzz someone's pocket all morning, and
-/// after two minutes the sender should be looking at the tracking screen and
-/// deciding, not waiting on a timer.
-const BUZZ_INTERVAL_SECS: u64 = 20;
+/// "Buzz until read": re-fire for 2 minutes (design S07b). Bounded on purpose —
+/// an unanswered page must not buzz someone's pocket all morning, and after two
+/// minutes the sender should be looking at the tracking screen and deciding,
+/// not waiting on a timer.
 const BUZZ_WINDOW_MS: u64 = 2 * 60 * 1000;
+
+/// Seconds before the next re-buzz, by how many have already gone out.
+/// Front-loaded rather than a flat 20s: on an iPhone the notification is the
+/// ONLY haptic there is (WebKit has no Vibration API), so repeat cadence is
+/// the single lever for "buzz harder" — and the first half-minute is when
+/// someone is most likely to feel it and act. It settles back to 20s so a
+/// page nobody answers doesn't hammer the phone for the whole window.
+fn rebuzz_delay_secs(sent: u32) -> u64 {
+    match sent {
+        0 => 8,
+        1 => 10,
+        2 => 12,
+        3 => 15,
+        _ => 20,
+    }
+}
 const MAX_BODY: usize = 240;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -166,8 +181,10 @@ fn spawn_rebuzz(app: &AppHandle, pages: &PagesState, page_id: u64) {
     let app = app.clone();
     let pages = pages.clone();
     tauri::async_runtime::spawn(async move {
+        let mut sent: u32 = 0;
         loop {
-            tokio::time::sleep(std::time::Duration::from_secs(BUZZ_INTERVAL_SECS)).await;
+            tokio::time::sleep(std::time::Duration::from_secs(rebuzz_delay_secs(sent))).await;
+            sent = sent.saturating_add(1);
             let snapshot = {
                 let h = pages.pages.lock().unwrap_or_else(|p| p.into_inner());
                 h.iter().find(|p| p.id == page_id).cloned()
@@ -429,6 +446,34 @@ mod tests {
     fn buzz_stops_when_everyone_has_confirmed() {
         assert!(should_rebuzz(1_000, 2), "still waiting inside the window");
         assert!(!should_rebuzz(1_000, 0), "nobody left to buzz");
+    }
+
+    #[test]
+    fn rebuzz_is_front_loaded_but_still_fits_the_window() {
+        // The first three repeats land inside the first 30s — on an iPhone
+        // each one is the only haptic the crew member gets.
+        assert_eq!(rebuzz_delay_secs(0), 8);
+        assert_eq!(
+            rebuzz_delay_secs(0) + rebuzz_delay_secs(1) + rebuzz_delay_secs(2),
+            30
+        );
+        // It settles, never speeds up again, and stays bounded.
+        assert_eq!(rebuzz_delay_secs(9), 20);
+        for n in 0..10 {
+            assert!(rebuzz_delay_secs(n) >= 8, "never faster than 8s");
+            assert!(rebuzz_delay_secs(n) <= 20, "never slower than the old flat rate");
+        }
+        // More reminders than the old flat 20s inside the same 2-minute window.
+        let mut elapsed = 0;
+        let mut count = 0;
+        while elapsed + rebuzz_delay_secs(count) <= BUZZ_WINDOW_MS / 1000 {
+            elapsed += rebuzz_delay_secs(count);
+            count += 1;
+        }
+        assert!(
+            u64::from(count) > BUZZ_WINDOW_MS / 1000 / 20,
+            "should out-buzz the old flat cadence"
+        );
     }
 
     #[test]
