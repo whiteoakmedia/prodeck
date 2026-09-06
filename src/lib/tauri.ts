@@ -1,5 +1,8 @@
 import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 import { listen as tauriListen, type UnlistenFn } from "@tauri-apps/api/event";
+import { IS_DEMO, demoInvoke, demoOn } from "./demo";
+
+export { IS_DEMO, setDemo } from "./demo";
 
 // ---------------------------------------------------------------------------
 // Runtime mode: native Tauri (desktop) vs. plain browser (LAN web gateway).
@@ -133,7 +136,8 @@ if (IS_WEB && bootToken && typeof localStorage !== "undefined") {
 }
 export const KIOSK_DASH: string | null = IS_WEB ? bootParams?.get("kiosk") ?? null : null;
 
-if (IS_WEB) reconnectSse();
+// Demo mode has no booth to stream from — its events come from the ticker.
+if (IS_WEB && !IS_DEMO) reconnectSse();
 // First touch unlocks WebAudio so chimes and page tones can play on iOS.
 if (IS_WEB && typeof window !== "undefined") {
   import("./sound").then((s) => s.primeAudio()).catch(() => {});
@@ -176,11 +180,21 @@ async function webInvoke<T>(cmd: string, args?: Record<string, unknown>): Promis
 }
 
 // Drop-in replacement for Tauri's invoke that switches on runtime mode.
-export function invoke<T = unknown>(
+/** The real backend, bypassing demo mode. Only demo.ts should need this. */
+export function realInvoke<T = unknown>(
   cmd: string,
   args?: Record<string, unknown>,
 ): Promise<T> {
   return IS_WEB ? webInvoke<T>(cmd, args) : tauriInvoke<T>(cmd, args as never);
+}
+
+export function invoke<T = unknown>(
+  cmd: string,
+  args?: Record<string, unknown>,
+): Promise<T> {
+  // Demo mode answers everything from sample data and writes nothing.
+  if (IS_DEMO) return demoInvoke<T>(cmd, args);
+  return realInvoke<T>(cmd, args);
 }
 
 // Surface a failed ProPresenter control action to the operator. Control calls
@@ -258,6 +272,8 @@ export interface Settings {
   tap_enabled: boolean;
   tap_edge_url: string;
   tap_token: string;
+  /** Sleep guard while ProDeck runs (Settings → Reliability). */
+  keep_awake: boolean;
   avantis_enabled: boolean;
   avantis_host: string;
   /** Which Allen & Heath console: "avantis" | "dlive" | "sq". */
@@ -885,6 +901,9 @@ export function on<T = unknown>(
   event: string,
   cb: (payload: T) => void,
 ): Promise<UnlistenFn> {
+  if (IS_DEMO) {
+    return Promise.resolve(demoOn(event, cb as (p: unknown) => void) as UnlistenFn);
+  }
   if (IS_WEB) {
     let set = webHandlers.get(event);
     if (!set) {
@@ -897,3 +916,31 @@ export function on<T = unknown>(
   }
   return tauriListen<T>(event, (e) => cb(e.payload));
 }
+
+// ---- Reliability / diagnostics / backup / help (desktop only) ----
+export interface KeepaliveStatus {
+  installed: boolean;
+  program: string | null;
+  matchesCurrent: boolean;
+  underLaunchd: boolean;
+  inApplications: boolean;
+  exe: string;
+  keepAwake: boolean;
+}
+export const keepaliveStatus = () => invoke<KeepaliveStatus>("keepalive_status");
+export const keepaliveInstall = () => invoke<KeepaliveStatus>("keepalive_install");
+export const keepaliveUninstall = () => invoke<KeepaliveStatus>("keepalive_uninstall");
+export const keepaliveRelaunch = () => invoke<void>("keepalive_relaunch");
+export const keepAwakeSet = (on: boolean) => invoke<KeepaliveStatus>("keep_awake_set", { on });
+/** Redacted support bundle (JSON text). `client` = what the UI knows; keep it non-secret. */
+export const diagBundle = (client: Json) => invoke<string>("diag_bundle", { client });
+export const diagOpenIssue = (repo: string, title: string, summary: string, systemLine: string) =>
+  invoke<void>("diag_open_issue", { repo, title, summary, systemLine });
+export const diagRecentLog = (n = 200) => invoke<string[]>("diag_recent_log", { n });
+/** Open the bundled Adopter's Guide (offline) at a section id. */
+export const helpOpen = (section?: string) => invoke<void>("help_open", { section });
+export const backupExport = () => invoke<string>("backup_export");
+export const backupImport = (text: string) => invoke<{ restored: string[] }>("backup_import", { text });
+/** Where problems get reported — adopters running a fork change this once. */
+export const REPORT_REPO = "whiteoakmedia/prodeck";
+export const DOCS_URL = "https://whiteoakmedia.github.io/prodeck/ADOPTERS_GUIDE.html";

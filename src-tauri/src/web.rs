@@ -213,7 +213,7 @@ pub fn start(app: AppHandle, web: WebState, port: u16) {
             Some(l) => l,
             None => {
                 web.running.store(false, Ordering::Release);
-                eprintln!("web gateway: could not bind port {port}");
+                crate::diag::log(format!("web gateway: could not bind port {port}"));
                 return;
             }
         };
@@ -698,6 +698,56 @@ async fn handle_conn(
                         }),
                     }
                 };
+                // This week's crew from the PCO plan, in deck-slot order (see
+                // pco::deck_roster). Padded to a fixed 12 slots so a key bound
+                // to slot N always resolves. `keys` = whoever is scheduled on
+                // keys/keyboard/piano, for the "come play keys" page key.
+                let (crew, keys) = {
+                    let pco_state = app.state::<crate::pco::PcoState>().inner().clone();
+                    let identity = app.state::<crate::identity::IdentityState>().inner().clone();
+                    let ck = app.state::<crate::checkin::CheckinState>().inner().clone();
+                    let arrived = crate::checkin::arrived_ids(&app, &ck);
+                    let roster = crate::pco::deck_roster(&pco_state);
+                    let row = |m: &crate::pco::TeamRow| {
+                        let acct = crate::identity::find_approved_by_name(&identity, &m.name);
+                        json!({
+                            "name": m.name,
+                            "short": crate::pco::short_name(&m.name),
+                            "position": m.position,
+                            "app": acct.is_some(),
+                            "here": acct.as_ref().map(|(id, _)| arrived.contains(id)).unwrap_or(false),
+                        })
+                    };
+                    let empty = json!({ "name": "", "short": "", "position": "", "app": false, "here": false });
+                    let mut crew: Vec<Value> = roster.iter().map(row).collect();
+                    // Two "Zachary A"s on one plan: fall back to the surname
+                    // ("Affhauser" / "Avigne") for anyone whose short collides.
+                    let shorts: Vec<String> =
+                        crew.iter().map(|c| c["short"].as_str().unwrap_or("").to_string()).collect();
+                    for (i, c) in crew.iter_mut().enumerate() {
+                        let mine = &shorts[i];
+                        if !mine.is_empty() && shorts.iter().filter(|s| *s == mine).count() > 1 {
+                            let parts: Vec<&str> = c["name"].as_str().unwrap_or("").split_whitespace().collect();
+                            if parts.len() >= 2 {
+                                let last: String = parts[parts.len() - 1].chars().take(9).collect();
+                                c["short"] = json!(last);
+                            }
+                        }
+                    }
+                    crew.truncate(12);
+                    while crew.len() < 12 {
+                        crew.push(empty.clone());
+                    }
+                    let keys = roster
+                        .iter()
+                        .find(|m| {
+                            let p = m.position.to_lowercase();
+                            p.contains("keys") || p.contains("keyboard") || p.contains("piano")
+                        })
+                        .map(row)
+                        .unwrap_or(empty);
+                    (crew, keys)
+                };
                 Ok(json!({
                     "tap": tap.get("state").cloned().unwrap_or(Value::Null),
                     "spl": spl,
@@ -705,26 +755,64 @@ async fn handle_conn(
                     "arrivedNames": names,
                     "pp": pp,
                     "page": page,
+                    "crew": crew,
+                    "keys": keys,
                 }))
             }
-            // Crew-board key press: page exactly one person by name.
+            // Crew-board key press: page exactly one person. Address them by
+            // name (&text=), by this week's deck slot (&crew=N, same order as
+            // deck-state.crew), or by PCO position (&position=keys). &body=
+            // replaces the default "the booth is looking for you" message.
             "nudge" => {
-                if text.is_empty() { Err("add &text=<crew member name>".into()) }
-                else {
-                    let identity = app.state::<crate::identity::IdentityState>().inner().clone();
-                    match crate::identity::find_approved_by_name(&identity, &text) {
-                        None => Err(format!("no crew account matches \"{text}\"")),
-                        Some((id, name)) => dispatch(
-                            &app,
-                            "page_send",
-                            &json!({
-                                "body": format!("{name} — the booth is looking for you. Please check in."),
-                                "recipients": [id], "buzz": true, "session": ""
-                            }),
-                            Tier::Admin,
-                        )
-                        .await,
+                let identity = app.state::<crate::identity::IdentityState>().inner().clone();
+                let pco_state = app.state::<crate::pco::PcoState>().inner().clone();
+                let roster = crate::pco::deck_roster(&pco_state);
+                let target: Result<String, String> = if let Some(slot) = qp("crew") {
+                    match slot.parse::<usize>() {
+                        Ok(n) if n >= 1 => roster
+                            .get(n - 1)
+                            .map(|m| m.name.clone())
+                            .ok_or_else(|| format!("crew slot {n} is empty this week")),
+                        _ => Err("&crew= must be a slot number from 1".into()),
                     }
+                } else if let Some(pos) = qp("position") {
+                    let want = pos.trim().to_lowercase();
+                    if want.is_empty() {
+                        Err("add &position=<PCO position>".into())
+                    } else if roster.is_empty() {
+                        Err("no PCO plan team loaded yet".into())
+                    } else {
+                        roster
+                            .iter()
+                            .find(|m| m.position.to_lowercase().contains(&want))
+                            .map(|m| m.name.clone())
+                            .ok_or_else(|| format!("nobody is scheduled on \"{pos}\" this week"))
+                    }
+                } else if !text.is_empty() {
+                    Ok(text.clone())
+                } else {
+                    Err("add &text=<crew member name>, &crew=<slot>, or &position=<PCO position>".into())
+                };
+                match target {
+                    Err(e) => Err(e),
+                    Ok(who) => match crate::identity::find_approved_by_name(&identity, &who) {
+                        None => Err(format!("{who} hasn't joined ProDeck on their phone yet")),
+                        Some((id, name)) => {
+                            let custom = qp("body").unwrap_or_default();
+                            let body = if custom.trim().is_empty() {
+                                format!("{name} — the booth is looking for you. Please check in.")
+                            } else {
+                                format!("{name} — {}", custom.trim())
+                            };
+                            dispatch(
+                                &app,
+                                "page_send",
+                                &json!({ "body": body, "recipients": [id], "buzz": true, "session": "" }),
+                                Tier::Admin,
+                            )
+                            .await
+                        }
+                    },
                 }
             }
             "pco-next" | "pco-prev" => match pco_selected() {

@@ -54,6 +54,17 @@ import { SongKeyLeader } from "../components/SongKeyLeader";
 import { askConfirm, askText } from "../lib/dialogs";
 import { listenSnapshot, onListen, startListen, stopListen } from "../lib/listen";
 import { Icon } from "../components/Icon";
+import {
+  NeedsAudio,
+  NeedsConnection,
+  NeedsDesk,
+  NeedsGa4,
+  NeedsNdi,
+  NeedsPco,
+  NeedsPro,
+  NeedsTap,
+  NeedsWeb,
+} from "../components/NeedsConnection";
 import { RtaGraph } from "../components/RtaGraph";
 import { parseSlides, type Slide } from "../components/PlaylistControl";
 
@@ -92,8 +103,16 @@ export interface WidgetDef {
 
 /* ----------------------------------------------------------- Widgets */
 
+// ProPresenter gate shared by every Pro widget. No host saved → teach (a
+// "Set up" button to the Pro card); a host saved but unreachable → offline
+// copy with no button, since the store's reconnect loop is already on it.
+// Before settings load we can't tell which, so keep the old neutral text
+// rather than flash a setup prompt at a configured booth.
 function Disconnected() {
-  return <div className="widget-empty">Not connected</div>;
+  const { settings } = useProDeck();
+  if (!settings) return <div className="widget-empty">Not connected</div>;
+  if (!(settings.pp_host ?? "").trim()) return <NeedsPro />;
+  return <NeedsPro offline />;
 }
 
 interface ScreenInfo {
@@ -120,6 +139,7 @@ const LAYER_KEYS = ["slide", "media", "video_input", "messages", "announcements"
  * the caption says so rather than letting the number read as total reach.
  */
 function LiveViewersWidget() {
+  const { settings } = useProDeck();
   const [snap, setSnap] = useState<Ga4Snapshot | null>(null);
 
   useEffect(() => {
@@ -143,9 +163,12 @@ function LiveViewersWidget() {
     };
   }, []);
 
+  // No property id means nothing to poll — say so at once instead of sitting
+  // on "Loading…" until the first tick. The backend's `configured` flag stays
+  // authoritative (it also needs the key file, which browsers never see).
+  if (settings && !(settings.ga4_property_id ?? "").trim()) return <NeedsGa4 />;
   if (!snap) return <div className="widget-empty">Loading…</div>;
-  if (!snap.configured)
-    return <div className="widget-empty">Add a GA4 property and key in Settings</div>;
+  if (!snap.configured) return <NeedsGa4 />;
   if (snap.error && snap.viewers === null)
     return <div className="widget-empty lv-err">{snap.error}</div>;
 
@@ -517,13 +540,7 @@ function VideoInputWidget({ widget, editing, update }: WidgetProps) {
     );
   }
 
-  if (!source) {
-    return (
-      <div className="w-video">
-        <span className="muted small">No source — edit to assign</span>
-      </div>
-    );
-  }
+  if (!source) return <NeedsNdi />;
 
   const streamUrl = isClient
     ? relay.relayNdiUrl(source)
@@ -570,12 +587,18 @@ export function ListenWidget() {
   const [, force] = useState(0);
   useEffect(() => onListen(() => force((n) => n + 1)), []);
   const { state, err } = listenSnapshot();
+  const { settings } = useProDeck();
 
   // Kiosk: hands-free start, and the singleton resurrects the stream itself.
   useEffect(() => {
     if (!kiosk || !IS_WEB) return;
     if (listenSnapshot().state === "idle") startListen(true);
   }, [kiosk]);
+
+  // The stream is served by the booth's web gateway, so on the booth itself
+  // this tile is only useful once browser access is on for the phones.
+  if (!IS_WEB && settings && !settings.web_enabled)
+    return <NeedsWeb hint="Turn on browser access to listen to the overflow mix from a phone" />;
 
   return (
     <div className="w-listen">
@@ -666,7 +689,11 @@ function TapLinkWidget() {
   }, [enabled]);
 
   if (!enabled)
-    return <div className="widget-empty">TapLink is off — enable it in Settings</div>;
+    return settings ? (
+      <NeedsTap />
+    ) : (
+      <div className="widget-empty">TapLink is off — enable it in Settings</div>
+    );
 
   const current = edge?.state ?? "default";
   const keywords = edge?.keywords ?? [];
@@ -900,8 +927,27 @@ function ChecklistWidget({ widget, update }: WidgetProps) {
 
 /* ----------------------------------------------------------- Planning Center widgets */
 
+// Planning Center gate shared by every PCO widget. No credentials → teach
+// (the connect form lives on the Planning page, not in Settings); credentials
+// but no plan picked → point at the plan picker instead. credsKnown is false
+// on browser clients (the secret is redacted), so a visible app id or any
+// loaded plan also counts as proof PCO is set up. Before settings load we
+// can't tell which case we're in, so keep the old neutral text.
 function PcoEmpty() {
-  return <div className="widget-empty">No plan selected</div>;
+  const { settings } = useProDeck();
+  const { credsKnown, plans } = usePco();
+  if (!settings) return <div className="widget-empty">No plan selected</div>;
+  const configured = credsKnown || !!settings.pco_app_id || plans.length > 0;
+  if (!configured) return <NeedsPco />;
+  return (
+    <NeedsConnection
+      what="a plan"
+      hint="Pick this week's plan to see the run of show"
+      page="planning"
+      icon="calendar"
+      action="Choose a plan"
+    />
+  );
 }
 
 function ShowFlowWidget() {
@@ -1176,6 +1222,19 @@ function CrewQrWidget() {
       .then(setQr)
       .catch(() => {});
   }, [base]);
+  // On the booth, a QR that encodes tauri://localhost or a LAN address is
+  // worse than none: phones need browser access on AND a public URL.
+  if (!IS_WEB && settings) {
+    if (!settings.web_enabled)
+      return <NeedsWeb hint="Turn on browser access so the crew can join from their phones" />;
+    if (!(settings.public_url ?? "").trim())
+      return (
+        <NeedsWeb
+          hint="Set a public URL so the join QR works away from the booth"
+          action="Set a public URL"
+        />
+      );
+  }
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, height: "100%", justifyContent: "center" }}>
       {qr && <img src={qr} alt="Join ProDeck Crew" style={{ maxWidth: "80%", maxHeight: "75%", borderRadius: 8 }} />}
@@ -1430,6 +1489,16 @@ function AudioMeterWidget({ widget, editing, update }: WidgetProps) {
       </div>
     );
   }
+
+  // An idle meter used to be "--" over an unlit bar and an "idle" footer.
+  // Teach instead: one button starts capture on the booth. Browsers can only
+  // watch (the gateway has no start_audio_capture route), so no button there.
+  if (!audioRunning)
+    return IS_WEB ? (
+      <NeedsAudio hint="Audio monitoring is off — start it on the booth computer" action={null} />
+    ) : (
+      <NeedsAudio action="Start monitoring" onAction={() => startAudioCapture(device)} />
+    );
 
   const fill = Math.max(0, Math.min(100, ((dbfs + 60) / 60) * 100));
   const peakPct = Math.max(0, Math.min(100, ((peakDbfs + 60) / 60) * 100));
@@ -1841,9 +1910,13 @@ function AvantisWidget({ widget, editing, update }: WidgetProps) {
   }
 
   if (!settings?.avantis_enabled)
-    return <div className="widget-empty">Desk mirror is off — enable it in Settings → Avantis</div>;
+    return settings ? (
+      <NeedsDesk />
+    ) : (
+      <div className="widget-empty">Desk mirror is off — enable it in Settings → Avantis</div>
+    );
   if (!snap || !snap.connected)
-    return <div className="widget-empty">Can't reach the Avantis — check it's on and networked</div>;
+    return <NeedsDesk offline hint="Can't reach the console — check it's on and networked" />;
 
   const rows = picked.length === 0 ? named : named.filter((r) => picked.includes(r.id));
 
@@ -1996,6 +2069,7 @@ function fmtSec(s: number): string {
 
 function ServiceTrackingWidget() {
   const { rows, resetPlan, rehearsal, rehearsalAuto, setRehearsal, loadError } = useTracking();
+  const { selectedPlanId } = usePco();
   // Loud, because the failure mode it replaces was silent: the service simply
   // wasn't being recorded and nobody knew until the report came up empty.
   if (loadError)
@@ -2004,6 +2078,8 @@ function ServiceTrackingWidget() {
         <span className="error">Not recording — {loadError}</span>
       </div>
     );
+  // Tracking rows come from the selected PCO plan — no plan, nothing to track.
+  if (!selectedPlanId) return <PcoEmpty />;
   if (rows.length === 0) return <div className="widget-empty">No plan loaded</div>;
   const plannedTotal = rows.reduce((s, r) => s + r.planned, 0);
   const actualTotal = rows.reduce((s, r) => s + (r.tracked ? r.actual : 0), 0);
@@ -2144,6 +2220,8 @@ function RunOrderWidget() {
 // Run-of-show pacing: are we ahead of or behind the plan, right now?
 function ServiceTimelineWidget() {
   const { rows } = useTracking();
+  const { selectedPlanId } = usePco();
+  if (!selectedPlanId) return <PcoEmpty />;
   if (rows.length === 0) return <div className="widget-empty">No plan loaded</div>;
   const plannedTotal = rows.reduce((s, r) => s + r.planned, 0);
   const reached = rows.filter((r) => r.tracked);
@@ -2236,6 +2314,7 @@ function ServiceClockWidget({ widget, editing, update }: WidgetProps) {
 // them. Verified live: playlist/{id}/{index}/trigger → announcement/active →
 // clear/layer/announcements.
 function LobbyTvWidget(_: WidgetProps) {
+  const { connected } = useProDeck();
   const [active, setActive] = useState<string | null>(null);
   const [buttons, setButtons] = useState<{ pl: string; plName: string; index: number; name: string }[]>([]);
   const [busy, setBusy] = useState("");
@@ -2271,6 +2350,7 @@ function LobbyTvWidget(_: WidgetProps) {
   // What's on the lobby TVs right now (poll — the status stream doesn't
   // carry the announcements layer).
   useEffect(() => {
+    if (!connected) return;
     let alive = true;
     const poll = () =>
       ppGet("announcement/active")
@@ -2282,10 +2362,13 @@ function LobbyTvWidget(_: WidgetProps) {
       alive = false;
       clearInterval(t);
     };
-  }, []);
+  }, [connected]);
 
-  // Discover the announcement loops across every playlist.
+  // Discover the announcement loops across every playlist. Keyed on the
+  // connection so a widget mounted before Pro came up still finds them.
   useEffect(() => {
+    if (!connected) return;
+    setErr("");
     (async () => {
       try {
         const pl = (await ppGet("playlists")) as any[];
@@ -2310,7 +2393,7 @@ function LobbyTvWidget(_: WidgetProps) {
         setErr(String(e));
       }
     })();
-  }, []);
+  }, [connected]);
 
   async function play(b: { pl: string; index: number; name: string }) {
     setBusy(b.name);
@@ -2324,6 +2407,8 @@ function LobbyTvWidget(_: WidgetProps) {
       setBusy("");
     }
   }
+
+  if (!connected) return <Disconnected />;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8, height: "100%" }}>

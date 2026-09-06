@@ -1,6 +1,6 @@
 use crate::settings::SettingsState;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter};
 
@@ -16,6 +16,10 @@ pub struct PcoInner {
     /// captured epoch no longer matches, so switching weeks can't leave a stale
     /// task emitting the previous plan's data (which caused week "flickering").
     pub epoch: AtomicU64,
+    /// This week's plan team, refreshed with every team fetch (~30s). The
+    /// Stream Deck reads it through the deck API so crew keys follow the PCO
+    /// schedule instead of hard-coded names. Cleared when a new plan syncs.
+    pub team: Mutex<Vec<TeamRow>>,
 }
 
 impl PcoInner {
@@ -24,6 +28,118 @@ impl PcoInner {
             syncing: AtomicBool::new(false),
             live_interval_ms: AtomicU64::new(5000),
             epoch: AtomicU64::new(0),
+            team: Mutex::new(Vec::new()),
+        }
+    }
+}
+
+/// One scheduled person on the plan, as PCO spells them.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct TeamRow {
+    pub name: String,
+    pub position: String,
+    pub team: String,
+    /// PCO single-letter status: C(onfirmed) / U(nconfirmed) / D(eclined).
+    pub status: String,
+}
+
+/// Parse a `team_members?include=team` response. Mirrors parseTeam in
+/// pcoStore.tsx — keep the two in agreement.
+pub fn parse_team(v: &serde_json::Value) -> Vec<TeamRow> {
+    let mut teams: std::collections::HashMap<String, String> = Default::default();
+    if let Some(inc) = v.get("included").and_then(|i| i.as_array()) {
+        for t in inc {
+            if t.get("type").and_then(|x| x.as_str()) == Some("Team") {
+                let id = t.get("id").and_then(|x| x.as_str()).unwrap_or("").to_string();
+                let name = t.pointer("/attributes/name").and_then(|x| x.as_str()).unwrap_or("").to_string();
+                teams.insert(id, name);
+            }
+        }
+    }
+    v.get("data")
+        .and_then(|d| d.as_array())
+        .map(|rows| {
+            rows.iter()
+                .map(|d| {
+                    let a = d.get("attributes").cloned().unwrap_or(serde_json::Value::Null);
+                    let position = a.get("team_position_name").and_then(|x| x.as_str()).unwrap_or("").to_string();
+                    let team_id = d.pointer("/relationships/team/data/id").and_then(|x| x.as_str()).unwrap_or("");
+                    let team = teams.get(team_id).cloned().filter(|t| !t.is_empty()).unwrap_or_else(|| position.clone());
+                    TeamRow {
+                        name: a.get("name").and_then(|x| x.as_str()).unwrap_or("Unknown").to_string(),
+                        position,
+                        team,
+                        status: a.get("status").and_then(|x| x.as_str()).unwrap_or("").to_string(),
+                    }
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+pub fn is_declined(status: &str) -> bool {
+    let s = status.trim().to_lowercase();
+    s == "d" || s == "declined"
+}
+
+const WORSHIP_WORDS: &[&str] = &[
+    "worship", "band", "vocal", "singer", "choir", "music", "keys", "keyboard", "guitar", "bass",
+    "drum", "piano", "violin", "cello", "sax", "horn", "strings", "acoustic", "percussion",
+];
+const PRODUCTION_WORDS: &[&str] = &[
+    "production", "tech", "audio", "sound", "camera", "video", "lighting", "light", "media",
+    "propresenter", "prodeck", "slide", "stream", "broadcast", "graphic", "switcher", "director",
+    "booth", "projection", "computer",
+];
+const PRODUCTION_TOKENS: &[&str] = &["av", "avl", "cam", "foh", "a1", "a2", "v1", "l1"];
+
+fn has_word(hay: &str, token: &str) -> bool {
+    hay.split(|c: char| !c.is_ascii_alphanumeric()).any(|w| w == token)
+}
+
+/// Same rule as isProductionMember in pcoStore.tsx: worship words exclude,
+/// then production words / whole-word tokens include.
+pub fn is_production(team: &str, position: &str) -> bool {
+    let hay = format!("{} {}", team, position).to_lowercase();
+    if WORSHIP_WORDS.iter().any(|w| hay.contains(w)) {
+        return false;
+    }
+    PRODUCTION_WORDS.iter().any(|w| hay.contains(w)) || PRODUCTION_TOKENS.iter().any(|t| has_word(&hay, t))
+}
+
+/// The deck's crew order for this week: active people only, production
+/// first (booth crew), worship after, one row per person (first position
+/// wins). Stable between two polls of the same team, which is what lets a
+/// key address "crew slot 3" and page the right person.
+pub fn deck_roster(state: &PcoState) -> Vec<TeamRow> {
+    let team = state.team.lock().unwrap_or_else(|p| p.into_inner()).clone();
+    let active: Vec<&TeamRow> = team.iter().filter(|m| !is_declined(&m.status)).collect();
+    let mut out: Vec<TeamRow> = Vec::new();
+    let mut seen: Vec<String> = Vec::new();
+    for want_prod in [true, false] {
+        for m in active.iter().filter(|m| is_production(&m.team, &m.position) == want_prod) {
+            let key = m.name.trim().to_lowercase();
+            if key.is_empty() || seen.contains(&key) {
+                continue;
+            }
+            seen.push(key);
+            out.push((*m).clone());
+        }
+    }
+    out
+}
+
+/// "Zachary Green" → "Zachary G" — ≤9 chars so it fits a Stream Deck key at
+/// a readable size (the deck's name layer is sized for 9).
+pub fn short_name(name: &str) -> String {
+    let parts: Vec<&str> = name.split_whitespace().collect();
+    match parts.len() {
+        0 => String::new(),
+        1 => parts[0].chars().take(9).collect(),
+        _ => {
+            let first: String = parts[0].chars().take(7).collect();
+            let initial = parts[parts.len() - 1].chars().next().map(|c| c.to_uppercase().to_string()).unwrap_or_default();
+            format!("{first} {initial}")
         }
     }
 }
@@ -210,6 +326,9 @@ pub async fn pco_start_sync(
 
     let running = state.inner().clone();
     let app2 = app.clone();
+    // New plan: forget last week's team until this plan's first fetch lands,
+    // so the deck can't page last Sunday's crew during the hand-off.
+    running.team.lock().unwrap_or_else(|p| p.into_inner()).clear();
     app.emit("pco:sync_started", &plan_id).ok();
 
     tokio::spawn(async move {
@@ -229,6 +348,7 @@ pub async fn pco_start_sync(
                 }
                 if let Ok(v) = pco_request(&app_id, &secret, &team_path(&service_type_id, &plan_id)).await {
                     if current(&running) {
+                        *running.team.lock().unwrap_or_else(|p| p.into_inner()) = parse_team(&v);
                         app2.emit("pco:team", v).ok();
                     }
                 }

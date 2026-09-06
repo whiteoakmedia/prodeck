@@ -7218,3 +7218,166 @@ select.input {
   .ob-rail, .ob-actions, .ob-join-actions { display: none !important; }
   .ob-root { position: static; display: block; background: #fff; color: #000; }
 }
+
+/* ---- starter checklists ---- */
+.cl-starter-empty {
+  max-width: 560px;
+  padding: 22px 24px;
+  border: 1px dashed var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+}
+.cl-starter-empty h2 {
+  font-size: 17px;
+  letter-spacing: -0.2px;
+  margin: 0 0 6px;
+}
+.cl-starter-empty > p {
+  margin: 0 0 14px;
+  line-height: 1.55;
+}
+.cl-starter-names {
+  list-style: none;
+  margin: 0 0 18px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.cl-starter-names li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-top: 1px solid var(--hairline);
+  font-size: 13px;
+}
+.cl-starter-names li:last-child {
+  border-bottom: 1px solid var(--hairline);
+}
+.page-head .cl-starter-link {
+  margin-left: auto;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.page-head .cl-starter-link:hover {
+  color: var(--text);
+}
+
+/* ---- widget empty states (NeedsConnection) ---- */
+/* Builds on .widget-empty (full-height, centred). Sized to fit a 2-row tile:
+   32px icon + one or two lines + a small button ≈ 110px, and it scales up
+   without stretching — the column stays centred with a capped line length. */
+.needs-conn {
+  flex-direction: column;
+  padding: 6px 8px;
+  text-align: center;
+  overflow: hidden;
+  min-height: 0;
+}
+.needs-conn-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  max-width: 300px;
+  min-width: 0;
+}
+.needs-conn-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+}
+.needs-conn.offline .needs-conn-icon {
+  color: var(--muted);
+  background: var(--panel-2);
+  border-color: var(--border);
+}
+.needs-conn-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.needs-conn.offline .needs-conn-hint {
+  color: var(--muted-2);
+}
+.needs-conn-btn {
+  margin-top: 1px;
+  white-space: nowrap;
+}
+
+/* ---- Settings: help links, reliability, kiosk, backup, log ---- */
+.help-link {
+  width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--border-hi);
+  background: none; color: var(--faint); font-size: 12px; font-weight: 700; line-height: 1;
+  cursor: pointer; margin-left: 6px; flex-shrink: 0;
+}
+.help-link:hover { color: var(--accent); border-color: var(--accent); }
+.rel-rows { display: flex; flex-direction: column; gap: 10px; margin: 8px 0; }
+.rel-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 10px 12px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;
+}
+.rel-row > div:first-child { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.rel-row strong { font-size: 13.5px; }
+.rel-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap; }
+.kiosk-wrap { display: flex; gap: 18px; align-items: flex-start; }
+@media (max-width: 720px) { .kiosk-wrap { flex-direction: column; } }
+.kiosk-side { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.kiosk-url { display: block; font-size: 12px; white-space: normal; word-break: break-all; padding: 6px 9px; }
+.kiosk-actions { display: flex; gap: 8px; }
+.kiosk-steps { padding-left: 18px; margin: 4px 0; }
+.kiosk-steps li { margin: 3px 0; }
+.kiosk-qr { width: 160px; height: 160px; border-radius: 10px; background: #fff; flex-shrink: 0; }
+.log-view {
+  margin-top: 10px; max-height: 260px; overflow: auto; font-family: var(--mono); font-size: 11.5px;
+  line-height: 1.5; padding: 10px 12px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;
+  white-space: pre-wrap; word-break: break-all;
+}
+
+/* onboarding: wide template row + reliability nudge */
+.ob-tpl-wide { grid-column: 1 / -1; }
+.ob-keep {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; text-align: left;
+  max-width: 520px; margin: 0 auto 14px; padding: 12px 14px;
+  background: var(--accent-soft); border: 1px solid var(--accent-line); border-radius: 12px;
+}
+.ob-keep > div { display: flex; flex-direction: column; gap: 3px; }
+.ob-keep strong { font-size: 14px; }
+.ob-keep span { color: var(--muted); font-size: 12.5px; line-height: 1.4; }
+.ob-keep em { font-style: normal; font-size: 12px; color: var(--good); }
+
+/* ---- demo mode banner ---- */
+.demo-banner {
+  position: sticky; top: 0; z-index: 42;
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 13px; margin-bottom: 12px; border-radius: var(--r-sm);
+  border: 1px solid var(--warn); background: var(--warn-soft); color: var(--text);
+  font-size: 13.5px;
+}
+.demo-banner > span:nth-child(2) { flex: 1; }
+.demo-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--warn); flex-shrink: 0;
+  animation: demopulse 2s ease-in-out infinite;
+}
+@keyframes demopulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+/* ---- crash screen (ErrorBoundary) ---- */
+.crash { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; background: var(--bg); }
+.crash-card { max-width: 620px; width: 100%; padding: 28px; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; }
+.crash-card h1 { font-size: 22px; margin: 0 0 8px; letter-spacing: -0.02em; }
+.crash-lead { color: var(--muted); font-size: 14px; line-height: 1.55; margin: 0 0 14px; }
+.crash-msg { font-family: var(--mono); font-size: 12.5px; padding: 10px 12px; background: var(--bad-soft); border: 1px solid var(--bad); border-radius: 8px; color: var(--text); white-space: pre-wrap; word-break: break-word; margin: 0 0 16px; }
+.crash-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.crash-foot { color: var(--muted); font-size: 12.5px; line-height: 1.5; margin: 0; }
+.crash-more { margin-top: 14px; }
+.crash-more summary { cursor: pointer; color: var(--faint); font-size: 12.5px; }
+.crash-more pre { margin-top: 8px; max-height: 240px; overflow: auto; font-family: var(--mono); font-size: 11px; line-height: 1.5; padding: 10px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; white-space: pre-wrap; word-break: break-word; }

@@ -43,10 +43,28 @@ import {
   PUBLIC_URL,
   type TapMappings,
   type TapLinkCheck,
+  keepaliveStatus,
+  keepaliveInstall,
+  keepaliveUninstall,
+  keepaliveRelaunch,
+  keepAwakeSet,
+  diagBundle,
+  diagOpenIssue,
+  diagRecentLog,
+  helpOpen,
+  backupExport,
+  backupImport,
+  REPORT_REPO,
+  DOCS_URL,
+  IS_DEMO,
+  setDemo,
+  type KeepaliveStatus,
 } from "../lib/tauri";
+import { relaunch } from "@tauri-apps/plugin-process";
 import lockupHorizontal from "../assets/prodeck-lockup-horizontal-color.svg";
 import { askConfirm } from "../lib/dialogs";
 import QRCode from "qrcode";
+import { loadDashboards as loadDashList } from "../lib/dashboards";
 import { useSchedules } from "../scheduleStore";
 import { usePco , isDeclined } from "../pcoStore";
 
@@ -284,7 +302,7 @@ export function SettingsPage() {
           { g: "Audio", items: [["Audio & Captions", "set-audio"], ["Alerts", "set-alerts"]] },
           { g: "Crew", items: [["Crew Members", "set-crew"]] },
           { g: "Advanced", items: [["Gemini", "set-gemini"], ["Control Inputs", "set-inputs"], ["Song Key", "set-songkey"], ["TapLink", "set-taplink"]] },
-          { g: "App", items: [["Updates", "set-update"], ["Appearance", "set-appearance"]] },
+          { g: "App", items: [["Updates", "set-update"], ...(!IS_WEB ? [["Reliability", "set-reliability"], ["Kiosk screens", "set-kiosk"], ["Backup", "set-backup"], ["Help", "set-help"]] : []), ["Appearance", "set-appearance"]] },
         ].map(({ g, items }) => (
           <span key={g} className="set-jump-group">
             <span className="set-jump-label">{g}</span>
@@ -305,7 +323,7 @@ export function SettingsPage() {
 
       <section className="card">
         <div className="card-head">
-          <h3 id="set-update">Software Update</h3>
+          <h3 id="set-update">Software Update</h3><HelpLink section="care" />
           <span className="chip">v{upd.version || "…"}</span>
         </div>
         <div className="settings-grid">
@@ -356,7 +374,7 @@ export function SettingsPage() {
       </section>
 
       <section className="card">
-        <div className="card-head"><h3 id="set-pp">ProPresenter</h3></div>
+        <div className="card-head"><h3 id="set-pp">ProPresenter</h3><HelpLink section="features" /></div>
         <div className="settings-grid">
           <label className="field">
             <span>Host / IP</span>
@@ -378,7 +396,7 @@ export function SettingsPage() {
 
       <section className="card">
         <div className="card-head">
-          <h3 id="set-avantis">Allen &amp; Heath Console</h3>
+          <h3 id="set-avantis">Allen &amp; Heath Console</h3><HelpLink section="features" />
           <span className="chip">{(form.avantis_model || "avantis") === "sq" ? "SQ" : (form.avantis_model || "avantis") === "dlive" ? "dLive" : "Avantis"} · mirror</span>
         </div>
         <p className="muted small">
@@ -515,7 +533,7 @@ export function SettingsPage() {
       </section>
 
       <section className="card">
-        <div className="card-head"><h3 id="set-audio">Audio &amp; Captions</h3></div>
+        <div className="card-head"><h3 id="set-audio">Audio &amp; Captions</h3><HelpLink section="features" /></div>
         <div className="settings-grid">
           <label className="field wide">
             <span>Default audio input</span>
@@ -592,7 +610,7 @@ export function SettingsPage() {
 
       <section className="card">
         <div className="card-head">
-          <h3 id="set-ga4">Live Viewers (Google Analytics)</h3>
+          <h3 id="set-ga4">Live Viewers (Google Analytics)</h3><HelpLink section="phase3" />
           <span className={`chip ${ga4Ok ? "online" : ""}`}>{ga4Ok ? "on" : "off"}</span>
         </div>
         <p className="muted small">
@@ -644,7 +662,7 @@ export function SettingsPage() {
 
       <section className="card">
         <div className="card-head">
-          <h3 id="set-gemini">Gemini Smart Matching</h3>
+          <h3 id="set-gemini">Gemini Smart Matching</h3><HelpLink section="features" />
           <span
             className={`chip ${
               form.gemini_match_enabled && form.gemini_api_key ? "online" : ""
@@ -701,7 +719,7 @@ export function SettingsPage() {
       </section>
 
       <section className="card">
-        <div className="card-head"><h3 id="set-inputs">Control Inputs</h3></div>
+        <div className="card-head"><h3 id="set-inputs">Control Inputs</h3><HelpLink section="features" /></div>
         <div className="settings-grid">
           <label className="field">
             <span>OSC port</span>
@@ -743,7 +761,7 @@ export function SettingsPage() {
 
       <section className="card">
         <div className="card-head">
-          <h3 id="set-songkey">Song Key → Backing Track / Vocal Tune</h3>
+          <h3 id="set-songkey">Song Key → Backing Track / Vocal Tune</h3><HelpLink section="features" />
           <span className={`chip ${form.keysend_enabled ? "online" : ""}`}>
             {form.keysend_enabled ? "on" : "off"}
           </span>
@@ -865,7 +883,7 @@ export function SettingsPage() {
 
       <section className="card">
         <div className="card-head">
-          <h3 id="set-taplink">TapLink (NFC giving link)</h3>
+          <h3 id="set-taplink">TapLink (NFC giving link)</h3><HelpLink section="phase3" />
           <span className={`chip ${form.tap_enabled ? "online" : ""}`}>
             {form.tap_enabled ? "armed" : "off"}
           </span>
@@ -925,7 +943,7 @@ export function SettingsPage() {
       {crew !== null && (
         <section className="card">
           <div className="card-head">
-            <h3 id="set-crew">Crew Members</h3>
+            <h3 id="set-crew">Crew Members</h3><HelpLink section="phase1" />
             {crew.some((u) => !u.approved) && (
               <span className="chip">{crew.filter((u) => !u.approved).length} pending</span>
             )}
@@ -947,7 +965,7 @@ export function SettingsPage() {
 
       <section className="card">
         <div className="card-head">
-          <h3 id="set-relay">LAN Relay (multi-instance sync)</h3>
+          <h3 id="set-relay">LAN Relay (multi-instance sync)</h3><HelpLink section="features" />
           <span className={`chip ${relay.mode !== "off" ? "online" : "offline"}`}>
             {relay.mode === "host"
               ? `Hosting · ${relay.clients} client${relay.clients === 1 ? "" : "s"}`
@@ -1008,7 +1026,7 @@ export function SettingsPage() {
       </section>
 
       <section className="card">
-        <div className="card-head"><h3 id="set-alerts">Alerts &amp; Monitoring</h3></div>
+        <div className="card-head"><h3 id="set-alerts">Alerts &amp; Monitoring</h3><HelpLink section="care" /></div>
         <div className="settings-grid">
           <label className="field check">
             <input type="checkbox" checked={alertCfg.enabled}
@@ -1075,7 +1093,7 @@ export function SettingsPage() {
       {!IS_WEB && (
         <section className="card">
           <div className="card-head">
-            <h3 id="set-web">Browser Access (LAN)</h3>
+            <h3 id="set-web">Browser Access (LAN)</h3><HelpLink section="phase1" />
             {webInfo.running ? (
               <span className="chip online">serving · :{webInfo.port}</span>
             ) : (
@@ -1154,8 +1172,17 @@ export function SettingsPage() {
         </section>
       )}
 
+      {!IS_WEB && (
+        <>
+          <ReliabilityCard />
+          <KioskCard form={form} />
+          <BackupCard />
+          <HelpCard />
+        </>
+      )}
+
       <section className="card">
-        <div className="card-head"><h3 id="set-appearance">Appearance</h3></div>
+        <div className="card-head"><h3 id="set-appearance">Appearance</h3><HelpLink section="features" /></div>
         <div className="settings-grid">
           <label className="field">
             <span>Theme</span>
@@ -2165,5 +2192,302 @@ function CrewRow({ u }: { u: CrewUser }) {
         </div>
       )}
     </div>
+  );
+}
+
+/** "?" on a card head → the matching section of the Adopter's Guide (bundled offline copy on the desktop; the published copy on the web). */
+function HelpLink({ section }: { section: string }) {
+  return (
+    <button
+      className="help-link"
+      title="Open the guide for this"
+      aria-label="Help"
+      onClick={() => {
+        if (IS_WEB) window.open(`${DOCS_URL}#${section}`, "_blank", "noopener");
+        else helpOpen(section).catch(() => window.open(`${DOCS_URL}#${section}`, "_blank", "noopener"));
+      }}
+    >
+      ?
+    </button>
+  );
+}
+
+/**
+ * Reliability: the two things a booth Mac must do unattended — relaunch after
+ * a crash / start at login, and never fall asleep. The DMG install used to get
+ * neither; both are now switches here.
+ */
+function ReliabilityCard() {
+  const [st, setSt] = useState<KeepaliveStatus | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const load = () => keepaliveStatus().then(setSt).catch(() => {});
+  useEffect(() => {
+    load();
+  }, []);
+  const run = async (f: () => Promise<KeepaliveStatus | void>, ok: string) => {
+    setBusy(true);
+    setMsg("");
+    try {
+      const r = await f();
+      if (r) setSt(r as KeepaliveStatus);
+      else await load();
+      setMsg(ok);
+    } catch (e) {
+      setMsg(String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const on = !!st?.installed && !!st?.matchesCurrent;
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h3 id="set-reliability">Reliability</h3>
+        <HelpLink section="phase1" />
+        <span className={`chip ${on ? "online" : ""}`}>{on ? (st?.underLaunchd ? "watchdog running" : "watchdog armed") : "no watchdog"}</span>
+      </div>
+      <p className="muted small">
+        A booth Mac has to run unattended. These two switches are what keep ProDeck up
+        through a crash, a reboot, or a Mac that wants to nap.
+      </p>
+      <div className="rel-rows">
+        <div className="rel-row">
+          <div>
+            <strong>Keep ProDeck running</strong>
+            <span className="muted small">
+              {st === null
+                ? "Checking…"
+                : on
+                  ? st.underLaunchd
+                    ? "On — starts at login and relaunches within ~10 s of any crash. Running under the watchdog now."
+                    : "On — starts at login and relaunches after a crash. This session isn't under it yet."
+                  : st.installed
+                    ? `The watchdog points at a different copy of ProDeck (${st.program}). Update it to this one.`
+                    : st.inApplications
+                      ? "Off — if ProDeck crashes or the Mac restarts, it stays down until someone opens it."
+                      : "Move ProDeck to your Applications folder first — the watchdog needs a permanent path."}
+            </span>
+          </div>
+          <div className="rel-actions">
+            {st && !on && (
+              <button className="btn small primary" disabled={busy || !st.inApplications} onClick={() => run(keepaliveInstall, "Watchdog on.")}>
+                {st.installed ? "Update to this copy" : "Turn on"}
+              </button>
+            )}
+            {st && on && !st.underLaunchd && (
+              <button className="btn small" disabled={busy} title="Restarts ProDeck once so the watchdog owns it from now on" onClick={() => run(keepaliveRelaunch, "Relaunching…")}>
+                Relaunch under the watchdog
+              </button>
+            )}
+            {st && st.installed && (
+              <button className="btn small ghost" disabled={busy} onClick={() => run(keepaliveUninstall, "Watchdog off.")}>
+                Turn off
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="rel-row">
+          <div>
+            <strong>Keep this Mac awake while ProDeck is open</strong>
+            <span className="muted small">Prevents idle and system sleep for as long as ProDeck runs (the display may still dim). Nothing is left behind when ProDeck quits.</span>
+          </div>
+          <div className="rel-actions">
+            <label className="field check" style={{ margin: 0 }}>
+              <input type="checkbox" checked={!!st?.keepAwake} disabled={busy || st === null} onChange={(e) => run(() => keepAwakeSet(e.target.checked), e.target.checked ? "Sleep guard on." : "Sleep guard off.")} />
+              <span>{st?.keepAwake ? "On" : "Off"}</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      {msg && <p className="hint">{msg}</p>}
+      <p className="hint">A deliberate <strong>Quit</strong> stays quit — the watchdog only relaunches crashes. To restart on purpose, just open ProDeck again.</p>
+    </section>
+  );
+}
+
+/** Kiosk screens: a ready-made URL + QR for an office TV, lobby screen, or switcher PC. */
+function KioskCard({ form }: { form: Settings }) {
+  const [dashes, setDashes] = useState<{ name: string }[]>([]);
+  const [name, setName] = useState("");
+  const [qr, setQr] = useState("");
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    loadDashList()
+      .then((ds: any) => {
+        const list = ((ds ?? []) as { name: string }[]).filter((d) => d?.name);
+        setDashes(list);
+        if (!name && list[0]) setName(list[0].name);
+      })
+      .catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const f = form as any;
+  const token = f.web_member_password || "";
+  const base = (f.public_url?.trim?.() as string) || `http://${(f.device_name || "this-mac").replace(/\.local$/i, "")}.local:${f.web_port || 8088}`;
+  const url = name && token ? `${base.replace(/\/+$/, "")}/?kiosk=${encodeURIComponent(name)}&token=${encodeURIComponent(token)}` : "";
+  useEffect(() => {
+    if (!url) return setQr("");
+    QRCode.toDataURL(url, { margin: 1, width: 180 }).then(setQr).catch(() => setQr(""));
+  }, [url]);
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h3 id="set-kiosk">Kiosk screens</h3>
+        <HelpLink section="phase1" />
+      </div>
+      <p className="muted small">
+        Put a dashboard on an office TV, lobby screen, or the switcher PC: pick the dashboard,
+        open the link on that device, and it boots straight into it — no sign-in screen.
+      </p>
+      {!f.web_enabled ? (
+        <p className="hint">Turn on <strong>Browser Access</strong> above first — kiosks connect through it.</p>
+      ) : !token ? (
+        <p className="hint">Set a <strong>member password</strong> in Browser Access — kiosk links use it.</p>
+      ) : (
+        <div className="kiosk-wrap">
+          <div className="kiosk-side">
+            <label className="field">
+              <span>Dashboard</span>
+              <select className="input" value={name} onChange={(e) => setName(e.target.value)}>
+                {dashes.map((d) => (
+                  <option key={d.name} value={d.name}>{d.name}</option>
+                ))}
+              </select>
+            </label>
+            <code className="kiosk-url">{url}</code>
+            <div className="kiosk-actions">
+              <button className="btn small" onClick={() => { navigator.clipboard.writeText(url).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }).catch(() => {}); }}>
+                {copied ? "Copied ✓" : "Copy link"}
+              </button>
+            </div>
+            <ol className="kiosk-steps muted small">
+              <li><strong>Mac:</strong> open the link in Safari or Chrome, go full screen (⌃⌘F), and add it to Login Items so it comes back after a restart.</li>
+              <li><strong>Windows PC:</strong> a shortcut to <code>chrome.exe --kiosk "&lt;link&gt;"</code> in the Startup folder.</li>
+              <li><strong>iPad:</strong> open the link, Share → Add to Home Screen, then Settings → Accessibility → Guided Access to lock it.</li>
+            </ol>
+            <p className="hint">The link carries the member password. Rotating that password (Browser Access) invalidates every kiosk link at once — update the shortcuts when you do.</p>
+          </div>
+          {qr && <img src={qr} alt="Kiosk link" className="kiosk-qr" />}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** Backup & restore: one file with everything, for a new Mac or a dead one. */
+function BackupCard() {
+  const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [needRestart, setNeedRestart] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const doExport = async () => {
+    setBusy(true); setMsg("");
+    try {
+      const path = await backupExport();
+      setMsg(`Saved ${path} — it's selected in Finder. Copy it somewhere that leaves the building.`);
+    } catch (e) { setMsg(String(e)); } finally { setBusy(false); }
+  };
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const ok = await askConfirm(
+      `Restore from "${file.name}"? This replaces this Mac's settings, dashboards, crew, checklists and reports with the backup's. Current files are kept as .pre-restore copies. ProDeck restarts afterwards.`,
+      "Restore",
+    );
+    if (!ok) return;
+    setBusy(true); setMsg("");
+    try {
+      const text = await file.text();
+      const r = await backupImport(text);
+      setMsg(`Restored ${r.restored.length} files. Restart ProDeck to load them.`);
+      setNeedRestart(true);
+    } catch (e) { setMsg(String(e)); } finally { setBusy(false); }
+  };
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h3 id="set-backup">Backup &amp; restore</h3>
+        <HelpLink section="care" />
+      </div>
+      <p className="muted small">
+        One file holds everything ProDeck knows: settings, dashboards, crew accounts, checklists,
+        schedules, reports. Use it to move to a new Mac or to recover this one.
+      </p>
+      <div className="rel-actions" style={{ justifyContent: "flex-start", gap: 8 }}>
+        <button className="btn small primary" disabled={busy} onClick={doExport}>Back up now</button>
+        <button className="btn small" disabled={busy} onClick={() => fileRef.current?.click()}>Restore from a backup…</button>
+        <input ref={fileRef} type="file" accept=".json,application/json" hidden onChange={onFile} />
+        {needRestart && (
+          <button className="btn small primary" onClick={() => relaunch()}>Restart ProDeck</button>
+        )}
+      </div>
+      {msg && <p className="hint">{msg}</p>}
+      <p className="hint"><strong>The backup contains your passwords and API keys</strong> (that's what makes it a full restore). Keep it like a password: a drive in a safe, or an encrypted cloud folder — not email.</p>
+    </section>
+  );
+}
+
+/** Help & support: the guide, a redacted diagnostics bundle, and a one-click GitHub report. */
+function HelpCard() {
+  const { subsystems } = useAlerts();
+  const [summary, setSummary] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [log, setLog] = useState<string[] | null>(null);
+  const client = () => ({
+    lights: subsystems.map((s) => ({ key: s.key, state: s.state, detail: s.detail })),
+    web: IS_WEB,
+    url: IS_WEB ? location.origin : "desktop",
+  });
+  const copyBundle = async () => {
+    setBusy(true); setMsg("");
+    try {
+      const b = await diagBundle(client());
+      await navigator.clipboard.writeText(b);
+      setMsg("Diagnostics copied (secrets redacted). Paste them into an email or a GitHub issue.");
+      return b;
+    } catch (e) { setMsg(String(e)); } finally { setBusy(false); }
+    return "";
+  };
+  const report = async () => {
+    const b = await copyBundle();
+    if (!b) return;
+    try {
+      const j = JSON.parse(b);
+      const sys = `ProDeck ${j?.prodeck?.version ?? "?"} · macOS ${j?.system?.macos ?? "?"} (${j?.system?.arch ?? "?"})`;
+      const title = summary.trim().split("\n")[0].slice(0, 80) || "Problem report";
+      await diagOpenIssue(REPORT_REPO, title, summary.trim() || "(describe what happened)", sys);
+      setMsg("A GitHub page opened with your report started. Paste the diagnostics (already on your clipboard) into the Diagnostics box with Cmd-V, then Submit.");
+    } catch (e) { setMsg(String(e)); }
+  };
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h3 id="set-help">Help &amp; support</h3>
+        <HelpLink section="honest" />
+      </div>
+      <div className="rel-actions" style={{ justifyContent: "flex-start", gap: 8, marginBottom: 10 }}>
+        <button className="btn small" onClick={() => helpOpen().catch(() => window.open(DOCS_URL, "_blank", "noopener"))}>Open the guide</button>
+        <button className="btn small" title="Fill every dashboard with a pretend Sunday. Writes nothing." onClick={() => setDemo(!IS_DEMO)}>
+          {IS_DEMO ? "Exit demo mode" : "Try demo mode"}
+        </button>
+        <button className="btn small" onClick={() => window.open(`https://github.com/${REPORT_REPO}`, "_blank", "noopener")}>ProDeck on GitHub</button>
+        <button className="btn small" disabled={busy} onClick={copyBundle}>Copy diagnostics</button>
+        <button className="btn small ghost" onClick={() => (log ? setLog(null) : diagRecentLog(200).then(setLog).catch(() => setLog([])))}>{log ? "Hide log" : "Show recent log"}</button>
+      </div>
+      <label className="field wide">
+        <span>Report a problem — what happened?</span>
+        <textarea className="input" rows={3} value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="e.g. Live viewers shows 0 during the stream even though GA4 shows 40" />
+      </label>
+      <div className="rel-actions" style={{ justifyContent: "flex-start", gap: 8 }}>
+        <button className="btn small primary" disabled={busy || !summary.trim()} onClick={report}>Report on GitHub</button>
+        <span className="muted small">Opens a pre-filled issue; your diagnostics (passwords and keys removed) go on the clipboard to paste in.</span>
+      </div>
+      {msg && <p className="hint">{msg}</p>}
+      {log && (
+        <pre className="log-view">{log.length ? log.join("\n") : "(nothing logged yet this session)"}</pre>
+      )}
+    </section>
   );
 }

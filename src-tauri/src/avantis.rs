@@ -858,7 +858,7 @@ pub fn spawn_watch_flush(app: AppHandle) {
             ) {
                 // e.g. the configured user was un-approved: don't lose the
                 // alert silently.
-                eprintln!("[avantis] watchdog page failed: {e}");
+                crate::diag::log(format!("[avantis] watchdog page failed: {e}"));
             }
         }
     });

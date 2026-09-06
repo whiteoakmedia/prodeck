@@ -92,6 +92,10 @@ pub struct Settings {
     /// Avantis console mirror (MIDI over TCP, port 51325). Phase 1 is
     /// read-only: ProDeck listens to mutes/faders/scene and queries names —
     /// it never sends control messages to the desk.
+    /// Sleep guard: keep the Mac from idling/sleeping while ProDeck runs
+    /// (Settings → Reliability). Default on — a booth Mac that sleeps takes
+    /// everything in the room down with it.
+    pub keep_awake: bool,
     pub avantis_enabled: bool,
     pub avantis_host: String,
     /// Which Allen & Heath console: "avantis" (default), "dlive", or "sq".
@@ -190,6 +194,7 @@ impl Default for Settings {
             tap_enabled: false,
             tap_edge_url: String::new(),
             tap_token: String::new(),
+            keep_awake: true,
             avantis_enabled: false,
             avantis_host: String::new(),
             avantis_model: "avantis".into(),
@@ -210,7 +215,7 @@ impl Default for Settings {
 
 pub type SettingsState = Mutex<Settings>;
 
-fn config_dir() -> PathBuf {
+pub(crate) fn config_dir() -> PathBuf {
     let mut dir = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
     dir.push("ProDeck");
     let _ = std::fs::create_dir_all(&dir);
@@ -262,6 +267,18 @@ fn write_json_atomic_backed_up(path: PathBuf, json: String) -> Result<(), String
         }
     }
     write_locked(&path, &json)
+}
+
+/// The data folder (`~/Library/Application Support/ProDeck`).
+pub(crate) fn data_dir() -> PathBuf {
+    config_dir()
+}
+pub(crate) fn data_dir_display() -> String {
+    config_dir().display().to_string()
+}
+/// Atomic text write (temp + fsync + rename) for callers outside this module.
+pub(crate) fn write_text_atomic(path: &PathBuf, text: &str) -> Result<(), String> {
+    write_locked(path, text)
 }
 
 fn write_locked(path: &PathBuf, json: &str) -> Result<(), String> {

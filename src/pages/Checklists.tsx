@@ -7,6 +7,11 @@ import {
   type Visibility,
 } from "../checklistStore";
 import { askConfirm, askText } from "../lib/dialogs";
+import {
+  STARTER_CHECKLISTS,
+  addStarterChecklists,
+  missingStarterChecklists,
+} from "../lib/checklistTemplates";
 import { identityList, on, type CrewUser } from "../lib/tauri";
 import { usePco } from "../pcoStore";
 
@@ -58,6 +63,22 @@ export function ChecklistsPage() {
     setNewName("");
   };
 
+  // Starter lists: the save goes through the store's non-hook path, and the
+  // provider adopts the result, so nothing here needs refreshing by hand.
+  const [addingStarters, setAddingStarters] = useState(false);
+  const startersMissing = missingStarterChecklists(cl.checklists).length > 0;
+  const addStarters = async () => {
+    if (addingStarters) return;
+    setAddingStarters(true);
+    try {
+      await addStarterChecklists();
+    } catch {
+      /* booth refused or unreachable — the page simply stays as it was */
+    } finally {
+      setAddingStarters(false);
+    }
+  };
+
   return (
     <div className="page">
       <header className="page-head">
@@ -74,13 +95,43 @@ export function ChecklistsPage() {
             Add checklist
           </button>
         </div>
+        {cl.checklists.length > 0 && startersMissing && (
+          <button
+            className="btn small ghost cl-starter-link"
+            onClick={addStarters}
+            disabled={addingStarters}
+            title="Add the pre-built booth, audio, ProPresenter, camera, and shutdown lists you don't have yet"
+          >
+            Add starter checklists
+          </button>
+        )}
       </header>
 
       {cl.checklists.length === 0 ? (
-        <p className="muted cl-empty">
-          No checklists yet. Create one above — e.g. "Startup", "Pre‑Service", "Shutdown" — add
-          steps, and set a due time to get an alert if it isn't finished in time.
-        </p>
+        <div className="cl-starter-empty">
+          <h2>Start with the lists every booth needs</h2>
+          <p className="muted">
+            Five ready-made checklists — edit any step, change who sees each list, or delete
+            what doesn't fit. Or create your own above.
+          </p>
+          <ul className="cl-starter-names">
+            {STARTER_CHECKLISTS.map((s) => (
+              <li key={s.name}>
+                <span>{s.name}</span>
+                <span className="muted small">
+                  {s.visibility === "all"
+                    ? "Everyone"
+                    : s.visibility === "admin"
+                      ? "Admins only"
+                      : s.position}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <button className="btn primary" onClick={addStarters} disabled={addingStarters}>
+            {addingStarters ? "Adding…" : "Add starter checklists"}
+          </button>
+        </div>
       ) : (
         <div className="cl-page-body">
           {cl.checklists.map((c: Checklist) => {

@@ -8,6 +8,8 @@ import {
   identityList,
   identitySetRole,
   on,
+  IS_DEMO,
+  setDemo,
 } from "./lib/tauri";
 import { KioskPage } from "./pages/Kiosk";
 import { ChatProvider, useChat } from "./chatStore";
@@ -18,6 +20,8 @@ import { CrewPageTakeover } from "./mobile/CrewPages";
 import { ServiceWizard } from "./components/ServiceWizard";
 import { FirstRunSetup } from "./components/FirstRunSetup";
 import { isFreshInstall } from "./lib/onboarding";
+import { NAVIGATE_EVENT } from "./lib/navigate";
+import { requestSettingsJump } from "./lib/settingsJump";
 import { Setup } from "./pages/Setup";
 import { ChatDrawer } from "./components/ChatDrawer";
 import { usePco } from "./pcoStore";
@@ -106,6 +110,19 @@ function Shell() {
   // dashboard — the first thing a downloader sees should be the guided path,
   // not a blank grid. Runs once, only when truly unconfigured; a configured
   // booth always opens on Dashboard.
+  // Widgets / empty states ask to switch pages via a window event (no prop
+  // drilling through the dashboard grid). Optional Settings anchor rides along.
+  useEffect(() => {
+    const onNav = (e: Event) => {
+      const d = (e as CustomEvent).detail as { page?: string; settingsAnchor?: string } | undefined;
+      if (!d?.page) return;
+      if (d.settingsAnchor) requestSettingsJump(d.settingsAnchor);
+      setPage(d.page as Page);
+    };
+    window.addEventListener(NAVIGATE_EVENT, onNav);
+    return () => window.removeEventListener(NAVIGATE_EVENT, onNav);
+  }, []);
+
   const firstRouteDone = useRef(false);
   useEffect(() => {
     if (IS_WEB || firstRouteDone.current || settings === null) return;
@@ -277,6 +294,7 @@ function Shell() {
             »
           </button>
         )}
+        <DemoBanner />
         <UpdateBanner />
         {pendingCrew.length > 0 && page !== "settings" && (
           <div className="banner">
@@ -360,6 +378,24 @@ function ControlToast() {
   );
 }
 
+// Demo mode is loud on purpose: sample data on a real booth machine must
+// never be mistaken for the real thing.
+function DemoBanner() {
+  if (!IS_DEMO) return null;
+  return (
+    <div className="demo-banner" role="status">
+      <span className="demo-dot" />
+      <span>
+        <strong>Demo mode</strong> — everything on screen is sample data. Nothing is
+        saved and none of your equipment is connected.
+      </span>
+      <button className="btn small primary" onClick={() => setDemo(false)}>
+        Exit demo
+      </button>
+    </div>
+  );
+}
+
 // Announcement at the top of the main screen when a software update is
 // available / installing: version, what changed, and one-click install. The
 // notes come from the release feed (latest.json "notes"), i.e. whatever was
@@ -439,7 +475,8 @@ function UpdateBanner() {
 // In browser (web-gateway) mode, gate the app behind the access password before
 // any provider mounts (so we don't fire unauthorized requests at the host).
 function WebGate({ children }: { children: ReactNode }) {
-  const [authed, setAuthed] = useState(() => !IS_WEB || !!getWebToken());
+  // Demo mode never talks to a booth, so there is nothing to sign in to.
+  const [authed, setAuthed] = useState(() => IS_DEMO || !IS_WEB || !!getWebToken());
   const [pw, setPw] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -447,6 +484,7 @@ function WebGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!IS_WEB) return;
     const onUnauth = () => {
+      if (IS_DEMO) return; // demo mode has no session to expire
       setAuthed(false);
       setErr("Session expired — sign in again.");
     };

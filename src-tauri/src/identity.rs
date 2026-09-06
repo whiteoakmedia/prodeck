@@ -712,7 +712,8 @@ pub fn find_approved_by_name(id_state: &IdentityState, name: &str) -> Option<(St
         return None;
     }
     let s = id_state.store.lock().unwrap_or_else(|p| p.into_inner());
-    s.users
+    let exact = s
+        .users
         .iter()
         .filter(|u| u.approved)
         .find(|u| {
@@ -720,7 +721,35 @@ pub fn find_approved_by_name(id_state: &IdentityState, name: &str) -> Option<(St
                 || norm_name(&u.pco_name) == want
                 || (!u.nickname.is_empty() && norm_name(&u.nickname) == want)
         })
-        .map(|u| (u.id.clone(), u.name.clone()))
+        .map(|u| (u.id.clone(), u.name.clone()));
+    if exact.is_some() {
+        return exact;
+    }
+    // Fallback for PCO-driven keys: the plan says "Joshua Garcia" but the
+    // volunteer signed up as just "Joshua" (or "Zach Green" ↔ "Zachary
+    // Green"). Accept only when exactly ONE approved account fits — paging
+    // the wrong sibling is worse than an "unknown" error on the deck.
+    let first = want.split(' ').next().unwrap_or("");
+    let squash = |x: &str| norm_name(x).replace(' ', "");
+    let want_sq = squash(name);
+    let fits: Vec<&User> = s
+        .users
+        .iter()
+        .filter(|u| u.approved)
+        .filter(|u| {
+            let n = norm_name(&u.name);
+            // "John Di Giovanni" (PCO) ↔ "John Digiovanni" (signup)
+            squash(&u.name) == want_sq
+                || (!u.pco_name.is_empty() && squash(&u.pco_name) == want_sq)
+                || (!first.is_empty() && !n.contains(' ') && n == first)
+                || name_matches(&u.name, name)
+                || (!u.pco_name.is_empty() && name_matches(&u.pco_name, name))
+        })
+        .collect();
+    if fits.len() == 1 {
+        return fits.first().map(|u| (u.id.clone(), u.name.clone()));
+    }
+    None
 }
 
 /// Every user name (any approval state) — mirrored to the edge so booth-off

@@ -1,6 +1,9 @@
 mod ahmap;
 mod audio;
 mod avantis;
+mod backup;
+mod diag;
+mod keepalive;
 mod chat;
 mod checkin;
 mod discovery;
@@ -60,7 +63,7 @@ fn migrate_legacy_data_dir() {
     }
     if !new.exists() {
         if let Err(e) = std::fs::rename(&old, &new) {
-            eprintln!("[migrate] could not rename {} -> {}: {e}", old.display(), new.display());
+            crate::diag::log(format!("[migrate] could not rename {} -> {}: {e}", old.display(), new.display()));
             return;
         }
     } else {
@@ -70,7 +73,7 @@ fn migrate_legacy_data_dir() {
         let rd = match std::fs::read_dir(&old) {
             Ok(rd) => rd,
             Err(e) => {
-                eprintln!("[migrate] could not read {}: {e}", old.display());
+                crate::diag::log(format!("[migrate] could not read {}: {e}", old.display()));
                 return;
             }
         };
@@ -80,7 +83,7 @@ fn migrate_legacy_data_dir() {
                 continue;
             }
             if let Err(e) = std::fs::rename(ent.path(), &dst) {
-                eprintln!("[migrate] could not move {}: {e}", ent.path().display());
+                crate::diag::log(format!("[migrate] could not move {}: {e}", ent.path().display()));
             }
         }
     }
@@ -109,7 +112,7 @@ fn migrate_legacy_data_dir() {
     let tmp = sp.with_extension("json.tmp");
     let res = std::fs::write(&tmp, out).and_then(|_| std::fs::rename(&tmp, &sp));
     if let Err(e) = res {
-        eprintln!("[migrate] could not rewrite settings.json: {e}");
+        crate::diag::log(format!("[migrate] could not rewrite settings.json: {e}"));
         let _ = std::fs::remove_file(&tmp);
     }
 }
@@ -143,6 +146,7 @@ pub fn run() {
         .manage(Arc::new(AsyncMutex::new(ndi::NdiManager::new())) as ndi::NdiState)
         .manage(Arc::new(AsyncMutex::new(relay::RelayManager::new())) as relay::RelayState)
         .manage(Mutex::new(loaded_settings) as settings::SettingsState)
+        .manage(keepalive::KeepAwake(Mutex::new(None)))
         .manage(Arc::new(audio::AudioInner::new()) as audio::AudioState)
         .manage(Arc::new(transcription::TranscriptionInner::new())
             as transcription::TranscriptionState)
@@ -161,6 +165,14 @@ pub fn run() {
         .manage(Arc::new(Mutex::new(avantis::AvantisInner::default())) as avantis::AvantisState)
         .manage(ga4::new_state())
         .setup(move |app| {
+            // Sleep guard (Settings → Reliability), on by default: a booth Mac
+            // that dozes off takes everything in the room down with it.
+            {
+                let on = app.state::<settings::SettingsState>().lock().unwrap_or_else(|p| p.into_inner()).keep_awake;
+                if on {
+                    keepalive::set_keep_awake(&app.handle().clone(), true);
+                }
+            }
             if let Some(port) = web_autostart {
                 let state = app.state::<web::WebState>().inner().clone();
                 web::start(app.handle().clone(), state, port);
@@ -310,6 +322,17 @@ pub fn run() {
             tap::tap_stats_range,
             tap::tap_check_links,
             tap::tap_test,
+            diag::diag_bundle,
+            diag::diag_open_issue,
+            diag::diag_recent_log,
+            diag::help_open,
+            keepalive::keepalive_status,
+            keepalive::keepalive_install,
+            keepalive::keepalive_uninstall,
+            keepalive::keepalive_relaunch,
+            keepalive::keep_awake_set,
+            backup::backup_export,
+            backup::backup_import,
         ])
         .run(context)
         .expect("error while running tauri application");

@@ -23,6 +23,15 @@ Workers for the optional cloud features.
 - **TapLink** — NFC discs whose destination follows the service: a slide with
   `tap: give` in its notes retargets every disc in the building the moment it
   goes live.
+- **Try it with no equipment** — demo mode fills every dashboard with a sample
+  Sunday (plan, team, live slide, SPL, console) so you can see what ProDeck
+  does before connecting anything. It writes nothing.
+- **Runs unattended** — one switch installs a watchdog that relaunches ProDeck
+  after a crash and starts it at login, plus a sleep guard for the booth Mac.
+- **Backup & restore** — one file holds settings, dashboards, crew, checklists
+  and reports; restore it on a new Mac.
+- **Built-in help** — a `?` on every settings card, a redacted diagnostics
+  bundle, and one-click problem reporting.
 - **Consoles** — Allen & Heath **Avantis, dLive, and SQ** over MIDI-TCP: live
   mirror of mutes, faders, scenes (and names/colours on Avantis/dLive), a
   desk watchdog that pages one person about setup changes, and admin-only

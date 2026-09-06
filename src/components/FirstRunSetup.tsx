@@ -21,6 +21,8 @@ import {
   type Dashboard as Dash,
 } from "../lib/dashboards";
 import { requestSettingsJump } from "../lib/settingsJump";
+import { STARTER_CHECKLISTS, addStarterChecklists } from "../lib/checklistTemplates";
+import { keepaliveStatus, keepaliveInstall, setDemo, type KeepaliveStatus } from "../lib/tauri";
 import { isFreshInstall, readSetupDone, writeSetupDone, ONBOARDING_EVENT } from "../lib/onboarding";
 import { ConnectCard } from "./ConnectCard";
 import { Icon } from "./Icon";
@@ -191,6 +193,13 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
   const [dashMsg, setDashMsg] = useState("");
   const [dashBusy, setDashBusy] = useState(false);
   const createdRef = useRef(0);
+  const [withChecklists, setWithChecklists] = useState(true);
+  const [checklistsAdded, setChecklistsAdded] = useState(0);
+
+  // Reliability nudge on the Done screen
+  const [keep, setKeep] = useState<KeepaliveStatus | null>(null);
+  const [keepBusy, setKeepBusy] = useState(false);
+  const [keepMsg, setKeepMsg] = useState("");
 
   // ---- gating -----------------------------------------------------------
   useEffect(() => {
@@ -275,6 +284,11 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
       alive = false;
     };
   }, [open, stage]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!open || stage !== "done") return;
+    keepaliveStatus().then(setKeep).catch(() => {});
+  }, [open, stage]);
 
   // Dashboards stage: load what exists and pre-pick sensible starters.
   useEffect(() => {
@@ -440,14 +454,31 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
         add.push({ id: newId(), name: t.name, widgets: t.build() } as Dash);
       }
       if (add.length === 0) {
-        setDashMsg("Nothing selected that you don't already have.");
+        if (withChecklists) {
+          const n = await addStarterChecklists().catch(() => 0);
+          setChecklistsAdded(n);
+          setDashMsg(n > 0 ? `✓ Added ${n} starter checklist${n === 1 ? "" : "s"}.` : "Nothing selected that you don't already have.");
+          if (n > 0) createdRef.current += 1;
+        } else {
+          setDashMsg("Nothing selected that you don't already have.");
+        }
         return;
       }
       await saveDashboards([...list, ...add]);
       createdRef.current += add.length;
       setExisting([...list, ...add]);
       setPicked({});
-      setDashMsg(`✓ Created ${add.length} dashboard${add.length === 1 ? "" : "s"} — Dashboard → Edit to make them yours.`);
+      let extra = "";
+      if (withChecklists) {
+        try {
+          const n = await addStarterChecklists();
+          setChecklistsAdded(n);
+          if (n > 0) extra = ` and ${n} starter checklist${n === 1 ? "" : "s"}`;
+        } catch {
+          /* checklists are a bonus — never fail the step over them */
+        }
+      }
+      setDashMsg(`✓ Created ${add.length} dashboard${add.length === 1 ? "" : "s"}${extra} — Dashboard → Edit to make them yours.`);
     } catch (e) {
       setDashMsg(String(e));
     } finally {
@@ -535,11 +566,18 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
             </div>
             <p className="muted small ob-note">About 10 minutes with everything in the room turned on. Each step shows you it worked before you move on.</p>
             <div className="ob-actions">
-              <span />
+              <button className="btn ghost" onClick={() => setDemo(true)}>
+                Explore with sample data
+              </button>
               <button className="btn primary lg" onClick={next}>
                 Let's set it up →
               </button>
             </div>
+            <p className="muted small ob-note">
+              Not ready to connect anything? <strong>Explore with sample data</strong> fills every
+              dashboard with a pretend Sunday so you can see what ProDeck does. It writes nothing
+              and you can leave it at any time.
+            </p>
           </div>
         )}
 
@@ -799,12 +837,22 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
                 );
               })}
             </div>
+            <label className={`ob-tpl ob-tpl-wide ${withChecklists ? "on" : ""}`}>
+              <input type="checkbox" checked={withChecklists} onChange={(e) => setWithChecklists(e.target.checked)} disabled={checklistsAdded > 0} />
+              <div>
+                <strong>Also add starter volunteer checklists</strong>
+                <span>
+                  {STARTER_CHECKLISTS.map((c) => c.name).join(" · ")} — written by someone who has run a booth; edit anything.
+                </span>
+                {checklistsAdded > 0 && <em>Added — see the Checklists page</em>}
+              </div>
+            </label>
             {dashMsg && <p className={dashMsg.startsWith("✓") ? "ob-ok" : "muted small"}>{dashMsg}</p>}
             <div className="ob-actions">
               <button className="btn ghost" onClick={back}>← Back</button>
               <div className="ob-actions-r">
                 <button className="btn ghost" onClick={next}>Skip</button>
-                <button className="btn primary lg" disabled={dashBusy || !Object.values(picked).some(Boolean)} onClick={createDashboards}>
+                <button className="btn primary lg" disabled={dashBusy || (!Object.values(picked).some(Boolean) && !(withChecklists && checklistsAdded === 0))} onClick={createDashboards}>
                   {dashBusy ? "Creating…" : `Create ${Object.values(picked).filter(Boolean).length || ""} dashboard${Object.values(picked).filter(Boolean).length === 1 ? "" : "s"}`}
                 </button>
                 {createdRef.current > 0 && <button className="btn primary lg" onClick={next}>Next →</button>}
@@ -818,6 +866,40 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
             <div className="ob-done-badge"><span>✓</span></div>
             <h1>You're set up.</h1>
             <p className="ob-lead">Here's where you landed — anything grey is one click away later.</p>
+            {keep && !(keep.installed && keep.matchesCurrent) && (
+              <div className="ob-keep">
+                <div>
+                  <strong>Keep ProDeck running</strong>
+                  <span>
+                    {keep.inApplications
+                      ? "Start at login and relaunch within seconds of any crash — so a Sunday-morning hiccup never leaves the booth dark. Recommended for a booth Mac."
+                      : "Move ProDeck to your Applications folder, then turn this on from Settings → Reliability — it relaunches after a crash and starts at login."}
+                  </span>
+                  {keepMsg && <em>{keepMsg}</em>}
+                </div>
+                <button
+                  className="btn primary"
+                  disabled={keepBusy || !keep.inApplications}
+                  onClick={async () => {
+                    setKeepBusy(true);
+                    setKeepMsg("");
+                    try {
+                      setKeep(await keepaliveInstall());
+                      setKeepMsg("✓ On — ProDeck will come back on its own.");
+                    } catch (e) {
+                      setKeepMsg(String(e));
+                    } finally {
+                      setKeepBusy(false);
+                    }
+                  }}
+                >
+                  {keepBusy ? "Turning on…" : "Turn on"}
+                </button>
+              </div>
+            )}
+            {keep && keep.installed && keep.matchesCurrent && (
+              <p className="ob-ok"><span className="ob-check">✓</span> Keep ProDeck running is on — it starts at login and relaunches after a crash.</p>
+            )}
             <ul className="ob-summary">
               <SummaryRow ok={state.pro} label="ProPresenter" okText="connected" offText="not connected — ProPresenter page" />
               <SummaryRow ok={state.pco} label="Planning Center" okText="connected" offText="not connected — Settings → Planning Center" />

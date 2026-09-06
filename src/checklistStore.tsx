@@ -92,7 +92,8 @@ export const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const HOUR = 3600_000;
 const MAX_OVERDUE = 6 * HOUR; // longest a missed occurrence stays flagged
 
-const uid = () => crypto.randomUUID?.() ?? Math.random().toString(36).slice(2);
+/** Id convention for lists and items — shared with lib/checklistTemplates. */
+export const uid = () => crypto.randomUUID?.() ?? Math.random().toString(36).slice(2);
 
 // The earliest occurrence of any slot strictly after `after` (epoch ms).
 function nextOccurrence(schedule: Slot[], after: number): number | null {
@@ -175,6 +176,38 @@ function writeCache(list: Checklist[]) {
   }
 }
 
+/** Load the booth's checklist file (falling back to this device's cache) and
+ *  normalise the shape. Non-hook, so setup flows and templates can use the
+ *  same path the provider does. `fromBooth` is false when only the cache
+ *  answered. */
+export async function loadChecklistsNow(): Promise<{ data: Checklist[]; fromBooth: boolean }> {
+  const raw = (await loadChecklists().catch(() => null)) as Checklist[] | null;
+  const fromBooth = Array.isArray(raw) && raw.length > 0;
+  const source = fromBooth ? raw : (readCache() ?? raw);
+  const data: Checklist[] = Array.isArray(source)
+    ? source.map((c) => ({
+        ...c,
+        due: c.due ?? null,
+        activeDue: c.activeDue ?? null,
+        schedule: Array.isArray(c.schedule) ? c.schedule : [],
+      }))
+    : [];
+  return { data, fromBooth };
+}
+
+// Mounted providers adopt lists written through saveChecklistsNow, so a save
+// from outside React can't leave the in-memory copy stale (and about to be
+// re-saved over the top of the new file).
+const externalSaves = new Set<(list: Checklist[]) => void>();
+
+/** Persist a whole checklist file from outside React. Booth-only, like the
+ *  provider's own save — on a web client the booth refuses the write. */
+export async function saveChecklistsNow(list: Checklist[]): Promise<void> {
+  await saveChecklists(list as never);
+  writeCache(list);
+  for (const fn of externalSaves) fn(list);
+}
+
 export function ChecklistProvider({ children }: { children: ReactNode }) {
   const [checklists, setChecklists] = useState<Checklist[]>([]);
   const loaded = useRef(false);
@@ -182,25 +215,23 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      const raw = (await loadChecklists().catch(() => null)) as Checklist[] | null;
-      // Fall back to the last copy this device saw. S11 promises the checklist
+      // Falls back to the last copy this device saw. S11 promises the checklist
       // still works when the booth is unreachable, and without a cache that
       // promise was empty — there was nothing to render.
-      const source =
-        Array.isArray(raw) && raw.length > 0 ? raw : (readCache() ?? (raw as Checklist[] | null));
-      const data: Checklist[] = Array.isArray(source)
-        ? source.map((c) => ({
-            ...c,
-            due: c.due ?? null,
-            activeDue: c.activeDue ?? null,
-            schedule: Array.isArray(c.schedule) ? c.schedule : [],
-          }))
-        : [];
+      const { data, fromBooth } = await loadChecklistsNow();
       setChecklists(data);
-      if (Array.isArray(raw) && raw.length > 0) writeCache(data);
+      if (fromBooth) writeCache(data);
       lastSaved.current = JSON.stringify(data);
       loaded.current = true;
     })();
+    const adopt = (list: Checklist[]) => {
+      lastSaved.current = JSON.stringify(list);
+      setChecklists(list);
+    };
+    externalSaves.add(adopt);
+    return () => {
+      externalSaves.delete(adopt);
+    };
   }, []);
 
   useEffect(() => {

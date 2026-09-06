@@ -30,6 +30,7 @@ import {
   type Json,
   type PcoLiveAction,
   type PcoController,
+  IS_DEMO,
 } from "./lib/tauri";
 import { normTitle, bestMatch } from "./lib/match";
 
@@ -1024,7 +1025,9 @@ export function PcoProvider({ children }: { children: ReactNode }) {
 
   const autoTargetBusy = useRef(false);
   useEffect(() => {
-    if (IS_WEB) return;
+    // The booth picks this week's plan; browser clients follow it. Demo mode
+    // has no booth to follow, so it picks for itself.
+    if (IS_WEB && !IS_DEMO) return;
     const fresh = (p: Plan) => {
       const t = Date.parse(p.date);
       return Number.isFinite(t) && t >= Date.now() - 36 * 3600_000;

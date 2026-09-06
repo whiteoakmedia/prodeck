@@ -205,7 +205,7 @@ async fn poll_once(app: &AppHandle) {
         Err(e) => {
             // The path is booth-local detail (and redacted from web settings
             // for that reason); ga4_state is member-visible, so keep it out.
-            eprintln!("[ga4] can't read service-account key at {key_path}: {e}");
+            crate::diag::log(format!("[ga4] can't read service-account key at {key_path}: {e}"));
             return set_err(format!(
                 "can't read the service-account key file ({e}) — check the Live Viewers card in Settings on the ProDeck computer"
             ));
