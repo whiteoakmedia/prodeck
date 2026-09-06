@@ -7152,3 +7152,69 @@ select.input {
 .ob-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 30px; }
 .ob-actions-r { display: flex; gap: 9px; }
 .btn.lg { padding: 10px 20px; font-size: 14px; }
+
+/* ---- onboarding v2: consoles, team QR, templates, summary ---- */
+.ob-step.seen { color: var(--muted); cursor: pointer; }
+.ob-rail-foot { display: flex; flex-direction: column; gap: 6px; margin-top: 20px; padding: 0 10px; }
+.ob-rail-foot .ob-skip { margin-top: 0; padding: 0; }
+.ob-note { margin-top: 14px; }
+.ob-wait { color: var(--muted); font-size: 13.5px; display: flex; align-items: flex-start; gap: 8px; line-height: 1.45; }
+.ob-spin {
+  flex-shrink: 0; margin-top: 3px; width: 12px; height: 12px; border-radius: 50%;
+  border: 2px solid var(--border-hi); border-top-color: var(--accent);
+  animation: obspin 0.9s linear infinite;
+}
+@keyframes obspin { to { transform: rotate(360deg); } }
+
+.ob-consoles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+@media (max-width: 720px) { .ob-consoles { grid-template-columns: 1fr; } }
+.ob-console {
+  display: flex; flex-direction: column; gap: 4px; text-align: left; cursor: pointer;
+  padding: 12px 14px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+  transition: border-color 0.14s, background 0.14s;
+}
+.ob-console:hover { border-color: var(--border-hi); }
+.ob-console.on { border-color: var(--accent); background: var(--accent-soft); }
+.ob-console strong { font-size: 14px; }
+.ob-console span { color: var(--muted); font-size: 11.5px; line-height: 1.35; }
+.ob-form-row { display: grid; grid-template-columns: 1fr 110px 130px; gap: 10px; }
+@media (max-width: 620px) { .ob-form-row { grid-template-columns: 1fr; } }
+.ob-form-row .field { margin-bottom: 0; }
+
+.ob-join { display: flex; gap: 22px; align-items: flex-start; padding: 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 8px; }
+@media (max-width: 620px) { .ob-join { flex-direction: column; align-items: center; } }
+.ob-join-qr { width: 200px; height: 200px; border-radius: 10px; background: #fff; flex-shrink: 0; }
+.ob-join-ph { background: var(--panel-2); }
+.ob-join-side { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1; }
+.ob-join-h { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); }
+.ob-join-url { font-size: 13px; word-break: break-all; white-space: normal; padding: 6px 9px; }
+.ob-join-actions { display: flex; gap: 8px; }
+
+.ob-tpls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+@media (max-width: 620px) { .ob-tpls { grid-template-columns: 1fr; } }
+.ob-tpl {
+  display: flex; gap: 12px; align-items: flex-start; cursor: pointer;
+  padding: 12px 14px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+  transition: border-color 0.14s, background 0.14s;
+}
+.ob-tpl input { margin-top: 3px; flex-shrink: 0; }
+.ob-tpl.on { border-color: var(--accent); background: var(--accent-soft); }
+.ob-tpl.have { opacity: 0.65; cursor: default; }
+.ob-tpl > div { display: flex; flex-direction: column; gap: 3px; }
+.ob-tpl strong { font-size: 14px; }
+.ob-tpl span { color: var(--muted); font-size: 12.5px; line-height: 1.4; }
+.ob-tpl em { color: var(--good); font-size: 11.5px; font-style: normal; }
+
+.ob-summary { list-style: none; margin: 0 auto 6px; padding: 0; max-width: 520px; text-align: left; display: flex; flex-direction: column; }
+.ob-sum { display: grid; grid-template-columns: 14px 150px 1fr; gap: 12px; align-items: center; padding: 9px 4px; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+.ob-sum:last-child { border-bottom: none; }
+.ob-sum strong { font-weight: 600; }
+.ob-sum span:last-child { color: var(--muted); }
+.ob-sum.ok span:last-child { color: var(--text); }
+.ob-h3 { font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); margin: 26px 0 10px; text-align: left; }
+.ob-done .ob-h3 { text-align: left; }
+.ob-done .ob-addons { text-align: left; }
+@media print {
+  .ob-rail, .ob-actions, .ob-join-actions { display: none !important; }
+  .ob-root { position: static; display: block; background: #fff; color: #000; }
+}
