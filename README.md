@@ -58,6 +58,8 @@ That's it — no toolchain, no terminal. Runs on Intel and Apple Silicon Macs, m
 
 ProDeck checks for updates when it launches and offers to install them in one click — you won't need to come back here for new versions.
 
+What changed in each version: [CHANGELOG.md](CHANGELOG.md).
+
 > **Why the extra click?** Apple charges $99/yr for the Developer ID that
 > removes this prompt. Until ProDeck is notarized, macOS treats it like any
 > other free unsigned app: safe to run, but you approve it once in Settings.
