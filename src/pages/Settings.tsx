@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { consumeSettingsJump } from "../lib/settingsJump";
 import { useProDeck } from "../store";
 import { useAlerts } from "../alertsStore";
 import { useRelay } from "../relayStore";
@@ -66,6 +67,17 @@ export function SettingsPage() {
 
   // Crew roster (PIN identities). Available on the booth and admin web
   // clients; member clients get an error and the card simply hides.
+  // Deep-jump from onboarding: land on the exact card, not the page top.
+  useEffect(() => {
+    const target = consumeSettingsJump();
+    if (!target) return;
+    // Wait a frame so the cards are in the DOM.
+    const t = setTimeout(() => {
+      document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 60);
+    return () => clearTimeout(t);
+  }, []);
+
   useEffect(() => {
     let alive = true;
     const load = () =>

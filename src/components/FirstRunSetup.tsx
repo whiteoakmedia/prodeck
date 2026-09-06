@@ -2,37 +2,98 @@ import { useEffect, useState } from "react";
 import { useProDeck } from "../store";
 import { usePco } from "../pcoStore";
 import { getSettings, updateSettings, IS_WEB, type Settings } from "../lib/tauri";
+import { requestSettingsJump } from "../lib/settingsJump";
 import { ConnectCard } from "./ConnectCard";
 import { Icon } from "./Icon";
 
 /**
- * First-run walkthrough. A fresh install used to open on a silent empty
- * dashboard — the only onboarding was knowing which Settings cards to visit.
- * This walks the three connections that make ProDeck useful, each skippable,
- * and never returns once dismissed (prodeck.setupDone).
+ * First-run onboarding — a full-screen, staged walkthrough for a fresh install.
  *
- * Self-gating: desktop only, and only when nothing is configured yet — an
- * existing booth (Pro host or PCO creds present) never sees it.
+ * It does four things a downloader needs before anything else makes sense:
+ *   1. explains what ProDeck is and how it works,
+ *   2. shows every tool it can connect (so expectations are set),
+ *   3. connects the two essentials live (ProPresenter + Planning Center),
+ *   4. hands off the optional pieces to their Settings cards.
+ *
+ * Self-gating: desktop only, only when nothing is configured yet. Dismissed
+ * once and never returns (prodeck.setupDone). Re-openable from Setup.
  */
 
 const DONE_KEY = "prodeck.setupDone";
 
-const STEPS = ["welcome", "propresenter", "pco", "web", "done"] as const;
-type Step = (typeof STEPS)[number];
+type Stage = "welcome" | "tools" | "propresenter" | "pco" | "web" | "more" | "done";
+const STAGES: { id: Stage; label: string }[] = [
+  { id: "welcome", label: "Welcome" },
+  { id: "tools", label: "What it connects" },
+  { id: "propresenter", label: "ProPresenter" },
+  { id: "pco", label: "Planning Center" },
+  { id: "web", label: "Browser access" },
+  { id: "more", label: "Add-ons" },
+  { id: "done", label: "Done" },
+];
 
-export function FirstRunSetup() {
+// Everything ProDeck currently connects to, for the "what it supports" map.
+const TOOLS: {
+  group: string;
+  items: { name: string; need: "core" | "opt"; what: string }[];
+}[] = [
+  {
+    group: "The essentials",
+    items: [
+      { name: "ProPresenter", need: "core", what: "Live slides, the rundown, triggers, and slide-note automation." },
+      { name: "Planning Center", need: "core", what: "Service plans, teams, call times, mic assignments." },
+      { name: "Browser access", need: "opt", what: "These dashboards on any phone, tablet, or kiosk on your network." },
+    ],
+  },
+  {
+    group: "Audio & console",
+    items: [
+      { name: "Audio input", need: "opt", what: "Calibrated SPL + RTA metering from any input, including Dante." },
+      { name: "Allen & Heath Avantis", need: "opt", what: "Mirror the desk — names, mutes, faders, scenes — read-only." },
+      { name: "Song-key MIDI send", need: "opt", what: "Push the live song's key to Waves / plugin scenes over MIDI." },
+    ],
+  },
+  {
+    group: "Stream & lobby",
+    items: [
+      { name: "NDI stage feed", need: "opt", what: "Any NDI source as a confidence tile on a dashboard." },
+      { name: "Live viewers (GA4)", need: "opt", what: "Realtime watch-page count from your stream's analytics." },
+      { name: "TapLink NFC discs", need: "opt", what: "Lobby discs whose link follows the service automatically." },
+      { name: "Stream Deck", need: "opt", what: "Physical keys for tap, clears, and live readouts via Companion." },
+    ],
+  },
+  {
+    group: "Crew & cloud",
+    items: [
+      { name: "Crew phones", need: "opt", what: "Installable app: pages, chat, check-in, checklists." },
+      { name: "Your own domain", need: "opt", what: "Reach it anywhere, with a read-only fallback when the Mac is off." },
+    ],
+  },
+];
+
+// Optional connections the onboarding hands off to Settings, with the exact
+// card each one lives in.
+const ADDONS: { name: string; what: string; page: string; anchor: string }[] = [
+  { name: "Audio & SPL", what: "Pick the input ProDeck listens to; calibrate the meter.", page: "settings", anchor: "set-audio" },
+  { name: "Avantis console", what: "Mirror your Allen & Heath desk read-only.", page: "settings", anchor: "set-avantis" },
+  { name: "Song-key MIDI", what: "Send the live key to Waves / plugin scenes.", page: "settings", anchor: "set-songkey" },
+  { name: "Live viewers", what: "Connect Google Analytics for a realtime count.", page: "settings", anchor: "set-ga4" },
+  { name: "TapLink discs", what: "Point NFC discs at links that follow the service.", page: "settings", anchor: "set-taplink" },
+  { name: "Crew & remote", what: "Your public URL, invites, and crew approvals.", page: "settings", anchor: "set-web" },
+];
+
+export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void }) {
   const { settings, connected } = useProDeck();
   const pco = usePco();
   const [open, setOpen] = useState(false);
-  const [step, setStep] = useState<Step>("welcome");
+  const [stage, setStage] = useState<Stage>("welcome");
 
-  // PCO step state
   const [appId, setAppId] = useState("");
   const [secret, setSecret] = useState("");
   const [pcoBusy, setPcoBusy] = useState(false);
   const [pcoMsg, setPcoMsg] = useState("");
+  const [pcoDone, setPcoDone] = useState(false);
 
-  // Web step state
   const [webOn, setWebOn] = useState(true);
   const [adminPw, setAdminPw] = useState("");
   const [memberPw, setMemberPw] = useState("");
@@ -42,20 +103,28 @@ export function FirstRunSetup() {
   useEffect(() => {
     if (IS_WEB || settings === null) return;
     if (localStorage.getItem(DONE_KEY) === "1") return;
-    const fresh =
-      !settings.pp_host?.trim() && !settings.pco_app_id && !settings.web_enabled;
+    const fresh = !settings.pp_host?.trim() && !settings.pco_app_id && !settings.web_enabled;
     if (fresh) setOpen(true);
   }, [settings === null]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!open) return null;
 
+  const idx = STAGES.findIndex((s) => s.id === stage);
+  const go = (s: Stage) => setStage(s);
+  const next = () => go(STAGES[Math.min(idx + 1, STAGES.length - 1)].id);
+  const back = () => go(STAGES[Math.max(idx - 1, 0)].id);
   const finish = () => {
     localStorage.setItem(DONE_KEY, "1");
     setOpen(false);
   };
-  const idx = STEPS.indexOf(step);
-  const next = () => setStep(STEPS[Math.min(idx + 1, STEPS.length - 1)]);
-  const back = () => setStep(STEPS[Math.max(idx - 1, 0)]);
+
+  // A stage counts as "done" (checkmark in the rail) once its thing is set.
+  const doneState = (s: Stage): boolean => {
+    if (s === "propresenter") return connected;
+    if (s === "pco") return pcoDone || !!settings?.pco_app_id;
+    if (s === "web") return !!webMsg.startsWith("✓") || !!settings?.web_enabled;
+    return idx > STAGES.findIndex((x) => x.id === s);
+  };
 
   async function savePco() {
     setPcoBusy(true);
@@ -63,7 +132,8 @@ export function FirstRunSetup() {
     try {
       await pco.saveCredentials(appId.trim(), secret.trim());
       setPcoMsg("✓ Connected to Planning Center");
-      setTimeout(next, 700);
+      setPcoDone(true);
+      setTimeout(next, 800);
     } catch (e) {
       setPcoMsg(String(e));
     } finally {
@@ -76,15 +146,14 @@ export function FirstRunSetup() {
     setWebMsg("");
     try {
       const s = (await getSettings()) as Settings;
-      const nextS = {
+      await updateSettings({
         ...s,
         web_enabled: webOn,
         web_password: adminPw || s.web_password,
         web_member_password: memberPw || s.web_member_password,
-      };
-      await updateSettings(nextS as unknown as Settings);
+      } as unknown as Settings);
       setWebMsg("✓ Saved");
-      setTimeout(next, 500);
+      setTimeout(next, 600);
     } catch (e) {
       setWebMsg(String(e));
     } finally {
@@ -92,189 +161,253 @@ export function FirstRunSetup() {
     }
   }
 
+  const openAddon = (a: (typeof ADDONS)[number]) => {
+    requestSettingsJump(a.anchor);
+    finish();
+    onNavigate?.(a.page);
+  };
+
   return (
-    <div className="fr-backdrop">
-      <div className="fr-card">
-        <div className="fr-progress">
-          {STEPS.map((s, i) => (
-            <span key={s} className={`fr-dot ${i <= idx ? "on" : ""}`} />
-          ))}
+    <div className="ob-root">
+      {/* progress rail */}
+      <aside className="ob-rail">
+        <div className="ob-brand">
+          <span className="ob-mark" />
+          <span>ProDeck</span>
         </div>
-
-        {step === "welcome" && (
-          <>
-            <h2>Welcome to ProDeck</h2>
-            <p className="fr-lead">
-              Three quick connections make this useful. Every step is skippable —
-              everything lives in Settings afterward, so nothing here is a
-              one-shot decision.
-            </p>
-            <ol className="fr-list">
-              <li><strong>ProPresenter</strong> — live slides, rundown control, automation</li>
-              <li><strong>Planning Center</strong> — plans, teams, and everything scheduled</li>
-              <li><strong>Browser access</strong> — dashboards on phones and kiosk screens</li>
-            </ol>
-            <div className="fr-actions">
-              <button className="btn ghost" onClick={finish}>
-                Skip setup
-              </button>
-              <button className="btn primary" onClick={next}>
-                Start
-              </button>
-            </div>
-          </>
-        )}
-
-        {step === "propresenter" && (
-          <>
-            <h2>Connect ProPresenter</h2>
-            <p className="fr-lead">
-              On the ProPresenter computer, open{" "}
-              <strong>Preferences → Network</strong> and turn on{" "}
-              <strong>Enable Network</strong>. Then press{" "}
-              <strong>Find</strong> below — it discovers the address and port for
-              you. (Entering them by hand is the fallback; ProPresenter's Network
-              screen shows the exact port to use.)
-            </p>
-            <ConnectCard />
-            <div className="fr-actions">
-              <button className="btn ghost" onClick={back}>
-                Back
-              </button>
-              <button className="btn ghost" onClick={next}>
-                Skip
-              </button>
-              <button className="btn primary" disabled={!connected} onClick={next}>
-                {connected ? "Connected — next" : "Waiting for connection…"}
-              </button>
-            </div>
-          </>
-        )}
-
-        {step === "pco" && (
-          <>
-            <h2>Connect Planning Center</h2>
-            <p className="fr-lead">
-              Sign in at{" "}
-              <code>api.planningcenteronline.com</code> as any Planning Center
-              admin, open <strong>Personal Access Tokens</strong>, create one,
-              and paste the Application ID and Secret here. It stays on this
-              machine and is never sent anywhere else.
-            </p>
-            <label className="field">
-              <span>Application ID</span>
-              <input
-                className="input"
-                autoComplete="off"
-                value={appId}
-                onChange={(e) => setAppId(e.target.value)}
-              />
-            </label>
-            <label className="field">
-              <span>Secret</span>
-              <input
-                className="input"
-                type="password"
-                autoComplete="off"
-                value={secret}
-                onChange={(e) => setSecret(e.target.value)}
-              />
-            </label>
-            {pcoMsg && (
-              <p className={pcoMsg.startsWith("✓") ? "hint" : "error small"}>{pcoMsg}</p>
-            )}
-            <div className="fr-actions">
-              <button className="btn ghost" onClick={back}>
-                Back
-              </button>
-              <button className="btn ghost" onClick={next}>
-                Skip
-              </button>
-              <button
-                className="btn primary"
-                disabled={pcoBusy || !appId.trim() || !secret.trim()}
-                onClick={savePco}
+        <ol className="ob-steps">
+          {STAGES.map((s, i) => {
+            const state = s.id === stage ? "on" : doneState(s.id) ? "done" : i < idx ? "done" : "";
+            return (
+              <li
+                key={s.id}
+                className={`ob-step ${state}`}
+                onClick={() => (i <= idx || doneState(s.id) ? go(s.id) : null)}
               >
-                {pcoBusy ? "Checking…" : "Save & verify"}
-              </button>
-            </div>
-          </>
-        )}
+                <span className="ob-step-dot">{state === "done" ? "✓" : i + 1}</span>
+                {s.label}
+              </li>
+            );
+          })}
+        </ol>
+        <button className="ob-skip" onClick={finish}>
+          Skip &amp; explore on my own
+        </button>
+      </aside>
 
-        {step === "web" && (
-          <>
-            <h2>Browser access</h2>
-            <p className="fr-lead">
-              Serves these dashboards to phones and kiosks on your network.
-              Admin unlocks everything; the member password is dashboards + chat
-              only.
+      {/* content */}
+      <main className="ob-main">
+        {stage === "welcome" && (
+          <div className="ob-stage ob-welcome">
+            <span className="ob-eyebrow">Welcome</span>
+            <h1>Your production booth, in one app.</h1>
+            <p className="ob-lead">
+              ProDeck runs on a Mac in your booth and ties the room together —
+              ProPresenter, Planning Center, your consoles, crew phones, and the
+              livestream — then shows it all as live dashboards anyone on your
+              team can open.
             </p>
-            <label className="field check">
-              <input
-                type="checkbox"
-                checked={webOn}
-                onChange={(e) => setWebOn(e.target.checked)}
-              />
-              <span>Enable the web gateway (port 8088)</span>
-            </label>
-            <label className="field">
-              <span>Admin password</span>
-              <input
-                className="input"
-                type="password"
-                autoComplete="new-password"
-                value={adminPw}
-                onChange={(e) => setAdminPw(e.target.value)}
-              />
-            </label>
-            <label className="field">
-              <span>Member password (crew phones)</span>
-              <input
-                className="input"
-                type="password"
-                autoComplete="new-password"
-                value={memberPw}
-                onChange={(e) => setMemberPw(e.target.value)}
-              />
-            </label>
-            {webMsg && (
-              <p className={webMsg.startsWith("✓") ? "hint" : "error small"}>{webMsg}</p>
-            )}
-            <div className="fr-actions">
-              <button className="btn ghost" onClick={back}>
-                Back
-              </button>
-              <button className="btn ghost" onClick={next}>
-                Skip
-              </button>
-              <button
-                className="btn primary"
-                disabled={webBusy || (webOn && !adminPw)}
-                onClick={saveWeb}
-              >
-                {webBusy ? "Saving…" : "Save"}
+            <div className="ob-how">
+              <div className="ob-how-item">
+                <Icon name="dashboard" size={20} />
+                <strong>One hub</strong>
+                <span>This Mac connects to your tools and reads their live state.</span>
+              </div>
+              <div className="ob-how-item">
+                <Icon name="grid" size={20} />
+                <strong>Dashboards everywhere</strong>
+                <span>The same view on the booth screen, phones, and kiosks.</span>
+              </div>
+              <div className="ob-how-item">
+                <Icon name="checklist" size={20} />
+                <strong>Pick what you use</strong>
+                <span>Every connection is optional — ignore what you don't need.</span>
+              </div>
+            </div>
+            <div className="ob-actions">
+              <span />
+              <button className="btn primary lg" onClick={next}>
+                Take the tour →
               </button>
             </div>
-          </>
+          </div>
         )}
 
-        {step === "done" && (
-          <>
-            <h2>You're set</h2>
-            <p className="fr-lead">Where everything else lives:</p>
-            <ul className="fr-list">
-              <li><Icon name="settings" size={14} /> <strong>Settings</strong> — audio input & SPL, Avantis, MIDI key-send, GA4 viewers, crew approvals</li>
-              <li><Icon name="dashboard" size={14} /> <strong>Dashboard → Edit</strong> — build your widget layouts</li>
-              <li><Icon name="captions" size={14} /> <code>docs/ADOPTERS_GUIDE.html</code> — the full phased guide (tap discs, kiosks, your own domain)</li>
+        {stage === "tools" && (
+          <div className="ob-stage">
+            <span className="ob-eyebrow">What ProDeck connects</span>
+            <h1>Everything it can talk to.</h1>
+            <p className="ob-lead">
+              Two connections make it useful; the rest you add whenever you're
+              ready. Nothing here is required to start.
+            </p>
+            <div className="ob-tools">
+              {TOOLS.map((grp) => (
+                <div key={grp.group} className="ob-tool-group">
+                  <h3>{grp.group}</h3>
+                  {grp.items.map((it) => (
+                    <div key={it.name} className="ob-tool">
+                      <span className={`ob-tag ${it.need}`}>{it.need === "core" ? "Core" : "Optional"}</span>
+                      <div>
+                        <strong>{it.name}</strong>
+                        <span>{it.what}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+            <div className="ob-actions">
+              <button className="btn ghost" onClick={back}>← Back</button>
+              <button className="btn primary lg" onClick={next}>Let's connect →</button>
+            </div>
+          </div>
+        )}
+
+        {stage === "propresenter" && (
+          <div className="ob-stage">
+            <span className="ob-eyebrow">Step 1 · Essential</span>
+            <h1>Connect ProPresenter.</h1>
+            <p className="ob-lead">
+              On the ProPresenter computer, open <strong>Preferences → Network</strong>{" "}
+              and turn on <strong>Enable Network</strong>. Then press{" "}
+              <strong>Find</strong> — ProDeck discovers the address and port for
+              you. Typing them by hand is the fallback; ProPresenter's Network
+              screen shows the exact port.
+            </p>
+            <div className="ob-embed">
+              <ConnectCard />
+            </div>
+            {connected && (
+              <p className="ob-ok"><span className="ob-check">✓</span> Connected — slides and the rundown are live.</p>
+            )}
+            <div className="ob-actions">
+              <button className="btn ghost" onClick={back}>← Back</button>
+              <div className="ob-actions-r">
+                <button className="btn ghost" onClick={next}>Skip for now</button>
+                <button className="btn primary lg" disabled={!connected} onClick={next}>
+                  {connected ? "Next →" : "Waiting for connection…"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {stage === "pco" && (
+          <div className="ob-stage">
+            <span className="ob-eyebrow">Step 2 · Essential</span>
+            <h1>Connect Planning Center.</h1>
+            <p className="ob-lead">
+              Sign in at <code>api.planningcenteronline.com</code> as any
+              Planning Center admin, open <strong>Personal Access Tokens</strong>,
+              create one, and paste it here. It stays on this machine and is never
+              sent anywhere else.
+            </p>
+            <div className="ob-form">
+              <label className="field">
+                <span>Application ID</span>
+                <input className="input" autoComplete="off" value={appId} onChange={(e) => setAppId(e.target.value)} />
+              </label>
+              <label className="field">
+                <span>Secret</span>
+                <input className="input" type="password" autoComplete="off" value={secret} onChange={(e) => setSecret(e.target.value)} />
+              </label>
+              {pcoMsg && <p className={pcoMsg.startsWith("✓") ? "ob-ok" : "error small"}>{pcoMsg}</p>}
+            </div>
+            <div className="ob-actions">
+              <button className="btn ghost" onClick={back}>← Back</button>
+              <div className="ob-actions-r">
+                <button className="btn ghost" onClick={next}>Skip for now</button>
+                <button className="btn primary lg" disabled={pcoBusy || !appId.trim() || !secret.trim()} onClick={savePco}>
+                  {pcoBusy ? "Checking…" : "Connect →"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {stage === "web" && (
+          <div className="ob-stage">
+            <span className="ob-eyebrow">Step 3 · Recommended</span>
+            <h1>Open it to phones &amp; kiosks.</h1>
+            <p className="ob-lead">
+              Browser access serves these dashboards to any device on your
+              network. The <strong>admin</strong> password unlocks everything;
+              the <strong>member</strong> password is view + chat only, for the
+              team. Leave a password blank and that tier stays closed.
+            </p>
+            <div className="ob-form">
+              <label className="field check">
+                <input type="checkbox" checked={webOn} onChange={(e) => setWebOn(e.target.checked)} />
+                <span>Enable browser access (port 8088)</span>
+              </label>
+              <label className="field">
+                <span>Admin password</span>
+                <input className="input" type="password" autoComplete="new-password" value={adminPw} onChange={(e) => setAdminPw(e.target.value)} />
+              </label>
+              <label className="field">
+                <span>Member password <span className="muted">(crew phones)</span></span>
+                <input className="input" type="password" autoComplete="new-password" value={memberPw} onChange={(e) => setMemberPw(e.target.value)} />
+              </label>
+              {webMsg && <p className={webMsg.startsWith("✓") ? "ob-ok" : "error small"}>{webMsg}</p>}
+            </div>
+            <div className="ob-actions">
+              <button className="btn ghost" onClick={back}>← Back</button>
+              <div className="ob-actions-r">
+                <button className="btn ghost" onClick={next}>Skip for now</button>
+                <button className="btn primary lg" disabled={webBusy || (webOn && !adminPw)} onClick={saveWeb}>
+                  {webBusy ? "Saving…" : "Save →"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {stage === "more" && (
+          <div className="ob-stage">
+            <span className="ob-eyebrow">Optional</span>
+            <h1>Add what fits your room.</h1>
+            <p className="ob-lead">
+              Each of these opens its own Settings card — set up any that apply,
+              or come back to them from the <strong>Setup</strong> page anytime.
+            </p>
+            <div className="ob-addons">
+              {ADDONS.map((a) => (
+                <button key={a.name} className="ob-addon" onClick={() => openAddon(a)}>
+                  <div>
+                    <strong>{a.name}</strong>
+                    <span>{a.what}</span>
+                  </div>
+                  <span className="ob-addon-go">Open →</span>
+                </button>
+              ))}
+            </div>
+            <div className="ob-actions">
+              <button className="btn ghost" onClick={back}>← Back</button>
+              <button className="btn primary lg" onClick={next}>I'm set for now →</button>
+            </div>
+          </div>
+        )}
+
+        {stage === "done" && (
+          <div className="ob-stage ob-done">
+            <div className="ob-done-badge"><span>✓</span></div>
+            <h1>You're ready.</h1>
+            <p className="ob-lead">
+              Here's where everything lives once you're in.
+            </p>
+            <ul className="ob-recap">
+              <li><Icon name="dashboard" size={16} /> <strong>Dashboard → Edit</strong> — drag widgets to build the layouts your team sees.</li>
+              <li><Icon name="checklist" size={16} /> <strong>Setup</strong> — every connection's live status, with fix-it steps when something's off.</li>
+              <li><Icon name="settings" size={16} /> <strong>Settings</strong> — audio, console, MIDI, viewers, crew, and the rest.</li>
             </ul>
-            <div className="fr-actions">
-              <button className="btn primary" onClick={finish}>
-                Open ProDeck
-              </button>
+            <div className="ob-actions">
+              <span />
+              <button className="btn primary lg" onClick={finish}>Open ProDeck →</button>
             </div>
-          </>
+          </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }
