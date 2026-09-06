@@ -282,7 +282,7 @@ export function CrewPageComposer({
                 }
               >
                 <span className={`crew-check ${on ? "on" : ""}`}>{on ? "✓" : ""}</span>
-                <span className="crew-recip-name">{u.name}</span>
+                <span className="crew-recip-name">{(u as any).nickname || u.name}</span>
                 {u.last_seen_ms > 0 && (
                   <span className="mono-data crew-recip-seen">
                     seen {hhmm(u.last_seen_ms)}

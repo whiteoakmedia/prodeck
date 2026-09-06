@@ -22,6 +22,7 @@ import {
   identityList,
   identityApprove,
   identityRemove,
+  identityUpdateProfile,
   type CrewUser,
   tapMappings,
   tapSaveMappings,
@@ -886,36 +887,7 @@ export function SettingsPage() {
           <PersonalInvites />
           {crew.length === 0 && <p className="muted small">Nobody has joined yet.</p>}
           {crew.map((u) => (
-            <div key={u.id} className="field-row crew-row">
-              <span className={`chip ${u.approved ? "online" : ""}`}>
-                {u.approved ? "approved" : "pending"}
-              </span>
-              <span className="crew-name">{u.name}</span>
-              {/* Read-only: the position comes from THIS WEEK'S Planning
-                  Center plan, matched by name. There is nothing to type here —
-                  scheduling someone in PCO is what gives them a position, and
-                  taking them off it is what removes one. */}
-              <span
-                className={`crew-role-view ${u.role ? "" : "muted"}`}
-                title="From this week's Planning Center plan — change it in PCO"
-              >
-                {u.role || "not on this week's plan"}
-              </span>
-              <span className="muted small">
-                {u.last_seen_ms
-                  ? `seen ${new Date(u.last_seen_ms).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}`
-                  : "never signed in"}
-              </span>
-              <button
-                className={`btn small ${u.approved ? "ghost" : "primary"}`}
-                onClick={() => identityApprove(u.id, !u.approved).catch(() => {})}
-              >
-                {u.approved ? "Revoke" : "Approve"}
-              </button>
-              <button className="btn small ghost" onClick={() => identityRemove(u.id).catch(() => {})}>
-                Remove
-              </button>
-            </div>
+            <CrewRow key={u.id} u={u} />
           ))}
         </section>
       )}
@@ -1996,6 +1968,151 @@ function PersonalInvites() {
         The link signs them in, fills their name and role, and skips approval —
         they only pick a PIN. Links die after one use or 7 days.
       </span>
+    </div>
+  );
+}
+
+/**
+ * One crew member, with an inline editor for the three things an admin fixes
+ * by hand: the display name (a typo at signup), a nickname (what people
+ * actually call them — also unlocks their PIN), and WHICH Planning Center
+ * person this account is. Choosing a PCO person pins the link so the weekly
+ * auto-match can never undo the fix.
+ */
+function CrewRow({ u }: { u: CrewUser }) {
+  const pco = usePco();
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(u.name);
+  const [nick, setNick] = useState(u.nickname ?? "");
+  const [link, setLink] = useState(u.pco_name ?? "");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  // Names on this week's plan (deduped) — the usual fix is "pick the right
+  // person", not "type a spelling". Free text still works for someone not
+  // scheduled this week.
+  const planNames = Array.from(
+    new Set(pco.team.filter((m) => !isDeclined(m.status)).map((m) => m.name.trim()).filter(Boolean)),
+  ).sort((a, b) => a.localeCompare(b));
+  const linkIsCustom = !!link && !planNames.includes(link);
+
+  const open = () => {
+    setName(u.name);
+    setNick(u.nickname ?? "");
+    setLink(u.pco_name ?? "");
+    setErr("");
+    setEditing(true);
+  };
+  const save = async () => {
+    setBusy(true);
+    setErr("");
+    try {
+      const patch: { name?: string; nickname?: string; pco_name?: string } = {};
+      if (name.trim() !== u.name) patch.name = name.trim();
+      if (nick.trim() !== (u.nickname ?? "")) patch.nickname = nick.trim();
+      if (link.trim() !== (u.pco_name ?? "")) patch.pco_name = link.trim();
+      if (Object.keys(patch).length) await identityUpdateProfile(u.id, patch);
+      setEditing(false);
+    } catch (e) {
+      setErr(String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className={`crew-row-wrap ${editing ? "editing" : ""}`}>
+      <div className="field-row crew-row">
+        <span className={`chip ${u.approved ? "online" : ""}`}>
+          {u.approved ? "approved" : "pending"}
+        </span>
+        <span className="crew-name">
+          {u.name}
+          {u.nickname && <span className="crew-nick">“{u.nickname}”</span>}
+        </span>
+        {/* Read-only: the position comes from THIS WEEK'S Planning Center
+            plan, matched through the PCO link below. */}
+        <span
+          className={`crew-role-view ${u.role ? "" : "muted"}`}
+          title="From this week's Planning Center plan — change it in PCO"
+        >
+          {u.role || "not on this week's plan"}
+        </span>
+        <span
+          className={`crew-pco ${u.pco_name ? "" : "muted"}`}
+          title={u.pco_pinned ? "Linked by hand — the auto-match won't change it" : "Auto-matched to Planning Center"}
+        >
+          {u.pco_name ? `PCO: ${u.pco_name}${u.pco_pinned ? " 📌" : ""}` : "PCO: not linked"}
+        </span>
+        <span className="muted small">
+          {u.last_seen_ms
+            ? `seen ${new Date(u.last_seen_ms).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}`
+            : "never signed in"}
+        </span>
+        <button className="btn small ghost" onClick={editing ? () => setEditing(false) : open}>
+          {editing ? "Cancel" : "Edit"}
+        </button>
+        <button
+          className={`btn small ${u.approved ? "ghost" : "primary"}`}
+          onClick={() => identityApprove(u.id, !u.approved).catch(() => {})}
+        >
+          {u.approved ? "Revoke" : "Approve"}
+        </button>
+        <button className="btn small ghost" onClick={() => identityRemove(u.id).catch(() => {})}>
+          Remove
+        </button>
+      </div>
+      {editing && (
+        <div className="crew-edit">
+          <label className="field">
+            <span>Name</span>
+            <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
+            <span className="hint">What they signed up as. Fixing a typo here keeps their PIN.</span>
+          </label>
+          <label className="field">
+            <span>Nickname</span>
+            <input className="input" placeholder="e.g. Zach" value={nick} onChange={(e) => setNick(e.target.value)} />
+            <span className="hint">Shown alongside their name; also unlocks their PIN.</span>
+          </label>
+          <label className="field">
+            <span>Planning Center person</span>
+            <select
+              className="input"
+              value={linkIsCustom ? "__custom" : link}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "__custom") setLink(link || " ");
+                else setLink(v);
+              }}
+            >
+              <option value="">Not linked (let ProDeck auto-match)</option>
+              {planNames.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+              <option value="__custom">Someone not on this week's plan…</option>
+            </select>
+            {linkIsCustom && (
+              <input
+                className="input"
+                placeholder="Exact name as it appears in Planning Center"
+                value={link.trim()}
+                onChange={(e) => setLink(e.target.value || " ")}
+              />
+            )}
+            <span className="hint">
+              Which PCO person this account is. Picking one pins the link — the weekly
+              auto-match will never change it. Their position, call time and checklists follow this.
+            </span>
+          </label>
+          {err && <p className="error small">{err}</p>}
+          <div className="crew-edit-actions">
+            <button className="btn small ghost" onClick={() => setEditing(false)}>Cancel</button>
+            <button className="btn small primary" disabled={busy || !name.trim()} onClick={save}>
+              {busy ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

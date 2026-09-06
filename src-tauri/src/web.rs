@@ -1326,6 +1326,18 @@ async fn dispatch(app: &AppHandle, cmd: &str, args: &Value, tier: Tier) -> Resul
             crate::identity::remove_core(app, &identity, s("id"))?;
             Ok(Value::Null)
         }
+        "identity_update_profile" => {
+            let opt = |k: &str| args.get(k).and_then(|v| v.as_str()).map(|v| v.to_string());
+            let identity = app.state::<crate::identity::IdentityState>().inner().clone();
+            crate::identity::update_profile_core(
+                app,
+                &identity,
+                opt("id").ok_or("missing id")?,
+                opt("name"),
+                opt("nickname"),
+                opt("pco_name"),
+            )
+        }
         "chat_clear_confidence" => {
             crate::chat::clear_confidence_core(app);
             Ok(Value::Null)

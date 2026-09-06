@@ -40,6 +40,16 @@ pub struct User {
     /// not yet linked.
     #[serde(default)]
     pub pco_name: String,
+    /// What people actually call this person ("Zach" for "Zachary Green").
+    /// Display + a login alias; matching to Planning Center still goes through
+    /// pco_name. Empty = none.
+    #[serde(default)]
+    pub nickname: String,
+    /// True once an admin set pco_name by hand. The weekly heal pass then
+    /// never rewrites the link — a manual fix must stick even when the
+    /// nickname heuristic would have guessed differently.
+    #[serde(default)]
+    pub pco_pinned: bool,
 }
 
 /// A personal, one-time onboarding link: grants member-tier gateway access
@@ -202,6 +212,8 @@ pub fn register_core(
         last_seen_ms: 0,
         role: role.trim().chars().take(48).collect(),
         pco_name: String::new(),
+        nickname: String::new(),
+        pco_pinned: false,
     };
     let uid = user.id.clone();
     let urole = user.role.clone();
@@ -330,6 +342,12 @@ pub fn login_core(
             s.users
                 .iter()
                 .position(|u| !u.pco_name.is_empty() && u.pco_name.eq_ignore_ascii_case(trimmed))
+        })
+        // …and the nickname an admin gave them, so "Zach" unlocks Zachary's PIN.
+        .or_else(|| {
+            s.users
+                .iter()
+                .position(|u| !u.nickname.is_empty() && u.nickname.eq_ignore_ascii_case(trimmed))
         })
         .ok_or("no such name — register first")?;
     let user = &mut s.users[idx];
@@ -460,6 +478,7 @@ pub fn list_core(id_state: &IdentityState) -> serde_json::Value {
             "id": u.id, "name": u.name, "approved": u.approved,
             "created_ms": u.created_ms, "last_seen_ms": u.last_seen_ms,
             "role": u.role, "pco_name": u.pco_name,
+            "nickname": u.nickname, "pco_pinned": u.pco_pinned,
         }))
         .collect::<Vec<_>>())
 }
@@ -488,6 +507,83 @@ pub fn remove_core(app: &AppHandle, id_state: &IdentityState, id: String) -> Res
     id_state.persist(&s);
     app.emit("identity:changed", json!({})).ok();
     Ok(())
+}
+
+/// Admin edit of a crew profile: display name, nickname, and/or the Planning
+/// Center person this account is linked to. Any field passed as None is left
+/// alone. Setting pco_name (even to "") pins the link so the heal pass stops
+/// second-guessing it; clearing with pinned=false hands it back to the heal.
+pub fn update_profile_core(
+    app: &AppHandle,
+    id_state: &IdentityState,
+    id: String,
+    name: Option<String>,
+    nickname: Option<String>,
+    pco_name: Option<String>,
+) -> Result<serde_json::Value, String> {
+    let mut s = id_state.store.lock().unwrap_or_else(|p| p.into_inner());
+    let idx = s.users.iter().position(|u| u.id == id).ok_or("no such user")?;
+
+    if let Some(n) = &name {
+        let n: String = n.trim().chars().take(MAX_NAME).collect();
+        if n.is_empty() {
+            return Err("name can't be empty".into());
+        }
+        // Names and nicknames are login handles — they must not collide with
+        // anyone else's, or a PIN could unlock the wrong account.
+        let nn = norm_name(&n);
+        if s.users.iter().enumerate().any(|(i, u)| {
+            i != idx && (norm_name(&u.name) == nn || norm_name(&u.nickname) == nn)
+        }) {
+            return Err(format!("\"{n}\" is already another crew member's name or nickname"));
+        }
+        s.users[idx].name = n;
+    }
+    if let Some(k) = &nickname {
+        let k: String = k.trim().chars().take(MAX_NAME).collect();
+        if !k.is_empty() {
+            let kn = norm_name(&k);
+            if s.users.iter().enumerate().any(|(i, u)| {
+                i != idx && (norm_name(&u.name) == kn || norm_name(&u.nickname) == kn)
+            }) {
+                return Err(format!("\"{k}\" is already another crew member's name or nickname"));
+            }
+        }
+        s.users[idx].nickname = k;
+    }
+    if let Some(pn) = &pco_name {
+        let pn: String = pn.trim().chars().take(MAX_NAME).collect();
+        if pn.is_empty() {
+            // Unlink and let the heal pass try again from the name.
+            s.users[idx].pco_name.clear();
+            s.users[idx].pco_pinned = false;
+        } else {
+            // One PCO person per account.
+            let pnn = norm_name(&pn);
+            if let Some(other) = s
+                .users
+                .iter()
+                .enumerate()
+                .find(|(i, u)| *i != idx && norm_name(&u.pco_name) == pnn)
+            {
+                return Err(format!(
+                    "{} is already linked to crew member \"{}\"",
+                    pn, other.1.name
+                ));
+            }
+            s.users[idx].pco_name = pn;
+            s.users[idx].pco_pinned = true;
+        }
+    }
+    let u = &s.users[idx];
+    let out = json!({
+        "id": u.id, "name": u.name, "nickname": u.nickname,
+        "pco_name": u.pco_name, "pco_pinned": u.pco_pinned, "role": u.role,
+    });
+    id_state.persist(&s);
+    drop(s);
+    app.emit("identity:changed", json!({})).ok();
+    Ok(out)
 }
 
 // ------------------------------------------------------------ PCO name heal
@@ -555,6 +651,19 @@ fn heal_users(users: &mut [User], roster: &[RosterEntry]) -> (usize, usize) {
         if !users[i].approved {
             continue;
         }
+        // An admin-set link is final: never re-guess it. Still adopt the
+        // scheduled position from that exact roster row if none is set.
+        if users[i].pco_pinned {
+            if let Some(r) =
+                roster.iter().find(|r| norm_name(&r.name) == norm_name(&users[i].pco_name))
+            {
+                if users[i].role.trim().is_empty() && !r.position.trim().is_empty() {
+                    users[i].role = r.position.trim().chars().take(48).collect();
+                    roled += 1;
+                }
+            }
+            continue;
+        }
         let key = if users[i].pco_name.is_empty() {
             users[i].name.clone()
         } else {
@@ -606,7 +715,11 @@ pub fn find_approved_by_name(id_state: &IdentityState, name: &str) -> Option<(St
     s.users
         .iter()
         .filter(|u| u.approved)
-        .find(|u| norm_name(&u.name) == want || norm_name(&u.pco_name) == want)
+        .find(|u| {
+            norm_name(&u.name) == want
+                || norm_name(&u.pco_name) == want
+                || (!u.nickname.is_empty() && norm_name(&u.nickname) == want)
+        })
         .map(|u| (u.id.clone(), u.name.clone()))
 }
 
@@ -664,6 +777,8 @@ pub fn ingest_edge_joins(
             last_seen_ms: 0,
             role: get("role").trim().chars().take(48).collect(),
             pco_name: String::new(),
+            nickname: String::new(),
+            pco_pinned: false,
         };
         s.sessions.insert(session, user.id.clone());
         s.users.push(user);
@@ -727,6 +842,18 @@ pub fn identity_set_role(
 }
 
 #[tauri::command]
+pub fn identity_update_profile(
+    id: String,
+    name: Option<String>,
+    nickname: Option<String>,
+    pco_name: Option<String>,
+    identity: tauri::State<'_, IdentityState>,
+    app: AppHandle,
+) -> Result<serde_json::Value, String> {
+    update_profile_core(&app, identity.inner(), id, name, nickname, pco_name)
+}
+
+#[tauri::command]
 pub fn identity_remove(
     id: String,
     identity: tauri::State<'_, IdentityState>,
@@ -781,10 +908,34 @@ mod heal_tests {
             last_seen_ms: 0,
             role: role.to_string(),
             pco_name: pco.to_string(),
+            nickname: String::new(),
+            pco_pinned: false,
         }
     }
     fn entry(name: &str, position: &str) -> RosterEntry {
         RosterEntry { name: name.to_string(), position: position.to_string() }
+    }
+
+    #[test]
+    fn pinned_link_survives_heal_but_still_adopts_position() {
+        let mut u = user("zach green", "", "Zach Grn"); // admin-typed link, not on plan by that spelling
+        u.pco_pinned = true;
+        let mut users = vec![u];
+        // Unpinned, the heuristic would have relinked to "Zachary Green".
+        let (linked, roled) =
+            heal_users(&mut users, &[entry("Zachary Green", "Audio Engineer")]);
+        assert_eq!((linked, roled), (0, 0));
+        assert_eq!(users[0].pco_name, "Zach Grn");
+
+        // Pinned to a row that IS on the plan: keep the link, adopt the role.
+        let mut u2 = user("zach green", "", "Zachary Green");
+        u2.pco_pinned = true;
+        let mut users2 = vec![u2];
+        let (linked, roled) =
+            heal_users(&mut users2, &[entry("Zachary Green", "Audio Engineer")]);
+        assert_eq!((linked, roled), (0, 1));
+        assert_eq!(users2[0].pco_name, "Zachary Green");
+        assert_eq!(users2[0].role, "Audio Engineer");
     }
 
     #[test]

@@ -5616,7 +5616,25 @@ select.input {
 /* Crew join + roster */
 .w-chat-join { display: flex; flex-direction: column; gap: 10px; padding: 8px 2px; }
 .crew-row { align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-.crew-name { font-weight: 600; flex: 1; }
+.crew-name { font-weight: 600; flex: 1; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.crew-nick { font-weight: 500; color: var(--muted); font-size: 12.5px; }
+.crew-pco { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.crew-pco.muted { color: var(--faint); }
+.crew-row-wrap.editing .crew-row { border-bottom-color: transparent; }
+.crew-edit {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.4fr;
+  gap: 12px;
+  padding: 10px 12px 12px;
+  margin: 0 0 8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+@media (max-width: 900px) { .crew-edit { grid-template-columns: 1fr; } }
+.crew-edit .field .hint { font-size: 11.5px; margin-top: 4px; }
+.crew-edit .field select + .input { margin-top: 6px; }
+.crew-edit-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; }
 
 /* Booth-side page controls in the Messages panel. Amber and a different shape
    from Send, so a page is never fired by accident mid-service. */

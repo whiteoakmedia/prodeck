@@ -300,6 +300,7 @@ pub fn run() {
             identity::identity_set_role,
             identity::identity_heal_pco,
             identity::identity_remove,
+            identity::identity_update_profile,
             tap::tap_override,
             tap::tap_edge_state,
             tap::tap_mappings,

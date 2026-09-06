@@ -697,9 +697,19 @@ export interface CrewUser {
   last_seen_ms: number;
   /** Sunday role ("Camera 1"). Free text, admin-set; "" until assigned. */
   role: string;
-  /** Healed Planning Center spelling; "" until linked. */
+  /** Planning Center spelling this account is linked to; "" until linked. */
   pco_name?: string;
+  /** What people call them ("Zach"). Display + login alias; "" = none. */
+  nickname?: string;
+  /** True when an admin set pco_name by hand — the weekly heal won't touch it. */
+  pco_pinned?: boolean;
 }
+/** Admin edit of a crew profile. Omitted fields are left unchanged; pco_name
+ *  "" unlinks (and un-pins), any other value links AND pins. */
+export const identityUpdateProfile = (
+  id: string,
+  patch: { name?: string; nickname?: string; pco_name?: string },
+) => invoke<CrewUser>("identity_update_profile", { id, ...patch });
 export const identitySetRole = (id: string, role: string) =>
   invoke<void>("identity_set_role", { id, role });
 export const identityRegister = (name: string, pin: string, role = "", invite = "") =>
