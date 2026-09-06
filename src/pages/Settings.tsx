@@ -349,8 +349,9 @@ export function SettingsPage() {
           </div>
         </div>
         <p className="hint">
-          Updates download from the booth machine over your network and install on restart.
-          The update server address is set in the build's updater endpoint.
+          ProDeck checks for updates a few seconds after launch and shows a banner when one
+          is ready. Updates are signed releases from the ProDeck GitHub repository (or your
+          own fork's feed, if you build it yourself); installing restarts the app.
         </p>
       </section>
 

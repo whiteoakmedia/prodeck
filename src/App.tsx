@@ -360,22 +360,66 @@ function ControlToast() {
   );
 }
 
-// Floating banner when a software update is available / installing.
+// Announcement at the top of the main screen when a software update is
+// available / installing: version, what changed, and one-click install. The
+// notes come from the release feed (latest.json "notes"), i.e. whatever was
+// written at publish time — so the changelog people see is the real one.
 function UpdateBanner() {
   const u = useUpdater();
+  const [showNotes, setShowNotes] = useState(true);
   if (u.status === "available") {
+    // Light markdown: "#" lines are headings, "-"/"*"/"•" lines are bullets,
+    // everything else a paragraph. Enough for release notes without a parser.
+    const blocks = (u.notes ?? "")
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((l) =>
+        /^#+\s/.test(l)
+          ? { t: "h" as const, v: l.replace(/^#+\s*/, "") }
+          : /^[-*•]\s/.test(l)
+            ? { t: "li" as const, v: l.replace(/^[-*•]\s*/, "") }
+            : { t: "p" as const, v: l },
+      );
     return (
-      <div className="update-banner">
-        <span className="dot online" />
-        <span>
-          Update <strong>v{u.newVersion}</strong> available
-        </span>
-        <button className="btn small primary" onClick={() => u.install()}>
-          Install &amp; Restart
-        </button>
-        <button className="btn small ghost" onClick={() => u.dismiss()}>
-          Later
-        </button>
+      <div className="update-announce" role="status">
+        <div className="update-announce-head">
+          <span className="dot online" />
+          <div className="update-announce-title">
+            <strong>ProDeck v{u.newVersion} is ready to install</strong>
+            <span className="muted small">
+              You're on v{u.version}. Installing takes a few seconds and restarts the app.
+            </span>
+          </div>
+          <div className="update-announce-actions">
+            <button className="btn small primary" onClick={() => u.install()}>
+              Install &amp; Restart
+            </button>
+            <button className="btn small ghost" onClick={() => u.dismiss()}>
+              Later
+            </button>
+          </div>
+        </div>
+        {blocks.length > 0 && (
+          <div className="update-announce-notes">
+            <button className="update-announce-toggle" onClick={() => setShowNotes((v) => !v)}>
+              What's new {showNotes ? "▾" : "▸"}
+            </button>
+            {showNotes && (
+              <div className="update-announce-body">
+                {blocks.map((b, i) =>
+                  b.t === "h" ? (
+                    <h4 key={i}>{b.v}</h4>
+                  ) : b.t === "li" ? (
+                    <li key={i}>{b.v}</li>
+                  ) : (
+                    <p key={i}>{b.v}</p>
+                  ),
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   }

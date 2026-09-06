@@ -4038,6 +4038,32 @@ select.input {
   font-size: 13px;
   font-weight: 500;
 }
+/* Update announcement: header row + collapsible release notes. */
+.update-announce {
+  position: sticky;
+  top: 0;
+  z-index: 41;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.update-announce-head { display: flex; align-items: center; gap: 12px; }
+.update-announce-title { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.update-announce-title strong { font-size: 14px; }
+.update-announce-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.update-announce-notes { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--accent-line); }
+.update-announce-toggle {
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--accent);
+}
+.update-announce-body { margin-top: 8px; font-size: 13px; line-height: 1.5; color: var(--text); max-height: 220px; overflow-y: auto; }
+.update-announce-body h4 { margin: 8px 0 4px; font-size: 12.5px; color: var(--muted); }
+.update-announce-body p { margin: 4px 0; color: var(--muted); }
+.update-announce-body li { list-style: disc; margin: 2px 0 2px 18px; }
 .update-banner .btn {
   margin-left: 4px;
 }

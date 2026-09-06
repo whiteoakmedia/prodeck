@@ -43,3 +43,6 @@ update-server/
 
 # scripts/build-dmg.sh output
 /ProDeck.dmg
+
+# scripts/release-public.sh outputs
+release/

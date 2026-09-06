@@ -44,6 +44,8 @@ ProPresenter, and Planning Center, and add the rest when you want it.
 
 That's it — no toolchain, no terminal. Runs on Intel and Apple Silicon Macs, macOS 10.15 or newer.
 
+ProDeck checks for updates when it launches and offers to install them in one click — you won't need to come back here for new versions.
+
 > **Why the extra click?** Apple charges $99/yr for the Developer ID that
 > removes this prompt. Until ProDeck is notarized, macOS treats it like any
 > other free unsigned app: safe to run, but you approve it once in Settings.
