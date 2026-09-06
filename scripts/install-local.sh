@@ -40,12 +40,17 @@ launchctl bootout "gui/$UID_N/com.prodeck.watchdog" 2>/dev/null || true
 
 # 2. Ask nicely, then wait for a REAL exit (up to 15 s), then insist.
 osascript -e 'tell application "ProDeck" to quit' 2>/dev/null || true
+# Match both the current binary name and the legacy one (prodlink-clone):
+# the install that renames the binary is exactly the one that must wait for
+# the OLD name to exit, or the bundle gets swapped under a running process.
+running() { pgrep -x prodeck >/dev/null || pgrep -x prodlink-clone >/dev/null; }
 for _ in $(seq 1 30); do
-  pgrep -x prodeck >/dev/null || break
+  running || break
   sleep 0.5
 done
-if pgrep -x prodeck >/dev/null; then
-  pkill -x prodeck || true
+if running; then
+  pkill -x prodeck 2>/dev/null || true
+  pkill -x prodlink-clone 2>/dev/null || true
   sleep 1
 fi
 
