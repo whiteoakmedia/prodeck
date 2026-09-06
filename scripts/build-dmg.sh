@@ -10,7 +10,8 @@ REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 LOCAL_CONF="$REPO_DIR/src-tauri/tauri.local.conf.json"
 
 cd "$REPO_DIR"
-ARGS=(build --bundles app,dmg)
+# Universal (Intel + Apple Silicon). Needs: rustup target add x86_64-apple-darwin
+ARGS=(build --target universal-apple-darwin --bundles app,dmg)
 [ -f "$LOCAL_CONF" ] && ARGS+=(--config "$LOCAL_CONF")
 npm run tauri -- "${ARGS[@]}"
 
