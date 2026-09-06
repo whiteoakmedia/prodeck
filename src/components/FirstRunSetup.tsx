@@ -57,7 +57,7 @@ const TOOLS: {
     group: "Audio & console",
     items: [
       { name: "Audio input", need: "opt", what: "Calibrated SPL + RTA metering from any input, including Dante." },
-      { name: "Allen & Heath Avantis", need: "opt", what: "Mirror the desk — names, mutes, faders, scenes — read-only." },
+      { name: "Allen & Heath console", need: "opt", what: "Avantis, dLive, or SQ — mutes, faders, scenes, names mirrored live; control is admin-only." },
       { name: "Song-key MIDI send", need: "opt", what: "Push the live song's key to Waves / plugin scenes over MIDI." },
     ],
   },
@@ -83,7 +83,7 @@ const TOOLS: {
 // card each one lives in.
 const ADDONS: { name: string; what: string; page: string; anchor: string }[] = [
   { name: "Audio & SPL", what: "Pick the input ProDeck listens to; calibrate the meter.", page: "settings", anchor: "set-audio" },
-  { name: "Avantis console", what: "Mirror your Allen & Heath desk read-only.", page: "settings", anchor: "set-avantis" },
+  { name: "Allen & Heath console", what: "Avantis, dLive, or SQ — mirror the desk live.", page: "settings", anchor: "set-avantis" },
   { name: "Song-key MIDI", what: "Send the live key to Waves / plugin scenes.", page: "settings", anchor: "set-songkey" },
   { name: "Live viewers", what: "Connect Google Analytics for a realtime count.", page: "settings", anchor: "set-ga4" },
   { name: "TapLink discs", what: "Point NFC discs at links that follow the service.", page: "settings", anchor: "set-taplink" },

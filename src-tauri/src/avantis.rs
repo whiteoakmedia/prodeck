@@ -20,12 +20,14 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager};
 
-const PORT: u16 = 51325;
-const SYSEX_HEADER: [u8; 8] = [0xF0, 0x00, 0x00, 0x1A, 0x50, 0x10, 0x01, 0x00];
+use crate::ahmap::{self, DeskModel, SYSEX_HEADER};
 
 #[derive(Default)]
 pub struct AvantisInner {
     pub connected: bool,
+    /// Which Allen & Heath console (and therefore which dialect + address map)
+    /// the current connection speaks.
+    pub model: DeskModel,
     /// 1-based scene number (bank*128 + program + 1).
     pub scene: Option<u32>,
     pub mutes: HashMap<String, bool>,
@@ -72,7 +74,11 @@ pub fn fader_db(v: u8) -> String {
 /// being mixed: FX sends and returns. Input/DCA/aux/main faders and mutes are
 /// what an engineer legitimately rides all service — never alert on those.
 fn is_setup_key(key: &str) -> bool {
-    key.starts_with("fxs:") || key.starts_with("sfxs:") || key.starts_with("fxr:")
+    key.starts_with("fxs:")
+        || key.starts_with("sfxs:")
+        || key.starts_with("fxr:")
+        || key.starts_with("ufxs:")
+        || key.starts_with("ufxr:")
 }
 
 /// Record a desk-originated change. Only called when an OLD value existed —
@@ -104,6 +110,9 @@ pub fn snapshot(state: &AvantisState) -> Value {
         "names": s.names,
         "watchLog": s.watch_log.iter().rev().take(20).collect::<Vec<_>>(),
         "colors": s.colors,
+        "model": s.model.id(),
+        "namesSupported": s.model.has_names(),
+        "maxScene": s.model.max_scene(),
     })
 }
 
@@ -117,7 +126,7 @@ pub fn avantis_state(state: tauri::State<'_, AvantisState>) -> Value {
 fn write_desk(state: &AvantisState, bytes: &[u8]) -> Result<(), String> {
     let mut s = state.lock().unwrap_or_else(|p| p.into_inner());
     let Some(w) = s.writer.as_mut() else {
-        return Err("not connected to the Avantis".into());
+        return Err("not connected to the console".into());
     };
     w.write_all(bytes).map_err(|e| format!("desk write failed: {e}"))
 }
@@ -134,11 +143,10 @@ pub fn avantis_set_mute(
     app: AppHandle,
 ) -> Result<(), String> {
     let st = state.inner().clone();
-    let base = { st.lock().unwrap_or_else(|p| p.into_inner()).base_nibble };
-    let (chan, note) = encode(base, &id).ok_or("unknown channel id")?;
-    let status = 0x90 | chan;
-    let vel = if muted { 0x7F } else { 0x3F };
-    write_desk(&st, &[status, note, vel, status, note, 0x00])?;
+    let (base, model) = desk_cfg(&st);
+    let bytes = ahmap::mute_bytes(model, base, &id, muted)
+        .ok_or_else(|| format!("{id} is not a channel on the {}", model.label()))?;
+    write_desk(&st, &bytes)?;
     // Optimistic local update; the desk's echo confirms/corrects it.
     {
         let mut s = st.lock().unwrap_or_else(|p| p.into_inner());
@@ -155,15 +163,12 @@ pub fn avantis_recall_scene(
     state: tauri::State<'_, AvantisState>,
     app: AppHandle,
 ) -> Result<(), String> {
-    if !(1..=500).contains(&scene) {
-        return Err("scene must be 1-500".into());
-    }
     let st = state.inner().clone();
-    let base = { st.lock().unwrap_or_else(|p| p.into_inner()).base_nibble };
-    let z = scene - 1;
-    let bank = (z / 128) as u8;
-    let ss = (z % 128) as u8;
-    write_desk(&st, &[0xB0 | base, 0x00, bank, 0xC0 | base, ss])?;
+    let (base, model) = desk_cfg(&st);
+    if !(1..=model.max_scene()).contains(&scene) {
+        return Err(format!("scene must be 1-{} on the {}", model.max_scene(), model.label()));
+    }
+    write_desk(&st, &ahmap::scene_bytes(base, scene))?;
     {
         let mut s = st.lock().unwrap_or_else(|p| p.into_inner());
         s.scene = Some(scene);
@@ -188,15 +193,12 @@ pub fn avantis_set_name(
         .take(8)
         .collect();
     let st = state.inner().clone();
-    let base = { st.lock().unwrap_or_else(|p| p.into_inner()).base_nibble };
-    let (chan, note) = encode(base, &id).ok_or("unknown channel id")?;
-    let mut msg = Vec::with_capacity(20);
-    msg.extend_from_slice(&SYSEX_HEADER);
-    msg.push(chan);
-    msg.push(0x03);
-    msg.push(note);
-    msg.extend(clean.bytes());
-    msg.push(0xF7);
+    let (base, model) = desk_cfg(&st);
+    if !model.has_names() {
+        return Err(format!("the {} has no channel-name messages in its MIDI protocol", model.label()));
+    }
+    let msg = ahmap::name_bytes(model, base, &id, &clean)
+        .ok_or_else(|| format!("{id} is not a channel on the {}", model.label()))?;
     write_desk(&st, &msg)?;
     // The desk doesn't echo name sets — update the mirror locally.
     {
@@ -217,10 +219,10 @@ pub fn avantis_set_fader(
 ) -> Result<(), String> {
     let v = value.min(0x7F);
     let st = state.inner().clone();
-    let base = { st.lock().unwrap_or_else(|p| p.into_inner()).base_nibble };
-    let (chan, note) = encode(base, &id).ok_or("unknown channel id")?;
-    let status = 0xB0 | chan;
-    write_desk(&st, &[status, 0x63, note, status, 0x62, 0x17, status, 0x06, v])?;
+    let (base, model) = desk_cfg(&st);
+    let bytes = ahmap::fader_bytes(model, base, &id, v)
+        .ok_or_else(|| format!("{id} has no fader on the {}", model.label()))?;
+    write_desk(&st, &bytes)?;
     {
         let mut s = st.lock().unwrap_or_else(|p| p.into_inner());
         s.faders.insert(id, v);
@@ -229,117 +231,51 @@ pub fn avantis_set_fader(
     Ok(())
 }
 
-/// Inverse of `decode`: "kind:idx" → (MIDI channel nibble, note number).
-fn encode(base_nibble: u8, id: &str) -> Option<(u8, u8)> {
-    let (kind, idx) = id.split_once(':')?;
-    let i: u8 = idx.parse().ok()?;
-    if i == 0 {
-        return None;
-    }
-    let z = i - 1; // 0-based
-    match kind {
-        "input" if i <= 64 => Some((base_nibble, z)),
-        "grp" if i <= 40 => Some((base_nibble + 1, z)),
-        "sgrp" if i <= 20 => Some((base_nibble + 1, 0x40 + z)),
-        "aux" if i <= 40 => Some((base_nibble + 2, z)),
-        "saux" if i <= 20 => Some((base_nibble + 2, 0x40 + z)),
-        "mtx" if i <= 40 => Some((base_nibble + 3, z)),
-        "smtx" if i <= 20 => Some((base_nibble + 3, 0x40 + z)),
-        "fxs" if i <= 12 => Some((base_nibble + 4, z)),
-        "sfxs" if i <= 12 => Some((base_nibble + 4, 0x10 + z)),
-        "fxr" if i <= 12 => Some((base_nibble + 4, 0x20 + z)),
-        "main" if i <= 3 => Some((base_nibble + 4, 0x30 + z)),
-        "dca" if i <= 16 => Some((base_nibble + 4, 0x36 + z)),
-        "mgrp" if i <= 8 => Some((base_nibble + 4, 0x46 + z)),
-        _ => None,
-    }
-}
-
-/// (kind, 1-based index) for a MIDI channel nibble + note, or None.
-fn decode(base_nibble: u8, chan: u8, note: u8) -> Option<(&'static str, u8)> {
-    let off = chan.checked_sub(base_nibble)?;
-    match off {
-        0 if note <= 0x3F => Some(("input", note + 1)),
-        1 if note <= 0x27 => Some(("grp", note + 1)),
-        1 if (0x40..=0x53).contains(&note) => Some(("sgrp", note - 0x40 + 1)),
-        2 if note <= 0x27 => Some(("aux", note + 1)),
-        2 if (0x40..=0x53).contains(&note) => Some(("saux", note - 0x40 + 1)),
-        3 if note <= 0x27 => Some(("mtx", note + 1)),
-        3 if (0x40..=0x53).contains(&note) => Some(("smtx", note - 0x40 + 1)),
-        4 if note <= 0x0B => Some(("fxs", note + 1)),
-        4 if (0x10..=0x1B).contains(&note) => Some(("sfxs", note - 0x10 + 1)),
-        4 if (0x20..=0x2B).contains(&note) => Some(("fxr", note - 0x20 + 1)),
-        4 if (0x30..=0x32).contains(&note) => Some(("main", note - 0x30 + 1)),
-        4 if (0x36..=0x45).contains(&note) => Some(("dca", note - 0x36 + 1)),
-        4 if (0x46..=0x4D).contains(&note) => Some(("mgrp", note - 0x46 + 1)),
-        _ => None,
-    }
-}
-
 fn key(kind: &str, idx: u8) -> String {
     format!("{kind}:{idx}")
 }
 
-/// The read-only name+colour queries sent once per connection. Inputs, DCAs
-/// and Mains cover the volunteer-facing surfaces; everything else can wait.
-fn query_bytes(base_nibble: u8) -> Vec<u8> {
-    let mut out = Vec::new();
-    let mut get = |chan: u8, note: u8| {
-        for op in [0x01u8, 0x04u8] {
-            out.extend_from_slice(&SYSEX_HEADER);
-            out.push(chan); // 0N — absolute MIDI channel nibble as a byte
-            out.push(op); // 01 = get name, 04 = get colour
-            out.push(note);
-            out.push(0xF7);
-        }
-    };
-    for n in 0..=0x3F {
-        get(base_nibble, n); // inputs 1-64
-    }
-    for n in 0x36..=0x45 {
-        get(base_nibble + 4, n); // DCA 1-16
-    }
-    for n in 0x30..=0x32 {
-        get(base_nibble + 4, n); // Mains 1-3
-    }
-    for n in 0x46..=0x4D {
-        get(base_nibble + 4, n); // Mute Groups 1-8 — the widget's big toggles
-    }
-    // FX sends + returns, so a desk-watchdog line reads "Vocal Verb muted"
-    // rather than "fxs:3 muted".
-    for n in 0x00..=0x0B {
-        get(base_nibble + 4, n); // FX sends 1-12
-    }
-    for n in 0x10..=0x1B {
-        get(base_nibble + 4, n); // stereo FX sends 1-12
-    }
-    for n in 0x20..=0x2B {
-        get(base_nibble + 4, n); // FX returns 1-12
-    }
-    out
+/// (base nibble, model) of the current connection.
+fn desk_cfg(st: &AvantisState) -> (u8, DeskModel) {
+    let s = st.lock().unwrap_or_else(|p| p.into_inner());
+    (s.base_nibble, s.model)
 }
 
-/// Human label for a channel key: the desk name when known, else a readable
-/// form of the address ("FX Return 2", not "fxr:2").
+/// Human label for a channel key: a readable form of the address
+/// ("FX Return 2", not "fxr:2").
 pub fn pretty_key(key: &str) -> String {
     let (kind, idx) = key.split_once(':').unwrap_or((key, ""));
-    let word = match kind {
-        "input" => "Ch",
-        "grp" => "Group",
-        "sgrp" => "Group(st)",
-        "aux" => "Aux",
-        "saux" => "Aux(st)",
-        "mtx" => "Matrix",
-        "smtx" => "Matrix(st)",
-        "fxs" => "FX Send",
-        "sfxs" => "FX Send(st)",
-        "fxr" => "FX Return",
-        "main" => "Main",
-        "dca" => "DCA",
-        "mgrp" => "Mute Grp",
-        _ => return key.to_string(),
-    };
-    format!("{word} {idx}")
+    match ahmap::pretty_kind(kind) {
+        Some(word) => format!("{word} {idx}"),
+        None => key.to_string(),
+    }
+}
+
+/// Apply a desk-reported mute; returns true if the mirror changed. Watchdog
+/// records only real changes to setup controls (never the connect baseline).
+fn apply_mute(s: &mut AvantisInner, kk: String, muted: bool) -> bool {
+    let old = s.mutes.insert(kk.clone(), muted);
+    if old.is_some() && old != Some(muted) && is_setup_key(&kk) {
+        watch_record(
+            s,
+            WatchKind::Mute,
+            &kk,
+            if old == Some(true) { "muted" } else { "open" }.into(),
+            if muted { "muted" } else { "open" }.into(),
+        );
+    }
+    old != Some(muted)
+}
+
+/// Apply a desk-reported fader value (ProDeck 0-127 scale).
+fn apply_fader(s: &mut AvantisInner, kk: String, val: u8) -> bool {
+    let old = s.faders.insert(kk.clone(), val);
+    if let Some(o) = old {
+        if o != val && is_setup_key(&kk) {
+            watch_record(s, WatchKind::Fader, &kk, fader_db(o), fader_db(val));
+        }
+    }
+    old != Some(val)
 }
 
 struct Parser {
@@ -350,6 +286,8 @@ struct Parser {
     nrpn: HashMap<u8, (Option<u8>, Option<u8>)>,
     /// Last Bank Select value per MIDI channel (for scene recall).
     bank: HashMap<u8, u8>,
+    /// SQ only: pending coarse value (CC 06) per channel, completed by CC 26.
+    vc: HashMap<u8, u8>,
     /// Note Ons that aren't mutes (softkey custom messages) — drained by the
     /// mirror loop, which emits them for the learn UI and fires page maps.
     softkeys: Vec<(u8, u8, u8)>, // (0-based channel, note, velocity)
@@ -363,19 +301,20 @@ impl Parser {
             sysex: None,
             nrpn: HashMap::new(),
             bank: HashMap::new(),
+            vc: HashMap::new(),
             softkeys: Vec::new(),
         }
     }
 
     /// Feed one byte; returns true when console state changed.
-    fn feed(&mut self, b: u8, base_nibble: u8, st: &AvantisState) -> bool {
+    fn feed(&mut self, b: u8, model: DeskModel, base_nibble: u8, st: &AvantisState) -> bool {
         if b >= 0xF8 {
             return false; // realtime — ignore, even mid-SysEx
         }
         if let Some(buf) = self.sysex.as_mut() {
             if b == 0xF7 {
                 let msg = self.sysex.take().unwrap();
-                return self.on_sysex(&msg, base_nibble, st);
+                return self.on_sysex(&msg, model, base_nibble, st);
             }
             if b >= 0x80 {
                 self.sysex = None; // malformed — a status byte cancels SysEx
@@ -414,21 +353,12 @@ impl Parser {
                 if vel == 0 {
                     return false;
                 }
-                if let Some((k, i)) = decode(base_nibble, chan, note) {
-                    let muted = vel >= 0x40;
-                    let mut s = st.lock().unwrap_or_else(|p| p.into_inner());
-                    let kk = key(k, i);
-                    let old = s.mutes.insert(kk.clone(), muted);
-                    if old.is_some() && old != Some(muted) && is_setup_key(&kk) {
-                        watch_record(
-                            &mut s,
-                            WatchKind::Mute,
-                            &kk,
-                            if old == Some(true) { "muted" } else { "open" }.into(),
-                            if muted { "muted" } else { "open" }.into(),
-                        );
+                if model.note_mutes() {
+                    if let Some((k, i)) = ahmap::note_decode(model, base_nibble, chan, note) {
+                        let muted = vel >= 0x40;
+                        let mut s = st.lock().unwrap_or_else(|p| p.into_inner());
+                        return apply_mute(&mut s, key(k, i), muted);
                     }
-                    return old != Some(muted);
                 }
                 // Not addressable as a channel → a softkey's custom message.
                 self.softkeys.push((chan, note, vel));
@@ -450,25 +380,39 @@ impl Parser {
                         false
                     }
                     0x06 => {
+                        if model == DeskModel::Sq {
+                            // Coarse half of a 14-bit value; the fine half (CC 26) completes it.
+                            self.vc.insert(chan, val);
+                            return false;
+                        }
                         let (sel, param) = self.nrpn.get(&chan).copied().unwrap_or((None, None));
                         if let (Some(note), Some(0x17)) = (sel, param) {
-                            if let Some((k, i)) = decode(base_nibble, chan, note) {
+                            if let Some((k, i)) = ahmap::note_decode(model, base_nibble, chan, note) {
                                 let mut s = st.lock().unwrap_or_else(|p| p.into_inner());
-                                let kk = key(k, i);
-                                let old = s.faders.insert(kk.clone(), val);
-                                if let Some(o) = old {
-                                    if o != val && is_setup_key(&kk) {
-                                        watch_record(
-                                            &mut s,
-                                            WatchKind::Fader,
-                                            &kk,
-                                            fader_db(o),
-                                            fader_db(val),
-                                        );
-                                    }
-                                }
-                                return old != Some(val);
+                                return apply_fader(&mut s, key(k, i), val);
                             }
+                        }
+                        false
+                    }
+                    0x26 if model == DeskModel::Sq => {
+                        // SQ: everything is NRPN on the one channel. MSB/LSB name the
+                        // parameter; 06/26 carry the value. Mutes are 06 00 / 26 01|00.
+                        if chan != base_nibble {
+                            return false; // the DAW-strip channel (base+1) is not the mixer
+                        }
+                        let (msb, lsb) = self.nrpn.get(&chan).copied().unwrap_or((None, None));
+                        let (Some(msb), Some(lsb)) = (msb, lsb) else { return false };
+                        let param = ((msb as u16) << 7) | lsb as u16;
+                        let vc = self.vc.remove(&chan).unwrap_or(0);
+                        if let Some((k, i)) = ahmap::sq_decode_mute(param) {
+                            let mut s = st.lock().unwrap_or_else(|p| p.into_inner());
+                            return apply_mute(&mut s, key(k, i), val != 0);
+                        }
+                        if let Some((k, i)) = ahmap::sq_decode_level(param) {
+                            let v14 = ((vc as u16) << 7) | val as u16;
+                            let v = ahmap::fader_u8_from_db(ahmap::sq_level_to_db(v14));
+                            let mut s = st.lock().unwrap_or_else(|p| p.into_inner());
+                            return apply_fader(&mut s, key(k, i), v);
                         }
                         false
                     }
@@ -501,7 +445,7 @@ impl Parser {
         }
     }
 
-    fn on_sysex(&mut self, msg: &[u8], base_nibble: u8, st: &AvantisState) -> bool {
+    fn on_sysex(&mut self, msg: &[u8], model: DeskModel, base_nibble: u8, st: &AvantisState) -> bool {
         // msg is the payload between F0 and F7. Expect our header (minus F0).
         if msg.len() < 10 || msg[..7] != SYSEX_HEADER[1..] {
             return false;
@@ -509,7 +453,7 @@ impl Parser {
         let chan = msg[7] & 0x0F;
         let op = msg[8];
         let note = msg[9];
-        let Some((k, i)) = decode(base_nibble, chan, note) else { return false };
+        let Some((k, i)) = ahmap::note_decode(model, base_nibble, chan, note) else { return false };
         match op {
             0x02 => {
                 // Name reply — an 8-byte field padded with NULs, so keep
@@ -604,10 +548,20 @@ fn save_cache(state: &AvantisState) {
     }
 }
 
-fn settings_tuple(app: &AppHandle) -> (bool, String, u8) {
+/// (enabled, host, base channel 1-based, model, port) — everything the mirror
+/// needs to (re)connect. The base is clamped to what the chosen desk allows.
+fn settings_tuple(app: &AppHandle) -> (bool, String, u8, DeskModel, u16) {
     let st = app.state::<crate::settings::SettingsState>();
     let s = st.lock().unwrap_or_else(|p| p.into_inner());
-    (s.avantis_enabled, s.avantis_host.clone(), s.avantis_midi_base.clamp(1, 12))
+    let model = DeskModel::parse(&s.avantis_model);
+    let port = if s.avantis_port == 0 { 51325 } else { s.avantis_port };
+    (
+        s.avantis_enabled,
+        s.avantis_host.clone(),
+        s.avantis_midi_base.clamp(1, model.max_base()),
+        model,
+        port,
+    )
 }
 
 fn set_connected(app: &AppHandle, state: &AvantisState, up: bool) {
@@ -684,14 +638,14 @@ pub fn spawn_mirror(app: AppHandle) {
         load_cache(&state);
         let mut last_save = Instant::now();
         loop {
-            let (enabled, host, base) = settings_tuple(&app);
+            let (enabled, host, base, model, port) = settings_tuple(&app);
             if !enabled || host.is_empty() {
                 set_connected(&app, &state, false);
                 std::thread::sleep(Duration::from_secs(3));
                 continue;
             }
             let base_nibble = base - 1;
-            let stream = TcpStream::connect((host.as_str(), PORT));
+            let stream = TcpStream::connect((host.as_str(), port));
             let Ok(mut stream) = stream else {
                 set_connected(&app, &state, false);
                 std::thread::sleep(Duration::from_secs(5));
@@ -702,11 +656,13 @@ pub fn spawn_mirror(app: AppHandle) {
                 let mut s = state.lock().unwrap_or_else(|p| p.into_inner());
                 s.writer = stream.try_clone().ok();
                 s.base_nibble = base_nibble;
+                s.model = model;
             }
             set_connected(&app, &state, true);
 
-            // Read-only name/colour queries, in gentle chunks.
-            let q = query_bytes(base_nibble);
+            // Connect-time queries (names/colours; on dLive and SQ also the
+            // current mutes and levels), in gentle chunks.
+            let q = ahmap::query_bytes(model, base_nibble);
             for chunk in q.chunks(96) {
                 if stream.write_all(chunk).is_err() {
                     break;
@@ -729,7 +685,7 @@ pub fn spawn_mirror(app: AppHandle) {
                     Ok(0) => break, // desk closed the connection
                     Ok(n) => {
                         for &b in &buf[..n] {
-                            dirty |= parser.feed(b, base_nibble, &state);
+                            dirty |= parser.feed(b, model, base_nibble, &state);
                         }
                         if !parser.softkeys.is_empty() {
                             let pressed = std::mem::take(&mut parser.softkeys);
@@ -752,7 +708,7 @@ pub fn spawn_mirror(app: AppHandle) {
                 }
                 if !requeried && connected_at.elapsed() >= Duration::from_secs(4) {
                     requeried = true;
-                    for chunk in query_bytes(base_nibble).chunks(96) {
+                    for chunk in ahmap::query_bytes(model, base_nibble).chunks(96) {
                         if stream.write_all(chunk).is_err() {
                             break;
                         }
@@ -762,7 +718,7 @@ pub fn spawn_mirror(app: AppHandle) {
                 if last_cfg_check.elapsed() >= Duration::from_secs(2) {
                     last_cfg_check = Instant::now();
                     let now = settings_tuple(&app);
-                    if now != (enabled, host.clone(), base) {
+                    if now != (enabled, host.clone(), base, model, port) {
                         break; // settings changed — reconnect with new config
                     }
                 }
@@ -797,12 +753,30 @@ pub fn spawn_watch_flush(app: AppHandle) {
             // catches that even when the desk doesn't push rename events. The
             // replies flow through the normal parser, whose name tap diffs
             // old → new and records the change.
+            // (On SQ there are no names to re-ask for; its query set is mutes +
+            // levels, which the live stream already keeps current — skip.)
             if armed && tick % 7 == 0 {
-                let mut st = app.state::<AvantisState>().inner().lock().unwrap_or_else(|p| p.into_inner());
-                let nib = st.base_nibble;
-                let q = query_bytes(nib);
-                if let Some(w) = st.writer.as_mut() {
-                    let _ = w.write_all(&q);
+                // Clone the writer and drop the lock BEFORE the socket write: a
+                // multi-KB blocking write under the state mutex would stall the
+                // mirror's parser and every snapshot for the duration.
+                let (writer, q) = {
+                    let st = app.state::<AvantisState>().inner().lock().unwrap_or_else(|p| p.into_inner());
+                    if !st.model.has_names() {
+                        (None, Vec::new())
+                    } else {
+                        (
+                            st.writer.as_ref().and_then(|w| w.try_clone().ok()),
+                            ahmap::query_bytes(st.model, st.base_nibble),
+                        )
+                    }
+                };
+                if let Some(mut w) = writer {
+                    for chunk in q.chunks(96) {
+                        if w.write_all(chunk).is_err() {
+                            break;
+                        }
+                        std::thread::sleep(Duration::from_millis(15));
+                    }
                 }
             }
             let state = app.state::<AvantisState>();
@@ -888,4 +862,73 @@ pub fn spawn_watch_flush(app: AppHandle) {
             }
         }
     });
+}
+
+#[cfg(test)]
+mod parser_tests {
+    use super::*;
+
+    fn fresh() -> AvantisState {
+        Arc::new(Mutex::new(AvantisInner::default()))
+    }
+    fn feed_all(p: &mut Parser, bytes: &[u8], model: DeskModel, base: u8, st: &AvantisState) -> bool {
+        bytes.iter().fold(false, |acc, &b| p.feed(b, model, base, st) | acc)
+    }
+
+    #[test]
+    fn sq_stream_mutes_and_levels_land_in_the_mirror() {
+        let st = fresh();
+        let mut p = Parser::new();
+        // Issue 5 example: "Ip1, Mute On, Ch1  B0 63 00 B0 62 00 B0 06 00 B0 26 01"
+        assert!(feed_all(&mut p, &[0xB0, 0x63, 0x00, 0xB0, 0x62, 0x00, 0xB0, 0x06, 0x00, 0xB0, 0x26, 0x01], DeskModel::Sq, 0, &st));
+        // "Mute Grp 4, Mute On, Ch7" would be on base 6 — on base 0 it is ignored (wrong channel).
+        assert!(!feed_all(&mut p, &[0xB6, 0x63, 0x04, 0xB6, 0x62, 0x03, 0xB6, 0x06, 0x00, 0xB6, 0x26, 0x01], DeskModel::Sq, 0, &st));
+        // "Ip1 to LR, 0dB  B0 63 40 B0 62 00 B0 06 76 B0 26 5C" → fader on ProDeck's scale at 0 dB.
+        assert!(feed_all(&mut p, &[0xB0, 0x63, 0x40, 0xB0, 0x62, 0x00, 0xB0, 0x06, 0x76, 0xB0, 0x26, 0x5C], DeskModel::Sq, 0, &st));
+        // LR master level -20 dB (table: 64 16).
+        assert!(feed_all(&mut p, &[0xB0, 0x63, 0x4F, 0xB0, 0x62, 0x00, 0xB0, 0x06, 0x64, 0xB0, 0x26, 0x16], DeskModel::Sq, 0, &st));
+        let s = st.lock().unwrap();
+        assert_eq!(s.mutes.get("input:1"), Some(&true));
+        assert_eq!(s.mutes.get("mgrp:4"), None);
+        // SQ's 14-bit levels land on ProDeck's 0-127 scale (½ dB steps), so
+        // compare within the quantisation, not to the exact table dB.
+        let db = |k: &str| fader_db(*s.faders.get(k).unwrap()).parse::<f32>().unwrap();
+        assert!((db("input:1") - 0.0).abs() < 0.5, "input:1 = {}", db("input:1"));
+        assert!((db("main:1") + 20.0).abs() < 0.5, "main:1 = {}", db("main:1"));
+        // A Note On on SQ is never a mute — it is a softkey.
+        drop(s);
+        assert!(!feed_all(&mut p, &[0x90, 0x30, 0x7F], DeskModel::Sq, 0, &st));
+        assert_eq!(p.softkeys, vec![(0, 0x30, 0x7F)]);
+        assert_eq!(st.lock().unwrap().mutes.len(), 1);
+    }
+
+    #[test]
+    fn dlive_stream_uses_its_own_address_map() {
+        let st = fresh();
+        let mut p = Parser::new();
+        // dLive V2.0: base channel 12 → 9B; DCA 17 is note 46 on N+4 (= channel 16, 9F).
+        assert!(feed_all(&mut p, &[0x9B, 0x7F, 0x7F, 0x9B, 0x7F, 0x00], DeskModel::DLive, 0x0B, &st));
+        assert!(feed_all(&mut p, &[0x9F, 0x46, 0x7F], DeskModel::DLive, 0x0B, &st));
+        // Fader on input 128: BB 63 7F, BB 62 17, BB 06 40
+        assert!(feed_all(&mut p, &[0xBB, 0x63, 0x7F, 0xBB, 0x62, 0x17, 0xBB, 0x06, 0x40], DeskModel::DLive, 0x0B, &st));
+        let s = st.lock().unwrap();
+        assert_eq!(s.mutes.get("input:128"), Some(&true));
+        assert_eq!(s.mutes.get("dca:17"), Some(&true)); // on Avantis this same note is mgrp:1
+        assert_eq!(s.faders.get("input:128"), Some(&0x40));
+        assert!(p.softkeys.is_empty());
+    }
+
+    #[test]
+    fn avantis_stream_unchanged() {
+        let st = fresh();
+        let mut p = Parser::new();
+        // Same bytes as the dLive DCA-17 test: on an Avantis, note 46 on N+4 is Mute Group 1.
+        assert!(feed_all(&mut p, &[0x9F, 0x46, 0x7F], DeskModel::Avantis, 0x0B, &st));
+        // Note 7F on the input channel is out of range on a 64-input Avantis → softkey.
+        assert!(!feed_all(&mut p, &[0x9B, 0x7F, 0x7F], DeskModel::Avantis, 0x0B, &st));
+        let s = st.lock().unwrap();
+        assert_eq!(s.mutes.get("mgrp:1"), Some(&true));
+        assert_eq!(s.mutes.get("input:128"), None);
+        assert_eq!(p.softkeys, vec![(0x0B, 0x7F, 0x7F)]);
+    }
 }

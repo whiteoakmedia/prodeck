@@ -93,7 +93,7 @@ export function Setup({ onNavigate }: { onNavigate: (p: string) => void }) {
             <Icon name="mic" size={18} />
             <span className="setup-card-t">Audio, console &amp; MIDI</span>
             <span className="setup-card-d">
-              SPL metering, the Avantis mirror, song-key send — each its own card.
+              SPL metering, the Allen &amp; Heath console mirror, song-key send — each its own card.
             </span>
           </button>
           <button className="setup-card" onClick={() => onNavigate("report")}>

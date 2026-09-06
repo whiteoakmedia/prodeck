@@ -23,8 +23,11 @@ Workers for the optional cloud features.
 - **TapLink** — NFC discs whose destination follows the service: a slide with
   `tap: give` in its notes retargets every disc in the building the moment it
   goes live.
-- **Consoles** — Allen & Heath Avantis mirror (names, mutes, faders, scenes) with
-  an optional tamper watchdog; song-key MIDI send for FOH plugins.
+- **Consoles** — Allen & Heath **Avantis, dLive, and SQ** over MIDI-TCP: live
+  mirror of mutes, faders, scenes (and names/colours on Avantis/dLive), a
+  desk watchdog that pages one person about setup changes, and admin-only
+  control (mutes, faders, names, scene recall) from any dashboard; song-key
+  MIDI send for FOH plugins.
 - **Booth-off resilience** — with the optional Cloudflare setup, your domain
   serves a read-only plan + working chat even when the booth Mac is off.
 - **Live viewers** — realtime watch-page count via GA4.
@@ -84,7 +87,7 @@ trial to tap discs, kiosks, and a booth-off-resilient domain.
 - ProPresenter 7 with its network API enabled
 - Planning Center Services
 - Optional per feature: Cloudflare (free) + a domain, an audio input, an
-  Avantis, NDI, a Stream Deck + Bitfocus Companion, NFC tags, GA4
+  an Allen & Heath console (Avantis / dLive / SQ), NDI, a Stream Deck + Bitfocus Companion, NFC tags, GA4
 
 ## Honest posture
 

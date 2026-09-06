@@ -260,6 +260,10 @@ export interface Settings {
   tap_token: string;
   avantis_enabled: boolean;
   avantis_host: string;
+  /** Which Allen & Heath console: "avantis" | "dlive" | "sq". */
+  avantis_model: string;
+  /** TCP port — 51325 for Avantis / dLive MixRack / SQ, 51328 for a dLive Surface. */
+  avantis_port: number;
   avantis_midi_base: number;
   avantis_scene_labels: Record<string, string>;
   avantis_softkeys: AvantisSoftkey[];
@@ -286,6 +290,11 @@ export interface AvantisSoftkey {
 
 // Avantis console mirror (read-only). Keys are "kind:index", e.g. "input:5".
 export interface AvantisSnapshot {
+  /** "avantis" | "dlive" | "sq" — which protocol the mirror is speaking. */
+  model?: string;
+  /** False on SQ: its MIDI protocol has no channel-name messages. */
+  namesSupported?: boolean;
+  maxScene?: number;
   connected: boolean;
   scene: number | null;
   mutes: Record<string, boolean>;

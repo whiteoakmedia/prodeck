@@ -94,6 +94,12 @@ pub struct Settings {
     /// it never sends control messages to the desk.
     pub avantis_enabled: bool,
     pub avantis_host: String,
+    /// Which Allen & Heath console: "avantis" (default), "dlive", or "sq".
+    /// Picks the MIDI dialect and the channel address map.
+    pub avantis_model: String,
+    /// TCP port: 51325 for Avantis, a dLive MixRack, or SQ; 51328 for a dLive
+    /// Surface. 0 = default.
+    pub avantis_port: u16,
     /// Base MIDI channel (1-based, as shown on the desk under
     /// Utility → Control → MIDI). Avantis spans base..base+4; max base is 12.
     pub avantis_midi_base: u8,
@@ -186,6 +192,8 @@ impl Default for Settings {
             tap_token: String::new(),
             avantis_enabled: false,
             avantis_host: String::new(),
+            avantis_model: "avantis".into(),
+            avantis_port: 51325,
             avantis_midi_base: 12,
             avantis_scene_labels: std::collections::HashMap::new(),
             avantis_softkeys: Vec::new(),

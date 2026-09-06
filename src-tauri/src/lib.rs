@@ -1,3 +1,4 @@
+mod ahmap;
 mod audio;
 mod avantis;
 mod chat;

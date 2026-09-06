@@ -378,19 +378,40 @@ export function SettingsPage() {
 
       <section className="card">
         <div className="card-head">
-          <h3 id="set-avantis">Avantis Console</h3>
-          <span className="chip">read-only mirror</span>
+          <h3 id="set-avantis">Allen &amp; Heath Console</h3>
+          <span className="chip">{(form.avantis_model || "avantis") === "sq" ? "SQ" : (form.avantis_model || "avantis") === "dlive" ? "dLive" : "Avantis"} · mirror</span>
         </div>
         <p className="muted small">
-          Watches the sound desk over the network (MIDI TCP): mutes, faders,
-          scenes, and channel names show up live in ProDeck. ProDeck never
-          sends control to the desk — it only listens.
+          Watches the sound desk over the network (MIDI over TCP): mutes, faders,
+          scenes — and on Avantis/dLive, channel names and colours — show up live
+          in ProDeck. Control (mutes, faders, names, scene recall) is admin-only
+          and off by default in the dashboards.
         </p>
         <div className="settings-grid">
           <label className="field check">
             <input type="checkbox" checked={form.avantis_enabled}
               onChange={(e) => set("avantis_enabled", e.target.checked)} />
-            <span>Mirror the Avantis</span>
+            <span>Mirror the console</span>
+          </label>
+          <label className="field">
+            <span>Console</span>
+            <select
+              className="input"
+              value={form.avantis_model || "avantis"}
+              onChange={(e) => {
+                const m = e.target.value;
+                set("avantis_model", m);
+                // Each desk's own default port and channel limit.
+                if (m === "dlive" && (form.avantis_port === 51325 || !form.avantis_port)) set("avantis_port", 51325);
+                if (m !== "dlive" && form.avantis_port === 51328) set("avantis_port", 51325);
+                const maxBase = m === "sq" ? 16 : 12;
+                if ((form.avantis_midi_base ?? 1) > maxBase) set("avantis_midi_base", maxBase);
+              }}
+            >
+              <option value="avantis">Avantis</option>
+              <option value="dlive">dLive (MixRack or Surface)</option>
+              <option value="sq">SQ-5 / SQ-6 / SQ-7</option>
+            </select>
           </label>
           <label className="field">
             <span>Console IP</span>
@@ -398,10 +419,39 @@ export function SettingsPage() {
               onChange={(e) => set("avantis_host", e.target.value.trim())} />
           </label>
           <label className="field">
-            <span>Base MIDI channel (desk: Utility → Control → MIDI)</span>
-            <input className="input" type="number" min={1} max={12} value={form.avantis_midi_base}
-              onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n)) set("avantis_midi_base", Math.min(12, Math.max(1, n))); }} />
+            <span>
+              TCP port{" "}
+              <span className="muted">
+                {(form.avantis_model || "avantis") === "dlive"
+                  ? "(MixRack 51325 · Surface 51328)"
+                  : "(51325)"}
+              </span>
+            </span>
+            <input className="input" type="number" min={1} max={65535} value={form.avantis_port || 51325}
+              onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n)) set("avantis_port", Math.min(65535, Math.max(1, n))); }} />
           </label>
+          <label className="field">
+            <span>
+              {(form.avantis_model || "avantis") === "sq"
+                ? "MIDI channel (desk: Utility → General → MIDI)"
+                : "Base MIDI channel (desk: Utility → Control → MIDI)"}
+            </span>
+            <input className="input" type="number" min={1} max={(form.avantis_model || "avantis") === "sq" ? 16 : 12} value={form.avantis_midi_base}
+              onChange={(e) => { const n = parseInt(e.target.value); const mx = (form.avantis_model || "avantis") === "sq" ? 16 : 12; if (Number.isFinite(n)) set("avantis_midi_base", Math.min(mx, Math.max(1, n))); }} />
+          </label>
+          {(form.avantis_model || "avantis") === "sq" && (
+            <p className="hint wide">
+              SQ's MIDI protocol carries no channel names or colours, so channels show
+              as numbers here (Ch 1, Aux 3 …). Mutes and levels are read on connect,
+              so the mirror starts complete. Scenes 1–300.
+            </p>
+          )}
+          {(form.avantis_model || "avantis") === "dlive" && (
+            <p className="hint wide">
+              dLive reports current mutes and fader levels on connect, so the mirror
+              starts complete. Inputs 1–128, DCAs 1–24, Mains 1–6, UFX included.
+            </p>
+          )}
           <label className="field">
             <span>Desk watchdog — page this person when the desk changes</span>
             <select

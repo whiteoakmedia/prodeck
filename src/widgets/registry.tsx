@@ -1729,8 +1729,9 @@ const AVANTIS_COLORS: Record<number, string> = {
 const KIND_LABEL: Record<string, string> = {
   input: "In", dca: "DCA", main: "Main", grp: "Grp", sgrp: "Grp",
   aux: "Aux", saux: "Aux", mtx: "Mtx", smtx: "Mtx", fxs: "FX", sfxs: "FX", fxr: "FXr", mgrp: "MGrp",
+  ufxs: "UFX", ufxr: "UFXr",
 };
-const KIND_ORDER = ["main", "dca", "input", "grp", "sgrp", "aux", "saux", "mtx", "smtx", "fxs", "sfxs", "fxr", "mgrp"];
+const KIND_ORDER = ["main", "dca", "input", "grp", "sgrp", "aux", "saux", "mtx", "smtx", "fxs", "sfxs", "fxr", "ufxs", "ufxr", "mgrp"];
 
 function faderDb(v: number): string {
   const db = (v / 127) * 64 - 54;
