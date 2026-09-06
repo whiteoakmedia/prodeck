@@ -3,6 +3,7 @@ import { useProDeck } from "../store";
 import { EXPLAIN } from "../components/HealthStrip";
 import { Icon } from "../components/Icon";
 import { IS_WEB } from "../lib/tauri";
+import { requestOnboarding } from "../lib/onboarding";
 
 /**
  * Setup & status — the self-service page that keeps a downloaded copy from
@@ -11,7 +12,6 @@ import { IS_WEB } from "../lib/tauri";
  * configured. A confused operator comes here instead of emailing anyone.
  */
 
-const DONE_KEY = "prodeck.setupDone";
 const LABEL: Record<string, string> = {
   ok: "Connected",
   idle: "Not set up",
@@ -26,16 +26,11 @@ export function Setup({ onNavigate }: { onNavigate: (p: string) => void }) {
   const rows = subsystems.filter((s) => !(s.key === "cam" && s.detail === "none"));
   const greens = rows.filter((s) => s.state === "ok").length;
 
+  // Reopens the full-screen onboarding on demand (desktop only — the
+  // onboarding never mounts on web clients, so send those to Settings).
   const rerun = () => {
-    try {
-      localStorage.removeItem(DONE_KEY);
-    } catch {
-      /* private mode — nothing to clear */
-    }
-    // The walkthrough self-gates on a fresh (unconfigured) install, so on a
-    // configured booth this button is a no-op by design; send them to the
-    // relevant page instead.
-    onNavigate("propresenter");
+    if (IS_WEB) onNavigate("settings");
+    else requestOnboarding();
   };
 
   return (
@@ -112,7 +107,7 @@ export function Setup({ onNavigate }: { onNavigate: (p: string) => void }) {
             <Icon name="checklist" size={18} />
             <span className="setup-card-t">Re-run the walkthrough</span>
             <span className="setup-card-d">
-              The three-step first-run guide for the core connections.
+              The guided first-run tour: what ProDeck does, what it connects, and each connection step by step.
             </span>
           </button>
         </div>

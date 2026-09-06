@@ -37,3 +37,9 @@ ga4-key.json
 # Per-site local config (your identifiers, domain, update feed) — never committed
 src-tauri/tauri.local.conf.json
 crew-edge/wrangler.local.jsonc
+
+# publish-update.sh output (large DMG + feed)
+update-server/
+
+# scripts/build-dmg.sh output
+/ProDeck.dmg

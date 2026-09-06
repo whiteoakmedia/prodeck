@@ -69,10 +69,11 @@ export function SettingsPage() {
   // clients; member clients get an error and the card simply hides.
   // Deep-jump from onboarding: land on the exact card, not the page top.
   useEffect(() => {
-    const target = consumeSettingsJump();
-    if (!target) return;
-    // Wait a frame so the cards are in the DOM.
+    // Consume inside the timeout: StrictMode runs effect→cleanup→effect in
+    // dev, and consuming eagerly handed the second run a null target.
     const t = setTimeout(() => {
+      const target = consumeSettingsJump();
+      if (!target) return;
       document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 60);
     return () => clearTimeout(t);

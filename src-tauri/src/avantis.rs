@@ -658,14 +658,11 @@ fn fire_softkeys(
             }
             last_fire.insert((chan, note), Instant::now());
             let identity = app.state::<crate::identity::IdentityState>().inner().clone();
-            let recipients = if m.recipients.is_empty() {
-                crate::identity::approved_users(&identity)
-                    .into_iter()
-                    .map(|(id, _)| id)
-                    .collect()
-            } else {
-                m.recipients.clone()
-            };
+            // Empty = "everyone" — hand that to send_core unchanged so it
+            // resolves to everyone IN THE BUILDING (roster ∩ checked in), the
+            // same rule every other broadcast follows. Expanding it here to
+            // every approved id paged people at home.
+            let recipients = m.recipients.clone();
             let pages = app.state::<crate::pages::PagesState>().inner().clone();
             let _ = crate::pages::send_core(
                 app,
@@ -876,7 +873,7 @@ pub fn spawn_watch_flush(app: AppHandle) {
 
             let pages = app.state::<crate::pages::PagesState>().inner().clone();
             let identity = app.state::<crate::identity::IdentityState>().inner().clone();
-            let _ = crate::pages::send_core(
+            if let Err(e) = crate::pages::send_core(
                 &app,
                 &pages,
                 &identity,
@@ -884,7 +881,11 @@ pub fn spawn_watch_flush(app: AppHandle) {
                 body,
                 vec![user],
                 true,
-            );
+            ) {
+                // e.g. the configured user was un-approved: don't lose the
+                // alert silently.
+                eprintln!("[avantis] watchdog page failed: {e}");
+            }
         }
     });
 }

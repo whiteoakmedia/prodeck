@@ -112,7 +112,7 @@ async fn push_once(app: &AppHandle) {
         Err(_) => return,
     };
     let resp = client
-        .post(format!("{}/edge/push", public_url.trim_end_matches('/')))
+        .post(format!("{}/edge/push", public_url.trim().trim_end_matches('/')))
         .bearer_auth(admin)
         .json(&json!({
             "tokens": tokens,

@@ -17,6 +17,7 @@ import { startOutbox } from "./lib/outbox";
 import { CrewPageTakeover } from "./mobile/CrewPages";
 import { ServiceWizard } from "./components/ServiceWizard";
 import { FirstRunSetup } from "./components/FirstRunSetup";
+import { isFreshInstall } from "./lib/onboarding";
 import { Setup } from "./pages/Setup";
 import { ChatDrawer } from "./components/ChatDrawer";
 import { usePco } from "./pcoStore";
@@ -109,8 +110,7 @@ function Shell() {
   useEffect(() => {
     if (IS_WEB || firstRouteDone.current || settings === null) return;
     firstRouteDone.current = true;
-    const fresh = !settings.pp_host?.trim() && !settings.pco_app_id && !settings.web_enabled;
-    if (fresh) setPage("setup");
+    if (isFreshInstall(settings)) setPage("setup");
   }, [settings === null]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const checklists = useChecklists();

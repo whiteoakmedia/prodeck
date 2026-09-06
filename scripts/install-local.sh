@@ -26,7 +26,11 @@ codesign --verify --deep --strict "$BUNDLE"
 SIGN_INFO="$(codesign -dv "$BUNDLE" 2>&1)"
 case "$SIGN_INFO" in
   *"flags=0x0(none)"*) ;;
-  *) echo "refusing: unexpected signing flags (expected flags=0x0)"; exit 1 ;;
+  *)
+    echo "refusing: the bundle is not signed with your identity (expected flags=0x0(none))."
+    echo "  Sign it first, WITHOUT hardened runtime, then rerun:"
+    echo "    codesign --force --deep --sign \"ProDeck Self Sign\" \"$BUNDLE\""
+    exit 1 ;;
 esac
 V="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$BUNDLE/Contents/Info.plist")"
 echo "installing ProDeck $V"
@@ -55,6 +59,7 @@ rm -rf "$APP.old"
 # 4. Watchdog back in charge; kickstart launches the new build under launchd.
 #    Refresh the plist from the repo template first — the binary name inside
 #    the bundle changed once (legacy rename) and can again.
+mkdir -p "$(dirname "$PLIST")"
 if ! cmp -s "$REPO_DIR/deploy/launchagents/com.prodeck.watchdog.plist" "$PLIST"; then
   cp "$REPO_DIR/deploy/launchagents/com.prodeck.watchdog.plist" "$PLIST"
 fi

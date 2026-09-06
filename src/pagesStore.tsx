@@ -17,7 +17,7 @@ import {
   type CrewPage,
 } from "./lib/tauri";
 import { useChat } from "./chatStore";
-import { CREW_SESSION_KEY } from "./chatStore";
+import { CREW_SESSION_KEY, CREW_ID_KEY } from "./chatStore";
 
 // Pages — the priority channel (design/mobile S06/S07). Chat is a feed you read
 // when you look; a page takes the screen and buzzes until confirmed.
@@ -86,14 +86,25 @@ export function PagesProvider({ children }: { children: ReactNode }) {
 
   // Oldest unconfirmed page addressed to me. Oldest first: if two land while
   // the phone is face-down, the earlier command is the one still pending.
+  // Match by crew id, never by display name: the booth "heals" a typed name
+  // to the PCO spelling ("zach green" → "Zachary Green") and the phone picks
+  // up the healed name, while the booth keeps stamping pages with the typed
+  // one — so a name compare silently missed every page for that person.
+  // Name is only the fallback for a phone that has no id stored yet.
   const me = chat.name;
+  let myId: string | null = null;
+  try {
+    myId = localStorage.getItem(CREW_ID_KEY);
+  } catch {
+    /* storage unavailable */
+  }
+  const isMe = (r: { id?: string; name: string }) =>
+    myId && r.id ? r.id === myId : r.name === me;
+  const ackedByMe = (r: { user_id?: string; name: string }) =>
+    myId && r.user_id ? r.user_id === myId : r.name === me;
   const incoming =
     pages
-      .filter(
-        (p) =>
-          p.recipients.some((r) => r.name === me) &&
-          !p.receipts.some((r) => r.name === me),
-      )
+      .filter((p) => p.recipients.some(isMe) && !p.receipts.some(ackedByMe))
       .sort((a, b) => a.sent_ms - b.sent_ms)[0] ?? null;
 
   async function ack(pageId: number) {

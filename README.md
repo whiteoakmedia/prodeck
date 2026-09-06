@@ -42,7 +42,7 @@ ProPresenter, and Planning Center, and add the rest when you want it.
    You only do this once. macOS asks because the app is free and not
    Apple-notarized — the code itself is open here for anyone to read.
 
-That's it — no toolchain, no terminal. Apple Silicon Mac required.
+That's it — no toolchain, no terminal. Runs on Intel and Apple Silicon Macs, macOS 10.15 or newer.
 
 > **Why the extra click?** Apple charges $99/yr for the Developer ID that
 > removes this prompt. Until ProDeck is notarized, macOS treats it like any
@@ -64,7 +64,7 @@ bash scripts/setup.sh --install  # …make it a permanent, self-relaunching boot
 bash scripts/build-dmg.sh        # …or just produce a fresh ProDeck.dmg
 ```
 
-The setup script checks prerequisites (Xcode tools, Rust, Node, OpenSSL),
+The setup script checks prerequisites (Xcode tools, Rust, Node),
 asks for your environment as it goes, and writes site-specific values to
 **gitignored local files** — your fork never carries your church's config in
 code.
@@ -78,7 +78,7 @@ trial to tap discs, kiosks, and a booth-off-resilient domain.
 
 ## Requirements
 
-- Apple Silicon Mac for the booth app (clients can be anything with a browser)
+- A Mac for the booth app — Intel or Apple Silicon, macOS 10.15+ (clients can be anything with a browser)
 - ProPresenter 7 with its network API enabled
 - Planning Center Services
 - Optional per feature: Cloudflare (free) + a domain, an audio input, an

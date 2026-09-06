@@ -41,7 +41,6 @@ fn open_print_html(html: String) -> Result<(), String> {
     Ok(())
 }
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
 /// One-time migration from the legacy data-folder name. The app was renamed;
 /// existing installs keep their data (and the settings paths pointing into it)
 /// without anyone noticing. This is deliberately the only place in the
@@ -50,21 +49,71 @@ fn migrate_legacy_data_dir() {
     let Some(base) = dirs::config_dir() else { return };
     let old = base.join("ProdLink");
     let new = base.join("ProDeck");
-    if old.is_dir() && !new.exists() {
-        if std::fs::rename(&old, &new).is_ok() {
-            // Path-valued settings (e.g. the GA4 key path) point into the old
-            // folder — rewrite them in place before anything loads.
-            let sp = new.join("settings.json");
-            if let Ok(txt) = std::fs::read_to_string(&sp) {
-                let fixed = txt.replace("/ProdLink/", "/ProDeck/");
-                if fixed != txt {
-                    let _ = std::fs::write(&sp, fixed);
+    if !old.is_dir() {
+        return;
+    }
+    // Already migrated (or a genuine new install that happens to sit next to
+    // a stale legacy folder): never touch a ProDeck folder that has settings.
+    if new.join("settings.json").exists() {
+        return;
+    }
+    if !new.exists() {
+        if let Err(e) = std::fs::rename(&old, &new) {
+            eprintln!("[migrate] could not rename {} -> {}: {e}", old.display(), new.display());
+            return;
+        }
+    } else {
+        // ProDeck exists but holds no settings yet — e.g. only an ndi-lib/ or
+        // models/ folder placed by hand. Move the legacy entries across one by
+        // one, never overwriting, so nothing is stranded.
+        let rd = match std::fs::read_dir(&old) {
+            Ok(rd) => rd,
+            Err(e) => {
+                eprintln!("[migrate] could not read {}: {e}", old.display());
+                return;
+            }
+        };
+        for ent in rd.flatten() {
+            let dst = new.join(ent.file_name());
+            if dst.exists() {
+                continue;
+            }
+            if let Err(e) = std::fs::rename(ent.path(), &dst) {
+                eprintln!("[migrate] could not move {}: {e}", ent.path().display());
+            }
+        }
+    }
+    // Path-valued settings (e.g. the GA4 key path) point into the old folder.
+    // Rewrite only string fields that are filesystem paths, and write
+    // atomically — a torn settings.json is read back as defaults, which would
+    // silently wipe passwords and tokens.
+    let sp = new.join("settings.json");
+    let Ok(txt) = std::fs::read_to_string(&sp) else { return };
+    let Ok(mut v) = serde_json::from_str::<serde_json::Value>(&txt) else { return };
+    let mut changed = false;
+    if let Some(obj) = v.as_object_mut() {
+        for val in obj.values_mut() {
+            if let Some(sv) = val.as_str() {
+                if sv.starts_with('/') && sv.contains("/ProdLink/") {
+                    *val = serde_json::Value::String(sv.replace("/ProdLink/", "/ProDeck/"));
+                    changed = true;
                 }
             }
         }
     }
+    if !changed {
+        return;
+    }
+    let Ok(out) = serde_json::to_string_pretty(&v) else { return };
+    let tmp = sp.with_extension("json.tmp");
+    let res = std::fs::write(&tmp, out).and_then(|_| std::fs::rename(&tmp, &sp));
+    if let Err(e) = res {
+        eprintln!("[migrate] could not rewrite settings.json: {e}");
+        let _ = std::fs::remove_file(&tmp);
+    }
 }
 
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     migrate_legacy_data_dir();
     let loaded_settings = settings::load();
@@ -75,10 +124,18 @@ pub fn run() {
         None
     };
 
-    tauri::Builder::default()
+    let context = tauri::generate_context!();
+    // The updater plugin fails initialization (a panic before any window) when
+    // tauri.conf.json has no `plugins.updater` block. Adopters who don't
+    // publish updates may drop the block, so only register it when present.
+    let has_updater = context.config().plugins.0.contains_key("updater");
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_shell::init());
+    if has_updater {
+        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    }
+    builder
         .plugin(tauri_plugin_process::init())
         .manage(Arc::new(AsyncMutex::new(None::<propresenter::ProPresenterConnection>))
             as propresenter::ProPresenterState)
@@ -252,6 +309,6 @@ pub fn run() {
             tap::tap_check_links,
             tap::tap_test,
         ])
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("error while running tauri application");
 }

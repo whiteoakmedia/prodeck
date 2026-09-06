@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build a SIGNED ProDeck Clone release and publish it to the local update
+# Build a SIGNED, universal ProDeck release and publish it to the local update
 # server directory (update-server/). Run scripts/serve-updates.sh to serve it.
 #
 #   scripts/publish-update.sh ["release notes"]
@@ -30,11 +30,19 @@ export TAURI_SIGNING_PRIVATE_KEY="$(cat "$KEY_PATH")"
 export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}"
 export PATH="$HOME/.cargo/bin:$PATH"
 
-npm run tauri build
+# The updater config (endpoint, pubkey, createUpdaterArtifacts) and your
+# signing identity live in the gitignored local overlay.
+LOCAL_CONF="src-tauri/tauri.local.conf.json"
+[ -f "$LOCAL_CONF" ] || { echo "✗ $LOCAL_CONF missing — it must carry plugins.updater + bundle.createUpdaterArtifacts=true" >&2; exit 1; }
+BUNDLE_DIR="src-tauri/target/universal-apple-darwin/release/bundle/macos"
+# Never pick up a stale artifact from an earlier build.
+rm -f "$BUNDLE_DIR"/*.app.tar.gz "$BUNDLE_DIR"/*.app.tar.gz.sig
+rustup target add aarch64-apple-darwin x86_64-apple-darwin >/dev/null
+npm run tauri -- build --target universal-apple-darwin --bundles app --config "$LOCAL_CONF"
 
-ART=$(ls -1t src-tauri/target/release/bundle/macos/*.app.tar.gz | head -1)
-if [ -z "$ART" ] || [ ! -f "${ART}.sig" ]; then
-  echo "✗ Updater artifact / signature not found — is createUpdaterArtifacts enabled and the key set?" >&2
+ART="$BUNDLE_DIR/ProDeck.app.tar.gz"
+if [ ! -f "$ART" ] || [ ! -f "${ART}.sig" ]; then
+  echo "✗ Updater artifact / signature not produced — is createUpdaterArtifacts enabled in $LOCAL_CONF and the key set?" >&2
   exit 1
 fi
 
@@ -43,7 +51,7 @@ cp "$ART" "$OUT/ProDeck-Clone.app.tar.gz"
 SIG=$(tr -d '\n' < "${ART}.sig")
 
 # Include the DMG for fresh installs alongside the updater feed.
-DMG=$(ls -1t src-tauri/target/release/bundle/dmg/*.dmg 2>/dev/null | head -1 || true)
+DMG=$(ls -1t src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg 2>/dev/null | head -1 || true)
 [ -n "${DMG:-}" ] && cp "$DMG" "$OUT/ProDeck-Clone-Installer.dmg"
 
 cat > "$OUT/latest.json" <<JSON
@@ -53,6 +61,10 @@ cat > "$OUT/latest.json" <<JSON
   "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "platforms": {
     "darwin-aarch64": {
+      "signature": "$SIG",
+      "url": "https://github.com/$REPO/releases/latest/download/$ASSET"
+    },
+    "darwin-x86_64": {
       "signature": "$SIG",
       "url": "https://github.com/$REPO/releases/latest/download/$ASSET"
     }

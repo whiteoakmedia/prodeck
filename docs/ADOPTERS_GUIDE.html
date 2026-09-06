@@ -243,7 +243,7 @@
   <h2><span class="n">03</span>The stack it assumes</h2>
   <div class="tblwrap"><table>
     <tr><th>Component</th><th>Requirement</th></tr>
-    <tr><td><strong>A Mac in the booth</strong></td><td><span class="chip req">REQUIRED</span> Apple Silicon, always on, always awake. This is the server for everything. There is no Windows or Linux build.</td></tr>
+    <tr><td><strong>A Mac in the booth</strong></td><td><span class="chip req">REQUIRED</span> Intel or Apple Silicon (macOS 10.15+), always on, always awake. This is the server for everything. There is no Windows or Linux build.</td></tr>
     <tr><td><strong>ProPresenter 7</strong></td><td><span class="chip req">REQUIRED</span> with the network API enabled (Preferences → Network). ProDeck reads slides/playlists/notes and triggers over it.</td></tr>
     <tr><td><strong>Planning Center Services</strong></td><td><span class="chip req">REQUIRED</span> — plans, teams, and scheduling are the backbone. You create a free Personal Access Token under a PCO admin.</td></tr>
     <tr><td><strong>Cloudflare + a domain</strong></td><td><span class="chip opt">OPTIONAL</span> — only for the crew/cloud/tap features. Free plan suffices; the domain is the only recurring cost.</td></tr>
@@ -261,13 +261,13 @@
   <h3>Tier 1 — just settings (change in the app, no code)</h3>
   <p>ProPresenter host, PCO credentials, all passwords and tokens, GA4 property/key, church coordinates, SPL calibration, MIDI ports and channels, Avantis host, audio channel routing, mic-position templates, checklists, call-time schedules, tap keyword→URL mappings, dashboard layouts. <strong>None of my values ship in the repo</strong> — a fresh install starts blank.</p>
 
-  <h3>Tier 2 — four hardcoded spots (one find-and-replace each)</h3>
+  <h3>Tier 2 — your environment (nothing to edit in code)</h3>
+  <p>Everything site-specific is either a Setting or a gitignored local file, so your fork never carries your values in source:</p>
   <div class="tblwrap"><table>
-    <tr><th>File</th><th>What's mine</th><th>Change to</th></tr>
-    <tr><td class="m">src/lib/tauri.ts</td><td class="m">PUBLIC_URL = "https://prodeck.live"</td><td>Your domain</td></tr>
-    <tr><td class="m">src-tauri/src/edge.rs</td><td class="m">EDGE_PUSH_URL = "https://prodeck.live/edge/push"</td><td>Your domain + <code>/edge/push</code></td></tr>
-    <tr><td class="m">crew-edge/wrangler.jsonc</td><td class="m">routes: prodeck.live/*</td><td>Your domain/zone</td></tr>
-    <tr><td class="m">src-tauri/tauri.conf.json</td><td class="m">updater endpoint (my GitHub releases)</td><td>Your fork's releases — or delete the updater block and install by hand</td></tr>
+    <tr><th>What</th><th>Where it lives</th></tr>
+    <tr><td>Your public domain (crew phones off-site, the edge fallback, the permanent /join QR)</td><td>Settings → Browser Access → <strong>Public URL</strong>. The edge push URL is derived from it.</td></tr>
+    <tr><td>Cloudflare Worker routes for your zone</td><td><code class="m">crew-edge/wrangler.local.jsonc</code> and <code class="m">taplink-edge/wrangler.local.jsonc</code> (gitignored; copy the committed <code>wrangler.jsonc</code> and fill in your route)</td></tr>
+    <tr><td>Bundle identifier, signing identity, updater endpoint + public key</td><td><code class="m">src-tauri/tauri.local.conf.json</code> (gitignored overlay; <code>scripts/setup.sh</code> creates it). Leave the placeholder updater block in <code>tauri.conf.json</code> alone — if you never publish updates the check simply fails quietly in Settings.</td></tr>
   </table></div>
 
   <h3>Tier 3 — shaped by my room (works for you, but review it)</h3>
@@ -322,7 +322,7 @@
 <!-- ============================================================ 7 -->
 <section id="phase0">
   <h2><span class="n">07</span>Phase 0 — try it on a spare Mac</h2>
-  <p class="lead">Zero commitment: dev mode on any Apple Silicon Mac on your church network. No signing, no cloud, no install.</p>
+  <p class="lead">Zero commitment: dev mode on any Mac (Intel or Apple Silicon) on your church network. No signing, no cloud, no install.</p>
   <pre><code><span class="c"># prerequisites (one-time): Xcode command-line tools, Rust, Node 20+</span>
 xcode-select --install
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -347,21 +347,22 @@ bash scripts/setup.sh   <span class="c"># prereqs + config + dev mode, all guide
   <p>Keychain Access → Certificate Assistant → Create a Certificate: name it (e.g. <code>YourChurch ProDeck</code>), identity type <em>Self-Signed Root</em>, certificate type <em>Code Signing</em>. macOS pins microphone/screen permissions to this identity — keep using the same one forever, and never re-sign with hardened runtime (the install script refuses it for you).</p>
   <h3>2 · Create your updater keypair (once, optional)</h3>
   <pre><code>npm run tauri signer generate -- -w ~/.prodeck/updater.key</code></pre>
-  <p>Put the printed <em>public</em> key into <code>src-tauri/tauri.conf.json</code> → <code>plugins.updater.pubkey</code>, and point the endpoint at your own fork's releases — or delete the updater block entirely and install by hand each time. Guard the private key like a password: whoever holds it can ship code to your booth.</p>
+  <p>Put the printed <em>public</em> key and your fork's release feed into the gitignored overlay <code>src-tauri/tauri.local.conf.json</code> (<code>plugins.updater.pubkey</code> / <code>endpoints</code>, plus <code>bundle.createUpdaterArtifacts: true</code>) — not into the committed <code>tauri.conf.json</code>. If you never publish updates, skip this step entirely. Guard the private key like a password: whoever holds it can ship code to your booth.</p>
   <h3>3 · Build, sign, install</h3>
-  <pre><code>TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.prodeck/updater.key)" npm run tauri build
+  <pre><code>TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.prodeck/updater.key)" \
+  npm run tauri -- build --bundles app --config src-tauri/tauri.local.conf.json
 codesign --force --deep --sign "YourChurch ProDeck" \
-  src-tauri/target/release/bundle/macos/ProDeck.app
+  src-tauri/target/release/bundle/macos/ProDeck.app   <span class="c"># no hardened runtime</span>
 bash scripts/install-local.sh   <span class="c"># atomic swap into /Applications + watchdog handoff</span></code></pre>
   <p><strong>Prefer a double-click installer?</strong> <code>bash scripts/build-dmg.sh</code> produces a drag-to-Applications <code>ProDeck.dmg</code> — hand it to anyone, no terminal needed to install (only to build). For an always-on booth, the script path below adds crash-relaunch and keep-alive that a plain drag-install does not.</p>
-    <p>Edit the identity name at the top of <code>scripts/install-local.sh</code> to match yours. The script expects the watchdog LaunchAgent from step 4 to exist.</p>
-  <h3>4 · The three LaunchAgents</h3>
+    <p><code>scripts/install-local.sh</code> refuses a bundle that isn't signed with your identity (or one signed with hardened runtime), and installs the watchdog LaunchAgent template from step 4 for you.</p>
+  <h3>4 · The LaunchAgents</h3>
   <p>Ready-made templates live in <code>deploy/launchagents/</code> — <code>scripts/setup.sh --install</code> installs and loads them for you. For reference:</p>
   <div class="tblwrap"><table>
     <tr><th>Plist</th><th>Purpose · ProgramArguments</th></tr>
     <tr><td class="m">com.prodeck.watchdog.plist</td><td>Relaunch on crash · <code>/Applications/ProDeck.app/Contents/MacOS/prodeck</code>, <code>RunAtLoad</code> true, <code>KeepAlive.SuccessfulExit</code> false, <code>ThrottleInterval</code> 10</td></tr>
     <tr><td class="m">com.prodeck.caffeinate.plist</td><td>Never sleep · <code>/usr/bin/caffeinate -s</code>, <code>KeepAlive</code> true</td></tr>
-    <tr><td class="m">com.prodeck.cloudflared.plist</td><td>Phase 2 only — the tunnel (§9)</td></tr>
+    <tr><td class="m">com.prodeck.cloudflared.plist</td><td>Phase 2 only — the tunnel (§9). Not in the repo; you create it when you set up the tunnel.</td></tr>
   </table></div>
   <p>Finish by enabling Browser Access in Settings (pick your admin + member passwords) and giving the booth Mac a DHCP reservation — do the ProPresenter Mac too, and skip the single most recurring failure I ever had.</p>
 </section>
@@ -372,7 +373,7 @@ bash scripts/install-local.sh   <span class="c"># atomic swap into /Applications
   <p class="lead">Unlocks: crew phones anywhere, booth-off fallback, tap discs, kiosks beyond the LAN. Needs a Cloudflare account (free) and a domain on it.</p>
   <ol>
     <li><strong>Domain onto Cloudflare.</strong> Buy or transfer any domain; add it as a zone.</li>
-    <li><strong>Make the four Tier-2 edits from §4</strong> — your domain into <code>PUBLIC_URL</code>, <code>EDGE_PUSH_URL</code>, and <code>crew-edge/wrangler.jsonc</code>'s route.</li>
+    <li><strong>Point ProDeck at your domain</strong> — Settings → Browser Access → Public URL, and your zone's route in <code>crew-edge/wrangler.local.jsonc</code> (§4, Tier 2).</li>
     <li><strong>Deploy the two workers.</strong> In <code>crew-edge/</code> and <code>taplink-edge/</code>: <code>npx wrangler login</code> then <code>npx wrangler deploy</code>. Set each worker's secrets with <code>npx wrangler secret put &lt;NAME&gt;</code> — the names are listed at the top of each worker's <code>src/index.ts</code> (admin token, PCO pair for the edge fallback, tap tokens).</li>
     <li><strong>Tunnel the booth.</strong> <code>brew install cloudflared</code>, then <code>cloudflared tunnel login</code>, <code>cloudflared tunnel create booth</code>, and a config at <code>~/.cloudflared/config.yml</code> routing your hostname → <code>http://localhost:8088</code>. Add the DNS route (<code>cloudflared tunnel route dns booth yourdomain.com</code>) and wrap it in the <code>com.prodeck.cloudflared</code> LaunchAgent. <em>Tunnel only the gateway port — never video.</em></li>
     <li><strong>Wire the booth to the edge:</strong> Settings → paste the edge admin token you chose in step 3. From then on <code>install-local.sh</code> keeps the edge's fallback copy in sync on every install.</li>

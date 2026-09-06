@@ -246,12 +246,13 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
           if (arrived === null) return a;
           to = ids.filter((id) => arrived.has(id));
         }
-        // Empty after filtering = nobody from the team is here. Mark fired
-        // without sending — a gather call with no one to gather is done, and
-        // it must not go out to the whole team at home instead.
-        if (to.length > 0) {
-          sendRef.current(a.body || a.label, to, a.buzz).catch(() => {});
-        }
+        // Empty after filtering = nobody from the team is checked in YET.
+        // Don't mark it fired: the arrival sheet is wiped when the service
+        // time rolls over and refills as people re-check-in, so retry on the
+        // next tick. The 10-minute overdue guard above bounds the retries,
+        // and it never falls back to paging the whole team at home.
+        if (to.length === 0) return a;
+        sendRef.current(a.body || a.label, to, a.buzz).catch(() => {});
         changed = true;
         return { ...a, firedFor: [...a.firedFor, key] };
       });
@@ -295,15 +296,20 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
         slots.set(hhmm, [...(slots.get(hhmm) ?? []), pos]);
       }
       if (slots.size === 0) return;
-      const fired: Record<string, number> = JSON.parse(
-        localStorage.getItem(FIRED_KEY) ?? "{}",
-      );
+      const safeParse = (raw: string | null): any => {
+        try {
+          return JSON.parse(raw ?? "{}") ?? {};
+        } catch {
+          return {};
+        }
+      };
+      const fired: Record<string, number> = safeParse(localStorage.getItem(FIRED_KEY));
       const day = new Date(start).toDateString();
       // People already nudged today — a role like "Camera Team Lead" can
       // loosely match positions in TWO slots, and one 7am buzz is plenty
       // (audit finding).
       const pagedKey = `${day}::paged`;
-      const paged = new Set<string>(JSON.parse(localStorage.getItem(FIRED_KEY + ".ids") ?? "{}")[pagedKey] ?? []);
+      const paged = new Set<string>(safeParse(localStorage.getItem(FIRED_KEY + ".ids"))[pagedKey] ?? []);
       // Only people ON THIS WEEK'S PLAN: a standing role must not buzz an
       // off-rotation volunteer at 7am (audit finding). Matching uses the
       // healed PCO spelling when present.

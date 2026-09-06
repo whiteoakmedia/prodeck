@@ -1163,12 +1163,19 @@ function SwitcherCuesWidget({ widget, editing, update }: WidgetProps) {
 // rotation by design, so a screen can display it forever.
 function CrewQrWidget() {
   const [qr, setQr] = useState("");
+  // Read the URL from settings (reactive), not the module-level PUBLIC_URL
+  // snapshot: on the desktop that is "" until settings load, and on a kiosk
+  // it is the LAN origin — both baked a wrong QR into a widget meant to be
+  // shown forever. Fall back to the page origin so it is never empty.
+  const { settings } = useProDeck();
+  const base = settings?.public_url?.trim() || PUBLIC_URL || (typeof location !== "undefined" ? location.origin : "");
   useEffect(() => {
+    if (!base) return;
     import("qrcode")
-      .then((Q) => Q.toDataURL(`${PUBLIC_URL}/join`, { margin: 1, width: 320 }))
+      .then((Q) => Q.toDataURL(`${base.replace(/\/+$/, "")}/join`, { margin: 1, width: 320 }))
       .then(setQr)
       .catch(() => {});
-  }, []);
+  }, [base]);
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, height: "100%", justifyContent: "center" }}>
       {qr && <img src={qr} alt="Join ProDeck Crew" style={{ maxWidth: "80%", maxHeight: "75%", borderRadius: 8 }} />}

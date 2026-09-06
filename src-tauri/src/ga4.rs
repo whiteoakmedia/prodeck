@@ -202,7 +202,14 @@ async fn poll_once(app: &AppHandle) {
 
     let raw = match std::fs::read_to_string(&key_path) {
         Ok(v) => v,
-        Err(e) => return set_err(format!("can't read the service-account key at {key_path}: {e}")),
+        Err(e) => {
+            // The path is booth-local detail (and redacted from web settings
+            // for that reason); ga4_state is member-visible, so keep it out.
+            eprintln!("[ga4] can't read service-account key at {key_path}: {e}");
+            return set_err(format!(
+                "can't read the service-account key file ({e}) — check the Live Viewers card in Settings on the ProDeck computer"
+            ));
+        }
     };
     let key: KeyFile = match serde_json::from_str(&raw) {
         Ok(k) => k,

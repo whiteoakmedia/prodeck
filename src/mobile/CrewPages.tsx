@@ -147,7 +147,9 @@ export function CrewPageComposer({
       .catch(() => setHere(new Set()));
   }, []);
 
-  const isHere = (id: string) => here === null || here.has(id);
+  // Until the arrival sheet loads, NOBODY is "here" — treating unknown as
+  // everyone made the first tap after opening page the entire roster.
+  const isHere = (id: string) => here !== null && here.has(id);
   // Same normalized-name matching the call-time nudge uses, honoring the
   // healed PCO spelling when one exists.
   const normN = (v: string) => v.trim().toLowerCase().replace(/\s+/g, " ");
@@ -311,10 +313,10 @@ export function CrewPageComposer({
 
       <button
         className="crew-send-page"
-        disabled={busy || !body.trim() || count === 0}
+        disabled={busy || here === null || !body.trim() || count === 0}
         onClick={go}
       >
-        {busy ? "Sending…" : `Send page to ${count}`}
+        {busy ? "Sending…" : here === null ? "Loading who's here…" : `Send page to ${count}`}
       </button>
     </div>
   );

@@ -1006,6 +1006,33 @@ async fn pp_action_raw(app: &AppHandle, full_path: &str) -> Result<Value, String
     Ok(Value::Null)
 }
 
+/// ProPresenter's control endpoints (trigger, clear, timer start, transport
+/// play…) are plain GETs, so `pp_get` is only a read for paths that are
+/// actually reads. Members get a positive allowlist of read prefixes AND a
+/// deny on any verb segment, so `presentation/<id>/3/trigger` is refused even
+/// though `presentation/` is readable.
+fn member_pp_read_ok(path: &str) -> bool {
+    let p = path.trim_start_matches('/').to_ascii_lowercase();
+    let p = p.split('?').next().unwrap_or("");
+    const READ_PREFIXES: &[&str] = &[
+        "version", "status/", "presentation/", "playlists", "playlist/", "announcement/",
+        "stage/message", "stage/layout_map", "stage/layouts", "stage/screens", "looks",
+        "look/current", "macros", "props", "timers", "timer/", "messages", "clear/groups",
+        "media/playlists", "media/playlist/", "audio/playlists", "audio/playlist/",
+        "video_inputs", "libraries", "library/", "transport/", "groups", "masks", "themes",
+        "theme/", "capture/status", "capture/settings",
+    ];
+    const VERBS: &[&str] = &[
+        "trigger", "focus", "start", "stop", "reset", "pause", "play", "next", "previous",
+        "toggle", "show", "hide", "activate", "deactivate", "go_to_end", "skip_backward",
+        "skip_forward", "auto_advance", "set", "timeline", "find_my_mouse",
+    ];
+    if !READ_PREFIXES.iter().any(|pre| p == pre.trim_end_matches('/') || p.starts_with(pre)) {
+        return false;
+    }
+    !p.split('/').any(|seg| VERBS.contains(&seg))
+}
+
 async fn dispatch(app: &AppHandle, cmd: &str, args: &Value, tier: Tier) -> Result<Value, String> {
     // Member tier: viewers with a voice. Reads + streams + TEAM chat; every
     // control surface (ProPresenter, stage/confidence sends, TapLink override,
@@ -1353,6 +1380,13 @@ async fn dispatch(app: &AppHandle, cmd: &str, args: &Value, tier: Tier) -> Resul
                 new.tap_token = g.tap_token.clone();
                 new.tap_enabled = g.tap_enabled;
                 new.tap_edge_url = g.tap_edge_url.clone();
+                // Booth-only too: the edge heartbeat POSTs the edge admin
+                // token and password hashes to public_url, and whisper_bin is
+                // a binary the booth executes. A browser admin must not be
+                // able to point either somewhere else.
+                new.public_url = g.public_url.clone();
+                new.whisper_bin = g.whisper_bin.clone();
+                new.whisper_model = g.whisper_model.clone();
                 *g = new;
                 g.clone()
             };
@@ -1362,6 +1396,9 @@ async fn dispatch(app: &AppHandle, cmd: &str, args: &Value, tier: Tier) -> Resul
         // ---- ProPresenter
         "pp_get" => {
             let path = s("path").ok_or("missing path")?;
+            if tier == Tier::Member && !member_pp_read_ok(&path) {
+                return Err("that ProPresenter path needs admin access".into());
+            }
             let (client, base) = current_config(&pp_handle(app)).await?;
             let url = format!("{}/v1/{}", base, path.trim_start_matches('/'));
             let resp = client.get(&url).send().await.map_err(|e| e.to_string())?;
@@ -1658,4 +1695,33 @@ pub fn web_start(port: u16, app: AppHandle, state: tauri::State<'_, WebState>) {
 #[tauri::command]
 pub fn web_stop(state: tauri::State<'_, WebState>) {
     stop(&state);
+}
+
+#[cfg(test)]
+mod member_pp_tests {
+    use super::member_pp_read_ok;
+
+    #[test]
+    fn member_pp_read_ok_allows_reads_and_refuses_controls() {
+        // Reads the web dashboards actually make.
+        for ok in [
+            "status/screens", "presentation/ABC-123", "presentation/active", "playlists",
+            "playlist/xyz", "announcement/active", "look/current", "looks", "macros",
+            "messages", "props", "timers", "libraries", "library/abc", "version",
+            "/status/slide", "clear/groups", "transport/presentation/current",
+        ] {
+            assert!(member_pp_read_ok(ok), "should allow read: {ok}");
+        }
+        // Every GET that changes what's on the screens.
+        for bad in [
+            "trigger/next", "trigger/previous", "presentation/ABC/3/trigger",
+            "playlist/xyz/2/trigger", "clear/layer/slide", "clear/layer/media",
+            "macro/abc/trigger", "look/abc/trigger", "timer/1/start", "timer/1/reset",
+            "transport/presentation/play", "message/abc/trigger", "presentation/active/focus",
+            "prop/abc/trigger", "find_my_mouse", "stage/layout_map/set",
+            "presentation/focused/trigger", "Trigger/Next", "trigger/next?x=1",
+        ] {
+            assert!(!member_pp_read_ok(bad), "should refuse control: {bad}");
+        }
+    }
 }

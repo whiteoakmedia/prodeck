@@ -39,10 +39,11 @@ if ! command -v cargo >/dev/null 2>&1; then
 fi
 note "✓ Rust $(rustc --version 2>/dev/null | awk '{print $2}')"
 
-if ! [ -e /opt/homebrew/opt/openssl@3/lib/libssl.3.dylib ] && ! [ -e /usr/local/opt/openssl@3/lib/libssl.3.dylib ]; then
-  die "OpenSSL 3 is required (the app links it): brew install openssl@3 — then rerun."
-fi
-note "✓ OpenSSL 3"
+# OpenSSL is compiled INTO the app (vendored) — no Homebrew library needed at
+# build or run time. Building it from source only needs perl, which ships
+# with macOS.
+command -v perl >/dev/null 2>&1 || die "perl is required to build the bundled OpenSSL (it ships with macOS — check your PATH)."
+note "✓ perl (for the bundled OpenSSL build)"
 
 command -v node >/dev/null 2>&1 || die "Node.js 20+ is required — install from nodejs.org or 'brew install node', then rerun."
 NODE_MAJOR="$(node -v | sed 's/^v//' | cut -d. -f1)"
@@ -100,14 +101,19 @@ fi
 note "✓ signing identity: $IDENTITY"
 
 cd "$REPO_DIR"
-BUILD_ARGS=(build)
+APP="$REPO_DIR/src-tauri/target/release/bundle/macos/ProDeck.app"
+# Remove any previous bundle first: a failed build must not leave a stale app
+# in place for the sign+install steps below to pick up.
+rm -rf "$APP"
+# --bundles app: the DMG bundler drives Finder via AppleScript and fails
+# headless; the DMG is scripts/build-dmg.sh's job.
+BUILD_ARGS=(build --bundles app)
 [ -f "$LOCAL_CONF" ] && BUILD_ARGS+=(--config "$LOCAL_CONF")
 if [ -f "$HOME/.prodeck/updater.key" ]; then
   TAURI_SIGNING_PRIVATE_KEY="$(cat "$HOME/.prodeck/updater.key")" npm run tauri -- "${BUILD_ARGS[@]}" || true
 else
   npm run tauri -- "${BUILD_ARGS[@]}" || true
 fi
-APP="$REPO_DIR/src-tauri/target/release/bundle/macos/ProDeck.app"
 [ -d "$APP" ] || die "Build did not produce $APP — scroll up for the real error."
 codesign --force --deep --sign "$IDENTITY" "$APP"
 codesign --verify --deep --strict "$APP"

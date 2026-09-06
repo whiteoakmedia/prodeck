@@ -1,8 +1,17 @@
 import { useEffect, useState } from "react";
 import { useProDeck } from "../store";
 import { usePco } from "../pcoStore";
-import { getSettings, updateSettings, IS_WEB, type Settings } from "../lib/tauri";
+import {
+  getSettings,
+  updateSettings,
+  pcoTest,
+  webStart,
+  webStop,
+  IS_WEB,
+  type Settings,
+} from "../lib/tauri";
 import { requestSettingsJump } from "../lib/settingsJump";
+import { isFreshInstall, readSetupDone, writeSetupDone, ONBOARDING_EVENT } from "../lib/onboarding";
 import { ConnectCard } from "./ConnectCard";
 import { Icon } from "./Icon";
 
@@ -16,10 +25,9 @@ import { Icon } from "./Icon";
  *   4. hands off the optional pieces to their Settings cards.
  *
  * Self-gating: desktop only, only when nothing is configured yet. Dismissed
- * once and never returns (prodeck.setupDone). Re-openable from Setup.
+ * once and never returns (prodeck.setupDone). Re-openable from Setup via
+ * requestOnboarding(), which fires ONBOARDING_EVENT.
  */
-
-const DONE_KEY = "prodeck.setupDone";
 
 type Stage = "welcome" | "tools" | "propresenter" | "pco" | "web" | "more" | "done";
 const STAGES: { id: Stage; label: string }[] = [
@@ -83,7 +91,7 @@ const ADDONS: { name: string; what: string; page: string; anchor: string }[] = [
 ];
 
 export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void }) {
-  const { settings, connected } = useProDeck();
+  const { settings, connected, refreshSettings } = useProDeck();
   const pco = usePco();
   const [open, setOpen] = useState(false);
   const [stage, setStage] = useState<Stage>("welcome");
@@ -102,19 +110,37 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
 
   useEffect(() => {
     if (IS_WEB || settings === null) return;
-    if (localStorage.getItem(DONE_KEY) === "1") return;
-    const fresh = !settings.pp_host?.trim() && !settings.pco_app_id && !settings.web_enabled;
-    if (fresh) setOpen(true);
+    if (readSetupDone()) return;
+    if (isFreshInstall(settings)) setOpen(true);
   }, [settings === null]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // "Re-run the walkthrough" from the Setup page.
+  useEffect(() => {
+    if (IS_WEB) return;
+    const reopen = () => {
+      setStage("welcome");
+      setOpen(true);
+    };
+    window.addEventListener(ONBOARDING_EVENT, reopen);
+    return () => window.removeEventListener(ONBOARDING_EVENT, reopen);
+  }, []);
 
   if (!open) return null;
 
   const idx = STAGES.findIndex((s) => s.id === stage);
   const go = (s: Stage) => setStage(s);
-  const next = () => go(STAGES[Math.min(idx + 1, STAGES.length - 1)].id);
-  const back = () => go(STAGES[Math.max(idx - 1, 0)].id);
+  // Functional updates: the delayed `next` after a successful save must step
+  // from wherever the user IS, not from the render that scheduled it (a quick
+  // Back inside that window used to get yanked forward again).
+  const step = (delta: number) =>
+    setStage((cur) => {
+      const i = STAGES.findIndex((x) => x.id === cur);
+      return STAGES[Math.max(0, Math.min(i + delta, STAGES.length - 1))].id;
+    });
+  const next = () => step(1);
+  const back = () => step(-1);
   const finish = () => {
-    localStorage.setItem(DONE_KEY, "1");
+    writeSetupDone(true);
     setOpen(false);
   };
 
@@ -130,12 +156,16 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
     setPcoBusy(true);
     setPcoMsg("");
     try {
+      // saveCredentials persists and then self-tests, but it swallows the
+      // test failure into pco.status — so a wrong secret used to print the
+      // checkmark and advance. Test explicitly and only advance on success.
       await pco.saveCredentials(appId.trim(), secret.trim());
+      await pcoTest();
       setPcoMsg("✓ Connected to Planning Center");
       setPcoDone(true);
       setTimeout(next, 800);
     } catch (e) {
-      setPcoMsg(String(e));
+      setPcoMsg(`Planning Center rejected those credentials — check the Application ID and Secret. (${String(e)})`);
     } finally {
       setPcoBusy(false);
     }
@@ -146,13 +176,23 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
     setWebMsg("");
     try {
       const s = (await getSettings()) as Settings;
-      await updateSettings({
+      const nextS = {
         ...s,
         web_enabled: webOn,
         web_password: adminPw || s.web_password,
         web_member_password: memberPw || s.web_member_password,
-      } as unknown as Settings);
-      setWebMsg("✓ Saved");
+      } as unknown as Settings;
+      await updateSettings(nextS);
+      // Saving only persists the setting; the gateway itself is started by
+      // web_start. Without this, "Open it to phones" saved a checkbox and the
+      // phone got connection refused until the next relaunch.
+      if (webOn && (nextS as any).web_password) {
+        await webStart((nextS as any).web_port ?? 8088);
+      } else {
+        await webStop().catch(() => {});
+      }
+      await refreshSettings();
+      setWebMsg(webOn ? "✓ Browser access is live" : "✓ Saved");
       setTimeout(next, 600);
     } catch (e) {
       setWebMsg(String(e));
