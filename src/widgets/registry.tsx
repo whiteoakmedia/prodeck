@@ -40,6 +40,8 @@ import {
   tapStats,
   ga4State,
   type Ga4Snapshot,
+  obsState,
+  type ObsSnapshot,
   type NdiSource,
   type TapEdgeState,
   type TapStatRow,
@@ -59,6 +61,7 @@ import {
   NeedsConnection,
   NeedsDesk,
   NeedsGa4,
+  NeedsObs,
   NeedsNdi,
   NeedsPco,
   NeedsPro,
@@ -138,6 +141,77 @@ const LAYER_KEYS = ["slide", "media", "video_input", "messages", "announcements"
  * Counts the web player only: the Facebook simulcast is invisible to GA4, so
  * the caption says so rather than letting the number read as total reach.
  */
+/**
+ * OBS Studio — the answer to the question a booth asks all morning: are we
+ * actually live? Streaming state is the headline because "we thought we were
+ * streaming" is the expensive mistake; dropped frames are the early warning
+ * that the upload is failing before anyone watching complains.
+ */
+function ObsWidget() {
+  const { settings } = useProDeck();
+  const [snap, setSnap] = useState<ObsSnapshot | null>(null);
+
+  useEffect(() => {
+    let stop = false;
+    obsState()
+      .then((s) => !stop && setSnap(s))
+      .catch(() => {});
+    const un = on<ObsSnapshot>("obs:state", (s) => !stop && setSnap(s));
+    return () => {
+      stop = true;
+      un.then((f) => f());
+    };
+  }, []);
+
+  if (settings && !settings.obs_enabled) return <NeedsObs />;
+  if (!snap) return <div className="widget-empty">Connecting to OBS…</div>;
+  if (!snap.connected) {
+    return <NeedsObs offline hint={snap.error ?? "Can't reach OBS — reconnecting…"} />;
+  }
+
+  const clock = (ms: number) => {
+    const s = Math.floor(ms / 1000);
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${p(Math.floor(s / 3600))}:${p(Math.floor(s / 60) % 60)}:${p(s % 60)}`;
+  };
+  // Above ~1% the stream is visibly struggling; above 5% viewers are seeing it.
+  const dropped = snap.droppedPct;
+  const dropState = dropped >= 5 ? "bad" : dropped >= 1 ? "warn" : "ok";
+
+  return (
+    <div className="obs-w">
+      <div className="obs-w-top">
+        <span className={`obs-pill ${snap.streaming ? "live" : "off"}`}>
+          <span className="obs-dot" />
+          {snap.streaming ? "LIVE" : "OFF AIR"}
+        </span>
+        {snap.streaming && <span className="obs-time">{clock(snap.streamMs)}</span>}
+        {snap.recording && (
+          <span className="obs-pill rec">
+            <span className="obs-dot" />REC {clock(snap.recordMs)}
+          </span>
+        )}
+      </div>
+      <div className="obs-scene">
+        <span className="obs-label">Scene</span>
+        <strong>{snap.scene || "—"}</strong>
+      </div>
+      {snap.streaming && (
+        <div className="obs-stats">
+          <span className={`obs-stat ${dropState}`}>
+            {dropped.toFixed(dropped >= 1 ? 1 : 2)}% dropped
+          </span>
+          <span className={`obs-stat ${snap.congestion === null ? "bad" : "ok"}`}>
+            {snap.congestion === null
+              ? "no connection to the stream service"
+              : `${Math.round(snap.congestion * 100)}% congestion`}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LiveViewersWidget() {
   const { settings } = useProDeck();
   const [snap, setSnap] = useState<Ga4Snapshot | null>(null);
@@ -2502,6 +2576,7 @@ export const WIDGETS: WidgetDef[] = [
   { type: "avantis", label: "Sound Desk (Avantis)", group: "Audio", w: 6, h: 4, component: AvantisWidget },
   { type: "readiness", label: "Sunday Readiness", group: "General", w: 4, h: 4, component: ReadinessWidget },
   // Video & Switcher
+  { type: "obs", label: "OBS — Live & Scene", group: "Video", w: 4, h: 3, component: ObsWidget },
   { type: "video_input", label: "Stage Feed (NDI)", group: "Video", w: 4, h: 4, component: VideoInputWidget },
   { type: "live_viewers", label: "Live Viewers (Online)", group: "ProPresenter", w: 3, h: 4, component: LiveViewersWidget },
   { type: "switcher_cues", label: "Switcher Cues (What's Next)", group: "Video", w: 5, h: 5, component: SwitcherCuesWidget },

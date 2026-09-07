@@ -469,6 +469,35 @@ function UpdateBanner() {
       </div>
     );
   }
+  // A failed install used to render NOTHING: the banner simply vanished, which
+  // read as "the update button does nothing" — and then came back at the next
+  // launch, which read as "it won't go away". Say what happened, and always
+  // offer the escape hatch that can't fail.
+  if (u.status === "error") {
+    return (
+      <div className="update-banner err">
+        <span className="dot bad" />
+        <span>
+          <strong>Update didn't install.</strong>{" "}
+          {u.error || "Something went wrong downloading or replacing the app."}
+        </span>
+        <button className="btn small" onClick={() => u.check()}>
+          Try again
+        </button>
+        <button
+          className="btn small primary"
+          onClick={() =>
+            window.open("https://github.com/whiteoakmedia/prodeck/releases/latest", "_blank", "noopener")
+          }
+        >
+          Download it manually
+        </button>
+        <button className="btn small ghost" onClick={() => u.dismiss()}>
+          Dismiss
+        </button>
+      </div>
+    );
+  }
   return null;
 }
 

@@ -148,9 +148,46 @@ pub type PcoState = Arc<PcoInner>;
 
 pub(crate) fn creds(settings: &SettingsState) -> Result<(String, String), String> {
     let s = settings.lock().unwrap_or_else(|p| p.into_inner());
-    match (s.pco_app_id.clone(), s.pco_secret.clone()) {
-        (Some(a), Some(b)) if !a.is_empty() && !b.is_empty() => Ok((a, b)),
-        _ => Err("Planning Center credentials not set (add them on the Planning Center page)".into()),
+    // Trim on USE, not just on entry. A pasted token often carries a trailing
+    // space or newline, and credentials can also arrive from a restored
+    // backup, a hand-edited settings.json, or the web gateway — all paths that
+    // never saw the UI's trim. Basic auth sends whitespace verbatim, and
+    // Planning Center answers 401 with an empty body, so this failed as
+    // "wrong password" with nothing to go on.
+    let a = s.pco_app_id.clone().unwrap_or_default().trim().to_string();
+    let b = s.pco_secret.clone().unwrap_or_default().trim().to_string();
+    if a.is_empty() || b.is_empty() {
+        return Err("Planning Center credentials not set (add them on the Planning Center page)".into());
+    }
+    Ok((a, b))
+}
+
+/// Planning Center answers a bad credential with a bare 401 and an empty body,
+/// which surfaced to operators as "PCO 401 Unauthorized:" — true, and useless.
+/// The overwhelmingly common cause is the wrong kind of credential: PCO's
+/// developer site offers both OAuth *applications* (Client ID/Secret, which do
+/// NOT work here) and Personal Access Tokens (which do), and they look alike.
+pub(crate) fn explain_pco_error(code: u16, status: &str, body: &str) -> String {
+    match code {
+        401 => "Planning Center rejected these credentials.\n\
+                • They must be a Personal Access Token — at api.planningcenteronline.com, \
+                open Personal Access Tokens and create one. A Client ID/Secret from an \
+                OAuth application will always fail here, and the two look almost identical.\n\
+                • Check the Application ID and Secret aren't swapped, and that neither \
+                picked up a stray space when pasted."
+            .to_string(),
+        403 => "Planning Center accepted the credentials but refused this data. The token's \
+                account needs access to Services in your organization."
+            .to_string(),
+        404 => "Planning Center couldn't find that — the plan or service type may have been \
+                deleted."
+            .to_string(),
+        429 => "Planning Center is rate-limiting ProDeck. It will catch up on its own in a \
+                minute."
+            .to_string(),
+        500..=599 => format!("Planning Center is having trouble ({status}). Nothing to fix on this end."),
+        _ if body.trim().is_empty() => format!("Planning Center error {status}."),
+        _ => format!("Planning Center error {status}: {body}"),
     }
 }
 
@@ -179,9 +216,37 @@ pub(crate) async fn pco_request(
     if !status.is_success() {
         let body = resp.text().await.unwrap_or_default();
         let snippet: String = body.chars().take(300).collect();
-        return Err(format!("PCO {}: {}", status, snippet));
+        return Err(explain_pco_error(status.as_u16(), &status.to_string(), &snippet));
     }
     resp.json().await.map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod cred_tests {
+    use super::explain_pco_error;
+
+    #[test]
+    fn a_401_names_the_actual_mistake() {
+        let m = explain_pco_error(401, "401 Unauthorized", "");
+        // The failure mode that actually happens: an OAuth app's Client ID and
+        // Secret pasted in place of a Personal Access Token.
+        assert!(m.contains("Personal Access Token"), "{m}");
+        assert!(m.contains("OAuth"), "{m}");
+        assert!(m.contains("space"), "should mention pasted whitespace: {m}");
+        // Never leave the operator with just the status line.
+        assert!(m.len() > 80);
+    }
+
+    #[test]
+    fn other_statuses_stay_distinct_and_honest() {
+        assert!(explain_pco_error(403, "403 Forbidden", "").contains("Services"));
+        assert!(explain_pco_error(429, "429", "").contains("rate-limit"));
+        assert!(explain_pco_error(503, "503 Service Unavailable", "").contains("Nothing to fix"));
+        // An unknown code with a body still shows the body rather than eating it.
+        assert!(explain_pco_error(418, "418 I'm a teapot", "short and stout").contains("short and stout"));
+        // An unknown code with no body doesn't render a dangling colon.
+        assert!(!explain_pco_error(418, "418", "   ").ends_with(": "));
+    }
 }
 
 /// Generic authenticated GET against the Planning Center API.

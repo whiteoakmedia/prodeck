@@ -13,6 +13,7 @@ mod ga4;
 mod gemini;
 mod midi;
 mod ndi;
+mod obs;
 mod osc;
 mod pages;
 mod posfiles;
@@ -147,6 +148,7 @@ pub fn run() {
         .manage(Arc::new(AsyncMutex::new(relay::RelayManager::new())) as relay::RelayState)
         .manage(Mutex::new(loaded_settings) as settings::SettingsState)
         .manage(keepalive::KeepAwake(Mutex::new(None)))
+        .manage(obs::new_state())
         .manage(Arc::new(audio::AudioInner::new()) as audio::AudioState)
         .manage(Arc::new(transcription::TranscriptionInner::new())
             as transcription::TranscriptionState)
@@ -180,6 +182,7 @@ pub fn run() {
             tap::spawn_heartbeat(app.handle().clone());
             avantis::spawn_mirror(app.handle().clone());
             avantis::spawn_watch_flush(app.handle().clone());
+            obs::spawn_client(app.handle().clone());
             edge::spawn_edge_push(app.handle().clone());
             ga4::spawn_ga4_poll(app.handle().clone());
             propresenter::spawn_lobby_auto(app.handle().clone());
@@ -303,6 +306,8 @@ pub fn run() {
             identity::invite_create,
             identity::invite_list,
             identity::invite_revoke,
+            obs::obs_state,
+            obs::obs_set_scene,
             avantis::avantis_state,
             ga4::ga4_state,
             avantis::avantis_set_mute,

@@ -1150,7 +1150,10 @@ async fn dispatch(app: &AppHandle, cmd: &str, args: &Value, tier: Tier) -> Resul
             | "checklist_toggle"
             // Live viewer count is a read-only number every kiosk shows — the
             // switcher PC and office mini run on the member token.
-            | "ga4_state" => {}
+            | "ga4_state"
+            // "Are we live?" is a read every kiosk and phone should have.
+            // Changing the scene is admin-only and absent from this list.
+            | "obs_state" => {}
             "chat_send" => {
                 let target = args.get("target").and_then(|v| v.as_str()).unwrap_or("");
                 if target != "team" {
@@ -1366,6 +1369,17 @@ async fn dispatch(app: &AppHandle, cmd: &str, args: &Value, tier: Tier) -> Resul
             let state = app.state::<crate::avantis::AvantisState>().inner().clone();
             Ok(crate::avantis::snapshot(&state))
         }
+        "obs_state" => {
+            let state = app.state::<crate::obs::ObsState>().inner().clone();
+            Ok(crate::obs::snapshot(&state))
+        }
+        // Scene changes reach here only on the admin tier — this changes what
+        // the world sees, same policy as ProPresenter control.
+        "obs_set_scene" => {
+            let scene = args.get("scene").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            crate::obs::obs_set_scene(scene, app.clone()).await?;
+            Ok(Value::Null)
+        }
         // Desk CONTROL — reaches here only on the admin tier (the member
         // allowlist above rejects unknown commands), same policy as PP control.
         "avantis_set_mute" => {
@@ -1458,7 +1472,15 @@ async fn dispatch(app: &AppHandle, cmd: &str, args: &Value, tier: Tier) -> Resul
                 // gateway password — not even to a new non-blank value. (They
                 // receive these redacted, and letting a token-holder rewrite
                 // web_password would lock the booth and every other client out.)
-                new.pco_secret = g.pco_secret.clone();
+                // The secret is redacted to null on read, so a browser's
+                // settings round-trip sends null back — pin it then. But a
+                // deliberately TYPED secret must be allowed through: pinning
+                // unconditionally meant entering Planning Center credentials
+                // from a phone or laptop silently saved the app id and threw
+                // the secret away, leaving a permanent 401 with no clue why.
+                if new.pco_secret.as_deref().unwrap_or("").trim().is_empty() {
+                    new.pco_secret = g.pco_secret.clone();
+                }
                 new.gemini_api_key = g.gemini_api_key.clone();
                 // Redacted in get_settings, so a browser round-trip would send it
                 // back empty and silently unconfigure the viewer count.

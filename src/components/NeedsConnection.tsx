@@ -128,6 +128,19 @@ export function NeedsAudio(p: Preset) {
   );
 }
 
+export function NeedsObs(p: Preset) {
+  return (
+    <NeedsConnection
+      what="OBS"
+      hint="Connect OBS Studio to see the scene, and whether you're live"
+      page="settings"
+      anchor="set-obs"
+      icon="slides"
+      {...p}
+    />
+  );
+}
+
 export function NeedsGa4(p: Preset) {
   return (
     <NeedsConnection

@@ -32,6 +32,8 @@ interface UpdaterCtx {
   dismiss: () => void;
 }
 
+const DISMISS_KEY = "prodeck.updateDismissed";
+
 const Ctx = createContext<UpdaterCtx | null>(null);
 
 export function UpdaterProvider({ children }: { children: ReactNode }) {
@@ -43,7 +45,7 @@ export function UpdaterProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const updateRef = useRef<Update | null>(null);
 
-  async function doCheck() {
+  async function doCheck(silent = false) {
     setStatus("checking");
     setError(null);
     try {
@@ -52,7 +54,15 @@ export function UpdaterProvider({ children }: { children: ReactNode }) {
         updateRef.current = u;
         setNewVersion(u.version);
         setNotes(u.body ?? null);
-        setStatus("available");
+        let dismissed = "";
+        try {
+          dismissed = localStorage.getItem(DISMISS_KEY) ?? "";
+        } catch {
+          /* storage unavailable */
+        }
+        // An explicit "Check for updates" always shows the result; only the
+        // automatic launch check honours a dismissal.
+        setStatus(!silent || dismissed !== u.version ? "available" : "idle");
       } else {
         setStatus("uptodate");
       }
@@ -85,8 +95,17 @@ export function UpdaterProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // Remember WHICH version was dismissed. Setting status back to "idle" only
+  // hid it until the next launch, when the 4s auto-check found the same
+  // version and put the banner straight back — the "it won't go away" half of
+  // the bug report. A newer version still gets to interrupt.
   function dismiss() {
-    if (status === "available") setStatus("idle");
+    try {
+      if (newVersion) localStorage.setItem(DISMISS_KEY, newVersion);
+    } catch {
+      /* storage unavailable — falls back to hiding for this session */
+    }
+    setStatus("idle");
   }
 
   useEffect(() => {
@@ -97,7 +116,7 @@ export function UpdaterProvider({ children }: { children: ReactNode }) {
     getVersion().then(setVersion).catch(() => {});
     // Auto-check a few seconds after launch (silent if the server is unreachable).
     const t = setTimeout(() => {
-      doCheck();
+      doCheck(true);
     }, 4000);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps

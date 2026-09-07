@@ -92,6 +92,15 @@ pub struct Settings {
     /// Avantis console mirror (MIDI over TCP, port 51325). Phase 1 is
     /// read-only: ProDeck listens to mutes/faders/scene and queries names —
     /// it never sends control messages to the desk.
+    /// OBS Studio over obs-websocket 5 — what is actually going out of the
+    /// building (scene, live/recording, dropped frames).
+    pub obs_enabled: bool,
+    pub obs_host: String,
+    /// obs-websocket port; 4455 is the OBS default. 0 = default.
+    pub obs_port: u16,
+    /// Set in OBS under Tools -> WebSocket Server Settings. Empty = OBS has
+    /// authentication turned off.
+    pub obs_password: String,
     /// Sleep guard: keep the Mac from idling/sleeping while ProDeck runs
     /// (Settings → Reliability). Default on — a booth Mac that sleeps takes
     /// everything in the room down with it.
@@ -194,6 +203,10 @@ impl Default for Settings {
             tap_enabled: false,
             tap_edge_url: String::new(),
             tap_token: String::new(),
+            obs_enabled: false,
+            obs_host: String::new(),
+            obs_port: 4455,
+            obs_password: String::new(),
             keep_awake: true,
             avantis_enabled: false,
             avantis_host: String::new(),

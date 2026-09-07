@@ -7381,3 +7381,50 @@ select.input {
 .crash-more { margin-top: 14px; }
 .crash-more summary { cursor: pointer; color: var(--faint); font-size: 12.5px; }
 .crash-more pre { margin-top: 8px; max-height: 240px; overflow: auto; font-family: var(--mono); font-size: 11px; line-height: 1.5; padding: 10px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; white-space: pre-wrap; word-break: break-word; }
+
+/* ---- OBS widget ---- */
+.obs-w { display: flex; flex-direction: column; gap: 10px; height: 100%; padding: 4px 2px; }
+.obs-w-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.obs-pill {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+  font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+}
+.obs-pill.live { background: var(--bad-soft); color: var(--bad); border: 1px solid var(--bad); }
+.obs-pill.off { background: var(--panel-2); color: var(--faint); border: 1px solid var(--border); }
+.obs-pill.rec { background: var(--warn-soft); color: var(--warn); border: 1px solid var(--warn); }
+.obs-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.obs-pill.live .obs-dot { animation: obsblink 1.4s ease-in-out infinite; }
+@keyframes obsblink { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
+.obs-time { font-family: var(--mono); font-size: 15px; font-variant-numeric: tabular-nums; color: var(--text); }
+.obs-scene { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.obs-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); }
+.obs-scene strong { font-size: 17px; letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.obs-stats { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; }
+.obs-stat { font-size: 11.5px; padding: 2px 8px; border-radius: 6px; background: var(--panel-2); color: var(--muted); }
+.obs-stat.warn { background: var(--warn-soft); color: var(--warn); }
+.obs-stat.bad { background: var(--bad-soft); color: var(--bad); }
+
+/* ---- NDI settings card ---- */
+.ndi-list { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ndi-list li { display: flex; align-items: center; gap: 10px; padding: 7px 10px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; }
+.ndi-list strong { font-size: 13.5px; }
+.ndi-list li span:last-child { margin-left: auto; font-family: var(--mono); font-size: 11px; }
+
+/* Sticky banners must be OPAQUE. --warn-soft/--accent-soft are rgba tints, so
+   page content scrolling underneath showed straight through the banner and
+   collided with its text ("Settings" reading as "Settingsingle"). Opaque base
+   colour + the tint painted on top keeps the intended look. */
+.demo-banner,
+.update-banner,
+.update-announce {
+  background-color: var(--bg);
+  background-image: linear-gradient(var(--warn-soft), var(--warn-soft));
+}
+.update-banner,
+.update-announce {
+  background-image: linear-gradient(var(--accent-soft), var(--accent-soft));
+}
+.update-banner.err {
+  background-image: linear-gradient(var(--bad-soft), var(--bad-soft));
+  border-color: var(--bad);
+}

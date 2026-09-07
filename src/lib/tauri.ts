@@ -272,6 +272,11 @@ export interface Settings {
   tap_enabled: boolean;
   tap_edge_url: string;
   tap_token: string;
+  /** OBS Studio over obs-websocket 5 — what's actually going out. */
+  obs_enabled: boolean;
+  obs_host: string;
+  obs_port: number;
+  obs_password: string;
   /** Sleep guard while ProDeck runs (Settings → Reliability). */
   keep_awake: boolean;
   avantis_enabled: boolean;
@@ -944,3 +949,24 @@ export const backupImport = (text: string) => invoke<{ restored: string[] }>("ba
 /** Where problems get reported — adopters running a fork change this once. */
 export const REPORT_REPO = "whiteoakmedia/prodeck";
 export const DOCS_URL = "https://whiteoakmedia.github.io/prodeck/ADOPTERS_GUIDE.html";
+
+/** OBS Studio state, from obs-websocket 5. */
+export interface ObsSnapshot {
+  connected: boolean;
+  version: string;
+  scene: string;
+  scenes: string[];
+  streaming: boolean;
+  recording: boolean;
+  streamMs: number;
+  recordMs: number;
+  /** 0–1. null when OBS cannot reach the streaming service at all. */
+  congestion: number | null;
+  skippedFrames: number;
+  totalFrames: number;
+  droppedPct: number;
+  error: string | null;
+}
+export const obsState = () => invoke<ObsSnapshot>("obs_state");
+/** Admin tier only — this changes what the world sees. */
+export const obsSetScene = (scene: string) => invoke<void>("obs_set_scene", { scene });

@@ -58,6 +58,10 @@ import {
   DOCS_URL,
   IS_DEMO,
   setDemo,
+  obsState,
+  type ObsSnapshot,
+  ndiDiscover,
+  type NdiSource,
   type KeepaliveStatus,
 } from "../lib/tauri";
 import { relaunch } from "@tauri-apps/plugin-process";
@@ -83,6 +87,7 @@ export function SettingsPage() {
   const [keysendMsg, setKeysendMsg] = useState("");
   const [tapMsg, setTapMsg] = useState("");
   const [crew, setCrew] = useState<CrewUser[] | null>(null);
+  const [obs, setObs] = useState<ObsSnapshot | null>(null);
 
   // Crew roster (PIN identities). Available on the booth and admin web
   // clients; member clients get an error and the card simply hides.
@@ -105,9 +110,12 @@ export function SettingsPage() {
         .then((u) => alive && setCrew(u))
         .catch(() => alive && setCrew(null));
     load();
+    obsState().then(setObs).catch(() => {});
+    const unObs = on<ObsSnapshot>("obs:state", setObs);
     const un = on("identity:changed", load);
     return () => {
       alive = false;
+      unObs.then((f) => f());
       un.then((f) => f());
     };
   }, []);
@@ -298,7 +306,7 @@ export function SettingsPage() {
           "where do I approve someone" one click, not a hunt. */}
       <nav className="set-jump">
         {[
-          { g: "Connections", items: [["ProPresenter", "set-pp"], ["Avantis", "set-avantis"], ["LAN Relay", "set-relay"], ...(!IS_WEB ? [["Browser Access", "set-web"]] : [])] },
+          { g: "Connections", items: [["ProPresenter", "set-pp"], ["Avantis", "set-avantis"], ["OBS", "set-obs"], ["Stage feed (NDI)", "set-ndi"], ["LAN Relay", "set-relay"], ...(!IS_WEB ? [["Browser Access", "set-web"]] : [])] },
           { g: "Audio", items: [["Audio & Captions", "set-audio"], ["Alerts", "set-alerts"]] },
           { g: "Crew", items: [["Crew Members", "set-crew"]] },
           { g: "Advanced", items: [["Gemini", "set-gemini"], ["Control Inputs", "set-inputs"], ["Song Key", "set-songkey"], ["TapLink", "set-taplink"]] },
@@ -531,6 +539,54 @@ export function SettingsPage() {
           </label>
         </div>
       </section>
+
+      <section className="card">
+        <div className="card-head">
+          <h3 id="set-obs">OBS Studio</h3>
+          <HelpLink section="features" />
+          <span className={`chip ${obs?.connected ? "online" : ""}`}>
+            {obs?.connected ? (obs.streaming ? "live" : "connected") : "not connected"}
+          </span>
+        </div>
+        <p className="muted small">
+          Shows what's actually going out of the building: which scene is on, whether
+          you're streaming and recording, how long for, and whether frames are being
+          dropped. In OBS, turn on <strong>Tools → WebSocket Server Settings →
+          Enable WebSocket server</strong> and copy the port and password here.
+        </p>
+        <div className="settings-grid">
+          <label className="field check">
+            <input type="checkbox" checked={form.obs_enabled}
+              onChange={(e) => set("obs_enabled", e.target.checked)} />
+            <span>Connect to OBS</span>
+          </label>
+          <label className="field">
+            <span>OBS computer <span className="muted">(127.0.0.1 if OBS is on this Mac)</span></span>
+            <input className="input" placeholder="127.0.0.1" value={form.obs_host}
+              onChange={(e) => set("obs_host", e.target.value.trim())} />
+          </label>
+          <label className="field">
+            <span>Port <span className="muted">(OBS default 4455)</span></span>
+            <input className="input" type="number" min={1} max={65535} value={form.obs_port || 4455}
+              onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n)) set("obs_port", Math.min(65535, Math.max(1, n))); }} />
+          </label>
+          <label className="field">
+            <span>WebSocket password <span className="muted">(blank if OBS has auth off)</span></span>
+            <input className="input" type="password" autoComplete="new-password" value={form.obs_password}
+              onChange={(e) => set("obs_password", e.target.value)} />
+          </label>
+        </div>
+        {obs?.error && <p className="error small">{obs.error}</p>}
+        {obs?.connected && (
+          <p className="hint">
+            Connected to OBS {obs.version || ""} — scene <strong>{obs.scene || "—"}</strong>
+            {obs.streaming ? ", streaming" : ", not streaming"}
+            {obs.recording ? " and recording." : "."}
+          </p>
+        )}
+      </section>
+
+      {!IS_WEB && <NdiCard />}
 
       <section className="card">
         <div className="card-head"><h3 id="set-audio">Audio &amp; Captions</h3><HelpLink section="features" /></div>
@@ -2488,6 +2544,83 @@ function HelpCard() {
       {log && (
         <pre className="log-view">{log.length ? log.join("\n") : "(nothing logged yet this session)"}</pre>
       )}
+    </section>
+  );
+}
+
+/**
+ * Stage feed (NDI). There was no settings card at all for this — the source is
+ * chosen inside the Stage Feed widget's edit mode, which is discoverable only
+ * if you already know it exists ("I don't see the settings to add the NDI
+ * feed"). This card is where people look: it proves NDI is working by naming
+ * what it can see, then points at the one place the choice is actually made.
+ */
+function NdiCard() {
+  const [sources, setSources] = useState<NdiSource[] | null>(null);
+  const [scanning, setScanning] = useState(false);
+  const [err, setErr] = useState("");
+
+  const scan = async () => {
+    setScanning(true);
+    setErr("");
+    try {
+      setSources(await ndiDiscover());
+    } catch (e) {
+      setErr(String(e));
+      setSources([]);
+    } finally {
+      setScanning(false);
+    }
+  };
+  useEffect(() => {
+    scan();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h3 id="set-ndi">Stage feed (NDI)</h3>
+        <HelpLink section="features" />
+        <span className={`chip ${sources && sources.length > 0 ? "online" : ""}`}>
+          {sources === null ? "looking…" : `${sources.length} source${sources.length === 1 ? "" : "s"}`}
+        </span>
+      </div>
+      <p className="muted small">
+        Puts a camera or stage-display feed on a dashboard. Any NDI sender on your
+        network — a ProPresenter stage screen, an ATEM, an NDI camera — shows up here
+        once it's running.
+      </p>
+      {err && <p className="error small">{err}</p>}
+      {sources && sources.length > 0 ? (
+        <ul className="ndi-list">
+          {sources.map((s) => (
+            <li key={s.name}>
+              <span className="hl-dot ok" />
+              <strong>{s.name}</strong>
+              <span className="muted small">{s.url_address}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        sources !== null && (
+          <p className="hint">
+            Nothing found yet. NDI senders only appear while they're running, and both
+            machines have to be on the same network — NDI doesn't cross a VPN or a
+            guest Wi-Fi.
+          </p>
+        )
+      )}
+      <div className="rel-actions" style={{ justifyContent: "flex-start", gap: 8, marginTop: 10 }}>
+        <button className="btn small" disabled={scanning} onClick={scan}>
+          {scanning ? "Scanning…" : "Scan again"}
+        </button>
+      </div>
+      <p className="hint">
+        <strong>To put one on a dashboard:</strong> go to a dashboard → <strong>Edit</strong> →{" "}
+        <strong>Add Widget</strong> → <em>Stage Feed (NDI)</em>, then pick the source on the
+        widget itself. Each dashboard can show a different feed, which is why the choice
+        lives on the widget rather than here.
+      </p>
     </section>
   );
 }
