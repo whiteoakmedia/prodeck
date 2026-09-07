@@ -179,8 +179,13 @@ export function SettingsPage() {
 
   if (!form) return <div className="page"><header className="page-head"><h1>Settings</h1></header></div>;
 
+  // Functional update, NOT { ...form }. Spreading the value captured in this
+  // render meant two set() calls in one handler silently discarded the first:
+  // the console picker sets the model AND the port, so choosing dLive or X32
+  // saved the port and reverted the model. Composing off the latest state
+  // makes any number of set() calls in one handler add up.
   const set = <K extends keyof Settings>(key: K, value: Settings[K]) =>
-    setForm({ ...form, [key]: value });
+    setForm((f) => (f ? { ...f, [key]: value } : f));
 
   async function save() {
     if (!form) return;
@@ -404,14 +409,14 @@ export function SettingsPage() {
 
       <section className="card">
         <div className="card-head">
-          <h3 id="set-avantis">Allen &amp; Heath Console</h3><HelpLink section="features" />
-          <span className="chip">{(form.avantis_model || "avantis") === "sq" ? "SQ" : (form.avantis_model || "avantis") === "dlive" ? "dLive" : "Avantis"} · mirror</span>
+          <h3 id="set-avantis">Sound Console</h3><HelpLink section="features" />
+          <span className="chip">{{ avantis: "Avantis", dlive: "dLive", sq: "SQ", x32: "X32 / M32" }[form.avantis_model || "avantis"] ?? "Avantis"} · mirror</span>
         </div>
         <p className="muted small">
-          Watches the sound desk over the network (MIDI over TCP): mutes, faders,
-          scenes — and on Avantis/dLive, channel names and colours — show up live
-          in ProDeck. Control (mutes, faders, names, scene recall) is admin-only
-          and off by default in the dashboards.
+          Watches the sound desk over the network: mutes, faders, scenes and
+          channel names show up live in ProDeck. Allen &amp; Heath desks use MIDI
+          over TCP; Behringer X32 / Midas M32 use OSC. Control (mutes, faders,
+          names, scene recall) is admin-only and off by default in the dashboards.
         </p>
         <div className="settings-grid">
           <label className="field check">
@@ -428,6 +433,8 @@ export function SettingsPage() {
                 const m = e.target.value;
                 set("avantis_model", m);
                 // Each desk's own default port and channel limit.
+                if (m === "x32") set("avantis_port", 10023);
+                else if (form.avantis_port === 10023) set("avantis_port", 51325);
                 if (m === "dlive" && (form.avantis_port === 51325 || !form.avantis_port)) set("avantis_port", 51325);
                 if (m !== "dlive" && form.avantis_port === 51328) set("avantis_port", 51325);
                 const maxBase = m === "sq" ? 16 : 12;
@@ -437,6 +444,7 @@ export function SettingsPage() {
               <option value="avantis">Avantis</option>
               <option value="dlive">dLive (MixRack or Surface)</option>
               <option value="sq">SQ-5 / SQ-6 / SQ-7</option>
+              <option value="x32">Behringer X32 / Midas M32</option>
             </select>
           </label>
           <label className="field">
@@ -450,12 +458,18 @@ export function SettingsPage() {
               <span className="muted">
                 {(form.avantis_model || "avantis") === "dlive"
                   ? "(MixRack 51325 · Surface 51328)"
-                  : "(51325)"}
+                  : (form.avantis_model || "avantis") === "x32"
+                    ? "(10023)"
+                    : "(51325)"}
               </span>
             </span>
             <input className="input" type="number" min={1} max={65535} value={form.avantis_port || 51325}
               onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n)) set("avantis_port", Math.min(65535, Math.max(1, n))); }} />
           </label>
+          {/* The X32 speaks OSC — it has no MIDI channel to match. Rendered
+              conditionally, not `hidden`: .field sets display:flex, and an
+              author rule beats the browser's [hidden] style. */}
+          {(form.avantis_model || "avantis") !== "x32" && (
           <label className="field">
             <span>
               {(form.avantis_model || "avantis") === "sq"
@@ -465,11 +479,20 @@ export function SettingsPage() {
             <input className="input" type="number" min={1} max={(form.avantis_model || "avantis") === "sq" ? 16 : 12} value={form.avantis_midi_base}
               onChange={(e) => { const n = parseInt(e.target.value); const mx = (form.avantis_model || "avantis") === "sq" ? 16 : 12; if (Number.isFinite(n)) set("avantis_midi_base", Math.min(mx, Math.max(1, n))); }} />
           </label>
+          )}
           {(form.avantis_model || "avantis") === "sq" && (
             <p className="hint wide">
               SQ's MIDI protocol carries no channel names or colours, so channels show
               as numbers here (Ch 1, Aux 3 …). Mutes and levels are read on connect,
               so the mirror starts complete. Scenes 1–300.
+            </p>
+          )}
+          {(form.avantis_model || "avantis") === "x32" && (
+            <p className="hint wide">
+              Nothing to set on the console — ProDeck subscribes over OSC on port
+              10023 and reads every channel, DCA, bus, matrix and mute group on
+              connect. Give the desk a fixed IP so this keeps working after a router
+              restart. Scenes 1–100.
             </p>
           )}
           {(form.avantis_model || "avantis") === "dlive" && (

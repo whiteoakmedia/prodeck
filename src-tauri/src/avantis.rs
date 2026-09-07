@@ -136,7 +136,7 @@ fn write_desk(state: &AvantisState, bytes: &[u8]) -> Result<(), String> {
 /// Mute or unmute one channel: Note On vel 7F/3F followed by Note On vel 00,
 /// exactly as the protocol prescribes.
 #[tauri::command]
-pub fn avantis_set_mute(
+pub async fn avantis_set_mute(
     id: String,
     muted: bool,
     state: tauri::State<'_, AvantisState>,
@@ -144,6 +144,15 @@ pub fn avantis_set_mute(
 ) -> Result<(), String> {
     let st = state.inner().clone();
     let (base, model) = desk_cfg(&st);
+    // OSC consoles speak a different transport entirely.
+    if model.is_osc() {
+        crate::x32::set_mute(&app, &id, muted).await?;
+        let mut s = st.lock().unwrap_or_else(|p| p.into_inner());
+        s.mutes.insert(id, muted);
+        drop(s);
+        app.emit("avantis:state", snapshot(&st)).ok();
+        return Ok(());
+    }
     let bytes = ahmap::mute_bytes(model, base, &id, muted)
         .ok_or_else(|| format!("{id} is not a channel on the {}", model.label()))?;
     write_desk(&st, &bytes)?;
@@ -158,7 +167,7 @@ pub fn avantis_set_mute(
 
 /// Recall a scene (1-500): Bank Select + Program Change on the base channel.
 #[tauri::command]
-pub fn avantis_recall_scene(
+pub async fn avantis_recall_scene(
     scene: u32,
     state: tauri::State<'_, AvantisState>,
     app: AppHandle,
@@ -167,6 +176,14 @@ pub fn avantis_recall_scene(
     let (base, model) = desk_cfg(&st);
     if !(1..=model.max_scene()).contains(&scene) {
         return Err(format!("scene must be 1-{} on the {}", model.max_scene(), model.label()));
+    }
+    if model.is_osc() {
+        crate::x32::recall_scene(&app, scene).await?;
+        let mut s = st.lock().unwrap_or_else(|p| p.into_inner());
+        s.scene = Some(scene);
+        drop(s);
+        app.emit("avantis:state", snapshot(&st)).ok();
+        return Ok(());
     }
     write_desk(&st, &ahmap::scene_bytes(base, scene))?;
     {
@@ -181,7 +198,7 @@ pub fn avantis_recall_scene(
 /// Used to stamp this week's vocalists onto their mic channels (and the
 /// mirror channels that share the mic but process differently).
 #[tauri::command]
-pub fn avantis_set_name(
+pub async fn avantis_set_name(
     id: String,
     name: String,
     state: tauri::State<'_, AvantisState>,
@@ -194,6 +211,14 @@ pub fn avantis_set_name(
         .collect();
     let st = state.inner().clone();
     let (base, model) = desk_cfg(&st);
+    if model.is_osc() {
+        crate::x32::set_name(&app, &id, &clean).await?;
+        let mut s = st.lock().unwrap_or_else(|p| p.into_inner());
+        s.names.insert(id, clean);
+        drop(s);
+        app.emit("avantis:state", snapshot(&st)).ok();
+        return Ok(());
+    }
     if !model.has_names() {
         return Err(format!("the {} has no channel-name messages in its MIDI protocol", model.label()));
     }
@@ -211,7 +236,7 @@ pub fn avantis_set_name(
 
 /// Set one fader (0-127 raw; dB = v/127*64 − 54): NRPN parameter 0x17.
 #[tauri::command]
-pub fn avantis_set_fader(
+pub async fn avantis_set_fader(
     id: String,
     value: u8,
     state: tauri::State<'_, AvantisState>,
@@ -220,6 +245,14 @@ pub fn avantis_set_fader(
     let v = value.min(0x7F);
     let st = state.inner().clone();
     let (base, model) = desk_cfg(&st);
+    if model.is_osc() {
+        crate::x32::set_fader(&app, &id, v).await?;
+        let mut s = st.lock().unwrap_or_else(|p| p.into_inner());
+        s.faders.insert(id, v);
+        drop(s);
+        app.emit("avantis:state", snapshot(&st)).ok();
+        return Ok(());
+    }
     let bytes = ahmap::fader_bytes(model, base, &id, v)
         .ok_or_else(|| format!("{id} has no fader on the {}", model.label()))?;
     write_desk(&st, &bytes)?;
@@ -253,7 +286,7 @@ pub fn pretty_key(key: &str) -> String {
 
 /// Apply a desk-reported mute; returns true if the mirror changed. Watchdog
 /// records only real changes to setup controls (never the connect baseline).
-fn apply_mute(s: &mut AvantisInner, kk: String, muted: bool) -> bool {
+pub(crate) fn apply_mute(s: &mut AvantisInner, kk: String, muted: bool) -> bool {
     let old = s.mutes.insert(kk.clone(), muted);
     if old.is_some() && old != Some(muted) && is_setup_key(&kk) {
         watch_record(
@@ -268,7 +301,7 @@ fn apply_mute(s: &mut AvantisInner, kk: String, muted: bool) -> bool {
 }
 
 /// Apply a desk-reported fader value (ProDeck 0-127 scale).
-fn apply_fader(s: &mut AvantisInner, kk: String, val: u8) -> bool {
+pub(crate) fn apply_fader(s: &mut AvantisInner, kk: String, val: u8) -> bool {
     let old = s.faders.insert(kk.clone(), val);
     if let Some(o) = old {
         if o != val && is_setup_key(&kk) {
@@ -639,7 +672,9 @@ pub fn spawn_mirror(app: AppHandle) {
         let mut last_save = Instant::now();
         loop {
             let (enabled, host, base, model, port) = settings_tuple(&app);
-            if !enabled || host.is_empty() {
+            // OSC consoles (X32/M32) are driven by x32.rs — this MIDI mirror
+            // must not also connect, or two clients fight over the state.
+            if !enabled || host.is_empty() || model.is_osc() {
                 set_connected(&app, &state, false);
                 std::thread::sleep(Duration::from_secs(3));
                 continue;

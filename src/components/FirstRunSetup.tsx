@@ -82,7 +82,7 @@ const TOOLS: {
     group: "Audio & console",
     items: [
       { name: "Audio input", need: "opt", what: "Calibrated SPL + RTA metering from any input, including Dante." },
-      { name: "Allen & Heath console", need: "opt", what: "Avantis, dLive, or SQ — mutes, faders, scenes and names mirrored live; a watchdog that pages one person about setup changes." },
+      { name: "Sound console", need: "opt", what: "Allen & Heath Avantis, dLive or SQ, and Behringer X32 / Midas M32 — mutes, faders, scenes and names mirrored live; a watchdog that pages one person about setup changes." },
       { name: "Song-key MIDI send", need: "opt", what: "Push the live song's key to Waves / plugin scenes over MIDI." },
     ],
   },
@@ -119,6 +119,7 @@ const CONSOLES = [
   { id: "avantis", name: "Avantis", hint: "Base MIDI channel 1–12 · Utility → Control → MIDI", port: 51325, maxBase: 12 },
   { id: "dlive", name: "dLive", hint: "MixRack port 51325, Surface 51328 · base channel 1–12", port: 51325, maxBase: 12 },
   { id: "sq", name: "SQ-5 / SQ-6 / SQ-7", hint: "MIDI channel 1–16 · Utility → General → MIDI · names not available", port: 51325, maxBase: 16 },
+  { id: "x32", name: "X32 / M32", hint: "Behringer X32 or Midas M32 · OSC on port 10023 · nothing to set on the desk", port: 10023, maxBase: 1 },
 ];
 
 function readStage(): Stage {
@@ -716,9 +717,9 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
             <span className="ob-eyebrow">Step 4 · Optional</span>
             <h1>Mirror your sound console.</h1>
             <p className="ob-lead">
-              Allen &amp; Heath desks talk MIDI over the network. Pick yours, give
-              ProDeck its IP, and mutes, faders, scenes — and names on Avantis /
-              dLive — show up live on every dashboard. Control stays admin-only.
+              Digital desks talk over the network. Pick yours, give ProDeck its IP,
+              and mutes, faders, scenes and channel names show up live on every
+              dashboard. Control stays admin-only.
             </p>
             <div className="ob-consoles">
               {CONSOLES.map((c) => (
@@ -745,14 +746,19 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
                 <span>Port</span>
                 <input className="input" type="number" value={deskPort} onChange={(e) => setDeskPort(parseInt(e.target.value) || consoleMeta.port)} />
               </label>
+              {deskModel !== "x32" && (
               <label className="field narrow">
                 <span>{deskModel === "sq" ? "MIDI channel" : "Base MIDI ch."}</span>
                 <input className="input" type="number" min={1} max={consoleMeta.maxBase} value={deskBase}
                   onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n)) setDeskBase(Math.min(consoleMeta.maxBase, Math.max(1, n))); }} />
               </label>
+              )}
             </div>
             <p className="muted small ob-note">
-              Set the desk's MIDI channel under <strong>{deskModel === "sq" ? "Utility → General → MIDI" : "Utility → Control → MIDI"}</strong> and enter the same number here. Give the desk a fixed IP (or a DHCP reservation) so this keeps working after a router restart.
+              {deskModel === "x32"
+                ? "Nothing to set on the console itself — ProDeck subscribes over OSC. "
+                : `Set the desk's MIDI channel under ${deskModel === "sq" ? "Utility → General → MIDI" : "Utility → Control → MIDI"} and enter the same number here. `}
+              Give the desk a fixed IP (or a DHCP reservation) so this keeps working after a router restart.
             </p>
             {deskMsg && <p className={deskMsg.startsWith("Saved") ? "ob-ok" : "error small"}>{deskMsg}</p>}
             {deskSaved && (

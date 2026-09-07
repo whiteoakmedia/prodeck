@@ -16,6 +16,8 @@ pub enum DeskModel {
     Avantis,
     DLive,
     Sq,
+    /// Behringer X32 / Midas M32 — OSC over UDP, not MIDI over TCP.
+    X32,
 }
 
 impl DeskModel {
@@ -23,6 +25,7 @@ impl DeskModel {
         match s.trim().to_ascii_lowercase().as_str() {
             "dlive" => DeskModel::DLive,
             "sq" | "sq5" | "sq6" | "sq7" | "sq-5" | "sq-6" | "sq-7" => DeskModel::Sq,
+            "x32" | "m32" | "x32/m32" => DeskModel::X32,
             _ => DeskModel::Avantis,
         }
     }
@@ -31,6 +34,7 @@ impl DeskModel {
             DeskModel::Avantis => "avantis",
             DeskModel::DLive => "dlive",
             DeskModel::Sq => "sq",
+            DeskModel::X32 => "x32",
         }
     }
     pub fn label(self) -> &'static str {
@@ -38,6 +42,7 @@ impl DeskModel {
             DeskModel::Avantis => "Avantis",
             DeskModel::DLive => "dLive",
             DeskModel::Sq => "SQ",
+            DeskModel::X32 => "X32 / M32",
         }
     }
     /// Highest base MIDI channel the desk lets you pick (1-based).
@@ -50,8 +55,15 @@ impl DeskModel {
     pub fn max_scene(self) -> u32 {
         match self {
             DeskModel::Sq => 300,
+            DeskModel::X32 => 100,
             _ => 500,
         }
+    }
+
+    /// True for consoles spoken to over OSC/UDP rather than MIDI over TCP.
+    /// The MIDI mirror must stand down for these; x32.rs drives them.
+    pub fn is_osc(self) -> bool {
+        self == DeskModel::X32
     }
     /// SQ has no name/colour messages in its MIDI protocol.
     pub fn has_names(self) -> bool {
@@ -59,7 +71,7 @@ impl DeskModel {
     }
     /// Note On = mute on Avantis/dLive; on SQ a Note On can only be a softkey.
     pub fn note_mutes(self) -> bool {
-        self != DeskModel::Sq
+        self != DeskModel::Sq && !self.is_osc()
     }
 }
 
@@ -122,7 +134,9 @@ pub fn note_map(model: DeskModel) -> &'static [NoteRange] {
     match model {
         DeskModel::Avantis => AVANTIS,
         DeskModel::DLive => DLIVE,
-        DeskModel::Sq => &[],
+        // Neither speaks the Note dialect: SQ is all-NRPN, and the X32 isn't
+        // MIDI at all (OSC over UDP — see x32.rs).
+        DeskModel::Sq | DeskModel::X32 => &[],
     }
 }
 

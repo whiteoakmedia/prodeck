@@ -45,7 +45,7 @@ export const EXPLAIN: Record<
   desk: {
     name: "Sound desk",
     page: "settings",
-    what: "Your Allen & Heath console (Avantis, dLive, or SQ). ProDeck mirrors it — mutes, faders, scenes, and (Avantis/dLive) channel names.",
+    what: "Your sound console — Allen & Heath (Avantis, dLive, SQ) or Behringer X32 / Midas M32. ProDeck mirrors mutes, faders, scenes and channel names.",
     fix: {
       ok: "Connected and mirroring.",
       bad: "Can't reach the Avantis. Check it's powered on and its Network port is plugged into the switch; the address lives in Settings → Avantis.",

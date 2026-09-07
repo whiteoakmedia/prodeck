@@ -1386,27 +1386,27 @@ async fn dispatch(app: &AppHandle, cmd: &str, args: &Value, tier: Tier) -> Resul
             let id = s("id").ok_or("missing id")?;
             let muted = args.get("muted").and_then(|v| v.as_bool()).unwrap_or(false);
             let state = app.state::<crate::avantis::AvantisState>();
-            crate::avantis::avantis_set_mute(id, muted, state, app.clone())?;
+            crate::avantis::avantis_set_mute(id, muted, state, app.clone()).await?;
             Ok(json!({ "ok": true }))
         }
         "avantis_recall_scene" => {
             let scene = args.get("scene").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
             let state = app.state::<crate::avantis::AvantisState>();
-            crate::avantis::avantis_recall_scene(scene, state, app.clone())?;
+            crate::avantis::avantis_recall_scene(scene, state, app.clone()).await?;
             Ok(json!({ "ok": true }))
         }
         "avantis_set_fader" => {
             let id = s("id").ok_or("missing id")?;
             let value = args.get("value").and_then(|v| v.as_u64()).unwrap_or(0) as u8;
             let state = app.state::<crate::avantis::AvantisState>();
-            crate::avantis::avantis_set_fader(id, value, state, app.clone())?;
+            crate::avantis::avantis_set_fader(id, value, state, app.clone()).await?;
             Ok(json!({ "ok": true }))
         }
         "avantis_set_name" => {
             let id = s("id").ok_or("missing id")?;
             let name = s("name").unwrap_or_default();
             let state = app.state::<crate::avantis::AvantisState>();
-            crate::avantis::avantis_set_name(id, name, state, app.clone())?;
+            crate::avantis::avantis_set_name(id, name, state, app.clone()).await?;
             Ok(json!({ "ok": true }))
         }
         "identity_set_role" => {

@@ -25,6 +25,7 @@ mod settings;
 mod tap;
 mod transcription;
 mod web;
+mod x32;
 
 use std::sync::{Arc, Mutex};
 use tauri::Manager;
@@ -183,6 +184,7 @@ pub fn run() {
             avantis::spawn_mirror(app.handle().clone());
             avantis::spawn_watch_flush(app.handle().clone());
             obs::spawn_client(app.handle().clone());
+            x32::spawn_mirror(app.handle().clone());
             edge::spawn_edge_push(app.handle().clone());
             ga4::spawn_ga4_poll(app.handle().clone());
             propresenter::spawn_lobby_auto(app.handle().clone());
