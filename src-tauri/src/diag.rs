@@ -70,6 +70,41 @@ fn redact_settings(v: &mut Value) {
     }
 }
 
+/// OS name/version for the support bundle, per platform. Kept in one place so
+/// a report from any machine has the same shape.
+fn os_facts() -> Value {
+    #[cfg(target_os = "macos")]
+    {
+        json!({
+            "os": "macOS",
+            "version": sh("/usr/bin/sw_vers", &["-productVersion"]),
+            "build": sh("/usr/bin/sw_vers", &["-buildVersion"]),
+            "arch": std::env::consts::ARCH,
+            "hostname": sh("/bin/hostname", &["-s"]),
+        })
+    }
+    #[cfg(windows)]
+    {
+        json!({
+            "os": "Windows",
+            "version": sh("cmd", &["/c", "ver"]),
+            "build": "",
+            "arch": std::env::consts::ARCH,
+            "hostname": std::env::var("COMPUTERNAME").unwrap_or_default(),
+        })
+    }
+    #[cfg(not(any(target_os = "macos", windows)))]
+    {
+        json!({
+            "os": std::env::consts::OS,
+            "version": "",
+            "build": "",
+            "arch": std::env::consts::ARCH,
+            "hostname": sh("hostname", &[]),
+        })
+    }
+}
+
 fn sh(cmd: &str, args: &[&str]) -> String {
     std::process::Command::new(cmd)
         .args(args)
@@ -99,12 +134,7 @@ pub fn diag_bundle(client: Value, app: AppHandle) -> Result<String, String> {
             "exe": exe,
             "data_dir": crate::settings::data_dir_display(),
         },
-        "system": {
-            "macos": sh("/usr/bin/sw_vers", &["-productVersion"]),
-            "build": sh("/usr/bin/sw_vers", &["-buildVersion"]),
-            "arch": std::env::consts::ARCH,
-            "hostname": sh("/bin/hostname", &["-s"]),
-        },
+        "system": os_facts(),
         "keepalive": keep,
         "client": client,
         "settings": settings,

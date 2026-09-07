@@ -931,6 +931,11 @@ export interface KeepaliveStatus {
   inApplications: boolean;
   exe: string;
   keepAwake: boolean;
+  /** Whether this platform can relaunch after a CRASH, or only start at login.
+   *  macOS can (launchd); a Windows Run key cannot. */
+  supervises?: boolean;
+  /** Platform-specific "where the app must live" sentence, from the backend. */
+  installHint?: string;
 }
 export const keepaliveStatus = () => invoke<KeepaliveStatus>("keepalive_status");
 export const keepaliveInstall = () => invoke<KeepaliveStatus>("keepalive_install");

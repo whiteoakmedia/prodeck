@@ -2324,7 +2324,7 @@ function ReliabilityCard() {
       <div className="card-head">
         <h3 id="set-reliability">Reliability</h3>
         <HelpLink section="phase1" />
-        <span className={`chip ${on ? "online" : ""}`}>{on ? (st?.underLaunchd ? "watchdog running" : "watchdog armed") : "no watchdog"}</span>
+        <span className={`chip ${on ? "online" : ""}`}>{on ? (st?.supervises === false ? "starts at login" : st?.underLaunchd ? "watchdog running" : "watchdog armed") : "not set up"}</span>
       </div>
       <p className="muted small">
         A booth Mac has to run unattended. These two switches are what keep ProDeck up
@@ -2333,19 +2333,21 @@ function ReliabilityCard() {
       <div className="rel-rows">
         <div className="rel-row">
           <div>
-            <strong>Keep ProDeck running</strong>
+            <strong>{st?.supervises === false ? "Start ProDeck at login" : "Keep ProDeck running"}</strong>
             <span className="muted small">
               {st === null
                 ? "Checking…"
                 : on
-                  ? st.underLaunchd
-                    ? "On — starts at login and relaunches within ~10 s of any crash. Running under the watchdog now."
-                    : "On — starts at login and relaunches after a crash. This session isn't under it yet."
+                  ? st.supervises === false
+                    ? "On — ProDeck opens automatically when you sign in. (On Windows it can't also relaunch itself after a crash.)"
+                    : st.underLaunchd
+                      ? "On — starts at login and relaunches within ~10 s of any crash. Running under the watchdog now."
+                      : "On — starts at login and relaunches after a crash. This session isn't under it yet."
                   : st.installed
                     ? `The watchdog points at a different copy of ProDeck (${st.program}). Update it to this one.`
                     : st.inApplications
-                      ? "Off — if ProDeck crashes or the Mac restarts, it stays down until someone opens it."
-                      : "Move ProDeck to your Applications folder first — the watchdog needs a permanent path."}
+                      ? "Off — if ProDeck crashes or the computer restarts, it stays down until someone opens it."
+                      : st.installHint ?? "Move ProDeck to your Applications folder first — the watchdog needs a permanent path."}
             </span>
           </div>
           <div className="rel-actions">
@@ -2354,7 +2356,7 @@ function ReliabilityCard() {
                 {st.installed ? "Update to this copy" : "Turn on"}
               </button>
             )}
-            {st && on && !st.underLaunchd && (
+            {st && on && !st.underLaunchd && st.supervises !== false && (
               <button className="btn small" disabled={busy} title="Restarts ProDeck once so the watchdog owns it from now on" onClick={() => run(keepaliveRelaunch, "Relaunching…")}>
                 Relaunch under the watchdog
               </button>
@@ -2380,7 +2382,11 @@ function ReliabilityCard() {
         </div>
       </div>
       {msg && <p className="hint">{msg}</p>}
-      <p className="hint">A deliberate <strong>Quit</strong> stays quit — the watchdog only relaunches crashes. To restart on purpose, just open ProDeck again.</p>
+      <p className="hint">
+        {st?.supervises === false
+          ? "Quitting stays quit — reopen ProDeck to restart it."
+          : "A deliberate Quit stays quit — the watchdog only relaunches crashes. To restart on purpose, just open ProDeck again."}
+      </p>
     </section>
   );
 }

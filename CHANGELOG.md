@@ -23,6 +23,38 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## Unreleased
+
+Built and committed, but **not published** — no installed copy has been offered
+these yet.
+
+- **OBS Studio** — scene, whether you're streaming and recording, how long for,
+  and dropped frames, on a dashboard widget and in Settings. Answers "are we
+  actually live?", which ProDeck couldn't before.
+- **Behringer X32 / Midas M32** — mirrored the same way as the Allen & Heath
+  desks: mutes, faders, scenes and channel names on every dashboard, and the
+  desk watchdog works with it. *Not yet tried against real X32 hardware.*
+- **Fixed — the update banner.** A failed install rendered nothing at all, so it
+  looked like the button did nothing and then reappeared at the next launch. It
+  now says what went wrong and offers a manual download. "Later" also means
+  later, rather than until you relaunch.
+- **Fixed — Planning Center 401.** "PCO 401 Unauthorized:" now explains the
+  usual cause (an OAuth application's Client ID/Secret pasted where a Personal
+  Access Token belongs). Credentials are also trimmed wherever they come from,
+  and entering them from a phone or laptop no longer silently discards the
+  secret.
+- **Fixed — no settings for the NDI feed.** There is now a Stage feed (NDI) card
+  that lists what NDI can see and points at where the source is chosen.
+- **Fixed — Settings could silently discard a change** when one control set two
+  values at once (choosing a console model saved the port and reverted the
+  model).
+- **Windows groundwork.** The macOS-only pieces are now behind platform gates
+  and Windows implementations are written, but **nothing has been compiled or
+  run on Windows** — see the note in `src-tauri/src/keepalive.rs`. Not usable
+  yet.
+
+---
+
 ## 0.9.71 — 6 September 2026
 
 ### Crew pages now buzz hard enough to feel

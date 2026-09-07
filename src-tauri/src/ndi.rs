@@ -92,9 +92,24 @@ unsafe fn load_ndi() -> Option<NdiLib> {
     // Own-copy fallback lives in the app's data dir so ProDeck has no
     // dependency on any other app bundle being installed.
     let own = dirs::data_dir()
-        .map(|d| d.join("ProDeck/ndi-lib/libndi.dylib"))
+        .map(|d| d.join("ProDeck/ndi-lib").join(NDI_LIB))
         .and_then(|p| p.to_str().map(|s| s.to_string()))
         .unwrap_or_default();
+    // The NDI runtime ships under a different name on each platform.
+    #[cfg(target_os = "macos")]
+    const NDI_LIB: &str = "libndi.dylib";
+    #[cfg(windows)]
+    const NDI_LIB: &str = "Processing.NDI.Lib.x64.dll";
+    #[cfg(not(any(target_os = "macos", windows)))]
+    const NDI_LIB: &str = "libndi.so";
+
+    #[cfg(windows)]
+    let candidates = [
+        r"C:\Program Files\NDI\NDI 6 Runtime\v6\Processing.NDI.Lib.x64.dll",
+        r"C:\Program Files\NDI\NDI 5 Runtime\v5\Processing.NDI.Lib.x64.dll",
+        NDI_LIB,
+    ];
+    #[cfg(not(windows))]
     let candidates = [
         "/Library/NDI SDK for Apple/lib/macOS/libndi.dylib",
         own.as_str(),
