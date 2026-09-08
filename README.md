@@ -56,7 +56,15 @@ ProPresenter, and Planning Center, and add the rest when you want it.
 
 That's it — no toolchain, no terminal. Runs on Intel and Apple Silicon Macs, macOS 10.15 or newer.
 
-ProDeck checks for updates when it launches and offers to install them in one click — you won't need to come back here for new versions.
+ProDeck checks for updates when it launches and offers to install them in one
+click — you won't need to come back here for new versions.
+
+**Downloads live at [whiteoakmedia.io/tools](https://whiteoakmedia.io/tools).**
+If an update ever fails, grab a fresh copy from there and drag it over your
+existing ProDeck — your settings, dashboards, crew and reports live outside the
+app and are untouched. Copies downloaded before 6 September 2026 were built
+against a placeholder update feed and can never update themselves, so they must
+be replaced by hand once.
 
 What changed in each version: [CHANGELOG.md](CHANGELOG.md).
 

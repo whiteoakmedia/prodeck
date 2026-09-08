@@ -2,56 +2,131 @@
 
 What changed in each release of ProDeck, in plain language.
 
-**Installing:** download `ProDeck.dmg` from the
-[latest release](https://github.com/whiteoakmedia/prodeck/releases/latest),
-open it, drag ProDeck to Applications. On first open, macOS blocks it once:
-double-click ProDeck, then go to **System Settings → Privacy & Security**,
-scroll to the bottom, and click **Open Anyway**. You only do that once.
+**Where to get it:** <https://whiteoakmedia.io/tools>. That page always points at
+the current build. Download `ProDeck.dmg`, open it, drag ProDeck to Applications.
 
-**Updating:** from 0.9.67 onward ProDeck updates itself. It checks a few
-seconds after launch and shows a banner with the release notes and an
-**Install & Restart** button.
+**First open only** (macOS Sequoia/Tahoe): double-click ProDeck → it won't open
+yet → **System Settings → Privacy & Security** → scroll to the bottom → **Open
+Anyway** → confirm. Once only. (The old right-click → Open trick was removed by
+Apple in macOS Sequoia.)
 
-> **If you downloaded ProDeck before 6 September 2026, please download it
-> again.** Those early copies could not open on some Macs, and one build
-> crashed on launch on any Mac without developer tools installed. They also
-> predate the built-in updater, so they cannot fix themselves. Any copy from
-> 0.9.67 onward keeps itself current.
+**Updating:** ProDeck checks a few seconds after launch and shows a banner with
+the release notes and an **Install & Restart** button.
+
+> ### If updates aren't working, download it again
+>
+> Grab a fresh copy from **<https://whiteoakmedia.io/tools>** and drag it over
+> your existing ProDeck. Your settings, dashboards, crew and reports all live
+> outside the app and are untouched by replacing it.
+>
+> This matters because **a copy is only as good as the update settings it was
+> built with.** Anything downloaded before **6 September 2026** was built
+> pointing at a placeholder update feed, so it can never see a new version and
+> can never fix itself — no matter how many times you press Check for updates.
+> A fresh download is wired to the real update server and will keep itself
+> current from then on.
+>
+> Copies from that date onward are already wired up correctly; re-downloading
+> is still the fastest way to rule the app out if an update fails for any other
+> reason.
 
 ProDeck is free, open source, and has no account or licence check. Version
 numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
-## Unreleased
+## 0.9.72 — 8 September 2026
 
-Built and committed, but **not published** — no installed copy has been offered
-these yet.
+The first release driven by reports from someone other than me running it. Three
+bugs from that install are fixed here, plus two new consoles' worth of hardware
+support.
 
-- **OBS Studio** — scene, whether you're streaming and recording, how long for,
-  and dropped frames, on a dashboard widget and in Settings. Answers "are we
-  actually live?", which ProDeck couldn't before.
-- **Behringer X32 / Midas M32** — mirrored the same way as the Allen & Heath
-  desks: mutes, faders, scenes and channel names on every dashboard, and the
-  desk watchdog works with it. *Not yet tried against real X32 hardware.*
-- **Fixed — the update banner.** A failed install rendered nothing at all, so it
-  looked like the button did nothing and then reappeared at the next launch. It
-  now says what went wrong and offers a manual download. "Later" also means
-  later, rather than until you relaunch.
-- **Fixed — Planning Center 401.** "PCO 401 Unauthorized:" now explains the
-  usual cause (an OAuth application's Client ID/Secret pasted where a Personal
-  Access Token belongs). Credentials are also trimmed wherever they come from,
-  and entering them from a phone or laptop no longer silently discards the
-  secret.
-- **Fixed — no settings for the NDI feed.** There is now a Stage feed (NDI) card
-  that lists what NDI can see and points at where the source is chosen.
-- **Fixed — Settings could silently discard a change** when one control set two
-  values at once (choosing a console model saved the port and reverted the
-  model).
-- **Windows groundwork.** The macOS-only pieces are now behind platform gates
-  and Windows implementations are written, but **nothing has been compiled or
-  run on Windows** — see the note in `src-tauri/src/keepalive.rs`. Not usable
-  yet.
+### Fixed — updates that looked like they did nothing
+
+Reported as *"the update feature doesn't work and/or doesn't disappear."* Both
+halves turned out to be one cause: the banner drew the "available" and
+"downloading" states but had **no error state at all**. So when an install
+failed, the banner simply vanished — indistinguishable from the button doing
+nothing — and the automatic check at the next launch put it straight back, which
+looked like it wouldn't go away.
+
+- A failed update now says **what went wrong**, with **Try again** and
+  **Download it manually** (which can't fail).
+- **Later** now means later: dismissing remembers that version instead of
+  re-announcing it at every launch. A newer version still gets to interrupt, and
+  pressing *Check for updates* yourself always reports.
+- If updates keep failing, re-download from
+  <https://whiteoakmedia.io/tools> — see the note at the top.
+
+### Fixed — Planning Center connected but nothing loaded
+
+Reported as credentials being accepted while the plan list stayed empty, with
+`PCO 401 Unauthorized:` on screen — true, and useless.
+
+- That message now **names the actual cause**. Planning Center's developer site
+  offers OAuth *applications* (Client ID + Secret) right next to *Personal
+  Access Tokens*, and they look nearly identical — but only a Personal Access
+  Token works here. It also covers swapped fields and pasted whitespace, and
+  gives distinct wording for 403 / 404 / rate limits / Planning Center outages.
+- **Credentials are now trimmed wherever they come from.** They can arrive from
+  a restored backup, a hand-edited file, or the browser — paths that never saw
+  the entry form's trim — and an invisible trailing space is sent verbatim and
+  rejected.
+- **Entering them from a phone or laptop used to silently fail.** The gateway
+  protects stored secrets by refusing to overwrite them from a browser, but it
+  did that even when you had deliberately typed a new one: the Application ID
+  saved and the Secret was thrown away, leaving a permanent 401 with no clue.
+  Typed secrets now go through.
+
+### Fixed — no settings for the NDI feed
+
+Reported as *"I don't see the settings to add the NDI feed"* — correct, there
+were none. The source is chosen inside the Stage Feed widget, which you can only
+find if you already knew. **Settings → Stage feed (NDI)** now lists every NDI
+source on your network (which also proves NDI is working), explains why the list
+is empty when it is, and points at exactly where the choice is made.
+
+### New — OBS Studio
+
+Answers the question a booth asks all morning and ProDeck previously couldn't:
+**are we actually live?**
+
+- Current scene, whether you're **streaming** and **recording**, how long each
+  has been running, and **dropped frames** — as a dashboard widget and in
+  Settings.
+- Turn on **Tools → WebSocket Server Settings** in OBS, then put the port and
+  password into **Settings → OBS Studio**.
+- When OBS can't reach your streaming service at all, that's shown as its own
+  state rather than a healthy-looking zero.
+
+### New — Behringer X32 and Midas M32
+
+Probably more churches run an X32 than any other digital desk. It now mirrors
+alongside the Allen & Heath consoles: mutes, faders, scenes and channel names on
+every dashboard, and the desk watchdog works with it. Choose it under
+**Settings → Sound Console**; there's nothing to configure on the console
+itself.
+
+> Built from the published OSC protocol and covered by tests — including the
+> fader curve checked against the console's own level table — but **not yet
+> tried against real X32 hardware.** Same caveat as dLive and SQ. If you run
+> one, a report either way is genuinely useful.
+
+### Also fixed
+
+- **Settings could silently discard a change** when one control set two values
+  at once. Choosing a console model saves the model *and* the port, so picking
+  X32 — or dLive, which shipped this way — saved the port and quietly reverted
+  the model.
+- Sticky banners were see-through, so page content scrolled underneath and
+  collided with their text.
+
+### Under the hood
+
+- **Windows groundwork.** The macOS-only pieces are now behind platform gates,
+  with Windows implementations written. **This does not make ProDeck run on
+  Windows** — none of it has been compiled or run there yet. It's a starting
+  point, not a feature.
 
 ---
 
