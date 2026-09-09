@@ -36,6 +36,8 @@ ga4-key.json
 
 # Per-site local config (your identifiers, domain, update feed) — never committed
 src-tauri/tauri.local.conf.json
+# Derived from it at booth-install time (same private identifiers/feed).
+src-tauri/tauri.booth-install.conf.json
 crew-edge/wrangler.local.jsonc
 
 # publish-update.sh output (large DMG + feed)
