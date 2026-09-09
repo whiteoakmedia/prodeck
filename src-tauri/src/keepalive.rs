@@ -22,7 +22,13 @@ pub const LABEL: &str = "com.prodeck.watchdog";
 /// dies with us; Windows just flips a thread flag, so there is nothing to hold.
 #[cfg(target_os = "macos")]
 pub type AwakeGuard = std::process::Child;
-#[cfg(not(target_os = "macos"))]
+/// Windows keeps the sender for the thread that holds the execution-state flag:
+/// the flag is per-THREAD and Windows drops it the moment that thread ends, so
+/// the request has to be owned by a thread that stays alive. Dropping this
+/// sender is what tells that thread to release it and exit.
+#[cfg(windows)]
+pub type AwakeGuard = std::sync::mpsc::Sender<()>;
+#[cfg(not(any(target_os = "macos", windows)))]
 pub type AwakeGuard = ();
 
 pub struct KeepAwake(pub Mutex<Option<AwakeGuard>>);
@@ -181,7 +187,6 @@ mod platform {
 #[cfg(windows)]
 mod platform {
     use super::*;
-    use std::process::Command;
 
     pub const INSTALL_HINT: &str =
         "Move ProDeck to Program Files (or another permanent folder) first — the watchdog needs a path that won't move.";
@@ -191,7 +196,15 @@ mod platform {
     /// that the path is stable. Downloads and temp folders are not.
     pub fn in_install_dir(exe: &str) -> bool {
         let low = exe.to_ascii_lowercase();
-        !(low.contains("\\downloads\\") || low.contains("\\temp\\") || low.contains("\\appdata\\local\\temp"))
+        // `target\debug` and `target\release` matter as much as Downloads: a
+        // dev build that registers itself points the Run key at a path
+        // `cargo clean` deletes, and the machine then fails to start ProDeck
+        // at login forever after.
+        !(low.contains("\\downloads\\")
+            || low.contains("\\temp\\")
+            || low.contains("\\appdata\\local\\temp")
+            || low.contains("\\target\\debug\\")
+            || low.contains("\\target\\release\\"))
     }
 
     /// Windows has no launchd equivalent that supervises a GUI app, so a Run
@@ -204,7 +217,13 @@ mod platform {
     const RUN_KEY: &str = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run";
 
     fn reg(args: &[&str]) -> Result<String, String> {
-        let out = Command::new("reg").args(args).output().map_err(|e| e.to_string())?;
+        // Full path, not PATH lookup, and no console window — the Reliability
+        // panel calls this on open and after every change, and each spawn from
+        // a GUI process otherwise flashes a black cmd window.
+        let exe = std::env::var("SystemRoot")
+            .map(|r| format!(r"{r}\System32\reg.exe"))
+            .unwrap_or_else(|_| "reg".into());
+        let out = crate::diag::command(&exe).args(args).output().map_err(|e| e.to_string())?;
         if out.status.success() {
             Ok(String::from_utf8_lossy(&out.stdout).to_string())
         } else {
@@ -216,7 +235,15 @@ mod platform {
         let out = reg(&["query", RUN_KEY, "/v", "ProDeck"]).ok()?;
         // `reg query` prints:  ProDeck    REG_SZ    "C:\...\ProDeck.exe"
         let line = out.lines().find(|l| l.contains("ProDeck"))?;
-        let val = line.split("REG_SZ").nth(1)?.trim();
+        // Split on the type column rather than the literal "REG_SZ": a value
+        // written as REG_EXPAND_SZ (by anything other than us) does not contain
+        // "REG_SZ" as a substring, and the old split reported "not installed"
+        // while leaving an entry the UI then couldn't remove.
+        let val = line
+            .split_once("REG_EXPAND_SZ")
+            .or_else(|| line.split_once("REG_SZ"))
+            .map(|(_, rest)| rest)?
+            .trim();
         Some(val.trim_matches('"').to_string())
     }
 
@@ -237,9 +264,18 @@ mod platform {
         Err("On Windows, quit and reopen ProDeck to restart it.".into())
     }
 
-    // SetThreadExecutionState keeps the machine awake for as long as this
-    // thread holds the flag, and Windows clears it automatically when the
-    // process exits — the same "nothing left behind" property as caffeinate.
+    // SetThreadExecutionState keeps the machine awake for as long as the thread
+    // that called it is alive, and Windows clears it when the process exits —
+    // the same "nothing left behind" property as caffeinate.
+    //
+    // "as long as the THREAD is alive" is the whole difficulty. Setting the flag
+    // from the command handler would tie the booth's sleep guard to whatever
+    // thread Tauri happened to dispatch that call on: the moment it returned to
+    // the pool the request would be dropped, the machine would sleep mid-service,
+    // and the UI would still be showing "sleep guard on". So the flag is owned
+    // by a thread of our own that does nothing but hold it and wait to be told
+    // to stop. Verify on the machine with `powercfg /requests`: the SYSTEM
+    // section must name ProDeck.exe.
     const ES_CONTINUOUS: u32 = 0x8000_0000;
     const ES_SYSTEM_REQUIRED: u32 = 0x0000_0001;
 
@@ -252,21 +288,33 @@ mod platform {
         if slot.is_some() {
             return;
         }
-        // SAFETY: a documented kernel32 call taking a bitflag and returning the
-        // previous state. No pointers, no allocation.
-        let prev = unsafe { SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED) };
-        if prev == 0 {
-            crate::diag::log("[keepalive] SetThreadExecutionState failed");
-            return;
-        }
-        *slot = Some(());
+        let (tx, rx) = std::sync::mpsc::channel::<()>();
+        std::thread::Builder::new()
+            .name("prodeck-keepawake".into())
+            .spawn(move || {
+                // SAFETY: a documented kernel32 call taking a bitflag and
+                // returning the previous state. No pointers, no allocation.
+                unsafe { SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED) };
+                // Blocks until the sender is dropped (wake_off, or shutdown).
+                // The return value is deliberately ignored: either message or
+                // disconnect means "release it".
+                let _ = rx.recv();
+                // SAFETY: as above — clears our request, restoring normal sleep.
+                unsafe { SetThreadExecutionState(ES_CONTINUOUS) };
+            })
+            .ok();
+        // The previous-state return is NOT checked for zero. Zero is a plausible
+        // answer for a thread that has never called it, and treating that as
+        // failure meant the slot was never filled, so the toggle could never
+        // latch on however many times it was pressed.
+        *slot = Some(tx);
         crate::diag::log("[keepalive] sleep guard on");
     }
 
     pub fn wake_off(slot: &mut Option<AwakeGuard>) {
         if slot.take().is_some() {
-            // SAFETY: as above — clears our request, restoring normal sleep.
-            unsafe { SetThreadExecutionState(ES_CONTINUOUS) };
+            // Dropping the sender wakes the holder thread, which clears the
+            // flag and exits.
             crate::diag::log("[keepalive] sleep guard off");
         }
     }

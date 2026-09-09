@@ -215,7 +215,7 @@
     <tr><td><strong>Service tracking &amp; reports</strong></td><td><span class="chip req">CORE</span></td><td>Planned vs. actual timing per item, bucketed per service time; rehearsals kept out of Sunday stats; saved reports.</td></tr>
     <tr><td><strong>Clear dock</strong></td><td><span class="chip req">CORE</span></td><td>One-tap ProPresenter layer clears (slide/media/props/messages/…) pinned to every page.</td></tr>
     <tr><td><strong>SPL + RTA metering</strong></td><td><span class="chip opt">+ audio input</span></td><td>Calibrated house SPL, RTA, history graphs, per-service loudness records. Built for Dante Virtual Soundcard; any CoreAudio input works.</td></tr>
-    <tr><td><strong>Console mirror</strong></td><td><span class="chip opt">+ A&amp;H Avantis</span></td><td>Channel names/mutes/faders on dashboards, mic names pushed to the desk weekly. <strong>Avantis-family protocol only</strong> — other desks mean new code.</td></tr>
+    <tr><td><strong>Console mirror</strong></td><td><span class="chip opt">+ a supported desk</span></td><td>Channel names/mutes/faders on dashboards, mic names pushed to the desk weekly. Allen &amp; Heath <strong>Avantis, dLive and SQ</strong> (MIDI over TCP) and <strong>Behringer X32 / Midas M32</strong> (OSC). Only the Avantis has been run against real hardware; the rest are built from the published protocols. Any other desk means new code.</td></tr>
     <tr><td><strong>Song-key MIDI send</strong></td><td><span class="chip opt">+ MIDI route</span></td><td>Sends the live song's key as a MIDI program change (I target Waves LV1 scenes). Generic PC/CC sender — usable against anything that takes MIDI.</td></tr>
     <tr><td><strong>Stage feed preview</strong></td><td><span class="chip opt">+ NDI</span></td><td>Any NDI source as a dashboard tile (LAN only, by design).</td></tr>
   </table></div>
@@ -248,7 +248,8 @@
     <tr><td><strong>Planning Center Services</strong></td><td><span class="chip req">REQUIRED</span> — plans, teams, and scheduling are the backbone. You create a free Personal Access Token under a PCO admin.</td></tr>
     <tr><td><strong>Cloudflare + a domain</strong></td><td><span class="chip opt">OPTIONAL</span> — only for the crew/cloud/tap features. Free plan suffices; the domain is the only recurring cost.</td></tr>
     <tr><td>Dante / audio interface</td><td><span class="chip opt">OPTIONAL</span> — SPL features take any input the Mac can hear.</td></tr>
-    <tr><td>Allen &amp; Heath Avantis</td><td><span class="chip opt">OPTIONAL</span> — console mirror is Avantis-protocol-specific.</td></tr>
+    <tr><td>A supported sound console</td><td><span class="chip opt">OPTIONAL</span> &mdash; A&amp;H Avantis / dLive / SQ, or Behringer X32 / Midas M32. Anything else is unsupported.</td></tr>
+    <tr><td>OBS Studio</td><td><span class="chip opt">OPTIONAL</span> &mdash; scene, stream/record state and dropped frames, via OBS's built-in WebSocket server.</td></tr>
     <tr><td>NDI source, Stream Deck, NFC tags (NTAG213+), GA4 on your watch page</td><td><span class="chip opt">OPTIONAL</span> — one feature each.</td></tr>
   </table></div>
 </section>
@@ -272,7 +273,7 @@
 
   <h3>Tier 3 — shaped by my room (works for you, but review it)</h3>
   <ul>
-    <li><strong>Console + key-send:</strong> the desk mirror speaks Avantis; the key-send exists because my FOH runs Waves LV1 with per-key scenes. Different desk or workflow → skip or rewrite those modules.</li>
+    <li><strong>Console + key-send:</strong> the desk mirror speaks A&amp;H (Avantis, dLive, SQ) and Behringer/Midas (X32, M32); the key-send exists because my FOH runs Waves LV1 with per-key scenes. A desk outside that list, or a different workflow &rarr; skip or rewrite those modules.</li>
     <li><strong>Sunday shape:</strong> multi-service logic (auto-advance 8:00 → 9:30 → …), rehearsal-vs-service bucketing, and the readiness checklist reflect a multi-service Sunday with a volunteer crew. All configurable, but the shape is baked in.</li>
     <li><strong>Legacy migration shims:</strong> two tiny startup routines migrate data from the app's earlier internal name — harmless on a fresh install, and documented in <code>src-tauri/src/lib.rs</code> and <code>src/main.tsx</code>.</li>
   </ul>
@@ -305,7 +306,7 @@
   <ul>
     <li>You need vendor support and SLAs — this has neither</li>
     <li>Your booth is Windows-only</li>
-    <li>You mainly want the console features but don't run an Avantis</li>
+    <li>You mainly want the console features but run a desk outside the supported list</li>
   </ul>
   <h3>Realistic effort (for a comfortable tech volunteer)</h3>
   <div class="tblwrap"><table>

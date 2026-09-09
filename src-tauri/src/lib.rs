@@ -36,15 +36,17 @@ use tokio::sync::Mutex as AsyncMutex;
 /// window.print() is unreliable on macOS, so the Report page hands its rendered
 /// HTML here instead.
 #[tauri::command]
-fn open_print_html(html: String) -> Result<(), String> {
+fn open_print_html(html: String, app: tauri::AppHandle) -> Result<(), String> {
     let mut path = std::env::temp_dir();
     path.push("prodeck-report.html");
     std::fs::write(&path, html.as_bytes()).map_err(|e| e.to_string())?;
-    std::process::Command::new("open")
-        .arg(&path)
-        .spawn()
-        .map_err(|e| e.to_string())?;
-    Ok(())
+    // Was `Command::new("open")`, which exists only on macOS — printing a
+    // report just raised an error toast anywhere else. The opener plugin picks
+    // the right mechanism per platform and is already loaded.
+    use tauri_plugin_opener::OpenerExt;
+    app.opener()
+        .open_path(path.to_string_lossy().to_string(), None::<&str>)
+        .map_err(|e| e.to_string())
 }
 
 /// One-time migration from the legacy data-folder name. The app was renamed;

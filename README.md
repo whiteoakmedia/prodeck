@@ -32,11 +32,17 @@ Workers for the optional cloud features.
   and reports; restore it on a new Mac.
 - **Built-in help** — a `?` on every settings card, a redacted diagnostics
   bundle, and one-click problem reporting.
-- **Consoles** — Allen & Heath **Avantis, dLive, and SQ** over MIDI-TCP: live
-  mirror of mutes, faders, scenes (and names/colours on Avantis/dLive), a
+- **Consoles** — Allen & Heath **Avantis, dLive, and SQ** over MIDI-TCP, and
+  **Behringer X32 / Midas M32** over OSC: live mirror of mutes, faders, scenes
+  (and names/colours everywhere except SQ, whose protocol carries none), a
   desk watchdog that pages one person about setup changes, and admin-only
   control (mutes, faders, names, scene recall) from any dashboard; song-key
-  MIDI send for FOH plugins.
+  MIDI send for FOH plugins. Only the Avantis has been tried against real
+  hardware — the others are built from the published protocols and tested in
+  software.
+- **OBS Studio** — current scene, streaming/recording state with elapsed time,
+  and dropped frames, on any dashboard. Turn on OBS's WebSocket server and put
+  the port and password in Settings → OBS Studio.
 - **Booth-off resilience** — with the optional Cloudflare setup, your domain
   serves a read-only plan + working chat even when the booth Mac is off.
 - **Live viewers** — realtime watch-page count via GA4.

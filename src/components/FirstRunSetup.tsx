@@ -875,11 +875,20 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
             {keep && !(keep.installed && keep.matchesCurrent) && (
               <div className="ob-keep">
                 <div>
-                  <strong>Keep ProDeck running</strong>
+                  {/* Both strings come from the backend's own answer. Hardcoding
+                      the macOS wording here promised Windows users a
+                      crash-relaunch that a Run key cannot deliver, and told
+                      them to use an Applications folder they don't have. */}
+                  <strong>
+                    {keep.supervises === false ? "Start ProDeck at login" : "Keep ProDeck running"}
+                  </strong>
                   <span>
-                    {keep.inApplications
-                      ? "Start at login and relaunch within seconds of any crash — so a Sunday-morning hiccup never leaves the booth dark. Recommended for a booth Mac."
-                      : "Move ProDeck to your Applications folder, then turn this on from Settings → Reliability — it relaunches after a crash and starts at login."}
+                    {!keep.inApplications
+                      ? (keep.installHint ??
+                        "Move ProDeck to your Applications folder, then turn this on from Settings → Reliability.")
+                      : keep.supervises === false
+                        ? "Open ProDeck automatically whenever you sign in, so a restart doesn't leave the booth dark. Recommended for a booth computer."
+                        : "Start at login and relaunch within seconds of any crash — so a Sunday-morning hiccup never leaves the booth dark. Recommended for a booth computer."}
                   </span>
                   {keepMsg && <em>{keepMsg}</em>}
                 </div>
@@ -908,7 +917,7 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
             )}
             <ul className="ob-summary">
               <SummaryRow ok={state.pro} label="ProPresenter" okText="connected" offText="not connected — ProPresenter page" />
-              <SummaryRow ok={state.pco} label="Planning Center" okText="connected" offText="not connected — Settings → Planning Center" />
+              <SummaryRow ok={state.pco} label="Planning Center" okText="connected" offText="not connected — open the Planning Center page" />
               <SummaryRow ok={state.web} label="Phones & kiosks" okText="serving" offText="off — Settings → Browser Access" />
               <SummaryRow ok={state.console} label="Sound console" okText={`${consoleMeta.name} mirrored`} offText={s.avantis_enabled ? "configured, not reachable yet" : "none — Settings → Allen & Heath Console"} />
               <SummaryRow ok={state.team} label="Team join code" okText="ready to scan" offText="needs Phones & kiosks on" />

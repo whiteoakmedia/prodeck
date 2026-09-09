@@ -2327,8 +2327,8 @@ function ReliabilityCard() {
         <span className={`chip ${on ? "online" : ""}`}>{on ? (st?.supervises === false ? "starts at login" : st?.underLaunchd ? "watchdog running" : "watchdog armed") : "not set up"}</span>
       </div>
       <p className="muted small">
-        A booth Mac has to run unattended. These two switches are what keep ProDeck up
-        through a crash, a reboot, or a Mac that wants to nap.
+        A booth computer has to run unattended. These two switches are what keep ProDeck
+        up through a crash, a reboot, or a machine that wants to nap.
       </p>
       <div className="rel-rows">
         <div className="rel-row">

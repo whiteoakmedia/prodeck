@@ -103,10 +103,23 @@ unsafe fn load_ndi() -> Option<NdiLib> {
     #[cfg(not(any(target_os = "macos", windows)))]
     const NDI_LIB: &str = "libndi.so";
 
+    // NDI's own installer sets these and they are the canonical way to find the
+    // runtime — a non-default install location is found only through them.
+    #[cfg(windows)]
+    let env_dir = ["NDI_RUNTIME_DIR_V6", "NDI_RUNTIME_DIR_V5"]
+        .iter()
+        .find_map(|k| std::env::var(k).ok())
+        .map(|d| format!("{}\\{}", d.trim_end_matches('\\'), NDI_LIB))
+        .unwrap_or_default();
     #[cfg(windows)]
     let candidates = [
+        env_dir.as_str(),
         r"C:\Program Files\NDI\NDI 6 Runtime\v6\Processing.NDI.Lib.x64.dll",
         r"C:\Program Files\NDI\NDI 5 Runtime\v5\Processing.NDI.Lib.x64.dll",
+        // Same drop-the-DLL-in escape hatch macOS has had. It was computed and
+        // then left out of this list, so `own` was an unused variable here and
+        // Windows users had no way to supply the library by hand.
+        own.as_str(),
         NDI_LIB,
     ];
     #[cfg(not(windows))]

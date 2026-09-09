@@ -472,13 +472,20 @@ fn default_device_name() -> String {
 }
 
 fn hostname() -> Option<String> {
-    std::env::var("HOSTNAME").ok().or_else(|| {
-        std::process::Command::new("hostname")
-            .output()
-            .ok()
-            .and_then(|o| String::from_utf8(o.stdout).ok())
-            .map(|s| s.trim().to_string())
-    })
+    // HOSTNAME is a POSIX shell-ism; Windows sets COMPUTERNAME. Without the
+    // second name every Windows machine fell through to spawning hostname.exe.
+    std::env::var("HOSTNAME")
+        .ok()
+        .or_else(|| std::env::var("COMPUTERNAME").ok())
+        .filter(|h| !h.trim().is_empty())
+        .or_else(|| {
+            crate::diag::command("hostname")
+                .output()
+                .ok()
+                .and_then(|o| String::from_utf8(o.stdout).ok())
+                .map(|s| s.trim().to_string())
+        })
+        .filter(|h| !h.trim().is_empty())
 }
 
 /// Look for a whisper.cpp CLI binary in common locations so captions work
@@ -614,28 +621,15 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    // Age the backup so the time gate opens, without pulling in a crate.
+    // Age the backup so the time gate opens, without pulling in a crate. This
+    // used to shell out to `touch -t` with a timestamp formatted by `date -r`,
+    // which is a BSD flag on a program Windows does not have — the whole test
+    // panicked there rather than testing anything. std does it directly.
     fn filetime_set(path: &PathBuf, when: std::time::SystemTime) {
-        if !path.exists() {
+        let Ok(f) = std::fs::OpenOptions::new().write(true).open(path) else {
             return;
-        }
-        let secs = when
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_secs())
-            .unwrap_or(0);
-        let _ = std::process::Command::new("touch")
-            .arg("-t")
-            .arg(fmt_touch(secs))
-            .arg(path)
-            .status();
-    }
-
-    fn fmt_touch(epoch_secs: u64) -> String {
-        let out = std::process::Command::new("date")
-            .args(["-r", &epoch_secs.to_string(), "+%Y%m%d%H%M.%S"])
-            .output()
-            .expect("date");
-        String::from_utf8_lossy(&out.stdout).trim().to_string()
+        };
+        let _ = f.set_times(std::fs::FileTimes::new().set_accessed(when).set_modified(when));
     }
 }
 

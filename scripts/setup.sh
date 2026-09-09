@@ -130,7 +130,7 @@ cat <<'EOM'
 Done. ProDeck is installed, running, and will relaunch itself on any crash or
 reboot. First stops inside the app:
   1. ProPresenter page — connect to your Pro machine
-  2. Settings → Planning Center — paste your PCO token
+  2. Planning Center page → Connect — paste your PCO Personal Access Token
   3. Settings → Browser Access — turn on the web gateway, set passwords
 The full evaluate-and-adopt guide is docs/ADOPTERS_GUIDE.html in this repo.
 EOM

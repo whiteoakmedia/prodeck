@@ -105,8 +105,25 @@ fn os_facts() -> Value {
     }
 }
 
+/// `Command`, minus the black console window Windows flashes for every spawn
+/// from a GUI app. `windows_subsystem = "windows"` means ProDeck has no console
+/// of its own, so each short-lived helper gets a fresh one for a few frames —
+/// visible on the booth's projector-facing screen. Every helper process ProDeck
+/// runs goes through here; on macOS it is a plain `Command`.
+pub(crate) fn command(program: &str) -> std::process::Command {
+    #[allow(unused_mut)]
+    let mut c = std::process::Command::new(program);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        c.creation_flags(CREATE_NO_WINDOW);
+    }
+    c
+}
+
 fn sh(cmd: &str, args: &[&str]) -> String {
-    std::process::Command::new(cmd)
+    command(cmd)
         .args(args)
         .output()
         .ok()
@@ -166,6 +183,30 @@ pub fn diag_recent_log(n: Option<usize>) -> Vec<String> {
     recent(n.unwrap_or(200))
 }
 
+/// A filesystem path as a URL the OS will actually accept.
+///
+/// `format!("file://{path}")` is right on macOS and wrong on Windows: it yields
+/// `file://C:\Users\...`, where "C:" reads as the host name, so every in-app
+/// help link did nothing at all. Windows needs three slashes and forward
+/// slashes. The characters that would otherwise end the path early are escaped
+/// too — `#` in particular, since an anchor is appended straight after this.
+fn file_url(p: &std::path::Path) -> String {
+    let raw = p.display().to_string();
+    #[cfg(windows)]
+    let raw = format!("/{}", raw.replace('\\', "/"));
+    let mut out = String::from("file://");
+    for c in raw.chars() {
+        match c {
+            ' ' => out.push_str("%20"),
+            '#' => out.push_str("%23"),
+            '?' => out.push_str("%3F"),
+            '%' => out.push_str("%25"),
+            _ => out.push(c),
+        }
+    }
+    out
+}
+
 /// Open the bundled Adopter's Guide at a section (offline), falling back to
 /// the published copy when the resource isn't found (e.g. `tauri dev`).
 #[tauri::command]
@@ -177,7 +218,7 @@ pub fn help_open(section: Option<String>, app: AppHandle) -> Result<(), String> 
         .ok()
         .filter(|p| p.exists());
     let url = match local {
-        Some(p) => format!("file://{}{}", p.display(), anchor),
+        Some(p) => format!("{}{}", file_url(&p), anchor),
         None => format!("https://whiteoakmedia.github.io/prodeck/ADOPTERS_GUIDE.html{anchor}"),
     };
     app.opener().open_url(url, None::<&str>).map_err(|e| e.to_string())
