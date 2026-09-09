@@ -35,6 +35,158 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.74 — 9 September 2026
+
+A deliberate hunt for bugs rather than a feature release: six parallel audits
+across the phone app, the crew tools, the web gateway, data handling, and every
+piece of hardware ProDeck talks to. Everything below was found by reading the
+code and confirmed against it. Several are things that would have gone wrong on
+a Sunday morning with nobody able to explain why.
+
+### One thing changes for your volunteers — read this bit
+
+**The crew join link and the printed poster now only work while you open
+joining.** Settings → Crew invite link has a new switch: *Open for 15 minutes*
+or *1 hour*, with a countdown and a Close now button.
+
+**Crew who have already joined are not affected** — their phones keep working
+exactly as before. This only gates people signing up for the first time.
+
+The reason is blunt: that link handed out a working crew credential to anyone
+who asked for it, from anywhere on the internet — not just someone standing in
+your building with the poster in front of them. It could not ask for a password,
+because a printed QR code has nobody to ask. The only honest gate is *when* it
+answers. Open it at the volunteer meeting, let it close itself.
+
+Someone scanning the poster while it is closed now gets *"Joining is closed
+right now — ask whoever is at the production computer to open joining"* instead
+of a password prompt.
+
+### Fixed — a phone could alarm forever with no way to stop it
+
+Two separate faults, either of which could leave a volunteer's phone sirening
+and buzzing every two seconds, mid-service, with nothing on screen to stop it.
+Force-quitting the app was the only escape.
+
+- Locking the phone with **PIN again** kept it receiving pages while removing
+  the only way to confirm one.
+- A phone reconnects its live link every time it wakes from sleep, and each
+  reconnect **re-delivered the last page as if it were new** — including one
+  that had already been confirmed hours earlier.
+
+A page the booth can no longer accept a confirmation for (because it restarted,
+or the page is old) can now be dismissed.
+
+### Fixed — ProDeck said "Connected" when ProPresenter wasn't
+
+If ProPresenter quit, slept, or changed IP address, ProDeck never noticed. The
+header kept saying Connected and every panel sat frozen on whatever was true
+before it vanished. Worse, the automatic "find ProPresenter again" feature only
+runs when ProDeck believes it is disconnected — so the thing built for a
+ProPresenter Mac that changes IP could never actually fire. ProDeck now notices
+silence and reconnects on its own.
+
+### Fixed — things that could quietly destroy your setup
+
+Seven files ProDeck keeps — your settings, dashboards, crew accounts, Planning
+Center assignments, check-ins, routing map, position files — were read in a way
+that could not tell *"this file doesn't exist yet"* from *"this file is
+damaged"*. Both looked like a brand-new install, and the next save wrote that
+emptiness back permanently.
+
+- **Settings** was the most exposed: one damaged character and ProDeck started
+  up looking factory-fresh. You would re-enter the two things you noticed, press
+  Save, and everything else — Planning Center credentials, console address,
+  passwords, tokens — was gone for good.
+- **Planning Center assignments** needed no action from you at all. A bookkeeping
+  mistake meant ProDeck saved that file on *every* launch whether anything had
+  changed or not, so one bad read emptied every mic assignment, key override,
+  plan link and position guide by itself.
+- **Page notifications** could silently stop working for everyone: a damaged
+  file caused ProDeck to mint a new notification key, invalidating every phone
+  that had ever signed up. It presented as "pages stopped arriving on Sunday"
+  with nothing to point at.
+
+All of these now keep the damaged file, recover from an automatic backup, and
+say what happened instead of pretending to be new.
+
+### Fixed — Planning Center
+
+- **Long plans were being cut off.** ProDeck only ever asked for the first page
+  of any list and asked for more than Planning Center will give, so anything
+  past the first hundred rows was silently missing. Chord charts were the first
+  casualty on a plan with several songs.
+- **Press Next, nothing happens.** If the check for "who is controlling Live"
+  failed for any reason — a slow connection, a busy moment — ProDeck read that
+  as "nobody is", and took the action that *releases* control. Pressing it again
+  worked, which is what made it so confusing.
+
+### Fixed — crew
+
+- **Checklist items volunteers ticked on their phones were being undone.** The
+  booth read the list once at startup and never again, so the next thing the
+  operator ticked wrote its stale copy back over everyone's.
+- **A volunteer could be locked out of their own account.** Signing out left the
+  phone with no way to sign back in — typing your own name said *"that name is
+  taken — pick another or log in"*, with no log-in to be found.
+- **One typo could lock you out repeatedly.** After a single lockout, the very
+  next wrong digit re-locked for another five minutes, indefinitely.
+- **A check-in the booth had rejected showed as a green tick** on the checklist
+  tab, while the leader's board showed that person as absent.
+
+### Fixed — the sound desk could freeze everything
+
+A console that stopped responding — a hung desk, or a network blip — could
+freeze every part of ProDeck that reads it, for the rest of the service.
+Separately, an X32/M32 that rebooted mid-service went on showing the mutes and
+faders from before it vanished, with a green connected light. On a channel wall
+that is the one thing that must never be wrong.
+
+### New — Confidence Banner
+
+Sending to **Confidence** from team chat, and the **Clear confidence banner**
+button, have never done anything: the widget they were meant to drive was never
+built. It exists now. Put it on a dashboard pointed at a confidence monitor and
+messages appear as a large banner, clearing on their own after a minute or the
+moment you clear them.
+
+### Fixed — buttons that said they worked when they hadn't
+
+- **Sunday setlist swap** reported *"✓ Placed 4 songs"* while writing your
+  playlist back completely unchanged — and on a fresh launch that was the
+  *normal* outcome. ProPresenter kept last week's songs.
+- **Clear / Clear All** flashed "done" against a dead ProPresenter connection.
+- **Renaming desk channels** claimed it wrote twelve names when all twelve
+  failed.
+- **Settings → Save** did nothing visible when the save failed — indistinguishable
+  from a dead button.
+- **Lobby TV buttons** reported success when the saved playlist had gone stale
+  and the TVs stayed dark.
+
+### Also fixed
+
+- OBS showed a red "no connection to the stream service" at the exact moment
+  you went live. Its "% dropped" is relabelled **% skipped (encoder)** — it was
+  pointing at the network when the problem was the computer.
+- Choosing a second playlist before the first finished loading could trigger the
+  **wrong presentation** on the house screens.
+- Chord charts wouldn't transpose on any song in a minor key.
+- Double-tapping a camera in Multiview left the booth Mac encoding that feed all
+  day; a shared camera could be torn away from everyone watching it.
+- The LAN relay restarted on every keystroke while editing its address.
+- Editing a dashboard and immediately switching pages lost the change.
+- Your diagnostics bundle no longer includes your Planning Center application ID
+  or your public web address.
+
+### For the technically minded
+
+The web gateway now requires JSON content on its command endpoint, which forces
+browsers to ask permission before talking to it — without that, any web page a
+crew phone happened to visit on your network could drive ProDeck and read the
+replies. Gateway passwords also have attempt limits now; they had none.
+
+---
+
 ## 0.9.73 — 9 September 2026
 
 Everything here except the new widget came from someone else running ProDeck
