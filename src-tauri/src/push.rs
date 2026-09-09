@@ -76,18 +76,50 @@ fn now_ms() -> u64 {
 
 impl PushInner {
     pub fn load() -> Self {
-        let mut store: Store = std::fs::read_to_string(store_path())
-            .ok()
-            .and_then(|s| serde_json::from_str(&s).ok())
-            .unwrap_or_default();
-        // Generate the keypair once. Rotating it would silently invalidate every
-        // existing subscription, so it is created only when genuinely absent.
+        let path = store_path();
+        // "Only when genuinely absent" was the intent, but the old code could
+        // not tell absent from unreadable — both collapsed to Default, which
+        // then minted a NEW keypair and wrote it, invalidating every phone's
+        // push subscription. That presents as "pages stopped arriving on
+        // Sunday" with nothing anywhere pointing at the cause. And since this
+        // was the only file in the app written non-atomically, a crash mid-write
+        // produced exactly the truncated file that triggered it.
+        let (mut store, readable): (Store, bool) = match std::fs::read_to_string(&path) {
+            Ok(raw) => match serde_json::from_str::<Store>(&raw) {
+                Ok(s) => (s, true),
+                Err(e) => {
+                    crate::diag::log(format!("[push] {} could not be parsed: {e}", path.display()));
+                    let bak = path.with_extension("bak.json");
+                    match std::fs::read_to_string(&bak)
+                        .ok()
+                        .and_then(|b| serde_json::from_str::<Store>(&b).ok())
+                    {
+                        Some(s) => {
+                            crate::diag::log("[push] recovered keys from the backup".to_string());
+                            (s, true)
+                        }
+                        None => {
+                            let kept = path
+                                .with_extension(format!("corrupt-{}.json", crate::identity::now_ms()));
+                            let _ = std::fs::write(&kept, &raw);
+                            crate::diag::log(format!(
+                                "[push] no usable backup — kept {} and minting a new keypair;                                  every phone must re-enable page notifications",
+                                kept.display()
+                            ));
+                            (Store::default(), false)
+                        }
+                    }
+                }
+            },
+            Err(_) => (Store::default(), false), // genuinely absent: first run
+        };
+        let _ = readable;
         if store.vapid_private.is_empty() || store.vapid_public.is_empty() {
             let (priv_b64, pub_b64) = generate_vapid();
             store.vapid_private = priv_b64;
             store.vapid_public = pub_b64;
-            let _ = std::fs::write(
-                store_path(),
+            let _ = crate::settings::write_json_atomic_backed_up(
+                path.clone(),
                 serde_json::to_string_pretty(&store).unwrap_or_default(),
             );
         }
@@ -97,7 +129,7 @@ impl PushInner {
     }
 
     fn persist(&self, s: &Store) {
-        let _ = std::fs::write(
+        let _ = crate::settings::write_json_atomic_backed_up(
             store_path(),
             serde_json::to_string_pretty(s).unwrap_or_default(),
         );

@@ -102,6 +102,26 @@ enum Tier {
     Member,
 }
 
+/// Events that describe a MOMENT, not a state.
+///
+/// Every other forwarded event is snapshotted so a newly-connected browser sees
+/// current state immediately. Replaying these instead re-delivers something
+/// that already happened: a phone's EventSource reconnects every time it wakes
+/// or is backgrounded, and each reconnect re-fired the last page as a
+/// full-screen siren takeover the volunteer had already confirmed — the stored
+/// frame carries the receipts as they were at emit time, i.e. empty. It rang
+/// again on every reconnect for the rest of the day. Chat did the same, minus
+/// the takeover: re-chimed, re-buzzed and re-badged.
+const ONE_SHOT: &[&str] = &[
+    "page:new",
+    "page:receipt",
+    "chat:message",
+    "tap:pushed",
+    "tap:error",
+    "pco:sync_started",
+    "pco:sync_stopped",
+];
+
 fn token_tier(app: &AppHandle, token: &str) -> Option<Tier> {
     let (admin, member, invite) = {
         let state = app.state::<SettingsState>();
@@ -168,7 +188,7 @@ fn ensure_listeners(app: &AppHandle, web: &WebState) {
             } else {
                 false
             };
-            {
+            if !ONE_SHOT.contains(&nm.as_str()) {
                 let mut snap = web.snapshot.lock().unwrap_or_else(|p| p.into_inner());
                 // ProPresenter dropped — forget its stale connected/status snapshot.
                 if nm == "pp:disconnected" {
@@ -845,13 +865,27 @@ async fn handle_conn(
     // the browser whatever token is current; texted ?join= copies still die
     // on rotate. No-store because the target embeds a live credential.
     if method == "GET" && (path == "/join" || path.starts_with("/join?")) {
-        let invite = {
+        let (invite, open_until) = {
             let state = app.state::<SettingsState>();
             let s = state.lock().unwrap_or_else(|p| p.into_inner());
-            s.web_invite_token.clone()
+            (s.web_invite_token.clone(), s.crew_join_until_ms)
         };
+        // This endpoint hands out a real member credential and cannot ask for
+        // one first — that is the point of a printed poster. But the Cloudflare
+        // worker fronts the whole zone, so it was answering the open internet:
+        // anyone could request it and read the token straight out of the
+        // redirect. It now only answers while the booth has deliberately opened
+        // a joining window, which is how crew are actually onboarded — you open
+        // it at the volunteer meeting and it closes itself.
+        let open = open_until > 0 && crate::identity::now_ms() < open_until;
         let target = if invite.is_empty() {
             "/".to_string()
+        } else if !open {
+            crate::diag::log(format!(
+                "[join] refused — joining is closed (peer {})",
+                stream.peer_addr().map(|a| a.ip().to_string()).unwrap_or_default()
+            ));
+            "/?joinclosed=1".to_string()
         } else {
             format!("/?join={invite}")
         };
@@ -1458,6 +1492,37 @@ async fn dispatch(app: &AppHandle, cmd: &str, args: &Value, tier: Tier) -> Resul
             crate::chat::clear_confidence_core(app);
             Ok(Value::Null)
         }
+        // Admin-only by default: neither name is in the member allowlist, so a
+        // crew phone cannot open its own joining window.
+        "crew_join_state" => {
+            let until = app
+                .state::<SettingsState>()
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .crew_join_until_ms;
+            let now = crate::identity::now_ms();
+            Ok(json!({
+                "open": until > now,
+                "until": until,
+                "secondsLeft": if until > now { (until - now) / 1000 } else { 0 },
+            }))
+        }
+        "crew_join_open" => {
+            let minutes = args.get("minutes").and_then(|v| v.as_u64()).unwrap_or(0);
+            let until = if minutes == 0 {
+                0
+            } else {
+                crate::identity::now_ms() + minutes.min(240) * 60_000
+            };
+            let to_save = {
+                let st = app.state::<SettingsState>();
+                let mut g = st.lock().unwrap_or_else(|p| p.into_inner());
+                g.crew_join_until_ms = until;
+                g.clone()
+            };
+            crate::settings::save(&to_save)?;
+            Ok(json!({ "until": until }))
+        }
         "load_dashboards" => Ok(crate::settings::load_dashboards()),
         "load_pco_data" => Ok(crate::settings::load_pco_data()),
         "load_tracking" => crate::settings::load_tracking(),
@@ -1833,6 +1898,47 @@ async fn dispatch(app: &AppHandle, cmd: &str, args: &Value, tier: Tier) -> Resul
 // ---------------------------------------------------------------------------
 // Tauri commands
 // ---------------------------------------------------------------------------
+
+/// Open (or close) the window during which /join hands out the crew token.
+///
+/// /join cannot authenticate its caller — a poster on the green-room wall has
+/// no password — so the only honest control is *when* it answers. `minutes` of
+/// 0 closes it immediately.
+#[tauri::command]
+pub fn crew_join_open(
+    minutes: u32,
+    settings: tauri::State<'_, SettingsState>,
+) -> Result<Value, String> {
+    let until = if minutes == 0 {
+        0
+    } else {
+        crate::identity::now_ms() + u64::from(minutes.min(240)) * 60_000
+    };
+    let to_save = {
+        let mut s = settings.lock().unwrap_or_else(|p| p.into_inner());
+        s.crew_join_until_ms = until;
+        s.clone()
+    };
+    crate::settings::save(&to_save)?;
+    crate::diag::log(if until == 0 {
+        "[join] joining closed".to_string()
+    } else {
+        format!("[join] joining open for {minutes} min")
+    });
+    Ok(json!({ "until": until }))
+}
+
+/// Is the joining window open, and for how much longer?
+#[tauri::command]
+pub fn crew_join_state(settings: tauri::State<'_, SettingsState>) -> Value {
+    let until = settings.lock().unwrap_or_else(|p| p.into_inner()).crew_join_until_ms;
+    let now = crate::identity::now_ms();
+    json!({
+        "open": until > now,
+        "until": until,
+        "secondsLeft": if until > now { (until - now) / 1000 } else { 0 },
+    })
+}
 
 #[tauri::command]
 pub fn web_status(state: tauri::State<'_, WebState>) -> Value {

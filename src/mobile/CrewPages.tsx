@@ -40,14 +40,31 @@ function useTick(on: boolean) {
 // ack. The confirm target is the largest control in the app and needs no aim.
 export function CrewPageTakeover() {
   const { incoming, ack, acking, error } = usePages();
-  useTick(!!incoming);
+  // Mounted app-wide, not just in the phone shell: a tablet or a full-size
+  // browser renders the DESKTOP shell, and a page that only appears under 760px
+  // silently misses every one of them.
+  //
+  // Guarded on having a crew session, because confirming is the only way out of
+  // this screen and only a signed-in device can ack. Showing it where an ack is
+  // impossible (the booth app, a signed-out browser) would black out the app
+  // with no way back.
+  //
+  // This MUST be computed before the ringing effect below. It used to live
+  // after it, and React runs effects even on a render that returned null — so a
+  // phone that had been locked with "PIN again" (which keeps the gateway token,
+  // so pages keep arriving) sirened and buzzed every two seconds behind the PIN
+  // screen, mid-service, with no UI to stop it and no possible ack. Force-quit
+  // was the only way out.
+  const canAck = IS_WEB && !!localStorage.getItem(CREW_SESSION_KEY);
+  const ringing = !!incoming && canAck;
+  useTick(ringing);
   // A page RINGS while it's on screen — siren tone + (Android) heavy buzz
   // every 1.8s until confirmed. Deliberately ignores the chat sound toggle:
   // pages are the emergency channel; the phone's silent switch still has
   // final say. (iPhones can't vibrate from the page — their physical buzz
   // comes from the push notification; the louder tone is the in-app punch.)
   useEffect(() => {
-    if (!incoming) return;
+    if (!ringing) return;
     // Two independent clocks. The siren keeps a steady urgent cadence, while
     // the vibration escalates AND is scheduled off its own pattern length:
     // navigator.vibrate() cancels whatever is still running, so re-firing on
@@ -73,16 +90,8 @@ export function CrewPageTakeover() {
       if (buzzTimer !== undefined) clearTimeout(buzzTimer);
       buzz(0); // stop mid-pattern the instant it's confirmed
     };
-  }, [incoming?.id]);
-  // Mounted app-wide, not just in the phone shell: a tablet or a full-size
-  // browser renders the DESKTOP shell, and a page that only appears under 760px
-  // silently misses every one of them.
-  //
-  // Guarded on having a crew session, because confirming is the only way out of
-  // this screen and only a signed-in device can ack. Showing it where an ack is
-  // impossible (the booth app, a signed-out browser) would black out the app
-  // with no way back.
-  const canAck = IS_WEB && !!localStorage.getItem(CREW_SESSION_KEY);
+  }, [incoming?.id, ringing]);
+
   if (!incoming || !canAck) return null;
   return (
     <div className="crew-takeover">

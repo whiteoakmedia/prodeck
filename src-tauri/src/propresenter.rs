@@ -434,16 +434,23 @@ fn spawn_status_streams(
         ("stage_message", "stage/message"),
     ];
 
-    endpoints
+    // When did any stream last deliver data? ProPresenter's status streams are
+    // chatty (timers tick), so silence is a reliable death signal.
+    let last_ok = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(
+        crate::identity::now_ms(),
+    ));
+
+    let mut handles: Vec<tokio::task::JoinHandle<()>> = endpoints
         .iter()
         .map(|(name, path)| {
             let name = name.to_string();
             let url = format!("{}/v1/{}?chunked=true", config.base(), path);
             let client = client.clone();
             let app = app.clone();
+            let last_ok = last_ok.clone();
             tokio::spawn(async move {
                 loop {
-                    if let Err(e) = stream_one(&client, &url, &name, &app).await {
+                    if let Err(e) = stream_one(&client, &url, &name, &app, &last_ok).await {
                         // Surface transient errors but keep retrying so the UI
                         // recovers automatically when ProPresenter comes back.
                         app.emit(
@@ -456,7 +463,45 @@ fn spawn_status_streams(
                 }
             })
         })
-        .collect()
+        .collect();
+
+    // The death watch.
+    //
+    // `pp:disconnected` used to be emitted from exactly ONE place — the manual
+    // disconnect command. So when ProPresenter quit, slept, or changed IP, the
+    // app went on saying "Connected" with every panel frozen on pre-crash
+    // values, and `pp:stream_error` had no subscriber anywhere in the frontend.
+    // Worse, the mDNS self-heal is gated on NOT being connected, so the feature
+    // written for "the ProPresenter Mac is on DHCP and hops IPs" could never
+    // fire after the first successful connect.
+    {
+        let app = app.clone();
+        let last_ok = last_ok.clone();
+        handles.push(tokio::spawn(async move {
+            const DEAD_AFTER_MS: u64 = 15_000;
+            let mut announced = false;
+            loop {
+                tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+                let quiet = crate::identity::now_ms()
+                    .saturating_sub(last_ok.load(std::sync::atomic::Ordering::Acquire));
+                if quiet >= DEAD_AFTER_MS {
+                    if !announced {
+                        announced = true;
+                        crate::diag::log(format!(
+                            "[pp] no stream data for {}s — reporting disconnected",
+                            quiet / 1000
+                        ));
+                        app.emit("pp:disconnected", ()).ok();
+                    }
+                } else if announced {
+                    // Data came back on its own without a reconnect.
+                    announced = false;
+                    app.emit("pp:connected", serde_json::json!({})).ok();
+                }
+            }
+        }));
+    }
+    handles
 }
 
 async fn stream_one(
@@ -464,12 +509,17 @@ async fn stream_one(
     url: &str,
     name: &str,
     app: &AppHandle,
+    last_ok: &std::sync::atomic::AtomicU64,
 ) -> Result<(), String> {
     let resp = client.get(url).send().await.map_err(|e| e.to_string())?;
     let mut stream = resp.bytes_stream();
     let mut chunker = JsonChunker::default();
     while let Some(item) = stream.next().await {
         let bytes = item.map_err(|e| e.to_string())?;
+        last_ok.store(
+            crate::identity::now_ms(),
+            std::sync::atomic::Ordering::Release,
+        );
         let text = String::from_utf8_lossy(&bytes);
         let mut objects = Vec::new();
         chunker.push(&text, &mut objects);

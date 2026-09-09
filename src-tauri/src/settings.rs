@@ -32,6 +32,12 @@ pub struct Settings {
     /// gateway access with no password typing. Rotating it kills every old
     /// link. Empty = feature off.
     pub web_invite_token: String,
+    /// Epoch-ms until which /join will hand out the crew token. 0 = closed.
+    /// /join cannot authenticate its caller — a printed poster has no password
+    /// — so instead of being permanently open to anyone who can reach the
+    /// gateway, it answers only inside a window the booth opens on purpose.
+    #[serde(default)]
+    pub crew_join_until_ms: u64,
     /// Bearer token the booth uses to push tokens/extras to the crew-edge
     /// worker (your-domain/edge). Empty = edge push off.
     pub edge_admin_token: String,
@@ -164,6 +170,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             public_url: String::new(),
+            crew_join_until_ms: 0,
             avantis_watch_user: String::new(),
             avantis_watch_armed: false,
             ga4_property_id: String::new(),
@@ -258,7 +265,7 @@ const BACKUP_MAX_AGE_SECS: u64 = 600;
 /// record of what actually happened in past services. The backup is time-gated
 /// rather than per-write, so a bad write or an accidental Reset doesn't
 /// immediately overwrite the last good copy (the autosave runs every 4s).
-fn write_json_atomic_backed_up(path: PathBuf, json: String) -> Result<(), String> {
+pub(crate) fn write_json_atomic_backed_up(path: PathBuf, json: String) -> Result<(), String> {
     let _guard = FILE_IO.lock().unwrap_or_else(|p| p.into_inner());
     let bak = path.with_extension("bak.json");
     let stale = match std::fs::metadata(&bak) {
@@ -290,7 +297,13 @@ pub(crate) fn data_dir_display() -> String {
     config_dir().display().to_string()
 }
 /// Atomic text write (temp + fsync + rename) for callers outside this module.
+/// Atomic text write. Takes the same FILE_IO lock `write_json_atomic` does:
+/// without it, a restore writing tracking.json while the running app's 4-second
+/// autosave writes the same file had both threads creating the SAME temp path,
+/// interleaving their writes, and renaming a torn document into place over the
+/// only record of what happened in past services.
 pub(crate) fn write_text_atomic(path: &PathBuf, text: &str) -> Result<(), String> {
+    let _guard = FILE_IO.lock().unwrap_or_else(|p| p.into_inner());
     write_locked(path, text)
 }
 
@@ -520,16 +533,59 @@ fn detect_whisper_model() -> Option<String> {
         .map(|p| p.to_string())
 }
 
+/// Load settings, refusing to quietly become a factory-fresh install.
+///
+/// This used to be `from_str(&s).unwrap_or_default()`. settings.json is the
+/// most irreplaceable file in the app — ProPresenter and console hosts, PCO
+/// credentials, all three gateway passwords, the edge and tap tokens — and it
+/// was the ONLY one with neither a strict read nor a backup, while tracking,
+/// reports and schedules had both.
+///
+/// One bad character (a hand-edit, a torn write) therefore booted the booth
+/// looking brand new. The operator would re-enter the two things they noticed
+/// and press Save, and because `update_settings` writes the whole struct, that
+/// destroyed everything else permanently. Note that the container-level
+/// `#[serde(default)]` does NOT make individual fields tolerant: one field of
+/// the wrong type drops the entire struct to Default.
+///
+/// So: on a parse failure, keep the unreadable file for forensics and fall back
+/// to the rolling backup before ever considering defaults.
 pub fn load() -> Settings {
-    match std::fs::read_to_string(config_path()) {
-        Ok(s) => serde_json::from_str(&s).unwrap_or_default(),
-        Err(_) => Settings::default(),
+    let path = config_path();
+    let raw = match std::fs::read_to_string(&path) {
+        Ok(s) => s,
+        // Genuinely absent = genuinely a new install.
+        Err(_) => return Settings::default(),
+    };
+    match serde_json::from_str(&raw) {
+        Ok(s) => s,
+        Err(e) => {
+            crate::diag::log(format!("[settings] {} could not be parsed: {e}", path.display()));
+            let kept = path.with_extension(format!("corrupt-{}.json", crate::identity::now_ms()));
+            let _ = std::fs::write(&kept, &raw);
+            crate::diag::log(format!("[settings] kept a copy at {}", kept.display()));
+            let bak = path.with_extension("bak.json");
+            let recovered: Option<Settings> = std::fs::read_to_string(&bak)
+                .ok()
+                .and_then(|b| serde_json::from_str(&b).ok());
+            match recovered {
+                Some(s) => {
+                    crate::diag::log("[settings] recovered from the previous save".to_string());
+                    s
+                }
+                None => {
+                    crate::diag::log("[settings] no usable backup — starting from defaults".to_string());
+                    Settings::default()
+                }
+            }
+        }
     }
 }
 
 pub fn save(settings: &Settings) -> Result<(), String> {
     let json = serde_json::to_string_pretty(settings).map_err(|e| e.to_string())?;
-    write_json_atomic(config_path(), json)
+    // Backed up, like every other irreplaceable file.
+    write_json_atomic_backed_up(config_path(), json)
 }
 
 #[tauri::command]

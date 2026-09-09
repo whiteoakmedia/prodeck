@@ -281,6 +281,8 @@ pub fn run() {
             osc::osc_send_key,
             // Web gateway (LAN browser access)
             web::web_start,
+            web::crew_join_open,
+            web::crew_join_state,
             web::web_stop,
             web::web_status,
             // TapLink (NFC destination sync). State/override/stats are also in

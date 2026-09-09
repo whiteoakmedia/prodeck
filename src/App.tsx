@@ -3,6 +3,7 @@ import {
   IS_WEB,
   KIOSK_DASH,
   getWebToken,
+  JOIN_CLOSED,
   setWebToken,
   getSettings,
   identityList,
@@ -522,6 +523,26 @@ function WebGate({ children }: { children: ReactNode }) {
   }, []);
 
   if (authed) return <>{children}</>;
+
+  // Scanned the green-room poster while joining was closed. Without this they
+  // land on a password prompt and conclude the app is broken, when the real
+  // answer is "ask the booth to open joining".
+  if (JOIN_CLOSED)
+    return (
+      <div className="web-login">
+        <div className="web-login-card">
+          <img className="login-lockup" src={lockupStacked} alt="ProDeck — by Zach Green" />
+          <h2 style={{ margin: "4px 0 0" }}>Joining is closed right now</h2>
+          <p className="muted">
+            Ask whoever is at the production computer to open joining, then scan
+            the code again. It only stays open for a few minutes at a time.
+          </p>
+          <button className="btn primary" onClick={() => window.location.reload()}>
+            Try again
+          </button>
+        </div>
+      </div>
+    );
 
   async function submit(e: FormEvent) {
     e.preventDefault();

@@ -43,6 +43,8 @@ import {
   PUBLIC_URL,
   type TapMappings,
   type TapLinkCheck,
+  crewJoinOpen,
+  crewJoinState,
   keepaliveStatus,
   keepaliveInstall,
   keepaliveUninstall,
@@ -2029,6 +2031,7 @@ function CrewInviteLink({
             )}
           </div>
           {qr && <img src={qr} alt="Invite QR" style={{ width: 160, height: 160, borderRadius: 8, marginTop: 6 }} />}
+          <JoinWindow />
           <span className="hint">
             Remember to Save after generating or rotating. Text this link (dies on
             rotate), or hang the poster — its QR points at /join, which always
@@ -2042,6 +2045,74 @@ function CrewInviteLink({
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * The joining window.
+ *
+ * /join has to answer a phone that has never been here before, so it cannot ask
+ * for a password — and because the Cloudflare worker fronts the whole domain,
+ * it was answering the open internet: anyone could request it and read a
+ * working crew credential straight out of the redirect. Time is the only honest
+ * gate. Open it at the volunteer meeting; it closes itself.
+ */
+function JoinWindow() {
+  const [st, setSt] = useState<{ open: boolean; secondsLeft: number } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    const load = () => crewJoinState().then(setSt).catch(() => {});
+    load();
+    const t = setInterval(load, 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  async function set(minutes: number) {
+    setBusy(true);
+    setErr("");
+    try {
+      await crewJoinOpen(minutes);
+      setSt(await crewJoinState());
+    } catch (e) {
+      setErr(String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const left = st?.secondsLeft ?? 0;
+  const mmss = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+
+  return (
+    <div className="join-window">
+      <div className="field-row" style={{ alignItems: "center", gap: 8 }}>
+        <span className={`chip ${st?.open ? "online" : ""}`}>
+          {st === null ? "…" : st.open ? `open · ${mmss} left` : "closed"}
+        </span>
+        {st?.open ? (
+          <button className="btn small" disabled={busy} onClick={() => set(0)}>
+            Close now
+          </button>
+        ) : (
+          <>
+            <button className="btn small primary" disabled={busy} onClick={() => set(15)}>
+              Open for 15 min
+            </button>
+            <button className="btn small" disabled={busy} onClick={() => set(60)}>
+              1 hour
+            </button>
+          </>
+        )}
+      </div>
+      <span className="hint">
+        The poster and the link only work while this is open. Crew who have
+        already joined are unaffected — their phones keep working. Open it when
+        you are signing people up, then let it close.
+      </span>
+      {err && <span className="hint err">{err}</span>}
     </div>
   );
 }

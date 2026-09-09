@@ -345,7 +345,14 @@ export function ProDeckProvider({ children }: { children: ReactNode }) {
         if (!IS_WEB && (n === 3 || (n > 3 && (n - 3) % 5 === 0))) {
           try {
             const found = await discoverServices(4);
-            outer: for (const s of found.filter((x) => x.kind === "propresenter")) {
+            // "stage" counts too: the REST API often isn't on the port
+            // Bonjour advertises (that's the stage display), which is exactly
+            // why connect() falls back to 1025. The manual Find button has
+            // always accepted both — this unattended path filtering them out
+            // meant the self-heal missed hosts the operator could see.
+            outer: for (const s of found.filter(
+              (x) => x.kind === "propresenter" || x.kind === "stage",
+            )) {
               for (const h of [s.host, ...s.addresses]) {
                 if (!h || h === hostRef.current) continue;
                 try {

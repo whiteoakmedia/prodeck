@@ -37,6 +37,9 @@ export const INVITE_KEY = "prodeck.inviteToken";
 // token> or ?invite=<personal token> become the gateway token, and the URL is
 // scrubbed immediately so shares and history don't carry credentials. Runs at
 // module init, before anything renders or connects.
+/** The poster was scanned while joining was closed. Read by the gate screen. */
+export let JOIN_CLOSED = false;
+
 if (IS_WEB && typeof localStorage !== "undefined") {
   try {
     const q = new URLSearchParams(window.location.search);
@@ -45,6 +48,13 @@ if (IS_WEB && typeof localStorage !== "undefined") {
     if (join || invite) {
       localStorage.setItem(TOKEN_KEY, (invite ?? join)!);
       if (invite) localStorage.setItem(INVITE_KEY, invite);
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+    // /join redirects here when the booth has not opened a joining window.
+    // Scanning the poster otherwise lands on a bare password prompt, which
+    // reads as "the app is broken" rather than "you're a few minutes early".
+    if (q.get("joinclosed") === "1") {
+      JOIN_CLOSED = true;
       window.history.replaceState(null, "", window.location.pathname);
     }
   } catch {
@@ -575,6 +585,12 @@ export const webStart = (port: number) => invoke<void>("web_start", { port });
 export const webStop = () => invoke<void>("web_stop");
 export const webStatus = () =>
   invoke<{ running: boolean; port: number }>("web_status");
+
+/** The window during which /join will hand out the crew token. */
+export const crewJoinState = () =>
+  invoke<{ open: boolean; until: number; secondsLeft: number }>("crew_join_state");
+export const crewJoinOpen = (minutes: number) =>
+  invoke<{ until: number }>("crew_join_open", { minutes });
 export type PcoLiveAction =
   | "go_to_next_item"
   | "go_to_previous_item"
