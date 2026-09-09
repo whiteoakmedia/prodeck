@@ -2601,8 +2601,28 @@ function BackupCard() {
     try {
       const text = await file.text();
       const r = await backupImport(text);
-      setMsg(`Restored ${r.restored.length} files. Restart ProDeck to load them.`);
+      // Relaunch immediately, not on an optional button.
+      //
+      // The confirm above PROMISES a restart, and the restore is only half
+      // done without one: the running app still holds all its pre-restore
+      // state in memory — the settings mutex, the crew roster, check-ins, the
+      // tracking autosave that fires every four seconds — and the first thing
+      // any of them writes puts the old data straight back over what was just
+      // restored. Someone reading "Restored 13 files" and carrying on would
+      // silently lose the restore, and a second attempt would then overwrite
+      // the .pre-restore copies with the clobbered versions.
+      setMsg(`Restored ${r.restored.length} files. Restarting…`);
       setNeedRestart(true);
+      setTimeout(() => {
+        relaunch().catch(() =>
+          // Relaunch isn't possible on every platform (Windows says so
+          // outright). Leave the button and say plainly that it matters.
+          setMsg(
+            `Restored ${r.restored.length} files. Quit and reopen ProDeck now — until you do, ` +
+              `the running app will write its old data back over the restore.`,
+          ),
+        );
+      }, 1200);
     } catch (e) { setMsg(String(e)); } finally { setBusy(false); }
   };
   return (
@@ -2620,7 +2640,9 @@ function BackupCard() {
         <button className="btn small" disabled={busy} onClick={() => fileRef.current?.click()}>Restore from a backup…</button>
         <input ref={fileRef} type="file" accept=".json,application/json" hidden onChange={onFile} />
         {needRestart && (
-          <button className="btn small primary" onClick={() => relaunch()}>Restart ProDeck</button>
+          <button className="btn small primary" onClick={() => relaunch().catch(() => {})}>
+            Restart ProDeck
+          </button>
         )}
       </div>
       {msg && <p className="hint">{msg}</p>}
