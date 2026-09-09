@@ -208,6 +208,20 @@ function slideTitle(): string {
   const item = SONGS[liveIndex()];
   return item.type === "song" ? item.title : item.title;
 }
+/**
+ * The stage message, demo-side. It is held here and echoed back on the same
+ * `pp:status` stream ProPresenter uses, so the Stage Message widget behaves
+ * exactly as it would on a real rig — send, see it land, clear it. Without
+ * this the widget looked dead in demo mode, which is the one place a church
+ * evaluating ProDeck actually looks.
+ */
+let demoStageMessage = "";
+
+export function demoSetStageMessage(msg: string) {
+  demoStageMessage = msg;
+  emit("pp:status", { stream: "stage_message", data: { message: msg } });
+}
+
 function ppStatusPayloads(): { stream: string; data: unknown }[] {
   const idx = liveIndex();
   const slide = Math.floor((NOW() / 12_000) % 6);
@@ -221,6 +235,7 @@ function ppStatusPayloads(): { stream: string; data: unknown }[] {
       stream: "layers",
       data: { slide: true, media: idx === 6, audio: false, props: false, announcements: idx === 0, messages: false, video_input: false },
     },
+    { stream: "stage_message", data: { message: demoStageMessage } },
   ];
 }
 
@@ -303,7 +318,7 @@ const SETTINGS_OVERLAY: Record<string, unknown> = {
  * Reads modelled below are answered first regardless.
  */
 const WRITES =
-  /^(update_settings|save_|web_start|web_stop|pco_(save|set|live|start|stop|sync)|pp_(connect|disconnect|trigger|clear|put|post|timer|focus|next|previous)|avantis_(set|recall)|tap_(override|save|test|check)|identity_(register|login|approve|remove|set_role|heal|update)|invite_(create|revoke)|checkin_(set|geo|auto)|checklist_|push_(subscribe|unsubscribe)|page_(send|ack|rebuzz)|chat_(send|clear)|keepalive_(install|uninstall|relaunch)|keep_awake_set|backup_(export|import)|(start|stop)_audio_capture|ndi_(start|stop)|midi_(send|open)|relay_(start|stop|connect)|transcription_(start|stop)|diag_open_issue|gemini_)/;
+  /^(update_settings|save_|web_start|web_stop|pco_(save|set|live|start|stop|sync)|pp_(connect|disconnect|trigger|clear|put|post|set|timer|focus|next|previous)|avantis_(set|recall)|tap_(override|save|test|check)|identity_(register|login|approve|remove|set_role|heal|update)|invite_(create|revoke)|checkin_(set|geo|auto)|checklist_|push_(subscribe|unsubscribe)|page_(send|ack|rebuzz)|chat_(send|clear)|keepalive_(install|uninstall|relaunch)|keep_awake_set|backup_(export|import)|(start|stop)_audio_capture|ndi_(start|stop)|midi_(send|open)|relay_(start|stop|connect)|transcription_(start|stop)|diag_open_issue|gemini_)/;
 
 /** Commands whose callers do `.filter`/`.map` — an unmodelled one must be []. */
 const ARRAY_CMDS = new Set([
@@ -451,6 +466,17 @@ export async function demoInvoke<T>(cmd: string, args?: Record<string, unknown>)
   }
 
   // Anything that changes state: succeed, change nothing.
+  // Modelled writes: still nothing leaves the browser, but the demo reflects
+  // the change so the widget can be seen working.
+  if (cmd === "pp_set_stage_message") {
+    const msg = String(args?.message ?? "");
+    setTimeout(() => demoSetStageMessage(msg), 120);
+    return out(null);
+  }
+  if (cmd === "pp_clear_stage_message") {
+    setTimeout(() => demoSetStageMessage(""), 120);
+    return out(null);
+  }
   if (WRITES.test(cmd)) return out(null);
   // Reads we don't model return the SHAPE the caller expects — a demo that
   // hands back null where an array was expected crashes the page.

@@ -2594,16 +2594,18 @@ function StageMessageWidget({ widget, update, editing }: WidgetProps) {
       return;
     }
     setLeft(autoClearSec);
-    const t = setInterval(() => {
-      setLeft((n) => {
-        if (n === null) return null;
-        if (n > 1) return n - 1;
-        ppClearStageMessage();
-        return null;
-      });
-    }, 1000);
+    const t = setInterval(() => setLeft((n) => (n === null ? null : n - 1)), 1000);
     return () => clearInterval(t);
   }, [live, autoClearSec]);
+
+  // Reaching zero clears the message. This is deliberately its own effect and
+  // not a call inside the setLeft updater above: React may run an updater more
+  // than once for the same tick, which would fire the clear twice.
+  useEffect(() => {
+    if (left !== 0) return;
+    setLeft(null);
+    ppClearStageMessage();
+  }, [left]);
 
   if (!connected) return <Disconnected />;
 
