@@ -35,6 +35,38 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.75 — 9 September 2026
+
+### Fixed — the camera never appeared on a kiosk or a phone
+
+Found while setting up an office kiosk. The **Stage Feed (NDI)** widget could
+never work on any screen signed in with the crew (member) password — the office
+mini, the switcher PC, every phone — for two separate reasons, both silent:
+
+- Finding cameras and starting a feed were treated as admin-only actions, so a
+  viewer screen was refused before it began.
+- Even once started, the video stream itself only accepted the **admin**
+  password, so a kiosk carrying the crew password was turned away.
+
+The tile simply sat empty with nothing to explain it, while every other widget
+on the same screen worked — which is exactly what makes this kind of fault so
+hard to place. Viewing a camera is a viewer's job; it works now.
+
+The permission list behind this is now covered by tests, because this is the
+second time it has quietly left something out — the sound desk and OBS tiles
+were blank on kiosks for the same reason, fixed in 0.9.74.
+
+### Also
+
+- A dashboard that references a widget your build doesn't have now says so on a
+  kiosk instead of leaving a blank space. Nobody can edit a kiosk, so reading it
+  off the screen is the only way anyone would ever find out.
+- **Restoring a backup now restarts ProDeck by itself.** It always said it
+  would, but left it as an optional button — and without the restart the
+  running app writes its old data straight back over what you just restored.
+
+---
+
 ## 0.9.74 — 9 September 2026
 
 A deliberate hunt for bugs rather than a feature release: six parallel audits

@@ -606,11 +606,13 @@ fn handle_conn(mut stream: TcpStream, latest: FrameSlot, running: Arc<AtomicBool
                 urlencoding::decode(t).map(|c| c.into_owned()).unwrap_or_default()
             })
             .unwrap_or_default();
-        let pw = app
-            .try_state::<crate::settings::SettingsState>()
-            .map(|s| s.lock().unwrap_or_else(|p| p.into_inner()).web_password.clone())
-            .unwrap_or_default();
-        if pw.is_empty() || token != pw {
+        // Accept ANY valid gateway token, not just the admin password.
+        // Comparing against web_password alone meant a kiosk or phone signed in
+        // with the member password got a 401 on the video stream — the tile
+        // stayed blank with nothing to explain it, while the same screen's
+        // other widgets worked fine. Shared with the gateway so the two can't
+        // drift apart again.
+        if token.is_empty() || !crate::web::token_ok(&app, &token) {
             let _ = stream.write_all(
                 b"HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
             );

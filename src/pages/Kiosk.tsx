@@ -140,7 +140,15 @@ export function KioskPage({ name }: { name: string }) {
       >
         {(dash?.widgets ?? []).map((w) => {
           const def = WIDGET_MAP[w.type];
-          if (!def) return <div key={w.id} />;
+          // Name it rather than leaving a hole. Nobody can edit a kiosk, so
+          // the only way anyone learns the layout references a widget this
+          // build doesn't have is by reading it off the screen.
+          if (!def)
+            return (
+              <div key={w.id} className="widget">
+                <div className="widget-body widget-empty">Unknown widget: {w.type}</div>
+              </div>
+            );
           const Comp = def.component;
           return (
             <div key={w.id} className="widget">

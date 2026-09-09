@@ -204,7 +204,7 @@ fn token_tier(app: &AppHandle, token: &str) -> Option<Tier> {
     None
 }
 
-fn token_ok(app: &AppHandle, token: &str) -> bool {
+pub(crate) fn token_ok(app: &AppHandle, token: &str) -> bool {
     token_tier(app, token).is_some()
 }
 
@@ -1259,14 +1259,21 @@ fn member_pp_read_ok(path: &str) -> bool {
     !p.split('/').any(|seg| VERBS.contains(&seg))
 }
 
-async fn dispatch(app: &AppHandle, cmd: &str, args: &Value, tier: Tier) -> Result<Value, String> {
-    // Member tier: viewers with a voice. Reads + streams + TEAM chat; every
-    // control surface (ProPresenter, stage/confidence sends, TapLink override,
-    // PCO Live, settings) requires the admin password. Enforced here so a
-    // modified client can't bypass the UI.
-    if tier == Tier::Member {
-        match cmd {
-            "get_settings" | "load_dashboards" | "load_pco_data" | "load_tracking"
+/// May a member-tier token run this command?
+///
+/// Lifted out of `dispatch` so it can be tested. It has now twice silently
+/// omitted something a viewer screen needs — first the console mirror and the
+/// OBS state, then the three NDI calls — and the symptom each time was a tile
+/// that sat blank on every kiosk and phone with no error anywhere, while the
+/// booth's own copy of the same dashboard worked perfectly. That is a very
+/// expensive thing to notice by eye.
+///
+/// `chat_send` is deliberately absent: it is allowed, but only to the team
+/// channel, so `dispatch` handles it separately.
+pub(crate) fn member_cmd_ok(cmd: &str) -> bool {
+    matches!(
+        cmd,
+        "get_settings" | "load_dashboards" | "load_pco_data" | "load_tracking"
             | "load_checklists" | "load_routing" | "chat_history" | "web_whoami" | "pp_get"
             | "tap_edge_state" | "tap_stats" | "tap_stats_range"
             // Role channels: members must see which channels exist. Roles
@@ -1295,17 +1302,32 @@ async fn dispatch(app: &AppHandle, cmd: &str, args: &Value, tier: Tier) -> Resul
             // The console mirror is read-only and on the same kiosk tiles as
             // obs_state; without it the desk widget reported "unreachable" on
             // every browser even while the booth was mirroring fine.
-            | "avantis_state" => {}
-            "chat_send" => {
-                let target = args.get("target").and_then(|v| v.as_str()).unwrap_or("");
-                if target != "team" {
-                    return Err(
-                        "team messages only — stage and confidence sends need admin access"
-                            .into(),
-                    );
-                }
-            }
-            _ => return Err(format!("'{cmd}' needs admin access")),
+            | "avantis_state"
+            // Cameras. A kiosk and a crew phone are viewers by definition, and
+            // the Stage Feed widget cannot show anything without these three:
+            // discovering a source, starting a receiver, and releasing it
+            // again. They were absent, so every member-tier screen — the office
+            // mini, the switcher PC, every phone — showed an empty camera tile
+            // and no reason why. Starting is refcounted, so one viewer letting
+            // go never takes the feed away from another.
+            | "ndi_discover_sources"
+            | "ndi_start_receiver"
+            | "ndi_stop_receiver"
+    )
+}
+
+async fn dispatch(app: &AppHandle, cmd: &str, args: &Value, tier: Tier) -> Result<Value, String> {
+    // Member tier: viewers with a voice. Reads + streams + TEAM chat; every
+    // control surface (ProPresenter, stage/confidence sends, TapLink override,
+    // PCO Live, settings) requires the admin password. Enforced here so a
+    // modified client can't bypass the UI.
+    if tier == Tier::Member && cmd != "chat_send" && !member_cmd_ok(cmd) {
+        return Err(format!("'{cmd}' needs admin access"));
+    }
+    if tier == Tier::Member && cmd == "chat_send" {
+        let target = args.get("target").and_then(|v| v.as_str()).unwrap_or("");
+        if target != "team" {
+            return Err("team messages only — stage and confidence sends need admin access".into());
         }
     }
     if cmd == "web_whoami" {
@@ -2072,6 +2094,45 @@ mod member_pp_tests {
     use super::{
         auth_backoff, clear_auth_failures, member_pp_read_ok, note_auth_failure, AUTH_FREE_TRIES,
     };
+
+    #[test]
+    fn member_tier_can_run_every_command_a_viewer_screen_needs() {
+        use super::member_cmd_ok;
+        // Each of these backs a tile on the office kiosk, the switcher PC or a
+        // crew phone. Missing one shows as a permanently blank widget with no
+        // error on screen — it has happened twice.
+        for cmd in [
+            "get_settings", "load_dashboards", "load_pco_data", "load_checklists",
+            "load_routing", "load_tracking", "chat_history", "web_whoami", "pp_get",
+            "page_ack", "page_list", "posfile_list", "checkin_set", "checkin_list",
+            "checklist_toggle", "ga4_state",
+            // The three tiles that were silently broken on every kiosk.
+            "obs_state", "avantis_state",
+            // Cameras.
+            "ndi_discover_sources", "ndi_start_receiver", "ndi_stop_receiver",
+        ] {
+            assert!(member_cmd_ok(cmd), "a member screen needs {cmd}");
+        }
+    }
+
+    #[test]
+    fn member_tier_cannot_control_anything() {
+        use super::member_cmd_ok;
+        // Every one of these changes what a room sees, what the desk does, or
+        // how the booth is configured.
+        for cmd in [
+            "update_settings", "pp_action", "pp_set_stage_message", "pp_clear_stage_message",
+            "avantis_set_mute", "avantis_set_fader", "avantis_recall_scene",
+            "obs_set_scene", "pco_live_action", "tap_override", "crew_join_open",
+            "save_dashboards", "identity_approve", "identity_remove", "web_start",
+            "backup_export", "backup_import", "diag_bundle", "page_send",
+        ] {
+            assert!(!member_cmd_ok(cmd), "{cmd} must require admin");
+        }
+        // chat_send is handled separately (team channel only), so it must not
+        // pass this predicate.
+        assert!(!member_cmd_ok("chat_send"));
+    }
 
     #[test]
     fn auth_backoff_is_free_at_first_then_throttles() {
