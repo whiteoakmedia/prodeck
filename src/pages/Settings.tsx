@@ -468,6 +468,7 @@ export function SettingsPage() {
               <option value="x32">Behringer X32 / Midas M32</option>
             </select>
           </label>
+          <HardwareStatus model={form.avantis_model || "avantis"} />
           <label className="field">
             <span>Console IP</span>
             <input className="input" placeholder="172.16.0.16" value={form.avantis_host}
@@ -2132,6 +2133,31 @@ function JoinWindow() {
         you are signing people up, then let it close.
       </span>
       {err && <span className="hint err">{err}</span>}
+    </div>
+  );
+}
+
+/**
+ * Say plainly which desks have actually met hardware.
+ *
+ * Only the Avantis ever has. Everything else is written from the published
+ * protocol and covered by tests — which is genuinely different from "known to
+ * work", and the difference was buried in a changelog nobody re-reads. It
+ * belongs at the moment someone picks their desk, where it can set an
+ * expectation instead of becoming a surprise on a Sunday.
+ */
+function HardwareStatus({ model }: { model: string }) {
+  const tested = model === "avantis";
+  return (
+    <div className="field wide">
+      <span className={`chip ${tested ? "online" : "warn"}`}>
+        {tested ? "tested on real hardware" : "built from the published protocol"}
+      </span>
+      <span className="hint">
+        {tested
+          ? "This is the desk ProDeck was developed against, in weekly use."
+          : "Written from the manufacturer's protocol document and covered by tests, but never run against a real one. It should work; if it doesn't, that's a bug worth reporting — and if it does, saying so is just as useful."}
+      </span>
     </div>
   );
 }

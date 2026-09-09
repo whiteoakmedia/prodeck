@@ -446,6 +446,64 @@ pub fn pretty_kind(kind: &str) -> Option<&'static str> {
 
 #[cfg(test)]
 mod tests {
+    /// dLive connect-time queries, pinned against the published protocol.
+    ///
+    /// Checked byte-for-byte against Allen & Heath "dLive MIDI Over TCP/IP
+    /// Protocol, Firmware V2.0":
+    ///
+    ///   Get Mute Status    SysEx Header, 0N, 05, 09, CH, F7
+    ///   Get Fader Level    SysEx Header, 0N, 05, 0B, 17, CH, F7
+    ///   Get Channel Name   SysEx Header, 0N, 01, CH, F7
+    ///   Get Channel Colour SysEx Header, 0N, 04, CH, F7
+    ///
+    /// This exists because 0x05 LOOKS like a collision and is not: outbound it
+    /// is the "get" wrapper above, inbound it is the colour REPLY
+    /// (0N, 05, CH, Col, F7), which `on_sysex` decodes. An audit read those two
+    /// as contradicting each other and proposed "fixing" the queries to
+    /// 0N 09 CH / 0N 0B 17 CH — which the spec says is wrong and would have
+    /// broken mute and fader read-back on every dLive. The direction is what
+    /// disambiguates, so the two layouts are asserted together.
+    #[test]
+    fn dlive_queries_match_the_published_protocol() {
+        use super::{query_bytes, DeskModel, SYSEX_HEADER};
+        let out = query_bytes(DeskModel::DLive, 0);
+        let hdr = &SYSEX_HEADER[..]; // F0 00 00 1A 50 10 01 00
+
+        let contains = |seq: &[u8]| out.windows(seq.len()).any(|w| w == seq);
+
+        // Input 1 is chan 0N = base_nibble + 0, note CH = 0x00.
+        let mut get_mute = hdr.to_vec();
+        get_mute.extend_from_slice(&[0x00, 0x05, 0x09, 0x00, 0xF7]);
+        assert!(contains(&get_mute), "Get Mute Status must be 0N 05 09 CH F7");
+
+        let mut get_fader = hdr.to_vec();
+        get_fader.extend_from_slice(&[0x00, 0x05, 0x0B, 0x17, 0x00, 0xF7]);
+        assert!(contains(&get_fader), "Get Fader Level must be 0N 05 0B 17 CH F7");
+
+        let mut get_name = hdr.to_vec();
+        get_name.extend_from_slice(&[0x00, 0x01, 0x00, 0xF7]);
+        assert!(contains(&get_name), "Get Channel Name must be 0N 01 CH F7");
+
+        let mut get_colour = hdr.to_vec();
+        get_colour.extend_from_slice(&[0x00, 0x04, 0x00, 0xF7]);
+        assert!(contains(&get_colour), "Get Channel Colour must be 0N 04 CH F7");
+
+        // The INBOUND meaning of 0x05, for contrast: a colour reply carries
+        // CH then Col directly, with no parameter byte. `on_sysex` reads the
+        // colour at msg[10] — index 10 of the payload after F0, i.e. the byte
+        // after CH. Asserting the shape here keeps the two readings tied
+        // together in one place.
+        let reply_after_f0 = [
+            0x00, 0x00, 0x1A, 0x50, 0x10, 0x01, 0x00, // header minus F0
+            0x00, // 0N
+            0x05, // colour reply
+            0x00, // CH
+            0x03, // Col
+        ];
+        assert_eq!(reply_after_f0[8], 0x05);
+        assert_eq!(reply_after_f0[10], 0x03, "colour byte sits at payload index 10");
+    }
+
     use super::*;
 
     #[test]

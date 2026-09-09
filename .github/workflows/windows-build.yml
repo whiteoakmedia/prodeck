@@ -52,6 +52,13 @@ jobs:
 
       - run: npm ci
 
+      # Cheap and platform-independent, but this is the only CI there is, and
+      # the frontend is where most user-facing bugs have actually lived.
+      - name: Frontend checks
+        run: |
+          npx tsc --noEmit
+          npm test
+
       # One cmd step, because vcvars64 sets the environment (nmake, the linker,
       # the SDK headers) for the shell it runs in and that does not survive
       # between steps. Only NSIS: "targets": "all" would also build an MSI via

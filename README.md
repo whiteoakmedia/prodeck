@@ -125,3 +125,14 @@ service on it.
 ## Contact
 
 Zach Green — zach@whiteoakmedia.io
+
+## Licence
+
+MIT — see [LICENSE](LICENSE). Use it, change it, run it at your church. No
+attribution required beyond keeping the notice; no warranty of any kind.
+
+## Contributing & security
+
+[CONTRIBUTING.md](CONTRIBUTING.md) covers how to run it (no church hardware
+needed — there's a demo mode) and what a good change looks like here. Security
+problems go through [SECURITY.md](SECURITY.md), not a public issue.

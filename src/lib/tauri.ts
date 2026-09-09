@@ -594,7 +594,13 @@ export async function pcoGetAll(path: string): Promise<Json> {
     for (const key of ["data", "included"] as const) {
       const rows = (page as Record<string, unknown>)[key];
       const dst = (merged as Record<string, unknown>)[key];
-      if (Array.isArray(rows) && Array.isArray(dst)) dst.push(...rows);
+      // Copy first, and append one at a time rather than spreading: a spread
+      // of a very large page can exceed the argument limit, and if a page ever
+      // aliases the accumulator (a caching layer handing back the same object)
+      // `push(...rows)` grows it without bound instead of terminating.
+      if (Array.isArray(rows) && Array.isArray(dst) && rows !== dst) {
+        for (const row of rows.slice()) dst.push(row);
+      }
     }
   }
   return merged ?? ({} as Json);
