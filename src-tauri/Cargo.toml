@@ -1,6 +1,6 @@
 [package]
 name = "prodeck"
-version = "0.9.72"
+version = "0.9.73"
 description = "ProDeck — the production booth hub: ProPresenter, Planning Center, consoles, crew phones, and lobby NFC in one app"
 authors = ["ProDeck"]
 edition = "2021"

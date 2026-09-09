@@ -35,6 +35,97 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.73 — 9 September 2026
+
+Everything here except the new widget came from someone else running ProDeck
+and telling me what didn't work. Two of the bugs were mine, introduced in
+0.9.72 while fixing other things.
+
+### Fixed — adding widgets didn't work
+
+Reported exactly that way, and it turned out to be two unrelated faults with
+the same symptom. Both were silent, which is why it looked like the button
+simply did nothing.
+
+- **From a phone, a kiosk, or any browser, every dashboard edit was thrown
+  away.** The page didn't save, and the gateway refused the save on top of
+  that. You could add a widget, watch it appear, and find it gone on the next
+  load with no error anywhere. Dashboards can now be edited from any browser
+  signed in with the admin password, and a save that fails says so.
+- **On the booth computer the widget was added — a thousand pixels below what
+  you were looking at.** New widgets go to the bottom of the layout, the
+  picker closed, and nothing appeared to change. ProDeck now scrolls to the
+  new widget and outlines it for a couple of seconds.
+
+### New — Stage Message widget
+
+Asked for by name, for child alerts. Putting a line on the stage displays used
+to mean standing at the booth computer with ProPresenter's own window open —
+no use at all to the person in kids ministry who actually knows about the
+alert. Now it's a widget, so it works from a phone.
+
+It shows what's on the stage displays right now, sends either free text or one
+of four quick buttons you can edit, and clears.
+
+A stage message stays up until something takes it down, which is the wrong
+default for an alert — one left up all service is worse than one never sent. So
+there's an optional auto-clear (30, 60 or 120 seconds) with a countdown you can
+see and a **Keep up** button. It counts down only while a dashboard showing the
+widget is open, and the widget says so rather than letting you assume.
+
+### Fixed — two things 0.9.72 broke
+
+- **An X32 or M32 showed as disconnected all service.** The older Allen & Heath
+  mirror was switching the connection light off every three seconds even when
+  it wasn't the one driving the desk. The desk itself was fine the whole time.
+- **"Take control" in Planning Center reported an error when nothing was
+  wrong**, and once a live item was tracked it never let go. Rewriting the
+  Planning Center error messages in 0.9.72 to be readable broke three places
+  that were quietly reading those messages to recognise a normal, expected
+  answer. They no longer depend on wording.
+
+### Fixed — widgets that were connected but looked broken
+
+- **On a fresh install every ProPresenter widget said "offline —
+  reconnecting…" with no way to set anything up.** The check for "has this been
+  configured?" tested a field that is never empty, so the helpful branch could
+  never run.
+- **The OBS tile froze on phones and kiosks**, showing whatever it read when
+  the page opened and never updating. Same for the sound desk tile, which
+  reported the console unreachable on every browser while the booth mirrored it
+  perfectly. A TapLink failure was invisible on any screen but the booth's.
+- **Two of the starter dashboards placed a widget that doesn't exist**, leaving
+  a blank tile you couldn't delete. They now use the sound desk widget they
+  were describing, and any unrecognised widget can be removed.
+
+### Fixed — TapLink keyword with a space
+
+`tap: give` — the form written in the README and the Adopter's Guide — parsed
+to nothing, because the keyword ended at the space. The disc silently kept
+pointing wherever it already pointed. Both `tap: give` and `tap:give` work now.
+
+### Also
+
+- The OBS WebSocket password was the one saved credential that browsers were
+  given in the clear. It's now hidden like every other secret.
+- Choosing an X32 let you set a port that was saved and then ignored.
+- The Adopter's Guide still described the console mirror as Avantis-only and
+  never mentioned OBS, X32/M32, dLive or SQ. It also sent people to a Planning
+  Center settings card that doesn't exist — the credentials are on the Planning
+  Center page.
+
+### Under the hood
+
+- **Windows.** The Windows-only code has now been read against the actual
+  Windows APIs and a dozen things that would have compiled and then misbehaved
+  are fixed — the sleep guard was decorative, help links did nothing, printing
+  a report was impossible, and every background command flashed a black console
+  window. An installer is now built automatically on a Windows machine. **This
+  still does not mean ProDeck runs on Windows** — no one has yet launched it
+  there. It is closer, not done.
+
+---
+
 ## 0.9.72 — 8 September 2026
 
 The first release driven by reports from someone other than me running it. Three
