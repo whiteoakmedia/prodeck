@@ -263,6 +263,29 @@ mod cred_tests {
         // An unknown code with no body doesn't render a dangling colon.
         assert!(!explain_pco_error(418, "418", "   ").ends_with(": "));
     }
+
+    /// Three call sites used to detect "no live item" / "nobody is controlling"
+    /// by looking for the substring "PCO 404" in the error message. Rewriting
+    /// those messages to be readable silently broke all three. The status now
+    /// travels as a prefix the UI strips; this pins the format that both the
+    /// desktop command and the web gateway emit and that `PcoError` in
+    /// lib/tauri.ts parses.
+    #[test]
+    fn coded_errors_carry_a_parseable_status() {
+        use super::coded_msg;
+        let m = coded_msg(404, &explain_pco_error(404, "404 Not Found", ""));
+        assert!(m.starts_with("PCO/404 "), "{m}");
+        // What PcoError does: strip the prefix, keep the readable half.
+        let (head, rest) = m.split_once(' ').expect("prefix and message");
+        assert_eq!(head, "PCO/404");
+        assert!(!rest.contains("PCO/"), "the shown message must be clean: {rest}");
+        assert!(!rest.trim().is_empty());
+        // Every code round-trips, including the ones the UI only displays.
+        for c in [401u16, 403, 404, 429, 503] {
+            let m = coded_msg(c, "x");
+            assert_eq!(m.split_once(' ').unwrap().0, format!("PCO/{c}"));
+        }
+    }
 }
 
 /// Generic authenticated GET against the Planning Center API.
@@ -272,12 +295,28 @@ pub async fn pco_get(
     settings: tauri::State<'_, SettingsState>,
 ) -> Result<serde_json::Value, String> {
     let (a, b) = creds(&settings)?;
-    // The HTTP status rides at the front of the error, machine-readable. The UI
-    // layer (`pcoGet` in lib/tauri.ts) strips it before anything is displayed,
-    // so callers can branch on 404 without matching English prose.
-    pco_request_coded(&a, &b, &path)
-        .await
-        .map_err(|(code, msg)| format!("PCO/{code} {msg}"))
+    pco_get_for_ui(&a, &b, &path).await
+}
+
+/// The exact contract the `pco_get` command exposes to the UI: the HTTP status
+/// rides at the front of the error, machine-readable. `pcoGet` in lib/tauri.ts
+/// strips it before anything is displayed, so callers can branch on 404 without
+/// matching English prose.
+///
+/// The web gateway serves the same command and MUST return the same shape —
+/// otherwise a phone's live-item tracking behaves differently from the booth's,
+/// which is exactly the class of bug this replaced.
+pub(crate) async fn pco_get_for_ui(
+    app_id: &str,
+    secret: &str,
+    path: &str,
+) -> Result<serde_json::Value, String> {
+    pco_request_coded(app_id, secret, path).await.map_err(|(code, msg)| coded_msg(code, &msg))
+}
+
+/// The wire format of that contract, in one place so the test can pin it.
+fn coded_msg(code: u16, msg: &str) -> String {
+    format!("PCO/{code} {msg}")
 }
 
 /// Verify credentials by fetching the authenticated user.

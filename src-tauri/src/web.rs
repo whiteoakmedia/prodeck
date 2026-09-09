@@ -1734,7 +1734,7 @@ async fn dispatch(app: &AppHandle, cmd: &str, args: &Value, tier: Tier) -> Resul
                 return Err("pco_get: path not allowed".into());
             }
             let (a, b) = pco_creds(app)?;
-            pco::pco_request(&a, &b, &path).await
+            pco::pco_get_for_ui(&a, &b, &path).await
         }
         "pco_test" => {
             let (a, b) = pco_creds(app)?;
