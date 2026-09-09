@@ -546,6 +546,8 @@ interface PcoStore {
   credsKnown: boolean;
   me: string | null;
   status: string;
+  /** pco.json is present but unreadable. Nothing is persisted while this is set. */
+  dataError: string;
   serviceTypes: ServiceType[];
   plans: Plan[];
   selectedServiceTypeId: string | null;
@@ -721,7 +723,10 @@ export function PcoProvider({ children }: { children: ReactNode }) {
   const suppressItem = useRef<string | null>(null);
 
   const loaded = useRef(false);
-  const lastSaved = useRef("");
+  /// null = the save effect has not yet recorded its baseline.
+  const lastSaved = useRef<string | null>(null);
+  /// pco.json exists but could not be read. Nothing may be persisted while set.
+  const [dataError, setDataError] = useState("");
   const stRef = useRef<string | null>(null);
   const planRef = useRef<string | null>(null);
   stRef.current = selectedServiceTypeId;
@@ -1587,7 +1592,16 @@ export function PcoProvider({ children }: { children: ReactNode }) {
       const hasCreds = !!(s?.pco_app_id && s?.pco_secret);
       setCredsKnown(hasCreds);
 
-      const data = (await loadPcoData().catch(() => null)) as Json | null;
+      // A REJECTION means pco.json exists but could not be read. That is not
+      // the same as "no file yet", and it must never be treated as one:
+      // restoring nothing and then autosaving would write empty defaults over
+      // every mic assignment, key override, plan link and position guide.
+      let loadFailed = false;
+      const data = (await loadPcoData().catch((e) => {
+        loadFailed = true;
+        setDataError(String(e));
+        return null;
+      })) as Json | null;
       if (data) {
         if (data.micAssignments) setMicAssignments(data.micAssignments);
         if (data.micNameMap && typeof data.micNameMap === "object")
@@ -1626,24 +1640,13 @@ export function PcoProvider({ children }: { children: ReactNode }) {
         if (data.selectedPlanId) setSelectedPlanId(data.selectedPlanId);
         if (data.selectedServiceTimeId) setSelectedServiceTimeId(data.selectedServiceTimeId);
       }
-      lastSaved.current = JSON.stringify({
-        selectedServiceTypeId: data?.selectedServiceTypeId ?? null,
-        selectedPlanId: data?.selectedPlanId ?? null,
-        selectedServiceTimeId: data?.selectedServiceTimeId ?? null,
-        autoAdvanceService: data?.autoAdvanceService ?? false,
-        micCount: data?.micCount ?? 16,
-        micTemplate: data?.micTemplate ?? {},
-        micPositions: data?.micPositions ?? [],
-        planByType: data?.planByType ?? {},
-        linksByPlan: data?.linksByPlan ?? {},
-        linkRules: data?.linkRules ?? {},
-        keyOverrides: data?.keyOverrides ?? {},
-        leaderOverrides: data?.leaderOverrides ?? {},
-        autoAdvance: data?.autoAdvance ?? false,
-        followPro: data?.followPro ?? false,
-        micAssignments: data?.micAssignments ?? {},
-      });
-      loaded.current = true;
+      // The baseline for "has anything changed?" is no longer rebuilt by hand
+      // here. It listed 15 keys while the save payload has 23, so the two
+      // strings could never be equal and the 400ms autosave fired on EVERY
+      // launch with no user action at all — which, after a failed load, wrote
+      // empty defaults over the real file. The save effect primes itself from
+      // its own payload instead, so the two can't drift again.
+      loaded.current = !loadFailed;
 
       if (hasCreds) {
         await loadServiceTypes();
@@ -1693,10 +1696,18 @@ export function PcoProvider({ children }: { children: ReactNode }) {
       fileFilters,
     };
     const json = JSON.stringify(payload);
+    // First run after the restore records the baseline without writing.
+    if (lastSaved.current === null) {
+      lastSaved.current = json;
+      return;
+    }
     if (json === lastSaved.current) return;
     const t = setTimeout(() => {
       lastSaved.current = json;
-      savePcoData(payload).catch(() => {});
+      savePcoData(payload).catch((e) => {
+        lastSaved.current = null; // let the next change retry
+        setDataError(String(e));
+      });
     }, 400);
     return () => clearTimeout(t);
   }, [
@@ -1729,6 +1740,7 @@ export function PcoProvider({ children }: { children: ReactNode }) {
     credsKnown,
     me,
     status,
+    dataError,
     serviceTypes,
     plans,
     selectedServiceTypeId,

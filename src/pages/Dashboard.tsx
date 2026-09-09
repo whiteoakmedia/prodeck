@@ -52,10 +52,14 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: any) => void }) {
   const [adding, setAdding] = useState(false);
   const [pickQuery, setPickQuery] = useState("");
   const [saveError, setSaveError] = useState("");
+  /// dashboards.json is present but unreadable — refuse to render or persist.
+  const [loadError, setLoadError] = useState("");
   // The widget just added, so it can be scrolled to and briefly marked.
   const [justAdded, setJustAdded] = useState<string | null>(null);
   const loaded = useRef(false);
   const lastSaved = useRef("");
+  /// The layout whose debounced save hasn't fired yet, flushed on unmount.
+  const pending = useRef<Dash[] | null>(null);
   // On phones the 12-column drag grid is unusable, so stack widgets in one
   // column instead (still fully interactive — just not draggable).
   const [isMobile, setIsMobile] = useState(
@@ -70,7 +74,17 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: any) => void }) {
   // Load persisted dashboards (or seed defaults) once.
   useEffect(() => {
     (async () => {
-      let data = await loadDashboards().catch(() => null);
+      // A REJECTION means dashboards.json exists but could not be read.
+      // Seeding the factory layouts in that case looked like a fresh install
+      // and then persisted them over the real file on the first drag — the
+      // grid fires onLayoutChange on mount, so that needed no user action.
+      let failed = false;
+      let data = await loadDashboards().catch((e) => {
+        failed = true;
+        setLoadError(String(e));
+        return null;
+      });
+      if (failed) return;
       if (!data || !Array.isArray(data) || data.length === 0) {
         data = defaultDashboards();
       }
@@ -93,7 +107,12 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: any) => void }) {
     if (!loaded.current || relay.mode === "client") return;
     const json = JSON.stringify(dashboards);
     if (json === lastSaved.current) return;
+    // Flush on unmount rather than dropping the timer: navigating away within
+    // the debounce window (App renders one page at a time, so leaving unmounts
+    // this) silently reverted the edit the user had just made.
+    pending.current = dashboards;
     const t = setTimeout(() => {
+      pending.current = null;
       lastSaved.current = json;
       saveDashboards(dashboards).catch((e) => {
         // Let it be retried: the next edit must not be skipped by the
@@ -102,7 +121,15 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: any) => void }) {
         setSaveError(String(e));
       });
     }, 400);
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      const p = pending.current;
+      if (p) {
+        pending.current = null;
+        lastSaved.current = json;
+        saveDashboards(p).catch(() => {});
+      }
+    };
   }, [dashboards, relay.mode]);
 
   // On a relay client, mirror the host's dashboards live.
@@ -285,6 +312,14 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: any) => void }) {
               {reconnecting ? "Connecting…" : "Connect"}
             </button>
           )}
+        </div>
+      )}
+
+      {loadError && (
+        <div className="banner dash-banner">
+          Your dashboards couldn't be read, so nothing has been loaded or saved —
+          this is deliberate, to avoid replacing them with blank ones.{" "}
+          {loadError}
         </div>
       )}
 

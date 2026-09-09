@@ -137,17 +137,25 @@ export function RoutingPage() {
   const [editing, setEditing] = useState(false);
   const [openHop, setOpenHop] = useState<string | null>(null); // "chainId:idx"
   const [saveErr, setSaveErr] = useState("");
+  const [loadErr, setLoadErr] = useState("");
 
   useEffect(() => {
     loadRouting()
       .then((d) => {
         const arr = (d as unknown as { chains?: Chain[] })?.chains;
-        setChains(Array.isArray(arr) && arr.length > 0 ? arr : SEED);
+        // An EMPTY array is a real answer — someone deleted every chain.
+        // Treating it as first-run resurrected Cornerstone's seed map on the
+        // next restart. Only a genuinely absent file gets the seeds.
+        setChains(Array.isArray(arr) ? arr : SEED);
       })
-      .catch(() => setChains(SEED));
+      // A rejection means routing.json is there but unreadable. Seeding here
+      // replaced the operator's signal map with ours, and the first edit made
+      // that permanent.
+      .catch((e) => setLoadErr(String(e)));
   }, []);
 
   async function persist(next: Chain[]) {
+    if (loadErr) return; // never write over a file we could not read
     setChains(next);
     if (IS_WEB) return; // web is read-only; the booth owns routing.json
     try {

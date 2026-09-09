@@ -1523,13 +1523,13 @@ async fn dispatch(app: &AppHandle, cmd: &str, args: &Value, tier: Tier) -> Resul
             crate::settings::save(&to_save)?;
             Ok(json!({ "until": until }))
         }
-        "load_dashboards" => Ok(crate::settings::load_dashboards()),
-        "load_pco_data" => Ok(crate::settings::load_pco_data()),
+        "load_dashboards" => crate::settings::load_dashboards(),
+        "load_pco_data" => crate::settings::load_pco_data(),
         "load_tracking" => crate::settings::load_tracking(),
         "load_reports" => crate::settings::load_reports(),
         "load_schedules" => crate::settings::load_schedules(),
-        "load_checklists" => Ok(crate::settings::load_checklists()),
-        "load_routing" => Ok(crate::settings::load_routing()),
+        "load_checklists" => crate::settings::load_checklists(),
+        "load_routing" => crate::settings::load_routing(),
         // ---- writes
         // The booth app is the ONLY writer of the shared data files. Each
         // browser client keeps its own independent in-memory copy, so accepting

@@ -124,19 +124,15 @@ fn hash_pin(salt: &str, pin: &str) -> String {
 
 impl IdentityInner {
     pub fn load() -> Self {
-        let store = std::fs::read_to_string(store_path())
-            .ok()
-            .and_then(|s| serde_json::from_str(&s).ok())
-            .unwrap_or_default();
+        let store = crate::settings::load_store_or_backup(&store_path(), "identity.json");
         Self { store: Mutex::new(store), lockouts: Mutex::new(HashMap::new()) }
     }
 
     fn persist(&self, store: &Store) {
+        // Backed up and fsynced, like every other irreplaceable file. The
+        // roster is the only record of who your crew are.
         if let Ok(json) = serde_json::to_string_pretty(store) {
-            let tmp = store_path().with_extension("json.tmp");
-            if std::fs::write(&tmp, json).is_ok() {
-                let _ = std::fs::rename(&tmp, store_path());
-            }
+            let _ = crate::settings::write_json_atomic_backed_up(store_path(), json);
         }
     }
 }

@@ -81,10 +81,8 @@ fn now_ms() -> u64 {
 
 impl CheckinInner {
     pub fn load() -> Self {
-        let mut store: Store = std::fs::read_to_string(store_path())
-            .ok()
-            .and_then(|s| serde_json::from_str(&s).ok())
-            .unwrap_or_default();
+        let mut store: Store =
+            crate::settings::load_store_or_backup(&store_path(), "checkin.json");
         // Sweep at startup too. Only the phones and the report page read this,
         // so waiting for a read would leave a stale sheet sitting on the booth
         // across a restart — which is exactly when services change over.
@@ -103,10 +101,10 @@ impl CheckinInner {
     fn persist(&self, s: &Store) {
         // Atomic like every other data file: a crash mid-write must not turn
         // the morning's arrivals into a half-file that load() silently drops.
-        let tmp = store_path().with_extension("json.tmp");
-        if std::fs::write(&tmp, serde_json::to_string_pretty(s).unwrap_or_default()).is_ok() {
-            let _ = std::fs::rename(&tmp, store_path());
-        }
+        let _ = crate::settings::write_json_atomic_backed_up(
+            store_path(),
+            serde_json::to_string_pretty(s).unwrap_or_default(),
+        );
     }
 }
 

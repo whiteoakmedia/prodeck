@@ -67,19 +67,15 @@ fn now_ms() -> u64 {
 
 impl PosFilesInner {
     pub fn load() -> Self {
-        let index = std::fs::read_to_string(index_path())
-            .ok()
-            .and_then(|s| serde_json::from_str(&s).ok())
-            .unwrap_or_default();
+        let index = crate::settings::load_store_or_backup(&index_path(), "position-files.json");
         Self { index: Mutex::new(index) }
     }
 
     fn persist(&self, list: &[PosFile]) {
+        // Losing this index orphans every uploaded PDF: the blobs survive but
+        // become invisible and un-deletable.
         if let Ok(json) = serde_json::to_string_pretty(list) {
-            let tmp = index_path().with_extension("json.tmp");
-            if std::fs::write(&tmp, json).is_ok() {
-                let _ = std::fs::rename(&tmp, index_path());
-            }
+            let _ = crate::settings::write_json_atomic_backed_up(index_path(), json);
         }
     }
 }

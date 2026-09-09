@@ -216,10 +216,23 @@ export function Report() {
       .catch((e) => setSavedErr(String(e)));
   }, []);
 
-  const persist = useCallback(async (next: SavedReport[]) => {
-    setSaved(next);
-    await saveReports(next as unknown as Json);
-  }, []);
+  const persist = useCallback(
+    async (next: SavedReport[]) => {
+      // The load already refuses to start from empty on a bad read — but
+      // nothing stopped Save afterwards. Pressing "Save report" then wrote a
+      // ONE-element array, destroying every previously saved service.
+      if (savedErr) throw new Error("Saved reports couldn't be read — not overwriting them.");
+      const prev = saved;
+      setSaved(next);
+      try {
+        await saveReports(next as unknown as Json);
+      } catch (e) {
+        setSaved(prev); // don't show it as gone when it is still on disk
+        throw e;
+      }
+    },
+    [savedErr, saved],
+  );
 
   // A service is identified by WHEN it happened: "July 12, 2026 | 9:30 AM".
   // The plan title is deliberately dropped — in this PCO account it's the date
@@ -452,7 +465,13 @@ export function Report() {
 
   async function deleteSaved(r: SavedReport) {
     if (!(await askConfirm(`Delete the saved report "${r.label}"?`, "Delete"))) return;
-    await persist(saved.filter((s) => s.id !== r.id));
+    try {
+      await persist(saved.filter((s) => s.id !== r.id));
+    } catch (e) {
+      // It used to vanish from the list and come back on the next restart.
+      setSavedErr(String(e));
+      return;
+    }
     if (selKey === `saved:${r.id}`) setSelKey(null);
   }
 
@@ -611,14 +630,19 @@ export function Report() {
           <button
             className="btn small"
             onClick={saveReport}
-            disabled={busy}
+            disabled={busy || !!savedErr}
+            {...(savedErr ? { "aria-disabled": true } : {})}
             title="Freeze this service — items, times, SPL and tap counts — into a saved report that Reset can't touch."
           >
             {busy ? "Saving…" : "Save report"}
           </button>
         )}
         {!IS_WEB && savedSel && (
-          <button className="btn small ghost" onClick={() => deleteSaved(savedSel)}>
+          <button
+            className="btn small ghost"
+            disabled={!!savedErr}
+            onClick={() => deleteSaved(savedSel)}
+          >
             Delete
           </button>
         )}

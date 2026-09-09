@@ -330,17 +330,17 @@ fn dashboards_path() -> PathBuf {
 /// Dashboards are stored as opaque JSON so the widget/layout schema can live
 /// entirely in the frontend and evolve without touching Rust.
 #[tauri::command]
-pub fn load_dashboards() -> serde_json::Value {
-    match std::fs::read_to_string(dashboards_path()) {
-        Ok(s) => serde_json::from_str(&s).unwrap_or(serde_json::Value::Null),
-        Err(_) => serde_json::Value::Null,
-    }
+pub fn load_dashboards() -> Result<serde_json::Value, String> {
+    // Strict: a corrupt file must not be indistinguishable from "no file yet".
+    // Flattening both to Null meant the frontend seeded factory defaults and
+    // then persisted them over the real data on the next edit.
+    read_json_strict(&dashboards_path(), "dashboards.json")
 }
 
 #[tauri::command]
 pub fn save_dashboards(data: serde_json::Value) -> Result<(), String> {
     let json = serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?;
-    write_json_atomic(dashboards_path(), json)
+    write_json_atomic_backed_up(dashboards_path(), json)
 }
 
 fn pco_data_path() -> PathBuf {
@@ -350,17 +350,17 @@ fn pco_data_path() -> PathBuf {
 /// Planning Center local state (selected plan + mic assignments), kept as
 /// opaque JSON owned by the frontend.
 #[tauri::command]
-pub fn load_pco_data() -> serde_json::Value {
-    match std::fs::read_to_string(pco_data_path()) {
-        Ok(s) => serde_json::from_str(&s).unwrap_or(serde_json::Value::Null),
-        Err(_) => serde_json::Value::Null,
-    }
+pub fn load_pco_data() -> Result<serde_json::Value, String> {
+    // Strict: a corrupt file must not be indistinguishable from "no file yet".
+    // Flattening both to Null meant the frontend seeded factory defaults and
+    // then persisted them over the real data on the next edit.
+    read_json_strict(&pco_data_path(), "pco.json")
 }
 
 #[tauri::command]
 pub fn save_pco_data(data: serde_json::Value) -> Result<(), String> {
     let json = serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?;
-    write_json_atomic(pco_data_path(), json)
+    write_json_atomic_backed_up(pco_data_path(), json)
 }
 
 fn checklists_path() -> PathBuf {
@@ -369,17 +369,17 @@ fn checklists_path() -> PathBuf {
 
 /// App-wide checklists (with due dates), owned by the frontend as opaque JSON.
 #[tauri::command]
-pub fn load_checklists() -> serde_json::Value {
-    match std::fs::read_to_string(checklists_path()) {
-        Ok(s) => serde_json::from_str(&s).unwrap_or(serde_json::Value::Null),
-        Err(_) => serde_json::Value::Null,
-    }
+pub fn load_checklists() -> Result<serde_json::Value, String> {
+    // Strict: a corrupt file must not be indistinguishable from "no file yet".
+    // Flattening both to Null meant the frontend seeded factory defaults and
+    // then persisted them over the real data on the next edit.
+    read_json_strict(&checklists_path(), "checklists.json")
 }
 
 #[tauri::command]
 pub fn save_checklists(data: serde_json::Value) -> Result<(), String> {
     let json = serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?;
-    write_json_atomic(checklists_path(), json)
+    write_json_atomic_backed_up(checklists_path(), json)
 }
 
 fn routing_path() -> PathBuf {
@@ -390,17 +390,17 @@ fn routing_path() -> PathBuf {
 /// owned by the frontend as opaque JSON. Read by every web tier so volunteer
 /// phones/laptops can see the chain; writes stay booth-only like the rest.
 #[tauri::command]
-pub fn load_routing() -> serde_json::Value {
-    match std::fs::read_to_string(routing_path()) {
-        Ok(s) => serde_json::from_str(&s).unwrap_or(serde_json::Value::Null),
-        Err(_) => serde_json::Value::Null,
-    }
+pub fn load_routing() -> Result<serde_json::Value, String> {
+    // Strict: a corrupt file must not be indistinguishable from "no file yet".
+    // Flattening both to Null meant the frontend seeded factory defaults and
+    // then persisted them over the real data on the next edit.
+    read_json_strict(&routing_path(), "routing.json")
 }
 
 #[tauri::command]
 pub fn save_routing(data: serde_json::Value) -> Result<(), String> {
     let json = serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?;
-    write_json_atomic(routing_path(), json)
+    write_json_atomic_backed_up(routing_path(), json)
 }
 
 fn tracking_path() -> PathBuf {
@@ -417,6 +417,47 @@ fn tracking_path() -> PathBuf {
 #[tauri::command]
 pub fn load_tracking() -> Result<serde_json::Value, String> {
     read_json_strict(&tracking_path(), "tracking.json")
+}
+
+/// Load a typed store, treating "unreadable" as different from "absent".
+///
+/// The crew roster, the morning's check-ins and the position-file index all
+/// used `.ok().and_then(parse).unwrap_or_default()`, which cannot tell a
+/// missing file from a broken one. A corrupt roster therefore booted the booth
+/// with zero crew and every phone signed out — and the first person to
+/// re-register persisted that one-user store on top, permanently destroying
+/// every account, PIN, PCO name link and outstanding invite.
+///
+/// Keep the unreadable file, try the rolling backup, and only then start empty.
+pub(crate) fn load_store_or_backup<T>(path: &PathBuf, label: &str) -> T
+where
+    T: serde::de::DeserializeOwned + Default,
+{
+    let raw = match std::fs::read_to_string(path) {
+        Ok(r) => r,
+        Err(_) => return T::default(), // genuinely absent: first run
+    };
+    match serde_json::from_str::<T>(&raw) {
+        Ok(v) => v,
+        Err(e) => {
+            crate::diag::log(format!("[{label}] could not be parsed: {e}"));
+            let bak = path.with_extension("bak.json");
+            if let Some(v) = std::fs::read_to_string(&bak)
+                .ok()
+                .and_then(|b| serde_json::from_str::<T>(&b).ok())
+            {
+                crate::diag::log(format!("[{label}] recovered from the previous save"));
+                return v;
+            }
+            let kept = path.with_extension(format!("corrupt-{}.json", crate::identity::now_ms()));
+            let _ = std::fs::write(&kept, &raw);
+            crate::diag::log(format!(
+                "[{label}] no usable backup — kept {} and starting empty",
+                kept.display()
+            ));
+            T::default()
+        }
+    }
 }
 
 /// Read a data file, distinguishing "not there yet" from "there but broken".
