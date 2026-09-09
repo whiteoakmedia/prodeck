@@ -1,0 +1,81 @@
+# Build the Windows installer.
+#
+# ProDeck is developed on macOS, and Tauri does not cross-compile to Windows —
+# the Rust side needs the MSVC toolchain and the NSIS bundler needs Windows. A
+# GitHub Windows runner already has all of it (MSVC, Strawberry Perl, NASM,
+# Node), so nobody has to install a build toolchain on a booth PC just to get
+# an installer.
+#
+# Run it from the Actions tab ("Run workflow"), or with: gh workflow run windows-build.yml
+# The installer lands as a downloadable artifact on the run — this workflow
+# never publishes a release.
+name: Windows installer
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/windows-build.yml"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Rust toolchain
+        run: rustup target add x86_64-pc-windows-msvc
+
+      # Vendored OpenSSL is the slow part (it runs `perl Configure` then
+      # `nmake`), so caching it is the difference between a 40-minute build and
+      # a 5-minute one.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Confirm the toolchain is present
+        shell: cmd
+        run: |
+          where perl || echo "MISSING: perl (vendored OpenSSL needs it)"
+          where nasm || echo "note: no nasm - OpenSSL will build no-asm, which is fine"
+          rustc -vV
+
+      - run: npm ci
+
+      # One cmd step, because vcvars64 sets the environment (nmake, the linker,
+      # the SDK headers) for the shell it runs in and that does not survive
+      # between steps. Only NSIS: "targets": "all" would also build an MSI via
+      # WiX, which is downloaded on demand and much pickier.
+      - name: Build
+        shell: cmd
+        run: |
+          for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set VSPATH=%%i
+          call "%VSPATH%\VC\Auxiliary\Build\vcvars64.bat"
+          npx tauri build --bundles nsis
+
+      - name: Rust tests
+        shell: cmd
+        working-directory: src-tauri
+        # Informational: the Windows path has never been exercised, so a failure
+        # here is worth seeing but must not withhold the installer.
+        continue-on-error: true
+        run: |
+          for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set VSPATH=%%i
+          call "%VSPATH%\VC\Auxiliary\Build\vcvars64.bat"
+          cargo test
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ProDeck-windows-installer
+          path: src-tauri/target/release/bundle/nsis/*.exe
+          if-no-files-found: error
