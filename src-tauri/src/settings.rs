@@ -377,9 +377,14 @@ pub fn load_checklists() -> Result<serde_json::Value, String> {
 }
 
 #[tauri::command]
-pub fn save_checklists(data: serde_json::Value) -> Result<(), String> {
+pub fn save_checklists(data: serde_json::Value, app: tauri::AppHandle) -> Result<(), String> {
     let json = serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?;
-    write_json_atomic_backed_up(checklists_path(), json)
+    write_json_atomic_backed_up(checklists_path(), json)?;
+    // Tell the phones. Only the phone->booth direction announced itself, so a
+    // volunteer's list stayed stale until they reloaded the app.
+    use tauri::Emitter;
+    app.emit("checklist:changed", serde_json::json!({})).ok();
+    Ok(())
 }
 
 fn routing_path() -> PathBuf {

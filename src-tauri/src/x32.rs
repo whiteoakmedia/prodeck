@@ -296,11 +296,19 @@ async fn session(
     cfg_check.tick().await;
     let mut dirty = false;
     let mut seen_any = false;
+    // `seen_any` alone was a one-way latch: once the first packet arrived, the
+    // only liveness test could never fire again. UDP gives no close event, so a
+    // desk that rebooted or dropped off the network left the mirror sitting
+    // here forever — still reporting connected, still showing the mutes and
+    // faders from before it vanished. On a channel wall that is the one thing
+    // that must not be wrong.
+    let mut last_rx = tokio::time::Instant::now();
 
     loop {
         tokio::select! {
             r = sock.recv(&mut buf) => {
                 let n = r.map_err(|e| e.to_string())?;
+                last_rx = tokio::time::Instant::now();
                 if !seen_any {
                     seen_any = true;
                     set_connected(app, state, true);
@@ -324,8 +332,10 @@ async fn session(
                 if now != cfg {
                     return Ok(()); // settings changed — reconnect with them
                 }
-                // Nothing at all in ~10s means the desk went away.
-                if !seen_any {
+                // Nothing at all in ~10s means the desk went away. /xremote is
+                // renewed every 8s and the console answers, so silence past
+                // that is real — whether or not we ever heard from it.
+                if !seen_any || last_rx.elapsed() > Duration::from_secs(12) {
                     return Err("no reply from the console".into());
                 }
             }

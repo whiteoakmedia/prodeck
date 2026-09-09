@@ -39,7 +39,7 @@ function useTick(on: boolean) {
 // renders above everything and swallows the screen until the booth records the
 // ack. The confirm target is the largest control in the app and needs no aim.
 export function CrewPageTakeover() {
-  const { incoming, ack, acking, error } = usePages();
+  const { incoming, ack, acking, error, fatal, dismiss } = usePages();
   // Mounted app-wide, not just in the phone shell: a tablet or a full-size
   // browser renders the DESKTOP shell, and a page that only appears under 760px
   // silently misses every one of them.
@@ -120,7 +120,17 @@ export function CrewPageTakeover() {
         <span className="crew-confirm-label">{acking ? "Sending…" : "Got it"}</span>
       </button>
       {error ? (
-        <p className="crew-takeover-hint err">{error} — try again.</p>
+        <>
+          <p className="crew-takeover-hint err">
+            {error}
+            {fatal ? "" : " — try again."}
+          </p>
+          {fatal && (
+            <button className="btn small ghost" onClick={() => dismiss(incoming.id)}>
+              Dismiss this page
+            </button>
+          )}
+        </>
       ) : (
         <p className="crew-takeover-hint">Tap anywhere in the green to confirm</p>
       )}

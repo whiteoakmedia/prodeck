@@ -350,9 +350,18 @@ pub fn login_core(
     if hash_pin(&user.salt, &pin) != user.pin_hash {
         drop(s);
         let mut lock = id_state.lockouts.lock().unwrap_or_else(|p| p.into_inner());
+        let now = now_ms();
         let e = lock.entry(key).or_insert((0, 0));
+        // Start a fresh streak once the previous lockout has expired. The
+        // counter used to survive it, so after one lockout the count stayed at
+        // or above the threshold forever: the very NEXT typo re-locked for five
+        // minutes, and the one after that, indefinitely. On a Sunday morning
+        // that reads as "the app has locked me out permanently".
+        if e.0 >= LOCKOUT_AFTER && now >= e.1 {
+            e.0 = 0;
+        }
         e.0 += 1;
-        e.1 = now_ms() + LOCKOUT_SECS * 1000;
+        e.1 = now + LOCKOUT_SECS * 1000;
         return Err("wrong PIN".into());
     }
     if !user.approved {

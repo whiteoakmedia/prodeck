@@ -573,6 +573,32 @@ export const pcoGet = (path: string) =>
   invoke<Json>("pco_get", { path }).catch((e) => {
     throw new PcoError(e);
   });
+
+/**
+ * `pcoGet` that follows Planning Center's `links.next` to the end.
+ *
+ * Every list read used to be a single request asking for `per_page=200` —
+ * above PCO's cap of 100, which it silently honours as 100 — so the tail of a
+ * long collection was dropped with no error and no indication anywhere.
+ */
+export async function pcoGetAll(path: string): Promise<Json> {
+  let merged: Json | null = null;
+  let next: string | null = path;
+  for (let i = 0; i < 20 && next; i++) {
+    const page: Json = await pcoGet(next);
+    next = (page as { links?: { next?: string } })?.links?.next ?? null;
+    if (!merged) {
+      merged = page;
+      continue;
+    }
+    for (const key of ["data", "included"] as const) {
+      const rows = (page as Record<string, unknown>)[key];
+      const dst = (merged as Record<string, unknown>)[key];
+      if (Array.isArray(rows) && Array.isArray(dst)) dst.push(...rows);
+    }
+  }
+  return merged ?? ({} as Json);
+}
 export const pcoTest = () => invoke<Json>("pco_test");
 export const pcoStartSync = (serviceTypeId: string, planId: string) =>
   invoke<void>("pco_start_sync", { serviceTypeId, planId });

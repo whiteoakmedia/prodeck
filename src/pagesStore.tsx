@@ -38,6 +38,9 @@ interface PagesStore {
   rebuzz: (pageId: number) => Promise<number>;
   acking: boolean;
   error: string | null;
+  /** The booth refused the ack outright — offer a way out instead of retrying. */
+  fatal: boolean;
+  dismiss: (pageId: number) => void;
 }
 
 const Ctx = createContext<PagesStore | null>(null);
@@ -47,6 +50,8 @@ export function PagesProvider({ children }: { children: ReactNode }) {
   const [pages, setPages] = useState<CrewPage[]>([]);
   const [acking, setAcking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /// The booth refused this ack outright — retrying cannot help.
+  const [fatal, setFatal] = useState(false);
   // My display name, kept in a ref so the event handlers below never need to
   // re-subscribe when it loads.
   const nameRef = useRef(chat.name);
@@ -107,6 +112,20 @@ export function PagesProvider({ children }: { children: ReactNode }) {
       .filter((p) => p.recipients.some(isMe) && !p.receipts.some(ackedByMe))
       .sort((a, b) => a.sent_ms - b.sent_ms)[0] ?? null;
 
+  /// Give up on a page the booth will never accept an ack for.
+  ///
+  /// Confirming was the ONLY way out of the takeover, and several terminal
+  /// errors are reachable in normal operation: the booth restarted (its
+  /// in-memory ring is gone, "that page is no longer active"), the 50-page ring
+  /// rolled over, or the device's session was revoked. The volunteer was left
+  /// with a full-screen amber siren, mid-service, that nothing could dismiss
+  /// except force-quitting the app.
+  function dismiss(pageId: number) {
+    setPages((prev) => prev.filter((p) => p.id !== pageId));
+    setError(null);
+    closePageNotification(pageId);
+  }
+
   async function ack(pageId: number) {
     setAcking(true);
     setError(null);
@@ -132,7 +151,12 @@ export function PagesProvider({ children }: { children: ReactNode }) {
       // should go with it rather than sitting there still demanding an answer.
       closePageNotification(pageId);
     } catch (e) {
-      setError(String(e));
+      const msg = String(e);
+      setError(msg);
+      // The booth ANSWERED and said no. Retrying will never succeed, so offer
+      // the way out rather than sirening forever. A transport failure is
+      // different — that one really is worth trying again.
+      setFatal(/no longer active|not signed in|not a recipient|unknown page/i.test(msg));
       throw e;
     } finally {
       setAcking(false);
@@ -153,7 +177,7 @@ export function PagesProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <Ctx.Provider value={{ pages, incoming, ack, send, rebuzz, acking, error }}>
+    <Ctx.Provider value={{ pages, incoming, ack, send, rebuzz, acking, error, fatal, dismiss }}>
       {children}
     </Ctx.Provider>
   );

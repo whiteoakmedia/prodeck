@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { IS_WEB, checklistToggle, loadChecklists, saveChecklists } from "./lib/tauri";
+import { IS_WEB, checklistToggle, loadChecklists, on, saveChecklists } from "./lib/tauri";
 import { enqueue } from "./lib/outbox";
 
 export interface ChItem {
@@ -229,8 +229,27 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
       setChecklists(list);
     };
     externalSaves.add(adopt);
+
+    // Phones tick items through `checklist_toggle`, which rewrites the file
+    // directly on the booth. The booth loaded it once at launch and never
+    // again — so the moment the operator ticked anything (or a recurrence
+    // rolled over), the debounced whole-file save wrote the booth's stale copy
+    // back and every phone tick since launch reverted to undone.
+    //
+    // The booth already emits `checklist:changed` for exactly this, and
+    // forwards it to browsers. Nothing had ever subscribed to it.
+    const off = on("checklist:changed", () => {
+      loadChecklistsNow()
+        .then(({ data, fromBooth }) => {
+          if (!fromBooth) return; // don't adopt our own cache over live data
+          adopt(data);
+          writeCache(data);
+        })
+        .catch(() => {});
+    });
     return () => {
       externalSaves.delete(adopt);
+      off.then((fn) => fn()).catch(() => {});
     };
   }, []);
 

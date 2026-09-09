@@ -314,6 +314,48 @@ pub(crate) async fn pco_get_for_ui(
     pco_request_coded(app_id, secret, path).await.map_err(|(code, msg)| coded_msg(code, &msg))
 }
 
+/// Follow `links.next` until the collection is exhausted, merging `data` and
+/// `included` into one document.
+///
+/// Nothing in the app did this. Every list was a single request asking for
+/// `per_page=100` — above PCO's cap of 100, which it silently honours as 100 —
+/// so the tail of any long collection was dropped with no error and no
+/// indication. It bites first on a plan whose songs carry several chord charts
+/// each: past the hundredth attachment, the charts simply were not there.
+pub(crate) async fn pco_get_all(
+    app_id: &str,
+    secret: &str,
+    path: &str,
+) -> Result<serde_json::Value, String> {
+    let mut merged: Option<serde_json::Value> = None;
+    let mut next = Some(path.to_string());
+    // A plan with 2,000 rows is already pathological; the cap keeps a broken
+    // `links.next` from looping forever.
+    for _ in 0..20 {
+        let Some(url) = next.take() else { break };
+        let page = pco_request(app_id, secret, &url).await?;
+        next = page
+            .pointer("/links/next")
+            .and_then(|v| v.as_str())
+            .map(str::to_string);
+        match merged.as_mut() {
+            None => merged = Some(page),
+            Some(acc) => {
+                for key in ["data", "included"] {
+                    let Some(rows) = page.get(key).and_then(|v| v.as_array()) else { continue };
+                    if let Some(dst) = acc.get_mut(key).and_then(|v| v.as_array_mut()) {
+                        dst.extend(rows.iter().cloned());
+                    }
+                }
+            }
+        }
+        if next.is_none() {
+            break;
+        }
+    }
+    merged.ok_or_else(|| "no response from Planning Center".to_string())
+}
+
 /// The wire format of that contract, in one place so the test can pin it.
 fn coded_msg(code: u16, msg: &str) -> String {
     format!("PCO/{code} {msg}")
@@ -412,7 +454,7 @@ pub async fn pco_live_controller(
 
 fn items_path(st: &str, plan: &str) -> String {
     format!(
-        "services/v2/service_types/{}/plans/{}/items?per_page=200&include=song,arrangement,key,item_notes,attachments",
+        "services/v2/service_types/{}/plans/{}/items?per_page=100&include=song,arrangement,key,item_notes,attachments",
         st, plan
     )
 }
@@ -421,7 +463,7 @@ fn team_path(st: &str, plan: &str) -> String {
     // `times` brings each member's ASSIGNED plan times — their call time for
     // this week. That's what drives per-person "expected" on check-in.
     format!(
-        "services/v2/service_types/{}/plans/{}/team_members?per_page=200&include=team,times",
+        "services/v2/service_types/{}/plans/{}/team_members?per_page=100&include=team,times",
         st, plan
     )
 }
@@ -467,12 +509,12 @@ pub async fn pco_start_sync(
         while current(&running) {
             // Slower-moving data: items + team on the first tick, then every ~30s.
             if first || last_meta.elapsed() >= Duration::from_secs(30) {
-                if let Ok(v) = pco_request(&app_id, &secret, &items_path(&service_type_id, &plan_id)).await {
+                if let Ok(v) = pco_get_all(&app_id, &secret, &items_path(&service_type_id, &plan_id)).await {
                     if current(&running) {
                         app2.emit("pco:items", v).ok();
                     }
                 }
-                if let Ok(v) = pco_request(&app_id, &secret, &team_path(&service_type_id, &plan_id)).await {
+                if let Ok(v) = pco_get_all(&app_id, &secret, &team_path(&service_type_id, &plan_id)).await {
                     if current(&running) {
                         *running.team.lock().unwrap_or_else(|p| p.into_inner()) = parse_team(&v);
                         app2.emit("pco:team", v).ok();
@@ -481,7 +523,7 @@ pub async fn pco_start_sync(
                 // Charts live wherever the worship team attached them — the
                 // plan item, the song, or the arrangement. all_attachments is
                 // PCO's aggregate of every one of those for this plan.
-                if let Ok(v) = pco_request(
+                if let Ok(v) = pco_get_all(
                     &app_id,
                     &secret,
                     &format!(

@@ -124,9 +124,19 @@ pub fn avantis_state(state: tauri::State<'_, AvantisState>) -> Value {
 /// Write raw bytes to the desk through the mirror's socket. Every control
 /// command funnels through here; errors out cleanly when offline.
 fn write_desk(state: &AvantisState, bytes: &[u8]) -> Result<(), String> {
-    let mut s = state.lock().unwrap_or_else(|p| p.into_inner());
-    let Some(w) = s.writer.as_mut() else {
-        return Err("not connected to the console".into());
+    // Clone the socket under the lock, then write with the lock RELEASED —
+    // the same shape `spawn_watch_flush` already used. Holding the mutex across
+    // the write meant a console that stopped draining its socket (a hung desk,
+    // or a half-open TCP after a switch or cable event) blocked here forever
+    // with the lock held, freezing everything that touches the desk: the mirror
+    // thread, `snapshot()`, the `avantis_state` command, and every dashboard
+    // widget and web route that reads it, for the rest of the service.
+    let mut w = {
+        let s = state.lock().unwrap_or_else(|p| p.into_inner());
+        let Some(w) = s.writer.as_ref() else {
+            return Err("not connected to the console".into());
+        };
+        w.try_clone().map_err(|e| format!("desk write failed: {e}"))?
     };
     w.write_all(bytes).map_err(|e| format!("desk write failed: {e}"))
 }
@@ -692,6 +702,9 @@ pub fn spawn_mirror(app: AppHandle) {
                 continue;
             };
             stream.set_read_timeout(Some(Duration::from_millis(1000))).ok();
+            // Without this a write to a desk that has stopped reading blocks
+            // indefinitely rather than failing.
+            stream.set_write_timeout(Some(Duration::from_secs(2))).ok();
             {
                 let mut s = state.lock().unwrap_or_else(|p| p.into_inner());
                 s.writer = stream.try_clone().ok();

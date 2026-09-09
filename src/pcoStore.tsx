@@ -18,6 +18,7 @@ import {
   on,
   PcoError,
   pcoGet,
+  pcoGetAll,
   pcoLiveAction,
   pcoLiveController,
   pcoSetLiveInterval,
@@ -746,7 +747,7 @@ export function PcoProvider({ children }: { children: ReactNode }) {
   async function loadServiceTypes() {
     setStatus("Loading service types…");
     try {
-      const j = await pcoGet("services/v2/service_types?per_page=100");
+      const j = await pcoGetAll("services/v2/service_types?per_page=100");
       setServiceTypes(parseServiceTypes(j));
       setStatus("");
     } catch (e) {
@@ -850,11 +851,11 @@ export function PcoProvider({ children }: { children: ReactNode }) {
     setStatus("Refreshing…");
     try {
       const [it, tm, pt] = await Promise.all([
-        pcoGet(`services/v2/service_types/${st}/plans/${plan}/items?per_page=200&include=item_notes`),
+        pcoGetAll(`services/v2/service_types/${st}/plans/${plan}/items?per_page=100&include=item_notes`),
         // include=times makes PCO emit each member's assigned plan-time ids
         // (it won't inline the PlanTime objects — joined from plan_times below).
-        pcoGet(`services/v2/service_types/${st}/plans/${plan}/team_members?per_page=200&include=team,times`),
-        pcoGet(`services/v2/service_types/${st}/plans/${plan}/plan_times?per_page=100`),
+        pcoGetAll(`services/v2/service_types/${st}/plans/${plan}/team_members?per_page=100&include=team,times`),
+        pcoGetAll(`services/v2/service_types/${st}/plans/${plan}/plan_times?per_page=100`),
       ]);
       setItems(parseItems(it));
       setTeam(parseTeam(tm));
@@ -927,7 +928,24 @@ export function PcoProvider({ children }: { children: ReactNode }) {
       // a teammate silently: that would yank the service out from under them,
       // so say who has it and let the operator decide.
       if (action !== "toggle_control") {
-        const c = await refreshController();
+        // Read it STRICTLY: `refreshController` swallows failures and returns
+        // null, which is also how "nobody is controlling" looks. So a timeout,
+        // a 429 or a 5xx made the code below decide the controller was free
+        // and send toggle_control — and toggle_control is a TOGGLE, so when
+        // ProDeck already held control that RELEASED it, and the next/previous
+        // that followed was silently ignored by Planning Center. Symptom:
+        // press Next mid-service, nothing moves, no error; press again and it
+        // works, because the second toggle re-takes control.
+        const c = await pcoLiveController(st, plan);
+        setController(c);
+        // Same reasoning for meId: if it is missing we cannot tell our own
+        // control from a teammate's, so refuse rather than guess.
+        if (c?.controllerId && !c.meId) {
+          setLiveError(
+            "Couldn't confirm who is controlling Planning Center Live — try again in a moment.",
+          );
+          return;
+        }
         const heldByOther = !!c?.controllerId && !!c.meId && c.controllerId !== c.meId;
         if (heldByOther) {
           setLiveError(

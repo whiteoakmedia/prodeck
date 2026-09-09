@@ -64,7 +64,19 @@ export function CrewJoin() {
     setBusy(true);
     try {
       if (mode === "register") {
-        await chat.register(name.trim(), p, role, invite);
+        try {
+          await chat.register(name.trim(), p, role, invite);
+        } catch (e) {
+          // "That name is taken — pick another name or log in" was a dead end:
+          // this screen has no log-in path at all when the device has been
+          // forgotten (Sign out completely, or the booth invalidating a stale
+          // session). A volunteer typing their OWN name was told to log in with
+          // no way to do it. If the name exists, the PIN they just typed is
+          // almost certainly theirs, so try it.
+          if (!/is taken/i.test(String(e))) throw e;
+          await chat.login(name.trim(), p);
+          return;
+        }
         if (invite) localStorage.removeItem(INVITE_KEY); // claimed
         localStorage.setItem(
           PENDING_AT_KEY,
