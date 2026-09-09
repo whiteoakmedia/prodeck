@@ -675,7 +675,12 @@ pub fn spawn_mirror(app: AppHandle) {
             // OSC consoles (X32/M32) are driven by x32.rs — this MIDI mirror
             // must not also connect, or two clients fight over the state.
             if !enabled || host.is_empty() || model.is_osc() {
-                set_connected(&app, &state, false);
+                // Only clear the flag this transport owns. When the desk is an
+                // OSC console the x32 task is the one holding it up, and this
+                // loop stomping it every 3 s read as "disconnected" all service.
+                if !model.is_osc() {
+                    set_connected(&app, &state, false);
+                }
                 std::thread::sleep(Duration::from_secs(3));
                 continue;
             }

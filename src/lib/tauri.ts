@@ -538,7 +538,31 @@ export const oscSendKey = (host: string, port: number, name: string, pc: number)
 // Planning Center
 // ---------------------------------------------------------------------------
 
-export const pcoGet = (path: string) => invoke<Json>("pco_get", { path });
+/// A failed Planning Center read, with the HTTP status kept separately from the
+/// message. Callers must branch on `.status` — the old code matched the error
+/// *text* for "PCO 404", which silently stopped working the moment that text was
+/// rewritten to be readable, pinning the live item forever and making "Take
+/// control" report an error for the perfectly normal nobody-is-controlling case.
+/// `toString()` is the clean message so the many `setStatus(String(e))` callers
+/// keep showing exactly what they showed before.
+export class PcoError extends Error {
+  readonly status: number;
+  constructor(raw: unknown) {
+    const text = String((raw as { message?: unknown })?.message ?? raw ?? "");
+    const m = /^PCO\/(\d{1,3}) ([\s\S]*)$/.exec(text);
+    super(m ? m[2] : text);
+    this.name = "PcoError";
+    this.status = m ? Number(m[1]) : 0;
+  }
+  toString() {
+    return this.message;
+  }
+}
+
+export const pcoGet = (path: string) =>
+  invoke<Json>("pco_get", { path }).catch((e) => {
+    throw new PcoError(e);
+  });
 export const pcoTest = () => invoke<Json>("pco_test");
 export const pcoStartSync = (serviceTypeId: string, planId: string) =>
   invoke<void>("pco_start_sync", { serviceTypeId, planId });

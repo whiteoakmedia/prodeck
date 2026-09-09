@@ -106,15 +106,20 @@ export interface WidgetDef {
 
 /* ----------------------------------------------------------- Widgets */
 
-// ProPresenter gate shared by every Pro widget. No host saved → teach (a
-// "Set up" button to the Pro card); a host saved but unreachable → offline
-// copy with no button, since the store's reconnect loop is already on it.
+// ProPresenter gate shared by every Pro widget. Never set up → teach (a
+// "Set up" button to the Pro card); set up but unreachable → offline copy with
+// no button, since the store's reconnect loop is already on it.
 // Before settings load we can't tell which, so keep the old neutral text
 // rather than flash a setup prompt at a configured booth.
+//
+// The test is `pp_auto_connect`, NOT `pp_host`: the host defaults to
+// "localhost", so it is never empty and the teach branch was unreachable. A
+// fresh install showed every Pro widget as "offline — reconnecting…" with no
+// way to get to the setup it had never done. Same signal `isFreshInstall` uses.
 function Disconnected() {
   const { settings } = useProDeck();
   if (!settings) return <div className="widget-empty">Not connected</div>;
-  if (!(settings.pp_host ?? "").trim()) return <NeedsPro />;
+  if (!settings.pp_auto_connect) return <NeedsPro />;
   return <NeedsPro offline />;
 }
 

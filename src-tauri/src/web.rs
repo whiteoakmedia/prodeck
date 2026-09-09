@@ -53,6 +53,12 @@ const FORWARD_EVENTS: &[&str] = &[
     "page:receipt",
     "checkin:changed",
     "posfiles:changed",
+    // Without these the OBS tile froze at whatever it read on page load, and a
+    // TapLink push failure was invisible on every phone and kiosk.
+    "obs:state",
+    "obs:status",
+    "tap:pushed",
+    "tap:error",
     "checklist:changed",
     "chat:confidence_clear",
     "identity:changed",
@@ -1153,7 +1159,11 @@ async fn dispatch(app: &AppHandle, cmd: &str, args: &Value, tier: Tier) -> Resul
             | "ga4_state"
             // "Are we live?" is a read every kiosk and phone should have.
             // Changing the scene is admin-only and absent from this list.
-            | "obs_state" => {}
+            | "obs_state"
+            // The console mirror is read-only and on the same kiosk tiles as
+            // obs_state; without it the desk widget reported "unreachable" on
+            // every browser even while the booth was mirroring fine.
+            | "avantis_state" => {}
             "chat_send" => {
                 let target = args.get("target").and_then(|v| v.as_str()).unwrap_or("");
                 if target != "team" {
@@ -1182,6 +1192,10 @@ async fn dispatch(app: &AppHandle, cmd: &str, args: &Value, tier: Tier) -> Resul
             set.web_invite_token = String::new();
             set.edge_admin_token = String::new();
             set.tap_token = String::new();
+            // The OBS WebSocket password is a real credential on the booth's
+            // network and was the one secret still going out in the clear —
+            // any member-tier phone could read it straight out of get_settings.
+            set.obs_password = String::new();
             // Not a secret itself, but it points straight at the private key —
             // browsers have no use for a booth-local filesystem path.
             set.ga4_key_path = String::new();
@@ -1480,6 +1494,12 @@ async fn dispatch(app: &AppHandle, cmd: &str, args: &Value, tier: Tier) -> Resul
                 // the secret away, leaving a permanent 401 with no clue why.
                 if new.pco_secret.as_deref().unwrap_or("").trim().is_empty() {
                     new.pco_secret = g.pco_secret.clone();
+                }
+                // Same rule as pco_secret: redacted on read, so a browser's
+                // round-trip sends it back empty — pin it then, but let a
+                // deliberately typed one through so OBS can be set up remotely.
+                if new.obs_password.trim().is_empty() {
+                    new.obs_password = g.obs_password.clone();
                 }
                 new.gemini_api_key = g.gemini_api_key.clone();
                 // Redacted in get_settings, so a browser round-trip would send it

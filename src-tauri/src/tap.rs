@@ -200,10 +200,18 @@ fn tap_config(app: &AppHandle) -> Option<(String, String)> {
 }
 
 /// Extract the first "tap:<keyword>" from slide notes (case-insensitive).
+/// Pull the TapLink keyword out of a slide's notes.
+///
+/// Spaces and tabs after the colon are skipped: every doc we've published shows
+/// `tap: give`, and that form used to parse to nothing — the keyword died at the
+/// space and the disc silently kept pointing wherever it already pointed, with
+/// no error anywhere. A newline still ends it, so a bare "tap:" on its own line
+/// can't swallow the next line as a keyword.
 fn parse_keyword(notes: &str) -> Option<String> {
     let lower = notes.to_lowercase();
     let start = lower.find("tap:")? + 4;
-    let kw: String = lower[start..]
+    let rest = lower[start..].trim_start_matches([' ', '\t']);
+    let kw: String = rest
         .chars()
         .take_while(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '-')
         .collect();
@@ -885,7 +893,13 @@ mod tests {
         assert_eq!(parse_keyword("tap:go"), Some("go".into()));
         assert_eq!(parse_keyword("Verse 2 — TAP:Go rest"), Some("go".into()));
         assert_eq!(parse_keyword("tap:default"), Some("default".into()));
-        assert_eq!(parse_keyword("tap: go"), None); // space breaks the keyword
+        // Every published example writes it with a space; both forms work.
+        assert_eq!(parse_keyword("tap: give"), Some("give".into()));
+        assert_eq!(parse_keyword("tap:\tgive"), Some("give".into()));
+        assert_eq!(parse_keyword("TAP:   Give"), Some("give".into()));
+        // A newline still terminates, so a stray "tap:" can't eat the next line.
+        assert_eq!(parse_keyword("tap:\ngive"), None);
+        assert_eq!(parse_keyword("tap:"), None);
         assert_eq!(parse_keyword("no keyword here"), None);
         assert_eq!(parse_keyword("multitap:small-groups!"), Some("small-groups".into()));
     }

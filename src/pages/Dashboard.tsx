@@ -342,7 +342,31 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: any) => void }) {
         >
           {active.widgets.map((w) => {
             const def = WIDGET_MAP[w.type];
-            if (!def) return <div key={w.id} />;
+            // An unrecognised type still gets a full shell with a remove button.
+            // A bare <div> left a blank tile holding its grid space that could
+            // not be deleted — which is what a stale template id, or a layout
+            // restored from a newer build, looked like on screen.
+            if (!def)
+              return (
+                <div key={w.id} className="widget">
+                  <div className="widget-bar widget-drag">
+                    <span className="widget-title">Unknown widget</span>
+                    {editing && (
+                      <button
+                        className="widget-remove"
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={() => removeWidget(w.id)}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                  <div className="widget-body widget-empty">
+                    This layout uses a widget this version doesn't have
+                    ("{w.type}"). Edit the dashboard to remove it.
+                  </div>
+                </div>
+              );
             const Comp = def.component;
             return (
               <div key={w.id} className="widget">

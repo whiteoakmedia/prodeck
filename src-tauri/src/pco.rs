@@ -196,6 +196,21 @@ pub(crate) async fn pco_request(
     secret: &str,
     path: &str,
 ) -> Result<serde_json::Value, String> {
+    pco_request_coded(app_id, secret, path).await.map_err(|(_, msg)| msg)
+}
+
+/// `pco_request` that keeps the HTTP status code.
+///
+/// A 404 is a *normal* answer in two places — nobody holds the LIVE controller,
+/// and the plan has no live item — so those callers must recognise it. They used
+/// to match the substring "PCO 404" in the error text, which silently stopped
+/// working the moment that text was rewritten to be readable. Network failures
+/// (no response at all) report code 0, which is never mistaken for a 404.
+pub(crate) async fn pco_request_coded(
+    app_id: &str,
+    secret: &str,
+    path: &str,
+) -> Result<serde_json::Value, (u16, String)> {
     let url = if path.starts_with("http") {
         path.to_string()
     } else {
@@ -204,21 +219,22 @@ pub(crate) async fn pco_request(
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(15))
         .build()
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| (0, e.to_string()))?;
     let resp = client
         .get(&url)
         .basic_auth(app_id, Some(secret))
         .header("User-Agent", "ProDeck/0.1")
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| (0, e.to_string()))?;
     let status = resp.status();
     if !status.is_success() {
         let body = resp.text().await.unwrap_or_default();
         let snippet: String = body.chars().take(300).collect();
-        return Err(explain_pco_error(status.as_u16(), &status.to_string(), &snippet));
+        let code = status.as_u16();
+        return Err((code, explain_pco_error(code, &status.to_string(), &snippet)));
     }
-    resp.json().await.map_err(|e| e.to_string())
+    resp.json().await.map_err(|e| (0, e.to_string()))
 }
 
 #[cfg(test)]
@@ -256,7 +272,12 @@ pub async fn pco_get(
     settings: tauri::State<'_, SettingsState>,
 ) -> Result<serde_json::Value, String> {
     let (a, b) = creds(&settings)?;
-    pco_request(&a, &b, &path).await
+    // The HTTP status rides at the front of the error, machine-readable. The UI
+    // layer (`pcoGet` in lib/tauri.ts) strips it before anything is displayed,
+    // so callers can branch on 404 without matching English prose.
+    pco_request_coded(&a, &b, &path)
+        .await
+        .map_err(|(code, msg)| format!("PCO/{code} {msg}"))
 }
 
 /// Verify credentials by fetching the authenticated user.
@@ -327,16 +348,17 @@ pub async fn pco_live_controller(
         "services/v2/service_types/{}/plans/{}/live/controller",
         service_type_id, plan_id
     );
-    let (controller_id, controller_name) = match pco_request(&a, &b, &path).await {
+    let (controller_id, controller_name) = match pco_request_coded(&a, &b, &path).await {
         Ok(v) => (
             v.pointer("/data/id").and_then(|x| x.as_str()).map(str::to_string),
             v.pointer("/data/attributes/full_name")
                 .and_then(|x| x.as_str())
                 .map(str::to_string),
         ),
-        // 404 = nobody has taken control yet.
-        Err(e) if e.contains("PCO 404") => (None, None),
-        Err(e) => return Err(e),
+        // 404 = nobody has taken control yet. This is the ordinary state of a
+        // plan before anyone presses Take control, NOT an error to show.
+        Err((404, _)) => (None, None),
+        Err((_, msg)) => return Err(msg),
     };
     let me_id = pco_request(&a, &b, "people/v2/me")
         .await
@@ -455,7 +477,8 @@ pub async fn pco_start_sync(
             }
             first = false;
             // LIVE current item — may 404 when the plan isn't live; that's fine.
-            let live = pco_request(&app_id, &secret, &live_path(&service_type_id, &plan_id)).await;
+            let live =
+                pco_request_coded(&app_id, &secret, &live_path(&service_type_id, &plan_id)).await;
             if current(&running) {
                 match live {
                     Ok(v) => {
@@ -468,7 +491,7 @@ pub async fn pco_start_sync(
                         // un-tracked the running item and made auto-advance
                         // re-fire its presentation when the next poll recovered
                         // — yanking ProPresenter mid-service.
-                        if e.contains("PCO 404") {
+                        if e.0 == 404 {
                             app2.emit("pco:live", serde_json::Value::Null).ok();
                         }
                     }

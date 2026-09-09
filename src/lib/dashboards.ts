@@ -52,7 +52,7 @@ export const DASHBOARD_TEMPLATES: DashboardTemplate[] = [
       mk("run_order", 5, 2, 4, 4),
       mk("timer", 9, 2, 3, 3),
       mk("clock", 9, 5, 3, 2),
-      mk("mic_wall", 0, 7, 12, 6),
+      mk("avantis", 0, 7, 12, 6),
     ],
   },
   {
@@ -92,7 +92,7 @@ export const DASHBOARD_TEMPLATES: DashboardTemplate[] = [
     name: "Mics & Worship Team",
     blurb: "The mic channel wall, assignment grid, team roster, and set order.",
     build: () => [
-      mk("mic_wall", 0, 0, 12, 6),
+      mk("avantis", 0, 0, 12, 6),
       mk("mic_assignment", 0, 6, 5, 5),
       mk("people", 5, 6, 3, 5),
       mk("run_order", 8, 6, 4, 4),

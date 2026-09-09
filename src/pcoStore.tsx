@@ -16,6 +16,7 @@ import {
   IS_WEB,
   loadPcoData,
   on,
+  PcoError,
   pcoGet,
   pcoLiveAction,
   pcoLiveController,
@@ -874,7 +875,7 @@ export function PcoProvider({ children }: { children: ReactNode }) {
       // 5xx) must NOT clear the live item — that un-tracked it and re-armed
       // auto-advance, which re-fired the presentation when the next poll
       // recovered.
-      if (String(e).includes("PCO 404")) setLiveItemId(null);
+      if (e instanceof PcoError && e.status === 404) setLiveItemId(null);
     }
   }
 

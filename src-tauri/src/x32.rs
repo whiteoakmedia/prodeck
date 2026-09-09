@@ -25,6 +25,10 @@ use serde_json::json;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 
+/// The X32/M32 remote-control port. Fixed in the console's firmware — there is
+/// no setting for it on the desk — but `avantis_port` is offered in Settings and
+/// used to be saved and then ignored here, so an operator who changed it got a
+/// mirror that silently never connected. It is honoured now, defaulting to this.
 const PORT: u16 = 10023;
 /// The console drops us after 10 s of silence; renew comfortably inside that.
 const XREMOTE_SECS: u64 = 8;
@@ -168,13 +172,22 @@ fn msg(addr: &str, args: Vec<OscType>) -> Result<Vec<u8>, String> {
     .map_err(|e| e.to_string())
 }
 
-fn settings(app: &AppHandle) -> (bool, String, DeskModel) {
+fn settings(app: &AppHandle) -> (bool, String, DeskModel, u16) {
     let st = app.state::<crate::settings::SettingsState>();
     let s = st.lock().unwrap_or_else(|p| p.into_inner());
+    // avantis_port carries the A&H MIDI-over-TCP port (51325) for those desks;
+    // an X32 install that never touched it would inherit that meaningless value,
+    // so anything outside the OSC range falls back to the console's own port.
+    let port = if s.avantis_port == 0 || s.avantis_port == 51325 {
+        PORT
+    } else {
+        s.avantis_port
+    };
     (
         s.avantis_enabled,
         s.avantis_host.clone(),
         DeskModel::parse(&s.avantis_model),
+        port,
     )
 }
 
@@ -239,12 +252,14 @@ pub fn spawn_mirror(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
         let state: AvantisState = app.state::<AvantisState>().inner().clone();
         loop {
-            let (enabled, host, model) = settings(&app);
+            let (enabled, host, model, port) = settings(&app);
             if !enabled || host.trim().is_empty() || !model.is_osc() {
                 tokio::time::sleep(Duration::from_secs(3)).await;
                 continue;
             }
-            if let Err(e) = session(&app, &state, &host, (enabled, host.clone(), model)).await {
+            if let Err(e) =
+                session(&app, &state, &host, port, (enabled, host.clone(), model, port)).await
+            {
                 crate::diag::log(format!("[x32] {e}"));
             }
             set_connected(&app, &state, false);
@@ -257,12 +272,13 @@ async fn session(
     app: &AppHandle,
     state: &AvantisState,
     host: &str,
-    cfg: (bool, String, DeskModel),
+    port: u16,
+    cfg: (bool, String, DeskModel, u16),
 ) -> Result<(), String> {
     let sock = tokio::net::UdpSocket::bind(("0.0.0.0", 0))
         .await
         .map_err(|e| e.to_string())?;
-    sock.connect((host.trim(), PORT)).await.map_err(|e| e.to_string())?;
+    sock.connect((host.trim(), port)).await.map_err(|e| e.to_string())?;
 
     // Subscribe, then read everything once.
     sock.send(&msg("/xremote", vec![])?).await.map_err(|e| e.to_string())?;
@@ -327,14 +343,14 @@ fn apply_packet(s: &mut crate::avantis::AvantisInner, packet: OscPacket) -> bool
 // ---- control (admin tier only; routed here from the desk commands) --------
 
 async fn fire(app: &AppHandle, addr: &str, args: Vec<OscType>) -> Result<(), String> {
-    let (enabled, host, model) = settings(app);
+    let (enabled, host, model, port) = settings(app);
     if !enabled || host.trim().is_empty() || !model.is_osc() {
         return Err("no X32/M32 configured".into());
     }
     let sock = tokio::net::UdpSocket::bind(("0.0.0.0", 0))
         .await
         .map_err(|e| e.to_string())?;
-    sock.connect((host.trim(), PORT)).await.map_err(|e| e.to_string())?;
+    sock.connect((host.trim(), port)).await.map_err(|e| e.to_string())?;
     sock.send(&msg(addr, args)?).await.map_err(|e| e.to_string())?;
     Ok(())
 }
