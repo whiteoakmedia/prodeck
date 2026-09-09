@@ -142,8 +142,15 @@ fn apply_stream(s: &mut ObsInner, d: &Value) {
     if let Some(v) = d.get("outputDuration").and_then(|v| v.as_u64()) {
         s.stream_ms = v;
     }
-    // Explicitly null when OBS cannot reach the ingest server.
-    s.congestion = d.get("outputCongestion").and_then(|v| v.as_f64());
+    // Explicitly null when OBS cannot reach the ingest server — but ONLY a
+    // GetStreamStatus response actually carries the field. The StreamStateChanged
+    // EVENT carries just outputActive/outputState, so clearing it there set
+    // streaming=true and congestion=None in the same breath and the widget
+    // rendered a red "no connection to the stream service" at the exact moment
+    // you went live, until the 2s poll refilled it.
+    if d.get("outputCongestion").is_some() || d.get("outputTotalFrames").is_some() {
+        s.congestion = d.get("outputCongestion").and_then(|v| v.as_f64());
+    }
     if let Some(v) = d.get("outputSkippedFrames").and_then(|v| v.as_u64()) {
         s.skipped_frames = v;
     }
@@ -485,9 +492,16 @@ mod tests {
         assert_eq!(s.congestion, None, "null congestion must not become 0.0");
         apply_stream(&mut s, &json!({ "outputCongestion": 0.42 }));
         assert_eq!(s.congestion, Some(0.42));
-        // A later payload without the field clears it rather than going stale.
-        apply_stream(&mut s, &json!({ "outputActive": true }));
+        // A STATUS payload without the field clears it rather than going stale
+        // (outputTotalFrames marks it as a status response).
+        apply_stream(&mut s, &json!({ "outputActive": true, "outputTotalFrames": 100 }));
         assert_eq!(s.congestion, None);
+        // But a bare StreamStateChanged EVENT must leave it alone. This test
+        // used to pin the opposite, which is how the false "no connection to
+        // the stream service" at go-live survived.
+        apply_stream(&mut s, &json!({ "outputCongestion": 0.5, "outputTotalFrames": 1 }));
+        apply_stream(&mut s, &json!({ "outputActive": true, "outputState": "OBS_WEBSOCKET_OUTPUT_STARTED" }));
+        assert_eq!(s.congestion, Some(0.5), "an event must not clear congestion");
     }
 
     #[test]

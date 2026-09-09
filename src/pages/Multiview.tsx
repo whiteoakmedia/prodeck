@@ -10,6 +10,8 @@ interface Tile {
 export function Multiview() {
   const [sources, setSources] = useState<NdiSource[]>([]);
   const [tiles, setTiles] = useState<Tile[]>([]);
+  /// Sources whose ndiStart is in flight — a second tap must not start again.
+  const starting = useRef<Set<string>>(new Set());
   const [scanning, setScanning] = useState(false);
 
   // Leaving the page must stop the tiles' receivers — without this they kept
@@ -33,9 +35,22 @@ export function Multiview() {
   }
 
   async function addTile(source: NdiSource) {
+    // The guard used to read the render closure and then await, so a double
+    // tap added the tile twice AND took two references on the backend
+    // receiver. removeTile filtered both tiles out but issued one ndi_stop, so
+    // the refcount stuck at 1 and the booth Mac kept capturing and
+    // JPEG-encoding that camera at ~15fps for the rest of the day.
+    if (starting.current.has(source.name)) return;
     if (tiles.some((t) => t.source.name === source.name)) return;
-    const port = await ndiStart(source.name).catch(() => null);
-    setTiles((prev) => [...prev, { source, port }]);
+    starting.current.add(source.name);
+    try {
+      const port = await ndiStart(source.name).catch(() => null);
+      setTiles((prev) =>
+        prev.some((t) => t.source.name === source.name) ? prev : [...prev, { source, port }],
+      );
+    } finally {
+      starting.current.delete(source.name);
+    }
   }
 
   async function removeTile(name: string) {

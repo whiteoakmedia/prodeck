@@ -313,6 +313,7 @@ pub(crate) async fn start_receiver(
         return Err("NDI runtime not found — install NDI Tools or the NDI SDK.".into());
     }
     let mut mgr = state.lock().await;
+    let mut carried: u32 = 0;
     if let Some(r) = mgr.receivers.get_mut(&source_name) {
         // A receiver whose capture died (source vanished, recv failed) stays in
         // the map with running=false — treat it as absent so a retry actually
@@ -321,6 +322,11 @@ pub(crate) async fn start_receiver(
             r.refs += 1;
             return Ok(r.port);
         }
+        // Carry the reference count across the restart. Re-inserting with
+        // refs: 1 discarded the real consumer count, so if three widgets were
+        // watching a camera, the next single stop dropped it to zero and tore
+        // the feed down for the other two.
+        carried = r.refs;
         mgr.receivers.remove(&source_name);
     }
 
@@ -346,7 +352,7 @@ pub(crate) async fn start_receiver(
     }
 
     mgr.receivers
-        .insert(source_name.clone(), Receiver { running, port, refs: 1 });
+        .insert(source_name.clone(), Receiver { running, port, refs: carried.max(1) });
     app.emit(
         "ndi:stream_started",
         serde_json::json!({ "port": port, "source": source_name }),

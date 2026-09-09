@@ -7519,3 +7519,28 @@ select.input {
   font-size: 11px;
   color: var(--live);
 }
+
+/* Confidence banner — read from a distance, on a screen facing the stage. */
+.w-confidence {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  padding: 10px;
+  border-radius: 8px;
+}
+.w-confidence.live {
+  background: var(--warn-soft);
+  border: 1px solid var(--warn);
+}
+.w-confidence.live strong {
+  font-size: clamp(20px, 5vw, 46px);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.w-confidence.idle {
+  border: 1px dashed var(--border);
+}

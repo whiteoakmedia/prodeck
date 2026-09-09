@@ -620,7 +620,11 @@ async fn handle_conn(
                 if pl.is_empty() {
                     Err("no standing loop — set Auto-restore in the Lobby TVs widget first".into())
                 } else {
-                    dispatch(&app, "pp_get", &json!({"path": format!("playlist/{}/{}/trigger", pl, idx)}), Tier::Admin).await
+                    // pp_action, not pp_get: pp_get discards the HTTP status,
+                    // so a trigger against a stale playlist id reported success
+                    // while the lobby TVs stayed dark. pp_action exists exactly
+                    // to surface that.
+                    dispatch(&app, "pp_action", &json!({"path": format!("playlist/{}/{}/trigger", pl, idx)}), Tier::Admin).await
                 }
             }
             "macro" => {

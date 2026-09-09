@@ -122,9 +122,17 @@ export function ChartSheet({
 
   const keys = keyOptions(targetKey || chartKey || "C");
   const step = (dir: number) => {
-    const cur = keys.findIndex((k) => k === (targetKey || chartKey));
+    // keyOptions returns bare MAJOR names, so an exact match failed for every
+    // minor key ("Am", "F#m") and the ♯▲/♭▼ buttons did nothing at all — on
+    // exactly the songs a worship leader is most likely to transpose. Compare
+    // on the root and carry the quality through.
+    const cur0 = targetKey || chartKey || "C";
+    const m = /^([A-G][#b]?)(.*)$/.exec(cur0);
+    if (!m) return;
+    const [, root, quality] = m;
+    const cur = keys.findIndex((k) => k === root);
     if (cur < 0) return;
-    setTargetKey(keys[(cur + dir + 12) % 12]);
+    setTargetKey(keys[(cur + dir + 12) % 12] + quality);
   };
 
   return (

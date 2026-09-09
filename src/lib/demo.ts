@@ -477,6 +477,26 @@ export async function demoInvoke<T>(cmd: string, args?: Record<string, unknown>)
     setTimeout(() => demoSetStageMessage(""), 120);
     return out(null);
   }
+  // Chat broadcasts, echoed back so the stage/confidence surfaces demonstrate
+  // themselves. Same reasoning as the stage message: a control that visibly
+  // does nothing in demo mode reads as broken, not as "saves nothing".
+  if (cmd === "chat_send") {
+    const a = (args ?? {}) as Record<string, unknown>;
+    const msg = {
+      id: Date.now(),
+      from: String(a.from ?? "Booth"),
+      text: String(a.text ?? ""),
+      target: String(a.target ?? "team"),
+      channel: String(a.channel ?? "team"),
+      ts: Date.now(),
+    };
+    setTimeout(() => emit("chat:message", msg), 120);
+    return out(msg);
+  }
+  if (cmd === "chat_clear_confidence") {
+    setTimeout(() => emit("chat:confidence_clear", {}), 120);
+    return out(null);
+  }
   if (WRITES.test(cmd)) return out(null);
   // Reads we don't model return the SHAPE the caller expects — a demo that
   // hands back null where an array was expected crashes the page.

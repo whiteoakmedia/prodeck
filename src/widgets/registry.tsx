@@ -31,6 +31,9 @@ import {
   ndiStart,
   ndiStop,
   on,
+  chatHistory,
+  type ChatMsg,
+  ppAction,
   ppClearLayer,
   ppClearStageMessage,
   ppGet,
@@ -207,7 +210,7 @@ function ObsWidget() {
       {snap.streaming && (
         <div className="obs-stats">
           <span className={`obs-stat ${dropState}`}>
-            {dropped.toFixed(dropped >= 1 ? 1 : 2)}% dropped
+            {dropped.toFixed(dropped >= 1 ? 1 : 2)}% skipped (encoder)
           </span>
           <span className={`obs-stat ${snap.congestion === null ? "bad" : "ok"}`}>
             {snap.congestion === null
@@ -2481,7 +2484,9 @@ function LobbyTvWidget(_: WidgetProps) {
     setBusy(b.name);
     setErr("");
     try {
-      await ppGet(`playlist/${b.pl}/${b.index}/trigger`);
+      // ppAction, not ppGet: ppGet ignores the HTTP status, so a stale
+      // playlist id flashed success while the TVs stayed dark.
+      await ppAction(`playlist/${b.pl}/${b.index}/trigger`);
       setActive(b.name);
     } catch (e) {
       setErr(String(e));
@@ -2740,6 +2745,68 @@ const DEFAULT_STAGE_PRESETS = [
   "Wrap up",
 ];
 
+/**
+ * Confidence Banner — the message the booth sends to the people on stage.
+ *
+ * chat.rs has always described "confidence" as taking over confidence-screen
+ * widgets as a big banner, and the whole backend for it shipped: the target is
+ * validated, the message is broadcast, `chat:confidence_clear` is emitted and
+ * forwarded to browsers, and there is a TTL constant. The widget itself never
+ * existed. So the Confidence destination and the "Clear confidence banner"
+ * button were both UI that did nothing at all — and nothing said so.
+ *
+ * Put this on the dashboard you point at a confidence monitor.
+ */
+const CONFIDENCE_TTL_MS = 60_000;
+
+function ConfidenceWidget({ widget }: WidgetProps) {
+  const [msg, setMsg] = useState<ChatMsg | null>(null);
+  const [, setTick] = useState(0);
+  const hold: number = widget.config.holdSecs
+    ? Number(widget.config.holdSecs) * 1000
+    : CONFIDENCE_TTL_MS;
+
+  useEffect(() => {
+    // A banner sent before this screen was opened should still be up.
+    chatHistory()
+      .then((all) => {
+        const last = [...all].reverse().find((m) => m.target === "confidence");
+        if (last && Date.now() - last.ts < hold) setMsg(last);
+      })
+      .catch(() => {});
+    const subs = [
+      on<ChatMsg>("chat:message", (m) => {
+        if (m.target === "confidence") setMsg(m);
+      }),
+      on("chat:confidence_clear", () => setMsg(null)),
+    ];
+    // Re-render so the banner expires on its own rather than waiting for the
+    // next message to arrive.
+    const t = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => {
+      clearInterval(t);
+      subs.forEach((u) => u.then((fn) => fn()).catch(() => {}));
+    };
+  }, [hold]);
+
+  const live = msg && Date.now() - msg.ts < hold ? msg : null;
+  if (!live)
+    return (
+      <div className="w-confidence idle">
+        <span className="muted small">
+          Nothing on the confidence screens. Send to <strong>Confidence</strong> from team
+          chat to put a message here.
+        </span>
+      </div>
+    );
+  return (
+    <div className="w-confidence live">
+      <strong>{live.text}</strong>
+      <span className="muted small">{live.from}</span>
+    </div>
+  );
+}
+
 export const WIDGETS: WidgetDef[] = [
   // Mission Control — director overview
   { type: "health_strip", label: "System Health", group: "Mission Control", w: 12, h: 2, component: HealthStripWidget },
@@ -2754,6 +2821,7 @@ export const WIDGETS: WidgetDef[] = [
   { type: "tap_link", label: "TapLink (NFC)", group: "ProPresenter", w: 4, h: 3, component: TapLinkWidget },
   { type: "lobby_tv", label: "Lobby TVs (Announcements)", group: "ProPresenter", w: 4, h: 3, component: LobbyTvWidget },
   { type: "stage_message", label: "Stage Message (Alerts)", group: "ProPresenter", w: 4, h: 4, component: StageMessageWidget },
+  { type: "confidence", label: "Confidence Banner", group: "ProPresenter", w: 6, h: 3, component: ConfidenceWidget },
   // Planning Center
   { type: "show_flow", label: "Show Flow", group: "Planning Center", w: 4, h: 6, component: ShowFlowWidget },
   { type: "plan_item", label: "Now / Next", group: "Planning Center", w: 4, h: 3, component: PlanItemWidget },

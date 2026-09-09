@@ -381,8 +381,12 @@ pub fn page_rebuzz(
     page_id: u64,
     pages: tauri::State<'_, PagesState>,
     app: AppHandle,
-) -> Result<usize, String> {
-    rebuzz_core(&app, pages.inner(), page_id)
+) -> Result<serde_json::Value, String> {
+    // Shaped like the gateway's answer. The web path wrapped the count as
+    // {"buzzed": n} while this returned a bare number, so the booth desktop
+    // printed "Re-buzzed undefined."
+    let n = rebuzz_core(&app, pages.inner(), page_id)?;
+    Ok(serde_json::json!({ "buzzed": n }))
 }
 
 #[tauri::command]

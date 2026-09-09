@@ -164,10 +164,17 @@ export function RelayProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // ---- start/stop transport when mode changes (and once on mount)
+  //
+  // Debounced, because hostPort and clientUrl are updated on every KEYSTROKE
+  // by the Settings fields. Editing the port while hosting used to drop and
+  // re-bind the server on each character — disconnecting every client — and
+  // editing the URL in client mode dialled each half-typed address in turn.
   useEffect(() => {
-    if (mode === "host") relayStartHost(hostPort).catch(() => {});
-    else if (mode === "client" && clientUrl) relayConnectClient(clientUrl).catch(() => {});
-    else relayStop().catch(() => {});
+    const t = setTimeout(() => {
+      if (mode === "host") relayStartHost(hostPort).catch(() => {});
+      else if (mode === "client" && clientUrl) relayConnectClient(clientUrl).catch(() => {});
+      else relayStop().catch(() => {});
+    }, 600);
     if (mode !== "client") setConnected(false);
     if (mode !== "host") setClients(0);
     if (mode !== "client") {
@@ -175,6 +182,7 @@ export function RelayProvider({ children }: { children: ReactNode }) {
       setDashboards(null);
       setNdiSources([]);
     }
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, hostPort, clientUrl]);
 

@@ -170,8 +170,14 @@ export function PlaylistControl({
       return;
     }
     setLoading(true);
+    // Sequence guard: selecting playlist A then B before A resolves used to let
+    // A's response land last, so `items` described A while `sel` was B — and
+    // trigger() then fired B's playlist at A's index, putting the wrong
+    // presentation on the house screens.
+    let live = true;
     ppGet(`playlist/${encodeURIComponent(sel)}`)
       .then((j: any) => {
+        if (!live) return;
         const raw = j?.items ?? j?.playlist?.items ?? [];
         const its: PlItem[] = (Array.isArray(raw) ? raw : [])
           // rawIdx is the item's position in the playlist — that's the index the
@@ -194,8 +200,15 @@ export function PlaylistControl({
         // On the spacious page, open every song so all slides are visible.
         setOpen(page ? new Set(its.map((i) => i.itemUuid)) : new Set());
       })
-      .catch(() => setItems([]))
-      .finally(() => setLoading(false));
+      .catch(() => {
+        if (live) setItems([]);
+      })
+      .finally(() => {
+        if (live) setLoading(false);
+      });
+    return () => {
+      live = false;
+    };
   }, [connected, sel, page]);
 
   // Load slide lists for any open song that doesn't have them yet. Keyed by
