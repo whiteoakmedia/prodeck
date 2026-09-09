@@ -51,6 +51,9 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: any) => void }) {
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
   const [pickQuery, setPickQuery] = useState("");
+  const [saveError, setSaveError] = useState("");
+  // The widget just added, so it can be scrolled to and briefly marked.
+  const [justAdded, setJustAdded] = useState<string | null>(null);
   const loaded = useRef(false);
   const lastSaved = useRef("");
   // On phones the 12-column drag grid is unusable, so stack widgets in one
@@ -78,16 +81,26 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: any) => void }) {
     })();
   }, []);
 
-  // Persist (debounced) whenever dashboards change — except on a relay client
-  // (mirrors the host's dashboards) or a browser client (the booth app owns
-  // dashboards.json; a phone's stale copy must not overwrite it).
+  // Persist (debounced) whenever dashboards change — except on a relay client,
+  // which mirrors the host's dashboards and would fight its own next update.
+  //
+  // Browsers used to be excluded too, and the gateway refused the write on top
+  // of that. The result was that adding a widget from a phone or a laptop
+  // looked like it worked and was silently gone on the next load. Both halves
+  // are lifted; a failure is now shown rather than swallowed, because a save
+  // that quietly does nothing is the bug this replaced.
   useEffect(() => {
-    if (!loaded.current || relay.mode === "client" || IS_WEB) return;
+    if (!loaded.current || relay.mode === "client") return;
     const json = JSON.stringify(dashboards);
     if (json === lastSaved.current) return;
     const t = setTimeout(() => {
       lastSaved.current = json;
-      saveDashboards(dashboards).catch(() => {});
+      saveDashboards(dashboards).catch((e) => {
+        // Let it be retried: the next edit must not be skipped by the
+        // unchanged-since-last-save check above.
+        lastSaved.current = "";
+        setSaveError(String(e));
+      });
     }, 400);
     return () => clearTimeout(t);
   }, [dashboards, relay.mode]);
@@ -140,16 +153,49 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: any) => void }) {
   function addWidget(type: string) {
     const def = WIDGET_MAP[type];
     const nextY = active.widgets.reduce((m, w) => Math.max(m, w.y + w.h), 0);
+    const id = newId();
     patchActive((d) => ({
       ...d,
-      widgets: [
-        ...d.widgets,
-        { id: newId(), type, x: 0, y: nextY, w: def.w, h: def.h, config: {} },
-      ],
+      widgets: [...d.widgets, { id, type, x: 0, y: nextY, w: def.w, h: def.h, config: {} }],
     }));
     setAdding(false);
     setPickQuery("");
+    // A new widget goes to the BOTTOM of the layout. On a full dashboard that
+    // is well below the fold, so the picker closed and — from where the user
+    // was looking — nothing happened. Reported as "adding widgets isn't
+    // working". Scroll to it and mark it for a moment so the click has a
+    // visible result.
+    setJustAdded(id);
   }
+
+  // Scroll the newly added widget into view once the grid has actually placed
+  // it. A single attempt right after the click is too early: react-grid-layout
+  // positions the new tile on a later frame, so the scroll targeted its
+  // pre-layout position and moved the page by a couple of dozen pixels while
+  // the widget itself ended up a thousand pixels further down — still invisible,
+  // which is the whole complaint. Re-aiming a few times as the layout settles
+  // is cheap and needs no hook into the grid's internals.
+  useEffect(() => {
+    if (!justAdded) return;
+    let tries = 0;
+    let timer = 0;
+    const aim = () => {
+      // Deliberately instant, not "smooth": a smooth scroll is a no-op for
+      // anyone with reduced motion enabled (and in some embedded browsers),
+      // which would have left the widget off-screen for exactly the people
+      // least likely to notice it slide past. Landing there is the point.
+      document
+        .querySelector(`[data-wid="${justAdded}"]`)
+        ?.scrollIntoView({ behavior: "auto", block: "center" });
+      if (++tries < 5) timer = window.setTimeout(aim, 140);
+    };
+    timer = window.setTimeout(aim, 60);
+    const clear = window.setTimeout(() => setJustAdded(null), 2600);
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(clear);
+    };
+  }, [justAdded]);
 
   function removeWidget(id: string) {
     patchActive((d) => ({ ...d, widgets: d.widgets.filter((w) => w.id !== id) }));
@@ -242,6 +288,15 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: any) => void }) {
         </div>
       )}
 
+      {saveError && (
+        <div className="banner dash-banner">
+          Couldn't save this dashboard — {saveError}
+          <button className="btn small" onClick={() => setSaveError("")}>
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {adding && (
         <div className="wpick">
           <input
@@ -309,7 +364,8 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: any) => void }) {
             return (
               <div
                 key={w.id}
-                className="widget"
+                data-wid={w.id}
+                className={`widget ${justAdded === w.id ? "widget-new" : ""}`}
                 style={{ minHeight: Math.min(440, Math.max(150, w.h * 62)) }}
               >
                 <div className="widget-bar">
@@ -369,7 +425,11 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: any) => void }) {
               );
             const Comp = def.component;
             return (
-              <div key={w.id} className="widget">
+              <div
+                key={w.id}
+                data-wid={w.id}
+                className={`widget ${justAdded === w.id ? "widget-new" : ""}`}
+              >
                 <div className="widget-bar widget-drag">
                   <span className="widget-title">{def.label}</span>
                   {editing && (

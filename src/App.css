@@ -7428,3 +7428,86 @@ select.input {
   background-image: linear-gradient(var(--bad-soft), var(--bad-soft));
   border-color: var(--bad);
 }
+
+/* ---------------------------------------------------------------------------
+   Stage Message widget + the "just added" marker
+   ------------------------------------------------------------------------ */
+
+/* A new widget lands at the bottom of the layout, often off-screen. The page
+   scrolls to it; this makes it obvious which one arrived once you get there. */
+.widget.widget-new {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  animation: widget-new-pulse 2.2s ease-out;
+}
+@keyframes widget-new-pulse {
+  0%,
+  55% {
+    box-shadow: 0 0 0 6px var(--accent-soft);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.w-stagemsg {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+.w-stagemsg-live {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+}
+.w-stagemsg-live strong {
+  font-size: 17px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.w-stagemsg-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.w-stagemsg-liveactions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.w-stagemsg-idle {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px dashed var(--border);
+}
+.w-stagemsg-send {
+  display: flex;
+  gap: 6px;
+}
+.w-stagemsg-send .input {
+  flex: 1;
+  min-width: 0;
+}
+.w-stagemsg-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  overflow-y: auto;
+  min-height: 0;
+}
+.w-stagemsg-edit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}

@@ -1471,9 +1471,25 @@ async fn dispatch(app: &AppHandle, cmd: &str, args: &Value, tier: Tier) -> Resul
         // these here made every open phone a competing whole-file writer —
         // last-writer-wins clobbered the booth's real analytics/config every
         // few seconds. Browsers are viewers/controllers, not data owners.
-        "save_checklists" | "save_dashboards" | "save_pco_data" | "save_tracking"
+        "save_checklists" | "save_pco_data" | "save_tracking"
         | "save_reports" | "save_schedules" | "save_routing" => {
             Err("read-only over the web gateway (the booth app owns this data)".into())
+        }
+        // Dashboards are the exception to the rule above, because they are the
+        // one file here that ONLY changes when a person deliberately edits it —
+        // the others the booth rewrites continuously on its own, which is what
+        // made every open browser a competing whole-file writer.
+        //
+        // Refusing this made adding a widget from a phone or a laptop look like
+        // it worked and then silently discard it on the next load, with no
+        // error anywhere. Admin tier only: this arm is unreachable for members,
+        // who are stopped by the allowlist above.
+        "save_dashboards" => {
+            let data = args.get("data").cloned().unwrap_or(Value::Null);
+            if !data.is_array() {
+                return Err("save_dashboards: expected an array".into());
+            }
+            crate::settings::save_dashboards(data).map(|_| Value::Null)
         }
         "update_settings" => {
             let mut new: Settings =

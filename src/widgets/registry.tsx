@@ -9,6 +9,7 @@ import { SlideThumb } from "../components/SlideThumb";
 import {
   activePresentation,
   currentSlideIndex,
+  stageMessageText,
 } from "../lib/status";
 import { useLiveTimers } from "../lib/liveTimers";
 import { useTracking } from "../trackingStore";
@@ -31,7 +32,9 @@ import {
   ndiStop,
   on,
   ppClearLayer,
+  ppClearStageMessage,
   ppGet,
+  ppSetStageMessage,
   ppTimerOp,
   startAudioCapture,
   stopAudioCapture,
@@ -2556,6 +2559,185 @@ function LobbyTvWidget(_: WidgetProps) {
   );
 }
 
+/**
+ * Stage Message — put a line on the stage displays and take it off again.
+ *
+ * The reason this exists is the child alert: a kids worker needs a parent, and
+ * the only person who can reach the stage is whoever is sitting at the booth
+ * computer with ProPresenter's own window open. This puts it on any dashboard,
+ * including a phone, so the person who actually knows about the alert can send
+ * it themselves.
+ *
+ * A stage message stays up until something takes it down, which is exactly the
+ * wrong default for an alert — one left up all service is worse than one never
+ * sent. So there is an optional auto-clear with a visible countdown. It runs in
+ * this widget, so it only counts down while a dashboard showing it is open;
+ * that is stated on screen rather than assumed, and Keep up cancels it.
+ */
+function StageMessageWidget({ widget, update, editing }: WidgetProps) {
+  const { connected, status } = useProDeck();
+  const live = stageMessageText(status);
+  const presets: string[] = Array.isArray(widget.config.presets)
+    ? widget.config.presets
+    : DEFAULT_STAGE_PRESETS;
+  const autoClearSec: number = widget.config.autoClearSec ?? 0;
+
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [left, setLeft] = useState<number | null>(null);
+
+  // Countdown for the auto-clear. Keyed on the message itself, so re-sending
+  // (or someone else changing it) restarts rather than clears early.
+  useEffect(() => {
+    if (!live || autoClearSec <= 0) {
+      setLeft(null);
+      return;
+    }
+    setLeft(autoClearSec);
+    const t = setInterval(() => {
+      setLeft((n) => {
+        if (n === null) return null;
+        if (n > 1) return n - 1;
+        ppClearStageMessage();
+        return null;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [live, autoClearSec]);
+
+  if (!connected) return <Disconnected />;
+
+  async function send(msg: string) {
+    const m = msg.trim();
+    if (!m) return;
+    setBusy(true);
+    await ppSetStageMessage(m);
+    setBusy(false);
+    setText("");
+  }
+
+  return (
+    <div className="w-stagemsg">
+      {live ? (
+        <div className="w-stagemsg-live">
+          <span className="w-stagemsg-label">On stage now</span>
+          <strong>{live}</strong>
+          <div className="w-stagemsg-liveactions">
+            <button
+              className="btn small primary"
+              disabled={busy}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={() => ppClearStageMessage()}
+            >
+              Clear
+            </button>
+            {left !== null && (
+              <>
+                <span className="muted small">clears in {left}s</span>
+                <button
+                  className="btn small ghost"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={() => setLeft(null)}
+                >
+                  Keep up
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="w-stagemsg-idle muted small">Nothing on the stage displays.</div>
+      )}
+
+      <div className="w-stagemsg-send">
+        <input
+          className="input"
+          placeholder="Message for the stage…"
+          value={text}
+          disabled={busy}
+          onMouseDown={(e) => e.stopPropagation()}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") send(text);
+          }}
+        />
+        <button
+          className="btn small primary"
+          disabled={busy || !text.trim()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={() => send(text)}
+        >
+          Send
+        </button>
+      </div>
+
+      {presets.length > 0 && (
+        <div className="w-stagemsg-presets">
+          {presets.map((p, i) => (
+            <button
+              key={`${p}-${i}`}
+              className="btn small"
+              disabled={busy}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={() => send(p)}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {editing && (
+        <div className="w-stagemsg-edit">
+          <button
+            className="btn small ghost"
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={async () => {
+              const next = await askText(
+                "Quick buttons — one per line",
+                presets.join("\n"),
+              );
+              if (next === null) return;
+              update({
+                presets: next
+                  .split("\n")
+                  .map((l) => l.trim())
+                  .filter(Boolean),
+              });
+            }}
+          >
+            Edit quick buttons
+          </button>
+          <button
+            className="btn small ghost"
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={() => {
+              const cycle = [0, 30, 60, 120];
+              const i = cycle.indexOf(autoClearSec);
+              update({ autoClearSec: cycle[(i + 1) % cycle.length] });
+            }}
+          >
+            {autoClearSec === 0 ? "No auto-clear" : `Auto-clear after ${autoClearSec}s`}
+          </button>
+          {autoClearSec > 0 && (
+            <span className="muted small">
+              Counts down only while a dashboard showing this widget is open.
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Child alerts are the reason this widget was asked for, so they lead. */
+const DEFAULT_STAGE_PRESETS = [
+  "Parent needed in Kids Ministry",
+  "Please see the check-in desk",
+  "5 minutes",
+  "Wrap up",
+];
+
 export const WIDGETS: WidgetDef[] = [
   // Mission Control — director overview
   { type: "health_strip", label: "System Health", group: "Mission Control", w: 12, h: 2, component: HealthStripWidget },
@@ -2569,6 +2751,7 @@ export const WIDGETS: WidgetDef[] = [
   { type: "timer", label: "Timer", group: "ProPresenter", w: 4, h: 3, component: TimerWidget },
   { type: "tap_link", label: "TapLink (NFC)", group: "ProPresenter", w: 4, h: 3, component: TapLinkWidget },
   { type: "lobby_tv", label: "Lobby TVs (Announcements)", group: "ProPresenter", w: 4, h: 3, component: LobbyTvWidget },
+  { type: "stage_message", label: "Stage Message (Alerts)", group: "ProPresenter", w: 4, h: 4, component: StageMessageWidget },
   // Planning Center
   { type: "show_flow", label: "Show Flow", group: "Planning Center", w: 4, h: 6, component: ShowFlowWidget },
   { type: "plan_item", label: "Now / Next", group: "Planning Center", w: 4, h: 3, component: PlanItemWidget },
