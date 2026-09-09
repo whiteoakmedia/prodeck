@@ -23,6 +23,7 @@ export function ClearDock() {
     () => localStorage.getItem("prodeck.clearDock") !== "0",
   );
   const [flash, setFlash] = useState<string | null>(null);
+  const [err, setErr] = useState("");
 
   // MUST run before the early return below: hooks cannot be conditional, and
   // putting this after `if (!connected)` meant the component rendered two
@@ -37,15 +38,26 @@ export function ClearDock() {
 
   if (!connected) return null;
 
+  // The flash used to be set unconditionally on the line after a fire-and-
+  // forget call, so pressing Clear All against a stale ProPresenter link
+  // mid-service showed "done" while the screen stayed up.
+  const flashFor = (key: string) => {
+    setFlash(key);
+    setTimeout(() => setFlash((f) => (f === key ? null : f)), 400);
+  };
   const clear = (layer: string) => {
-    ppClearLayer(layer).catch(() => {});
-    setFlash(layer);
-    setTimeout(() => setFlash((f) => (f === layer ? null : f)), 400);
+    setErr("");
+    ppClearLayer(layer)
+      .then(() => flashFor(layer))
+      .catch((e) => setErr(String(e)));
   };
   const clearAll = () => {
-    CLEAR_LAYERS.forEach((l) => ppClearLayer(l.key).catch(() => {}));
-    setFlash("all");
-    setTimeout(() => setFlash((f) => (f === "all" ? null : f)), 400);
+    setErr("");
+    Promise.allSettled(CLEAR_LAYERS.map((l) => ppClearLayer(l.key))).then((rs) => {
+      const bad = rs.filter((r) => r.status === "rejected").length;
+      if (bad) setErr(`${bad} of ${rs.length} layers didn't clear`);
+      else flashFor("all");
+    });
   };
   const toggle = () =>
     setOpen((v) => {
@@ -83,6 +95,7 @@ export function ClearDock() {
               <Icon name="clear" size={12} /> {l.label}
             </button>
           ))}
+          {err && <span className="cd-err">{err}</span>}
         </div>
       )}
     </div>

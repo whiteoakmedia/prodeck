@@ -7511,3 +7511,11 @@ select.input {
   border-top: 1px solid var(--border);
   padding-top: 8px;
 }
+
+/* Clear dock: a failed clear says so instead of flashing "done". */
+.cd-err {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--live);
+}

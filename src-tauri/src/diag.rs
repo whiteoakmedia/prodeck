@@ -57,6 +57,13 @@ fn redact_settings(v: &mut Value) {
             || k.ends_with("_key")
             || k.contains("key_path")
             || k == "pin"
+            // Named explicitly: the heuristic above is name-shaped, and these
+            // two carry no credential-ish word. pco_app_id is half of the
+            // Planning Center basic-auth pair, and public_url is the church's
+            // tunnel origin — neither belongs in a bundle that gets pasted into
+            // a public GitHub issue.
+            || k == "pco_app_id"
+            || k == "public_url"
     };
     for (k, val) in obj.iter_mut() {
         if secret(k) {

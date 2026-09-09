@@ -97,12 +97,25 @@ export function ServiceWizard({
       return;
     setWriting(true);
     try {
+      // Every write was individually swallowed and then the count reported
+      // unconditionally — "Wrote 12 channel name(s)" even when all twelve
+      // failed and the desk still had last week's names on it.
+      let ok = 0;
       for (const p of namePlan) {
         for (const t of p.targets) {
-          await avantisSetName(t, p.label).catch(() => {});
+          try {
+            await avantisSetName(t, p.label);
+            ok += 1;
+          } catch {
+            /* counted below */
+          }
         }
       }
-      setWrote(`Wrote ${total} channel name(s) to the desk.`);
+      setWrote(
+        ok === total
+          ? `Wrote ${total} channel name(s) to the desk.`
+          : `Wrote ${ok} of ${total} channel name(s) — the desk refused the rest.`,
+      );
     } finally {
       setWriting(false);
     }

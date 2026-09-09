@@ -122,6 +122,58 @@ const ONE_SHOT: &[&str] = &[
     "pco:sync_stopped",
 ];
 
+/// Failed gateway auths per peer: (count, first_failure_ms).
+static AUTH_FAILS: std::sync::LazyLock<Mutex<HashMap<String, (u32, u64)>>> =
+    std::sync::LazyLock::new(|| Mutex::new(HashMap::new()));
+const AUTH_FREE_TRIES: u32 = 8;
+const AUTH_WINDOW_MS: u64 = 300_000;
+
+/// How long this peer must wait, if it is being throttled.
+fn auth_backoff(peer: &str) -> Option<u64> {
+    if peer.is_empty() {
+        return None;
+    }
+    let mut m = AUTH_FAILS.lock().unwrap_or_else(|p| p.into_inner());
+    let now = crate::identity::now_ms();
+    let (n, since) = *m.get(peer)?;
+    if now.saturating_sub(since) > AUTH_WINDOW_MS {
+        m.remove(peer);
+        return None;
+    }
+    if n <= AUTH_FREE_TRIES {
+        return None;
+    }
+    // Doubling, capped: a person who fat-fingered the password twice is barely
+    // inconvenienced; a script is stopped dead.
+    let wait_ms = (1_000u64 << (n - AUTH_FREE_TRIES).min(6)).min(60_000);
+    let ready_at = since + wait_ms;
+    (now < ready_at).then(|| (ready_at - now).div_ceil(1000))
+}
+
+fn note_auth_failure(peer: &str) {
+    if peer.is_empty() {
+        return;
+    }
+    let mut m = AUTH_FAILS.lock().unwrap_or_else(|p| p.into_inner());
+    // Cap the table so a spoofed-source flood can't grow it without bound.
+    if m.len() > 2_000 {
+        m.clear();
+    }
+    let now = crate::identity::now_ms();
+    let e = m.entry(peer.to_string()).or_insert((0, now));
+    e.0 += 1;
+    e.1 = now;
+}
+
+fn clear_auth_failures(peer: &str) {
+    if !peer.is_empty() {
+        AUTH_FAILS
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .remove(peer);
+    }
+}
+
 fn token_tier(app: &AppHandle, token: &str) -> Option<Tier> {
     let (admin, member, invite) = {
         let state = app.state::<SettingsState>();
@@ -315,6 +367,14 @@ async fn handle_conn(
         })
         .unwrap_or(0);
 
+    let content_type = header_str
+        .lines()
+        .find_map(|l| {
+            let l = l.to_ascii_lowercase();
+            l.strip_prefix("content-type:").map(|v| v.trim().to_string())
+        })
+        .unwrap_or_default();
+
     if method == "OPTIONS" {
         return write_bytes(&mut stream, 204, "text/plain", b"").await;
     }
@@ -411,10 +471,44 @@ async fn handle_conn(
         let token = v.get("token").and_then(|x| x.as_str()).unwrap_or("");
         let cmd = v.get("cmd").and_then(|x| x.as_str()).unwrap_or("");
         let args = v.get("args").cloned().unwrap_or_else(|| json!({}));
+        // Force a CORS preflight. Without this a POST carrying
+        // `content-type: text/plain` is a CORS *simple* request — no preflight
+        // — and because every response carries `Access-Control-Allow-Origin: *`
+        // any web page a crew phone visited on the church LAN could drive this
+        // endpoint AND read the answers, including guessing the password at
+        // full speed. The OPTIONS handler deliberately advertises no custom
+        // headers, so requiring JSON is enough to stop it.
+        if !content_type.contains("application/json") {
+            return write_bytes(
+                &mut stream,
+                415,
+                "application/json",
+                b"{\"error\":\"send application/json\"}",
+            )
+            .await;
+        }
+        let peer_ip = stream
+            .peer_addr()
+            .map(|a| a.ip().to_string())
+            .unwrap_or_default();
+        // Slow down guessing. Unlike the PIN path (identity::login_core) the
+        // gateway passwords had no attempt counter, no backoff and no lockout
+        // at all, so they could be enumerated as fast as the LAN allows.
+        if let Some(wait) = auth_backoff(&peer_ip) {
+            return write_bytes(
+                &mut stream,
+                429,
+                "application/json",
+                format!("{{\"error\":\"too many attempts — wait {wait}s\"}}").as_bytes(),
+            )
+            .await;
+        }
         let Some(tier) = token_tier(&app, token) else {
+            note_auth_failure(&peer_ip);
             return write_bytes(&mut stream, 401, "application/json", b"{\"error\":\"unauthorized\"}")
                 .await;
         };
+        clear_auth_failures(&peer_ip);
         // Auto check-in lives HERE, not in dispatch: it needs the connection's
         // presence evidence (TCP peer + Cloudflare's CF-Connecting-IP), which
         // only this layer can see. Any signed-in tier may use it.
@@ -1230,6 +1324,13 @@ async fn dispatch(app: &AppHandle, cmd: &str, args: &Value, tier: Tier) -> Resul
             // network and was the one secret still going out in the clear —
             // any member-tier phone could read it straight out of get_settings.
             set.obs_password = String::new();
+            // NOTE: pco_app_id is deliberately NOT redacted here. It is the
+            // username half of the pair (the secret is what protects it), and
+            // the Planning Center page uses its presence to decide whether
+            // credentials are configured — blanking it makes an admin browser
+            // report "not connected" and refuse to load. It IS stripped from
+            // the diagnostics bundle, which is the path that leaves the
+            // building.
             // Not a secret itself, but it points straight at the private key —
             // browsers have no use for a booth-local filesystem path.
             set.ga4_key_path = String::new();
@@ -1582,6 +1683,7 @@ async fn dispatch(app: &AppHandle, cmd: &str, args: &Value, tier: Tier) -> Resul
                 if new.obs_password.trim().is_empty() {
                     new.obs_password = g.obs_password.clone();
                 }
+
                 new.gemini_api_key = g.gemini_api_key.clone();
                 // Redacted in get_settings, so a browser round-trip would send it
                 // back empty and silently unconfigure the viewer count.
@@ -1963,7 +2065,27 @@ pub fn web_stop(state: tauri::State<'_, WebState>) {
 
 #[cfg(test)]
 mod member_pp_tests {
-    use super::member_pp_read_ok;
+    use super::{
+        auth_backoff, clear_auth_failures, member_pp_read_ok, note_auth_failure, AUTH_FREE_TRIES,
+    };
+
+    #[test]
+    fn auth_backoff_is_free_at_first_then_throttles() {
+        let peer = "203.0.113.99:1";
+        clear_auth_failures(peer);
+        // A person mistyping the password a couple of times is not slowed down.
+        for _ in 0..AUTH_FREE_TRIES {
+            note_auth_failure(peer);
+            assert!(auth_backoff(peer).is_none(), "should still be free");
+        }
+        // Past the allowance, a script gets told to wait.
+        note_auth_failure(peer);
+        note_auth_failure(peer);
+        assert!(auth_backoff(peer).is_some(), "should be throttled");
+        // Getting it right clears the record.
+        clear_auth_failures(peer);
+        assert!(auth_backoff(peer).is_none());
+    }
 
     #[test]
     fn member_pp_read_ok_allows_reads_and_refuses_controls() {

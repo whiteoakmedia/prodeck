@@ -134,8 +134,12 @@ export function ProSetlistSwap({
         setErr(String(e));
       }
     })();
+    // pco.items is filled ASYNCHRONOUSLY and starts empty, so on a fresh launch
+    // with a remembered playlist this ran before the songs existed and nothing
+    // was ever pre-ticked — which is precisely the state that produced the
+    // silent no-op swap above. Re-run when the songs arrive.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playlistUuid]);
+  }, [playlistUuid, pco.items]);
 
   // Resolve each PCO song to a library master: remembered alias for this
   // song+key, then a this-session pick, then a unique exact title match.
@@ -158,7 +162,14 @@ export function ProSetlistSwap({
   // Partial swaps are allowed: songs without a library master are SKIPPED
   // (their old slot rows stay as placeholders) instead of freezing the whole
   // button — one missing master must not block the other five songs.
-  const ready = playlistUuid && rows.length > 0 && songs.some((s) => !!resolve(s));
+  // A slot must actually be TICKED. Without this the swap ran with an empty
+  // slot list, every row fell through to "re-push myself unchanged", the PUT
+  // was a byte-identical no-op — and it still reported "✓ Placed 4 song(s)",
+  // poisoned lastSongRows and advanced the wizard, while ProPresenter went on
+  // holding last week's songs.
+  const anySlot = rows.some((r) => slots[r.id.uuid]);
+  const ready =
+    !!playlistUuid && rows.length > 0 && anySlot && songs.some((s) => !!resolve(s));
 
   useEffect(() => {
     if (swapSignal > lastSignal.current) {
@@ -243,6 +254,13 @@ export function ProSetlistSwap({
           }
         }
       });
+      // Belt and braces for the same failure: if not one row was actually
+      // replaced, the PUT would write the playlist back unchanged. Refuse
+      // rather than report success for a no-op.
+      if (slotIdx.length === 0) {
+        setErr("Nothing was selected to replace — tick the slots to swap first.");
+        return;
+      }
       await ppPut(`playlist/${playlistUuid}`, next.map(patchRowForWrite));
       const placed = songs.filter((s) => resolve(s)).map((s) => resolve(s)!.uuid);
       const newAliases = { ...cfg.aliases };

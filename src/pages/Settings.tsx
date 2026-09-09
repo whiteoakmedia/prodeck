@@ -84,6 +84,7 @@ export function SettingsPage() {
   // lives in form.avantis_scene_labels).
   const [sceneLabelsText, setSceneLabelsText] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [saveErr, setSaveErr] = useState("");
   const [midiPorts, setMidiPorts] = useState<string[]>([]);
   const [midiOutPorts, setMidiOutPorts] = useState<string[]>([]);
   const [keysendMsg, setKeysendMsg] = useState("");
@@ -191,7 +192,16 @@ export function SettingsPage() {
 
   async function save() {
     if (!form) return;
-    await updateSettings(form);
+    setSaveErr("");
+    try {
+      await updateSettings(form);
+    } catch (e) {
+      // There was no catch here at all: a rejected save (a member-tier browser,
+      // a disk error) left the button never flipping to "Saved ✓" with nothing
+      // on screen — indistinguishable from a dead button.
+      setSaveErr(String(e));
+      return;
+    }
     await refreshSettings();
     // Let the key-send hook re-read its config + (re)connect the MIDI output.
     window.dispatchEvent(new Event("prodeck:keysend"));
@@ -306,6 +316,15 @@ export function SettingsPage() {
           {saved ? "Saved ✓" : "Save"}
         </button>
       </header>
+
+      {saveErr && (
+        <div className="banner">
+          Couldn't save your settings — {saveErr}
+          <button className="btn small" onClick={() => setSaveErr("")}>
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {status && <div className="banner">{status}</div>}
 

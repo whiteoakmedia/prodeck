@@ -26,6 +26,7 @@ export function CrewChecklist() {
   const pco = usePco();
   const [checked, setChecked] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
   // Anything waiting to reach the booth. A queue nobody can see is just a
   // different way of losing someone's work.
   const [queued, setQueued] = useState(queueSize());
@@ -54,19 +55,29 @@ export function CrewChecklist() {
 
   async function checkIn() {
     setBusy(true);
+    setErr("");
     try {
       const r = await checkinSet(localStorage.getItem(CREW_SESSION_KEY) ?? "", serviceKey);
       setChecked(r.at);
-    } catch {
-      // Offline → queue it. Safe because the booth keeps the FIRST timestamp,
-      // so a replay can never move someone's arrival later than it was.
-      enqueue({
-        kind: "checkin",
-        session: localStorage.getItem(CREW_SESSION_KEY) ?? "",
-        serviceKey,
-      });
-      setChecked(Date.now());
-      /* the card simply stays un-checked */
+    } catch (e) {
+      // Only a TRANSPORT failure means "offline — queue it". This copy never
+      // got the fix CrewHome has: it treated a server REJECTION (revoked
+      // session, bad request) as offline too, so the volunteer saw a green
+      // "✓ Checked in 8:42" while the leader board showed them absent and the
+      // outbox badge stuck forever behind a replay that fails the same way.
+      const msg = String((e as Error)?.message ?? e);
+      const transport = /fetch|network|load failed|timeout/i.test(msg);
+      if (transport) {
+        enqueue({
+          kind: "checkin",
+          session: localStorage.getItem(CREW_SESSION_KEY) ?? "",
+          serviceKey,
+        });
+        setChecked(Date.now());
+      } else {
+        setErr(msg);
+      }
+      /* server-rejected: the card stays un-checked, which is the honest state */
     } finally {
       setBusy(false);
     }
@@ -157,6 +168,7 @@ export function CrewChecklist() {
             <button className="crew-checkin-btn" disabled={busy} onClick={checkIn}>
               {busy ? "…" : "Check in"}
             </button>
+            {err && <div className="crew-buzz-sub err">{err}</div>}
           </div>
         )}
       </div>
