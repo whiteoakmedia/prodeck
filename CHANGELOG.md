@@ -35,6 +35,22 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.80 — 10 September 2026
+
+### Fixed — "my dashboard reverted when I left it"
+
+It hadn't. Every change was saved; two things made it look lost:
+
+- **Coming back to Dashboards always showed the first one.** Arrange "Green
+  Room", leave, return — and you were looking at "Front of House". ProDeck now
+  remembers which dashboard you were on.
+- **A screen signed in with the crew password could open the editor**, drag
+  freely, and have every save refused, since only the admin password may write
+  dashboards. That screen now says *view only* instead of showing a pencil, and
+  if a save is ever refused anyway, the message says why and where to edit.
+
+---
+
 ## 0.9.79 — 10 September 2026
 
 ### Fixed — Keys to the Stage now counts down Planning Center's own clock
