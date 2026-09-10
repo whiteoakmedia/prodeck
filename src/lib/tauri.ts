@@ -623,6 +623,10 @@ export const crewJoinState = () =>
   invoke<{ open: boolean; until: number; secondsLeft: number }>("crew_join_state");
 export const crewJoinOpen = (minutes: number) =>
   invoke<{ until: number }>("crew_join_open", { minutes });
+
+/** Ask the built-in help assistant. `context` is the relevant help text. */
+export const helpAsk = (question: string, context: string) =>
+  invoke<string>("help_ask", { question, context });
 export type PcoLiveAction =
   | "go_to_next_item"
   | "go_to_previous_item"

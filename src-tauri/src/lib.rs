@@ -282,6 +282,7 @@ pub fn run() {
             // Web gateway (LAN browser access)
             web::web_start,
             web::crew_join_open,
+            gemini::help_ask,
             web::crew_join_state,
             web::web_stop,
             web::web_status,

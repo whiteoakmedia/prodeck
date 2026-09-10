@@ -95,8 +95,19 @@ async fn try_generate(
 }
 
 async fn generate(key: &str, prompt: &str, json_out: bool) -> Result<String, String> {
+    // Slide matching has to answer inside a lyric line; five seconds is the
+    // budget there.
+    generate_within(key, prompt, json_out, Duration::from_secs(5)).await
+}
+
+async fn generate_within(
+    key: &str,
+    prompt: &str,
+    json_out: bool,
+    timeout: Duration,
+) -> Result<String, String> {
     let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(5))
+        .timeout(timeout)
         .build()
         .map_err(|e| e.to_string())?;
     let mut gen_cfg = json!({ "temperature": 0 });
@@ -234,7 +245,47 @@ pub(crate) async fn test_core(settings: &SettingsState) -> Result<String, String
     ))
 }
 
+/// Answer a question about ProDeck, grounded in the app's own help text.
+///
+/// `context` is the handful of help topics the Help page found most relevant
+/// (title + body). The model is told to answer ONLY from that, and to say so
+/// when it can't — a confident wrong answer about which button to press during
+/// a service is worse than "I don't know, here's who to ask". Uses the same key
+/// as Smart Matching; without one the Help page simply doesn't offer this.
+pub(crate) async fn help_ask_core(
+    settings: &SettingsState,
+    question: String,
+    context: String,
+) -> Result<String, String> {
+    let key = api_key(settings)?;
+    let q: String = question.trim().chars().take(600).collect();
+    if q.is_empty() {
+        return Err("ask something first".into());
+    }
+    let ctx: String = context.chars().take(24_000).collect();
+    let prompt = format!(
+        "You are the built-in help for ProDeck, a production-booth app used by church \
+         volunteers (ProPresenter, Planning Center, sound consoles, crew phones, NFC \
+         giving discs). Answer the question using ONLY the reference below. Be concrete: \
+         name the exact page, card or button. If the reference does not cover it, say \
+         plainly that you don't know and suggest the Adopter's Guide or reporting it \
+         from Settings → Help — never guess. Keep it under 160 words. Plain text, no \
+         markdown headings.\n\n=== REFERENCE ===\n{ctx}\n=== END ===\n\nQuestion: {q}"
+    );
+    let out = generate_within(&key, &prompt, false, Duration::from_secs(25)).await?;
+    Ok(out.trim().to_string())
+}
+
 // ---- Tauri command wrappers (desktop) ------------------------------------
+
+#[tauri::command]
+pub async fn help_ask(
+    question: String,
+    context: String,
+    settings: tauri::State<'_, SettingsState>,
+) -> Result<String, String> {
+    help_ask_core(settings.inner(), question, context).await
+}
 
 /// Ask Gemini which candidate slide the vocalist is on right now.
 #[tauri::command]

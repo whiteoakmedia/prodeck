@@ -64,6 +64,8 @@ import { Captions } from "./pages/Captions";
 import { PlanningCenter } from "./pages/PlanningCenter";
 import { Report } from "./pages/Report";
 import { SettingsPage } from "./pages/Settings";
+import { HelpPage } from "./pages/Help";
+import { HELP_EVENT } from "./help/nav";
 import { RoutingPage } from "./pages/Routing";
 import "./App.css";
 
@@ -77,7 +79,8 @@ type Page =
   | "checklists"
   | "routing"
   | "report"
-  | "settings";
+  | "settings"
+  | "help";
 
 // Multiview and Captions are hidden (Aug 2026): the only NDI source here is
 // ProPresenter's stage output — there are no NDI cameras — and captions never
@@ -91,6 +94,7 @@ const NAV: { id: Page; label: string; icon: string }[] = [
   { id: "checklists", label: "Checklists", icon: "checklist" },
   { id: "routing", label: "Routing", icon: "grid" },
   { id: "report", label: "Analytics", icon: "report" },
+  { id: "help", label: "Help", icon: "help" },
   { id: "settings", label: "Settings", icon: "settings" },
 ];
 
@@ -102,6 +106,18 @@ const WIZARD_DAY_KEY = "prodeck.wizardDay";
 
 function Shell() {
   const [page, setPage] = useState<Page>("dashboard");
+  // Which help topic to open; set by the `?` on a Settings card, or anywhere
+  // else that calls openHelp().
+  const [helpTopic, setHelpTopic] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    const onHelp = (e: Event) => {
+      const t = (e as CustomEvent<{ topic?: string }>).detail?.topic;
+      setHelpTopic(t || undefined);
+      setPage("help");
+    };
+    window.addEventListener(HELP_EVENT, onHelp);
+    return () => window.removeEventListener(HELP_EVENT, onHelp);
+  }, []);
   const [startupWizard, setStartupWizard] = useState(false);
   const [navHidden, setNavHidden] = useState(
     () => localStorage.getItem("prodeck.navHidden") === "1",
@@ -322,6 +338,15 @@ function Shell() {
         {page === "routing" && <RoutingPage />}
         {page === "report" && <Report />}
         {page === "settings" && <SettingsPage />}
+        {page === "help" && (
+          <HelpPage
+            initialTopic={helpTopic}
+            onNavigate={(p, anchor) => {
+              setPage(p as Page);
+              if (anchor) setTimeout(() => document.getElementById(anchor)?.scrollIntoView({ block: "start" }), 80);
+            }}
+          />
+        )}
       </main>
     </div>
   );

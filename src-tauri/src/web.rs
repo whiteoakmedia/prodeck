@@ -1650,6 +1650,13 @@ async fn dispatch(app: &AppHandle, cmd: &str, args: &Value, tier: Tier) -> Resul
             crate::settings::save(&to_save)?;
             Ok(json!({ "until": until }))
         }
+        // Admin-only by default (spends the church's Gemini quota).
+        "help_ask" => {
+            let q = s("question").unwrap_or_default();
+            let ctx = s("context").unwrap_or_default();
+            let st = app.state::<SettingsState>();
+            crate::gemini::help_ask_core(st.inner(), q, ctx).await.map(Value::String)
+        }
         "load_dashboards" => crate::settings::load_dashboards(),
         "load_pco_data" => crate::settings::load_pco_data(),
         "load_tracking" => crate::settings::load_tracking(),

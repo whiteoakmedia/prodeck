@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ANCHOR_TOPIC, openHelp } from "../help/nav";
 import { consumeSettingsJump } from "../lib/settingsJump";
 import { useProDeck } from "../store";
 import { useAlerts } from "../alertsStore";
@@ -2395,9 +2396,16 @@ function HelpLink({ section }: { section: string }) {
   return (
     <button
       className="help-link"
-      title="Open the guide for this"
+      title="Help for this"
       aria-label="Help"
-      onClick={() => {
+      onClick={(e) => {
+        // Open the in-app Help topic for THIS card. The card is found from the
+        // button's position rather than a prop, so no card has to be told
+        // which topic it is; the anchor→topic map lives in help/nav.ts. Cards
+        // without a topic fall back to the guide section, as before.
+        const anchor = e.currentTarget.closest(".card-head")?.querySelector("h3[id]")?.id ?? "";
+        const topic = ANCHOR_TOPIC[anchor];
+        if (topic) return openHelp(topic);
         if (IS_WEB) window.open(`${DOCS_URL}#${section}`, "_blank", "noopener");
         else helpOpen(section).catch(() => window.open(`${DOCS_URL}#${section}`, "_blank", "noopener"));
       }}
