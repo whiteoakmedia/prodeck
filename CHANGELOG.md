@@ -35,6 +35,25 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.79 — 10 September 2026
+
+### Fixed — Keys to the Stage now counts down Planning Center's own clock
+
+The widget used to time the live item from when *this* copy of ProDeck saw it
+go live. Now it reads the countdown Planning Center itself publishes for the
+current LIVE item — the same number the person driving PCO sees — so the booth
+and a kiosk that switches on mid-sermon agree to the second, and the cue no
+longer depends on anyone having been watching when the sermon started.
+
+One detail worth knowing, learned from a real plan rather than the docs: while
+an item is live, Planning Center gives its **start** time and length but not an
+end time (the end is filled in only once you advance past). ProDeck computes
+the end the way LIVE does. If Planning Center hasn't published a start — nobody
+holds LIVE control, or the item is excluded from this service time — the widget
+shows the songs and keys **without** a countdown rather than guess.
+
+---
+
 ## 0.9.78 — 10 September 2026
 
 For a TV in the room where the team waits — a green room, the office, wherever
