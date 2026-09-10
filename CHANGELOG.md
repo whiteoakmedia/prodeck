@@ -35,6 +35,74 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.76 — 10 September 2026
+
+For the churches now downloading this: help that lives in the app, and the two
+systems that were still hardest to set up without me — crew and the lobby tap
+discs — walked through step by step.
+
+### New — Help, in the sidebar
+
+Type a question the way you'd actually ask it — *"why does the join link say
+closed"*, *"what url goes on the disc"*, *"page not arriving"* — and the
+matching topics appear as you type. Each one names the exact page, card and
+button, and **Open the setting** takes you there. The **?** on every Settings
+card now opens the topic for that card instead of a web page.
+
+It all works offline: the help is built into the app, so it's there on a booth
+with no internet and on a phone in a basement.
+
+If you've added a Gemini key (Settings → Gemini Smart Matching), the same box
+can **Ask the assistant**, which answers in its own words using only this help
+— and is told to say "I don't know" rather than guess. Without a key it still
+searches, and offers the full guide and GitHub.
+
+### New — TapLink for any church
+
+TapLink (the lobby NFC discs that follow the service) needed a small Cloudflare
+service that each church deploys once — and nothing in the app said so. You
+reached *Edge URL* and *API token* with no idea where they came from.
+
+- **Settings → TapLink** now leads with a five-step guide that knows what's
+  done: deploy your edge (exact commands, copyable), connect and test, set your
+  links, write the discs (the URL is ready to copy), tag your slides. Each step
+  turns green from real state, not a checkbox.
+- The first-run setup has an optional **Lobby tap discs** step: what it is,
+  what you'll need, how long it takes, and a *Skip for now*.
+- The starter link file and the edge's README are written for any church now,
+  not this one. **docs/TAPLINK.md** is the end-to-end reference.
+
+### New — Crew, explained and configurable
+
+- **Settings → Crew Members** opens with how the system actually works — the
+  password decides what a phone may *do*; the account decides *who* it is — and
+  a three-step path (crew password → open joining or send invites → approve)
+  that shows what's done.
+- **Roles you use** is a per-church list offered wherever a role is typed by
+  hand, so the leader board and role channels don't fragment into "Camera 1",
+  "Cam 1" and "camera1". Roles on people still come from this week's Planning
+  Center plan — the app now says so plainly instead of leaving you wondering
+  why you can't edit one.
+- A personal invite for someone who isn't on this week's plan can carry a
+  role.
+- **docs/CREW.md** is the reference.
+
+### Fixed — the first-run "Your team" step
+
+It shows the join QR code — and since 0.9.74, the join link only works while
+joining is open, so a volunteer scanning it during setup was told *"joining is
+closed"*. The step now opens joining for an hour when you reach it and shows
+the countdown.
+
+### What's next for crew
+
+Permissions still come from which password a phone typed, not from the person.
+Per-person permissions — this volunteer may page, that one may control
+ProPresenter — is the next major change, and the reason the crew system got
+explained properly first.
+
+---
+
 ## 0.9.75 — 9 September 2026
 
 ### Fixed — the camera never appeared on a kiosk or a phone
