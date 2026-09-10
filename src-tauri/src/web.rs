@@ -471,6 +471,11 @@ async fn handle_conn(
         let token = v.get("token").and_then(|x| x.as_str()).unwrap_or("");
         let cmd = v.get("cmd").and_then(|x| x.as_str()).unwrap_or("");
         let args = v.get("args").cloned().unwrap_or_else(|| json!({}));
+        // The crew session rides at the top level of every request. It is what
+        // turns "a phone with the crew password" into "Devon's phone", and
+        // Devon's grants are what decide whether a member-tier request may do
+        // more than look.
+        let session = v.get("session").and_then(|x| x.as_str()).unwrap_or("").to_string();
         // Force a CORS preflight. Without this a POST carrying
         // `content-type: text/plain` is a CORS *simple* request — no preflight
         // — and because every response carries `Access-Control-Allow-Origin: *`
@@ -562,7 +567,11 @@ async fn handle_conn(
             let bytes = serde_json::to_vec(&out).unwrap_or_default();
             return write_bytes(&mut stream, 200, "application/json", &bytes).await;
         }
-        let out = match dispatch(&app, cmd, &args, tier).await {
+        let caller = {
+            let identity = app.state::<crate::identity::IdentityState>().inner().clone();
+            crate::identity::session_caller(&identity, &session)
+        };
+        let out = match dispatch(&app, cmd, &args, tier, caller).await {
             Ok(val) => json!({ "result": val }),
             Err(e) => json!({ "error": e }),
         };
@@ -604,12 +613,12 @@ async fn handle_conn(
             ))
         };
         let result: Result<Value, String> = match action {
-            "pp-next" => dispatch(&app, "pp_trigger_next", &json!({}), Tier::Admin).await,
-            "pp-prev" => dispatch(&app, "pp_trigger_previous", &json!({}), Tier::Admin).await,
-            "pp-clear-slide" => dispatch(&app, "pp_clear_layer", &json!({"layer":"slide"}), Tier::Admin).await,
-            "pp-clear-media" => dispatch(&app, "pp_clear_layer", &json!({"layer":"media"}), Tier::Admin).await,
-            "pp-clear-props" => dispatch(&app, "pp_clear_layer", &json!({"layer":"props"}), Tier::Admin).await,
-            "announce-clear" => dispatch(&app, "pp_clear_layer", &json!({"layer":"announcements"}), Tier::Admin).await,
+            "pp-next" => dispatch(&app, "pp_trigger_next", &json!({}), Tier::Admin, None).await,
+            "pp-prev" => dispatch(&app, "pp_trigger_previous", &json!({}), Tier::Admin, None).await,
+            "pp-clear-slide" => dispatch(&app, "pp_clear_layer", &json!({"layer":"slide"}), Tier::Admin, None).await,
+            "pp-clear-media" => dispatch(&app, "pp_clear_layer", &json!({"layer":"media"}), Tier::Admin, None).await,
+            "pp-clear-props" => dispatch(&app, "pp_clear_layer", &json!({"layer":"props"}), Tier::Admin, None).await,
+            "announce-clear" => dispatch(&app, "pp_clear_layer", &json!({"layer":"announcements"}), Tier::Admin, None).await,
             // Re-light the standing lobby loop (whatever Auto-restore is set to).
             "announce-play" => {
                 let (pl, idx) = {
@@ -624,17 +633,17 @@ async fn handle_conn(
                     // so a trigger against a stale playlist id reported success
                     // while the lobby TVs stayed dark. pp_action exists exactly
                     // to surface that.
-                    dispatch(&app, "pp_action", &json!({"path": format!("playlist/{}/{}/trigger", pl, idx)}), Tier::Admin).await
+                    dispatch(&app, "pp_action", &json!({"path": format!("playlist/{}/{}/trigger", pl, idx)}), Tier::Admin, None).await
                 }
             }
             "macro" => {
                 if text.is_empty() { Err("add &text=<macro name>".into()) }
-                else { dispatch(&app, "pp_trigger_macro", &json!({"id": text}), Tier::Admin).await }
+                else { dispatch(&app, "pp_trigger_macro", &json!({"id": text}), Tier::Admin, None).await }
             }
             // Crew page to everyone (full takeover + receipts + push).
             "page" => {
                 let body = if text.is_empty() { "Check ProDeck".to_string() } else { text.clone() };
-                dispatch(&app, "page_send", &json!({"body": body, "recipients": [], "buzz": true, "session": ""}), Tier::Admin).await
+                dispatch(&app, "page_send", &json!({"body": body, "recipients": [], "buzz": true, "session": ""}), Tier::Admin, None).await
             }
             // Confidence-monitor banner; label model, admin-gated.
             "confidence" => {
@@ -645,10 +654,10 @@ async fn handle_conn(
                         .map(|m| serde_json::to_value(m).unwrap_or(Value::Null))
                 }
             }
-            "confidence-clear" => dispatch(&app, "chat_clear_confidence", &json!({}), Tier::Admin).await,
+            "confidence-clear" => dispatch(&app, "chat_clear_confidence", &json!({}), Tier::Admin, None).await,
             "avantis-scene" => {
                 if n == 0 { Err("add &n=<scene number>".into()) }
-                else { dispatch(&app, "avantis_recall_scene", &json!({"scene": n}), Tier::Admin).await }
+                else { dispatch(&app, "avantis_recall_scene", &json!({"scene": n}), Tier::Admin, None).await }
             }
             // Tap disc: force a keyword (holds 10 min or until tap-auto),
             // release back to slide-following, or read state for Companion
@@ -933,6 +942,7 @@ async fn handle_conn(
                                 "page_send",
                                 &json!({ "body": body, "recipients": [id], "buzz": true, "session": "" }),
                                 Tier::Admin,
+                                None,
                             )
                             .await
                         }
@@ -942,7 +952,7 @@ async fn handle_conn(
             "pco-next" | "pco-prev" => match pco_selected() {
                 Some((st_id, plan)) => {
                     let act = if action == "pco-next" { "go_to_next_item" } else { "go_to_previous_item" };
-                    dispatch(&app, "pco_live_action", &json!({"serviceTypeId": st_id, "planId": plan, "action": act}), Tier::Admin).await
+                    dispatch(&app, "pco_live_action", &json!({"serviceTypeId": st_id, "planId": plan, "action": act}), Tier::Admin, None).await
                 }
                 None => Err("no plan selected in ProDeck".into()),
             },
@@ -1316,22 +1326,70 @@ pub(crate) fn member_cmd_ok(cmd: &str) -> bool {
     )
 }
 
-async fn dispatch(app: &AppHandle, cmd: &str, args: &Value, tier: Tier) -> Result<Value, String> {
+/// Which grant unlocks a command for a member-tier phone. `None` = admin only,
+/// no grant will do. Everything a viewer may always do is in `member_cmd_ok`
+/// and never reaches this table.
+pub(crate) fn perm_for_cmd(cmd: &str) -> Option<&'static str> {
+    match cmd {
+        "page_send" | "page_rebuzz" => Some("page"),
+        "pp_set_stage_message" | "pp_clear_stage_message" | "chat_clear_confidence" => Some("stage"),
+        "pp_action" | "pp_clear_layer" | "pp_put" | "pp_delete" | "pp_timer_op"
+        | "pp_trigger_look" | "pp_trigger_macro" | "pp_trigger_next" | "pp_trigger_previous"
+        | "avantis_set_mute" | "avantis_set_fader" | "avantis_set_name" | "avantis_recall_scene"
+        | "obs_set_scene" | "pco_live_action" | "midi_send_key" | "osc_send_key" => Some("control"),
+        "tap_override" => Some("tap"),
+        "identity_list" | "identity_approve" | "identity_remove" | "identity_set_role"
+        | "identity_update_profile" | "invite_create" | "invite_list" | "invite_revoke"
+        | "crew_join_open" => Some("manage"),
+        // Deliberately absent, so they stay admin-only: identity_set_perms
+        // (granting), update_settings, save_*, help_ask, gemini_*, backups.
+        _ => None,
+    }
+}
+
+/// May a member-tier phone with these grants run this command?
+pub(crate) fn member_gate(cmd: &str, args: &Value, perms: &[String]) -> Result<(), String> {
+    let has = |p: &str| perms.iter().any(|x| x == p);
+    if member_cmd_ok(cmd) {
+        return Ok(());
+    }
+    if cmd == "chat_send" {
+        let target = args.get("target").and_then(|v| v.as_str()).unwrap_or("");
+        if target == "team" || has("stage") {
+            return Ok(());
+        }
+        return Err("team messages only — sending to stage or confidence needs the \"stage\" permission".into());
+    }
+    match perm_for_cmd(cmd) {
+        Some(p) if has(p) => Ok(()),
+        Some(p) => Err(format!("'{cmd}' needs the \"{p}\" permission — ask whoever runs the booth to grant it")),
+        None => Err(format!("'{cmd}' needs admin access")),
+    }
+}
+
+async fn dispatch(
+    app: &AppHandle,
+    cmd: &str,
+    args: &Value,
+    tier: Tier,
+    caller: Option<crate::identity::Caller>,
+) -> Result<Value, String> {
     // Member tier: viewers with a voice. Reads + streams + TEAM chat; every
     // control surface (ProPresenter, stage/confidence sends, TapLink override,
     // PCO Live, settings) requires the admin password. Enforced here so a
     // modified client can't bypass the UI.
-    if tier == Tier::Member && cmd != "chat_send" && !member_cmd_ok(cmd) {
-        return Err(format!("'{cmd}' needs admin access"));
-    }
-    if tier == Tier::Member && cmd == "chat_send" {
-        let target = args.get("target").and_then(|v| v.as_str()).unwrap_or("");
-        if target != "team" {
-            return Err("team messages only — stage and confidence sends need admin access".into());
-        }
+    let perms: Vec<String> = caller.as_ref().map(|c| c.perms.clone()).unwrap_or_default();
+    if tier == Tier::Member {
+        member_gate(cmd, args, &perms)?;
     }
     if cmd == "web_whoami" {
-        return Ok(json!({ "tier": if tier == Tier::Admin { "admin" } else { "member" } }));
+        // Admin means everything; a member's power is exactly their grants.
+        let all: Vec<String> = crate::identity::PERMS.iter().map(|p| p.to_string()).collect();
+        return Ok(json!({
+            "tier": if tier == Tier::Admin { "admin" } else { "member" },
+            "perms": if tier == Tier::Admin { all } else { perms.clone() },
+            "name": caller.as_ref().map(|c| c.name.clone()),
+        }));
     }
     let s = |k: &str| args.get(k).and_then(|x| x.as_str()).map(|x| x.to_string());
     match cmd {
@@ -1584,6 +1642,16 @@ async fn dispatch(app: &AppHandle, cmd: &str, args: &Value, tier: Tier) -> Resul
             crate::avantis::avantis_set_name(id, name, state, app.clone()).await?;
             Ok(json!({ "ok": true }))
         }
+        "identity_set_perms" => {
+            let id = s("id").ok_or("missing id")?;
+            let perms: Vec<String> = args
+                .get("perms")
+                .and_then(|v| v.as_array())
+                .map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect())
+                .unwrap_or_default();
+            let identity = app.state::<crate::identity::IdentityState>().inner().clone();
+            crate::identity::set_perms_core(app, &identity, id, perms).map(|_| Value::Null)
+        }
         "identity_set_role" => {
             let s = |k: &str| args.get(k).and_then(|v| v.as_str()).unwrap_or("").to_string();
             let identity = app.state::<crate::identity::IdentityState>().inner().clone();
@@ -1754,7 +1822,7 @@ async fn dispatch(app: &AppHandle, cmd: &str, args: &Value, tier: Tier) -> Resul
         // ---- ProPresenter
         "pp_get" => {
             let path = s("path").ok_or("missing path")?;
-            if tier == Tier::Member && !member_pp_read_ok(&path) {
+            if tier == Tier::Member && !member_pp_read_ok(&path) && !perms.iter().any(|p| p == "control") {
                 return Err("that ProPresenter path needs admin access".into());
             }
             let (client, base) = current_config(&pp_handle(app)).await?;
@@ -2119,6 +2187,40 @@ mod member_pp_tests {
             "ndi_discover_sources", "ndi_start_receiver", "ndi_stop_receiver",
         ] {
             assert!(member_cmd_ok(cmd), "a member screen needs {cmd}");
+        }
+    }
+
+    #[test]
+    fn grants_unlock_exactly_their_commands() {
+        use super::{member_gate, perm_for_cmd};
+        use serde_json::json;
+        let none: Vec<String> = vec![];
+        let page = vec!["page".to_string()];
+        let control = vec!["control".to_string()];
+        let manage = vec!["manage".to_string()];
+        let team = json!({ "target": "team" });
+        let stage = json!({ "target": "stage" });
+
+        // A viewer can still do everything a viewer could.
+        assert!(member_gate("get_settings", &json!({}), &none).is_ok());
+        assert!(member_gate("chat_send", &team, &none).is_ok());
+        // …and nothing more.
+        assert!(member_gate("page_send", &json!({}), &none).is_err());
+        assert!(member_gate("chat_send", &stage, &none).is_err());
+        // The right grant opens the right door and no other.
+        assert!(member_gate("page_send", &json!({}), &page).is_ok());
+        assert!(member_gate("pp_action", &json!({}), &page).is_err());
+        assert!(member_gate("pp_action", &json!({}), &control).is_ok());
+        assert!(member_gate("chat_send", &stage, &vec!["stage".to_string()]).is_ok());
+        // Managing crew must never include granting: that would be an admin
+        // with extra steps.
+        assert!(member_gate("identity_approve", &json!({}), &manage).is_ok());
+        assert!(member_gate("identity_set_perms", &json!({}), &manage).is_err());
+        assert_eq!(perm_for_cmd("identity_set_perms"), None);
+        // No grant reaches the booth's configuration.
+        for cmd in ["update_settings", "save_dashboards", "help_ask", "backup_import", "web_start"] {
+            let all: Vec<String> = super::super::identity::PERMS.iter().map(|p| p.to_string()).collect();
+            assert!(member_gate(cmd, &json!({}), &all).is_err(), "{cmd} must stay admin-only");
         }
     }
 

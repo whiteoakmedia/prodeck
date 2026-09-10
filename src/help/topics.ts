@@ -139,10 +139,39 @@ Turn it on from the welcome screen, or **Settings → Help & support → Try dem
 
 Joining does both at once: the join link carries the crew password, and the volunteer then creates their account. New accounts wait for your approval unless they came in through a personal invite.
 
-> Today, permissions come from the password, not the person. Per-person permissions (this volunteer may page, that one may not) are the next thing on the list.`,
+**3. Grants — what a specific person may do beyond looking.** On top of the crew password, you can give an individual account permissions: **Page**, **Stage**, **Control**, **Tap discs**, **Manage crew**. Set them per person in **Settings → Crew Members → Edit**. A volunteer with no grants is a viewer, which is what most of the team should be.`,
     settings: "set-crew",
     guide: "phase1",
-    related: ["crew-joining", "crew-approve", "crew-roles", "gateway-passwords"],
+    related: ["crew-joining", "crew-approve", "crew-roles", "crew-permissions", "gateway-passwords"],
+  },
+  {
+    id: "crew-permissions",
+    group: "Crew",
+    title: "Permissions: letting one person page, control, or manage",
+    aliases: [
+      "give someone permission to page",
+      "who can send pages",
+      "let a volunteer control propresenter",
+      "needs the page permission",
+      "needs admin access on my phone",
+      "grants",
+      "per person permissions",
+    ],
+    body: `Every phone signed in with the crew password is a **viewer**: dashboards, the plan, chat, check-in, confirming pages, cameras. The admin password unlocks everything. In between, you can grant a specific person exactly what their job needs — without handing them the admin password.
+
+**Settings → Crew Members → Edit** on the person, then tick:
+
+- **Page** — send pages and re-buzz them. Give this to whoever runs the room, not to everyone.
+- **Stage** — put text on the stage displays and confidence screens, and clear it. Kids ministry, for child alerts.
+- **Control** — drive ProPresenter (next/previous, clear, macros, looks), the sound console, OBS scenes, and Planning Center LIVE. Your ProPresenter operator and worship leader.
+- **Tap discs** — override where the lobby NFC discs point.
+- **Manage crew** — approve, edit and remove crew, create invites, open joining. Your team lead. It does **not** include granting permissions; only the admin password can grant.
+
+Grants take effect on their phone within a few seconds, no sign-out needed. Revoking approval removes every grant at once. If a phone reports *"needs the page permission"*, that's exactly what to tick.
+
+> Why not just give them the admin password? Because it can't be taken back from one person — you'd rotate it for everyone. A grant can.`,
+    settings: "set-crew",
+    related: ["crew-overview", "gateway-passwords", "pages"],
   },
   {
     id: "crew-joining",
@@ -626,7 +655,9 @@ The more specific the better: what you pressed, what you expected, what happened
 - **Secrets never leave the booth in the clear**: phones receive settings with every password and key removed; the diagnostics bundle is scrubbed before it's copied.
 - **A kiosk bookmark holds the crew password** and can be read off that machine. Don't put the admin password in one.
 
-Security problems: **SECURITY.md** in the repository explains how to report privately. Per-person permissions are the next major change.`,
+- **Grants are per person and revocable.** Giving someone Page or Control doesn't hand them the admin password, and revoking their approval removes every grant at once.
+
+Security problems: **SECURITY.md** in the repository explains how to report privately.`,
     guide: "honest",
     related: ["gateway-passwords", "crew-overview"],
   },

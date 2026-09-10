@@ -283,6 +283,7 @@ pub fn run() {
             web::web_start,
             web::crew_join_open,
             gemini::help_ask,
+            identity::identity_set_perms,
             web::crew_join_state,
             web::web_stop,
             web::web_status,

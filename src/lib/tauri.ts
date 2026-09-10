@@ -172,11 +172,24 @@ if (IS_WEB && "serviceWorker" in navigator && window.isSecureContext) {
   });
 }
 
+/** Where the phone keeps its crew session. chatStore re-exports this. */
+export const CREW_SESSION_KEY = "prodeck.crewSession";
+function crewSession(): string {
+  try {
+    return localStorage.getItem(CREW_SESSION_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
 async function webInvoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   const res = await fetch("/api/cmd", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ cmd, args: args ?? {}, token: getWebToken() }),
+    // The crew session rides on EVERY request. It's what lets the booth treat
+    // a member-tier phone as a specific person and apply that person's grants,
+    // rather than only "someone who knows the crew password".
+    body: JSON.stringify({ cmd, args: args ?? {}, token: getWebToken(), session: crewSession() }),
   });
   if (res.status === 401) {
     clearWebToken();
@@ -811,6 +824,8 @@ export interface CrewUser {
   pco_name?: string;
   /** What people call them ("Zach"). Display + login alias; "" = none. */
   nickname?: string;
+  /** Grants on top of the viewer baseline; see PERMS. */
+  perms?: string[];
   /** True when an admin set pco_name by hand — the weekly heal won't touch it. */
   pco_pinned?: boolean;
 }
@@ -822,6 +837,9 @@ export const identityUpdateProfile = (
 ) => invoke<CrewUser>("identity_update_profile", { id, ...patch });
 export const identitySetRole = (id: string, role: string) =>
   invoke<void>("identity_set_role", { id, role });
+/** Admin only — never reachable through a "manage" grant. */
+export const identitySetPerms = (id: string, perms: string[]) =>
+  invoke<void>("identity_set_perms", { id, perms });
 export const identityRegister = (name: string, pin: string, role = "", invite = "") =>
   invoke<{
     status: string;
@@ -911,8 +929,26 @@ export const chatHistory = () => invoke<ChatMsg[]>("chat_history");
 export const chatClearConfidence = () => invoke<void>("chat_clear_confidence");
 // Access tier of this client's token. Desktop is always admin; web clients ask
 // the gateway (member tokens get team-chat-only, no control surfaces).
-export const webWhoami = () =>
-  IS_WEB ? invoke<{ tier: "admin" | "member" }>("web_whoami") : Promise.resolve({ tier: "admin" as const });
+/** The grantable capabilities, in display order. Mirrors identity::PERMS. */
+export const PERMS = [
+  { id: "page", label: "Page", blurb: "Send pages and re-buzz them" },
+  { id: "stage", label: "Stage", blurb: "Put text on the stage displays and confidence screens" },
+  { id: "control", label: "Control", blurb: "Drive ProPresenter, the console, OBS scenes and Planning Center LIVE" },
+  { id: "tap", label: "Tap discs", blurb: "Override where the lobby NFC discs point" },
+  { id: "manage", label: "Manage crew", blurb: "Approve, edit and remove crew; invites; open joining" },
+] as const;
+export type Perm = (typeof PERMS)[number]["id"];
+
+export interface WhoAmI {
+  tier: "admin" | "member";
+  /** Admin = every permission. A member's power is exactly their grants. */
+  perms: string[];
+  name?: string | null;
+}
+export const webWhoami = (): Promise<WhoAmI> =>
+  IS_WEB
+    ? invoke<WhoAmI>("web_whoami")
+    : Promise.resolve({ tier: "admin", perms: PERMS.map((p) => p.id), name: null });
 
 // ---------------------------------------------------------------------------
 // TapLink (NFC destination sync). Watching and overriding work from the web

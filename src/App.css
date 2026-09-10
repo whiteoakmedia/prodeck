@@ -7790,3 +7790,35 @@ select.input {
   font: inherit;
   line-height: 1;
 }
+
+/* Per-person grants on a crew row. */
+.perm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 6px 14px;
+  margin: 4px 0 2px;
+}
+.perm-grid label {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 13px;
+  cursor: pointer;
+}
+.perm-grid label input {
+  margin-top: 3px;
+}
+.perm-grid label span span {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+}
+.crew-perms {
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.crew-perms .chip {
+  font-size: 10px;
+  padding: 1px 6px;
+}

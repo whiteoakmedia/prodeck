@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { usePerms } from "../lib/perms";
 import { usePco } from "../pcoStore";
 import { useChat, CREW_SESSION_KEY } from "../chatStore";
 import { listVisibleFor, roleMatches, useChecklists, type Checklist } from "../checklistStore";
@@ -16,7 +17,6 @@ import {
   posfileList,
   posfileUrl,
   tapEdgeState,
-  webWhoami,
   type PosFile,
   type TapEdgeState,
 } from "../lib/tauri";
@@ -55,12 +55,8 @@ export function CrewHome({ onGoChecklist }: { onGoChecklist?: () => void }) {
   const [tap, setTap] = useState<TapEdgeState | null>(null);
   // TapLink is a booth/admin concern — on a volunteer's Home it's just
   // unexplained jargon, so the tile only renders for admin phones.
-  const [isAdmin, setIsAdmin] = useState(false);
-  useEffect(() => {
-    webWhoami()
-      .then((w) => setIsAdmin(w.tier === "admin"))
-      .catch(() => {});
-  }, []);
+  const { can } = usePerms();
+  const isAdmin = can("tap");
   const [, tick] = useState(0);
 
   // The countdown is the top of the screen — it has to actually count.

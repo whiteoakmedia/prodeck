@@ -22,6 +22,8 @@ import {
   tapTest,
   identityList,
   identityApprove,
+  identitySetPerms,
+  PERMS,
   identityRemove,
   identityUpdateProfile,
   type CrewUser,
@@ -2491,6 +2493,13 @@ function CrewRow({ u }: { u: CrewUser }) {
         >
           {u.role || "not on this week's plan"}
         </span>
+        {(u.perms?.length ?? 0) > 0 && (
+          <span className="crew-perms" title="Grants beyond viewing">
+            {u.perms!.map((p) => (
+              <span key={p} className="chip">{PERMS.find((x) => x.id === p)?.label ?? p}</span>
+            ))}
+          </span>
+        )}
         <span
           className={`crew-pco ${u.pco_name ? "" : "muted"}`}
           title={u.pco_pinned ? "Linked by hand — the auto-match won't change it" : "Auto-matched to Planning Center"}
@@ -2527,6 +2536,39 @@ function CrewRow({ u }: { u: CrewUser }) {
             <input className="input" placeholder="e.g. Zach" value={nick} onChange={(e) => setNick(e.target.value)} />
             <span className="hint">Shown alongside their name; also unlocks their PIN.</span>
           </label>
+          <div className="field wide">
+            <span>
+              Permissions{" "}
+              <button className="link-btn" onClick={() => openHelp("crew-permissions")}>what each one unlocks</button>
+            </span>
+            <span className="hint">
+              What this person may do from a phone signed in with the crew password. No ticks = a viewer.
+              Only the admin password can change these. Saved as you tick.
+            </span>
+            <div className="perm-grid">
+              {PERMS.map((p) => {
+                const on = (u.perms ?? []).includes(p.id);
+                return (
+                  <label key={p.id}>
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      onChange={(e) => {
+                        const next = e.target.checked
+                          ? [...(u.perms ?? []), p.id]
+                          : (u.perms ?? []).filter((x) => x !== p.id);
+                        identitySetPerms(u.id, next).catch(() => {});
+                      }}
+                    />
+                    <span>
+                      {p.label}
+                      <span>{p.blurb}</span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
           <label className="field">
             <span>Planning Center person</span>
             <select

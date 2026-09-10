@@ -33,7 +33,8 @@ import { buzz, chime } from "./lib/sound";
 const CHAT_SOUND_KEY = "prodeck.chatSound";
 // Exported so the pages store can authenticate acks with the same session
 // rather than duplicating the key string.
-export const CREW_SESSION_KEY = "prodeck.crewSession";
+import { CREW_SESSION_KEY } from "./lib/tauri";
+export { CREW_SESSION_KEY };
 const SESSION_KEY = CREW_SESSION_KEY;
 const CREW_NAME_KEY = "prodeck.crewName";
 export const CREW_ID_KEY = "prodeck.crewId";
@@ -159,7 +160,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     // Invite claims come back pre-approved WITH a session and the durable
     // gateway token — the phone lands on Home with zero waiting.
     if (r.status === "ok" && r.session) {
-      localStorage.setItem(SESSION_KEY, r.session);
+      localStorage.setItem(SESSION_KEY, r.session); window.dispatchEvent(new Event("prodeck:session"));
       if (r.id) localStorage.setItem(CREW_ID_KEY, r.id);
       if (r.role) localStorage.setItem("prodeck.crewRole", r.role);
       if (r.web_token) setWebToken(r.web_token);
@@ -175,7 +176,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(CREW_NAME_KEY, r.name);
     setName(r.name);
     if (r.status === "ok" && r.session) {
-      localStorage.setItem(SESSION_KEY, r.session);
+      localStorage.setItem(SESSION_KEY, r.session); window.dispatchEvent(new Event("prodeck:session"));
       if (r.id) localStorage.setItem(CREW_ID_KEY, r.id);
       setSession(r.session);
       setAuth("in");
@@ -185,14 +186,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }
 
   function signOut() {
-    localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(SESSION_KEY); window.dispatchEvent(new Event("prodeck:session"));
     localStorage.removeItem(CREW_ID_KEY);
     setSession("");
     setAuth("none");
   }
 
   function forgetDevice() {
-    localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(SESSION_KEY); window.dispatchEvent(new Event("prodeck:session"));
     localStorage.removeItem(CREW_NAME_KEY);
     localStorage.removeItem(CREW_ID_KEY);
     setSession("");

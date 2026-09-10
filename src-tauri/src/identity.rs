@@ -50,6 +50,74 @@ pub struct User {
     /// nickname heuristic would have guessed differently.
     #[serde(default)]
     pub pco_pinned: bool,
+    /// What this person may DO from a phone signed in with the crew password.
+    /// Names from `PERMS`. Empty = a viewer: look, chat, check in, confirm
+    /// pages — everything the member tier always allowed. Grants are additive
+    /// on top of that; the admin password still means everything.
+    #[serde(default)]
+    pub perms: Vec<String>,
+}
+
+/// The grantable capabilities, in the order the UI shows them.
+///
+///   page     send pages and re-buzz them
+///   stage    put text on the stage displays / confidence screens
+///   control  drive ProPresenter, the console, OBS scenes, Planning Center LIVE
+///   tap      override the TapLink discs
+///   manage   approve, edit, remove crew; invites; open joining
+///
+/// `manage` deliberately does NOT include granting permissions — a manager
+/// who could grant `control` to themselves would be an admin with extra steps.
+/// Only the admin password grants.
+pub const PERMS: &[&str] = &["page", "stage", "control", "tap", "manage"];
+
+/// Who is on the other end of a gateway request, resolved from the crew
+/// session the phone sends with every command.
+#[derive(Debug, Clone)]
+pub struct Caller {
+    pub id: String,
+    pub name: String,
+    pub perms: Vec<String>,
+}
+
+pub fn session_caller(id_state: &IdentityState, session: &str) -> Option<Caller> {
+    if session.is_empty() {
+        return None;
+    }
+    let mut s = id_state.store.lock().unwrap_or_else(|p| p.into_inner());
+    let uid = s.sessions.get(session)?.clone();
+    let user = s.users.iter_mut().find(|u| u.id == uid)?;
+    if !user.approved {
+        return None; // revoking approval also revokes every grant
+    }
+    user.last_seen_ms = now_ms();
+    Some(Caller { id: user.id.clone(), name: user.name.clone(), perms: user.perms.clone() })
+}
+
+pub fn set_perms_core(
+    app: &AppHandle,
+    id_state: &IdentityState,
+    id: String,
+    perms: Vec<String>,
+) -> Result<(), String> {
+    let mut clean: Vec<String> = Vec::new();
+    for p in perms {
+        let p = p.trim().to_lowercase();
+        if !PERMS.contains(&p.as_str()) {
+            return Err(format!("unknown permission '{p}'"));
+        }
+        if !clean.contains(&p) {
+            clean.push(p);
+        }
+    }
+    let mut s = id_state.store.lock().unwrap_or_else(|p| p.into_inner());
+    let user = s.users.iter_mut().find(|u| u.id == id).ok_or("no such crew member")?;
+    user.perms = clean;
+    let snapshot = s.clone();
+    drop(s);
+    id_state.persist(&snapshot);
+    app.emit("identity:changed", json!({})).ok();
+    Ok(())
 }
 
 /// A personal, one-time onboarding link: grants member-tier gateway access
@@ -210,6 +278,7 @@ pub fn register_core(
         pco_name: String::new(),
         nickname: String::new(),
         pco_pinned: false,
+        perms: Vec::new(),
     };
     let uid = user.id.clone();
     let urole = user.role.clone();
@@ -423,7 +492,7 @@ pub fn whoami_core(id_state: &IdentityState, session: &str) -> Option<serde_json
     user.last_seen_ms = now_ms();
     Some(json!({
         "id": user.id, "name": user.name, "role": user.role,
-        "pcoName": user.pco_name,
+        "pcoName": user.pco_name, "perms": user.perms,
     }))
 }
 
@@ -484,6 +553,7 @@ pub fn list_core(id_state: &IdentityState) -> serde_json::Value {
             "created_ms": u.created_ms, "last_seen_ms": u.last_seen_ms,
             "role": u.role, "pco_name": u.pco_name,
             "nickname": u.nickname, "pco_pinned": u.pco_pinned,
+            "perms": u.perms,
         }))
         .collect::<Vec<_>>())
 }
@@ -813,6 +883,7 @@ pub fn ingest_edge_joins(
             pco_name: String::new(),
             nickname: String::new(),
             pco_pinned: false,
+            perms: Vec::new(),
         };
         s.sessions.insert(session, user.id.clone());
         s.users.push(user);
@@ -863,6 +934,16 @@ pub fn identity_approve(
     app: AppHandle,
 ) -> Result<(), String> {
     approve_core(&app, identity.inner(), id, approved)
+}
+
+#[tauri::command]
+pub fn identity_set_perms(
+    id: String,
+    perms: Vec<String>,
+    identity: tauri::State<'_, IdentityState>,
+    app: AppHandle,
+) -> Result<(), String> {
+    set_perms_core(&app, identity.inner(), id, perms)
 }
 
 #[tauri::command]
@@ -944,6 +1025,7 @@ mod heal_tests {
             pco_name: pco.to_string(),
             nickname: String::new(),
             pco_pinned: false,
+            perms: Vec::new(),
         }
     }
     fn entry(name: &str, position: &str) -> RosterEntry {

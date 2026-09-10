@@ -3,7 +3,8 @@ import { useChat } from "../chatStore";
 import { usePages } from "../pagesStore";
 import { CrewPageComposer, CrewPageTracking } from "./CrewPages";
 import { CrewChannels, type Channel } from "./CrewChannels";
-import { IS_WEB, webWhoami, type ChatMsg, type CrewPage } from "../lib/tauri";
+import { IS_WEB, type ChatMsg, type CrewPage } from "../lib/tauri";
+import { usePerms } from "../lib/perms";
 
 // S05a / S05b — chat thread (design/mobile/README.md).
 //
@@ -36,16 +37,12 @@ export function CrewChat() {
   // Members only get Team; the gateway enforces it server-side, so hiding the
   // control is just honest UI. Fail-open (admin) if the probe fails — the
   // server still rejects a restricted send.
-  const [isMember, setIsMember] = useState(false);
+  // What THIS person may do — from their grants, not from which password the
+  // phone typed. The gateway enforces the same table; hiding is just honesty.
+  const { can, isAdmin } = usePerms();
   // null = the channel list (S04). Opening a channel scopes the thread to it.
   const [channel, setChannel] = useState<Channel | null>(null);
   const myRole = localStorage.getItem("prodeck.crewRole") ?? "";
-  useEffect(() => {
-    if (!IS_WEB) return;
-    webWhoami()
-      .then((w) => setIsMember(w.tier === "member"))
-      .catch(() => {});
-  }, []);
 
   // Messages filed to the open channel. Older messages predate channels and
   // default to "team", so nothing disappears from the main thread.
@@ -99,7 +96,7 @@ export function CrewChat() {
           ‹
         </button>
         <h1 className="crew-title">{channel.label}</h1>
-        {!isMember && IS_WEB && <span className="crew-chip-admin mono">Admin</span>}
+        {isAdmin && IS_WEB && <span className="crew-chip-admin mono">Admin</span>}
       </header>
 
       <div className="crew-msgs" ref={listRef}>
@@ -145,7 +142,7 @@ export function CrewChat() {
 
       {/* A sent page reads as a record in the thread and opens read tracking —
           the counter is the whole reason an operator comes back to it. */}
-      {!isMember &&
+      {can("page") &&
         pages
           .filter((p) => p.from === chat.name)
           .slice(-2)
@@ -162,7 +159,7 @@ export function CrewChat() {
           ))}
 
       <div className="crew-compose">
-        {!isMember && (
+        {can("stage") && (
           // S05b: destination persists per thread; the field's placeholder
           // follows it so there's no doubt where a message is about to land.
           <div className="crew-seg">
@@ -190,13 +187,13 @@ export function CrewChat() {
           <button className="crew-send" onClick={send} aria-label="Send">
             ↑
           </button>
-          {!isMember && (
+          {can("page") && (
             <button className="crew-page-btn" onClick={() => setComposing(true)}>
               Page
             </button>
           )}
         </div>
-        {!isMember && target === "confidence" && (
+        {can("stage") && target === "confidence" && (
           <button className="crew-clear" onClick={chat.clearConfidence}>
             Clear confidence banner
           </button>

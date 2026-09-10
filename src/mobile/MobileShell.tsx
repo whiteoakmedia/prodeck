@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { usePerms } from "../lib/perms";
 import { CrewNav, type CrewTab } from "./CrewNav";
 import { CrewChat } from "./CrewChat";
 import { CrewJoin } from "./CrewJoin";
@@ -11,7 +12,7 @@ import { CrewDash } from "./CrewDash";
 import { CREW_ID_KEY, CREW_SESSION_KEY, useChat } from "../chatStore";
 import { listVisibleFor, useChecklists } from "../checklistStore";
 import { usePco } from "../pcoStore";
-import { IS_WEB, clearWebToken, identityWhoami, onGatewayState, webWhoami } from "../lib/tauri";
+import { IS_WEB, clearWebToken, identityWhoami, onGatewayState } from "../lib/tauri";
 import { disablePush, enablePush, pushState, type PushStatus } from "../lib/pushClient";
 import { listenSnapshot, onListen, stopListen } from "../lib/listen";
 import { onTrack, seekTrack, skipTrack, stopTrack, toggleTrack, trackSnapshot } from "../lib/trackPlayer";
@@ -32,12 +33,8 @@ export function MobileShell() {
   const [boothUp, setBoothUp] = useState(true);
   useEffect(() => onGatewayState(setBoothUp), []);
   // Leader board is admin-only; the gateway enforces the underlying calls too.
-  const [isAdmin, setIsAdmin] = useState(!IS_WEB);
+  const { isAdmin, can } = usePerms();
   const [leader, setLeader] = useState(false);
-  useEffect(() => {
-    if (!IS_WEB) return;
-    webWhoami().then((w) => setIsAdmin(w.tier === "admin")).catch(() => {});
-  }, []);
   // Identity (id + role) is fetched ONCE at the shell so every tab agrees.
   // It used to live only in the Checklist tab — Home read an empty role until
   // you visited Checklist at least once, hiding role lists and the duty card.
@@ -147,7 +144,7 @@ export function MobileShell() {
                 />
               </div>
             </div>
-            {isAdmin && (
+            {(isAdmin || can("manage")) && (
               <button className="crew-btn primary" onClick={() => setLeader(true)}>
                 Leader board
               </button>

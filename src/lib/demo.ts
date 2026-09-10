@@ -93,6 +93,9 @@ const CREW = TEAM.slice(0, 7).map((m, i) => ({
   pco_name: m.name,
   nickname: i === 1 ? "Josh" : "",
   pco_pinned: false,
+  // The worship leader may put text on stage; the producer may page and
+  // control. Everyone else is a viewer — which is what most of a team is.
+  perms: i === 0 ? ["stage"] : i === 2 ? ["page", "control"] : [],
 }));
 
 // ------------------------------------------------------------- PCO payloads
@@ -318,11 +321,11 @@ const SETTINGS_OVERLAY: Record<string, unknown> = {
  * Reads modelled below are answered first regardless.
  */
 const WRITES =
-  /^(update_settings|save_|web_start|web_stop|pco_(save|set|live|start|stop|sync)|pp_(connect|disconnect|trigger|clear|put|post|set|timer|focus|next|previous)|avantis_(set|recall)|tap_(override|save|test|check)|identity_(register|login|approve|remove|set_role|heal|update)|invite_(create|revoke)|checkin_(set|geo|auto)|checklist_|push_(subscribe|unsubscribe)|page_(send|ack|rebuzz)|chat_(send|clear)|keepalive_(install|uninstall|relaunch)|keep_awake_set|backup_(export|import)|(start|stop)_audio_capture|ndi_(start|stop)|midi_(send|open)|relay_(start|stop|connect)|transcription_(start|stop)|diag_open_issue|gemini_)/;
+  /^(update_settings|save_|web_start|web_stop|pco_(save|set|live|start|stop|sync)|pp_(connect|disconnect|trigger|clear|put|post|set|timer|focus|next|previous)|avantis_(set|recall)|tap_(override|save|test|check)|identity_(register|login|approve|remove|set_role|set_perms|heal|update)|invite_(create|revoke)|checkin_(set|geo|auto)|checklist_|push_(subscribe|unsubscribe)|page_(send|ack|rebuzz)|chat_(send|clear)|keepalive_(install|uninstall|relaunch)|keep_awake_set|backup_(export|import)|(start|stop)_audio_capture|ndi_(start|stop)|midi_(send|open)|relay_(start|stop|connect)|transcription_(start|stop)|diag_open_issue|gemini_)/;
 
 /** Commands whose callers do `.filter`/`.map` — an unmodelled one must be []. */
 const ARRAY_CMDS = new Set([
-  "chat_history", "page_list", "identity_list", "identity_roles", "discover_services",
+  "chat_history", "page_list", "identity_roles", "discover_services",
   "invite_list", "ndi_discover_sources", "posfile_list", "tap_check_links",
   "diag_recent_log", "list_audio_inputs", "list_midi_inputs", "list_midi_outputs",
 ]);
@@ -435,7 +438,8 @@ export async function demoInvoke<T>(cmd: string, args?: Record<string, unknown>)
       return out({ at, serviceKey: "demo" });
     }
     case "web_whoami":
-      return out({ tier: "admin" });
+      // The demo booth is an admin: every grant, so every control shows.
+      return out({ tier: "admin", perms: ["page", "stage", "control", "tap", "manage"], name: "Booth" });
     case "keepalive_status":
       return out({
         installed: true, program: "/Applications/ProDeck.app/Contents/MacOS/prodeck",

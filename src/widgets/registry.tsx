@@ -5,6 +5,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import { useProDeck } from "../store";
+import { usePerms } from "../lib/perms";
 import { SlideThumb } from "../components/SlideThumb";
 import {
   activePresentation,
@@ -714,6 +715,7 @@ export function ListenWidget() {
 // widget is the operator's window into it, from the booth or a phone on the
 // gateway — the host proxies the edge calls so the token stays on the host.
 function TapLinkWidget() {
+  const { can } = usePerms();
   const { settings } = useProDeck();
   const [edge, setEdge] = useState<(TapEdgeState & { keywords?: string[] }) | null>(null);
   const [stats, setStats] = useState<TapStatRow[] | null>(null);
@@ -850,6 +852,8 @@ function TapLinkWidget() {
           <button
             key={k}
             className={`btn small ${current === k ? "primary" : ""}`}
+            disabled={!can("tap")}
+            title={can("tap") ? "" : "Needs the Tap discs permission"}
             onClick={() => tapOverride(k).catch((e) => setErr(String(e)))}
           >
             {k}
@@ -857,6 +861,7 @@ function TapLinkWidget() {
         ))}
         <button
           className={`btn small ghost ${current === "default" ? "primary" : ""}`}
+          disabled={!can("tap")}
           onClick={() => tapOverride(null).catch((e) => setErr(String(e)))}
         >
           default
@@ -2581,6 +2586,8 @@ function LobbyTvWidget(_: WidgetProps) {
  */
 function StageMessageWidget({ widget, update, editing }: WidgetProps) {
   const { connected, status } = useProDeck();
+  const { can } = usePerms();
+  const locked = !can("stage");
   const live = stageMessageText(status);
   const presets: string[] = Array.isArray(widget.config.presets)
     ? widget.config.presets
@@ -2632,7 +2639,7 @@ function StageMessageWidget({ widget, update, editing }: WidgetProps) {
           <div className="w-stagemsg-liveactions">
             <button
               className="btn small primary"
-              disabled={busy}
+              disabled={busy || locked}
               onMouseDown={(e) => e.stopPropagation()}
               onClick={() => ppClearStageMessage()}
             >
@@ -2659,9 +2666,9 @@ function StageMessageWidget({ widget, update, editing }: WidgetProps) {
       <div className="w-stagemsg-send">
         <input
           className="input"
-          placeholder="Message for the stage…"
+          placeholder={locked ? "Needs the Stage permission" : "Message for the stage…"}
           value={text}
-          disabled={busy}
+          disabled={busy || locked}
           onMouseDown={(e) => e.stopPropagation()}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
@@ -2670,7 +2677,7 @@ function StageMessageWidget({ widget, update, editing }: WidgetProps) {
         />
         <button
           className="btn small primary"
-          disabled={busy || !text.trim()}
+          disabled={busy || locked || !text.trim()}
           onMouseDown={(e) => e.stopPropagation()}
           onClick={() => send(text)}
         >
@@ -2684,7 +2691,7 @@ function StageMessageWidget({ widget, update, editing }: WidgetProps) {
             <button
               key={`${p}-${i}`}
               className="btn small"
-              disabled={busy}
+              disabled={busy || locked}
               onMouseDown={(e) => e.stopPropagation()}
               onClick={() => send(p)}
             >

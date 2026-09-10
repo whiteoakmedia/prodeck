@@ -42,7 +42,9 @@ Things I'd consider real:
 Things I already know and consider accepted risk, so you needn't report them:
 
 - **The password tiers are shared secrets, not accounts.** Anyone who has the
-  member password is a member. That's the design.
+  member password is a viewer. Anything beyond viewing needs either the admin
+  password or a per-person grant on a crew account (page, stage, control, tap,
+  manage) — and only the admin password can grant.
 - **Crew PINs are four digits.** They identify people, they don't protect
   anything — the tiers do. There's a lockout to blunt guessing.
 - **Kiosk mode is a convenience, not a boundary.** The token in a kiosk's
@@ -50,7 +52,7 @@ Things I already know and consider accepted risk, so you needn't report them:
 - **The booth mirrors password hashes to the Cloudflare edge** so the offline
   fallback can authenticate. They are unsalted SHA-256 today.
 
-The last three are on the list to improve. Reports that help me prioritise them
+The kiosk and edge items are on the list to improve. Reports that help me prioritise them
 are welcome; I just don't want you to think you've found something unknown.
 
 ## Scope

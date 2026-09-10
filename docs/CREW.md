@@ -19,9 +19,20 @@ is the durable credential every phone holds; rotating it signs every phone out.
 is on chat messages, is who a page is addressed to, and is who the leader board
 says has arrived. Accounts live in **Settings → Crew Members**.
 
-> Today permissions come from the password, not the person. Per-person
-> permissions (this volunteer may page, that one may not) are the next planned
-> change to this system.
+**3. Grants decide what a specific person may do beyond looking.** On a crew
+account, an admin can tick any of:
+
+| Grant | Unlocks |
+|---|---|
+| **Page** | Send pages, re-buzz |
+| **Stage** | Stage-display and confidence text, and clearing it |
+| **Control** | ProPresenter, the console, OBS scenes, Planning Center LIVE |
+| **Tap discs** | Override the lobby NFC discs |
+| **Manage crew** | Approve / edit / remove crew, invites, open joining — but **not** granting |
+
+A phone signed in with the crew password and a crew account gets exactly its
+grants. The admin password still means everything. Only the admin password can
+grant; revoking approval removes all grants at once.
 
 ## Getting people on
 
