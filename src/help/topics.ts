@@ -449,6 +449,29 @@ The account that created the token needs access to **Services**. ProDeck verifie
     related: ["pco-connect"],
   },
 
+  {
+    id: "stage-call",
+    group: "Planning Center",
+    title: "Keys to the Stage: calling the worship team back",
+    aliases: [
+      "keys to the stage",
+      "sermon countdown",
+      "call the worship team",
+      "closing set keys",
+      "green room widget",
+      "when are we on",
+    ],
+    body: `The **Keys to the Stage** widget is for a screen where the worship team waits — a green room, the office, wherever breakfast is. It counts down the live item's planned length and, when songs come next, **five minutes before that item is due to end** it turns into a call: *TO THE STAGE*, the countdown, and the next songs with their **keys** in the biggest type on the wall.
+
+- The classic case is the closing set after the sermon, but it works for any run of songs after any timed item — including the opening set after a pre-service countdown.
+- The start time comes from service tracking, so a screen that comes on mid-sermon still knows where it is. If the start genuinely isn't known, it shows the songs and keys without a countdown rather than guess.
+- If the sermon runs long the call stays up and shows *over by* how much.
+- Change the lead time (3, 5, 7 or 10 minutes) in the widget's edit mode.
+
+Pair it with **Service Countdown**, **Show Flow** and **Song Leaders**, and turn on **Room audio** for the dashboard so the room hears the service without a tile. The **Green Room** template is exactly this layout.`,
+    related: ["kiosk", "dashboards-widgets", "pco-connect"],
+  },
+
   // ---------------------------------------------------------- phones & kiosks
   {
     id: "gateway-passwords",
@@ -493,7 +516,11 @@ From the icon, the app remembers the account and reconnects by itself. If it eve
 
 The link carries the **crew password** so a keyboard-less machine never has to type it. Leave the machine on: if the booth goes away the kiosk shows an "offline — reconnecting" splash and comes back by itself, picking up any ProDeck update along the way. Layout changes made on the booth appear within a minute.
 
-Cameras, the sound desk and OBS all work on a kiosk. (Before 0.9.75 they didn't — the tiles sat blank.)`,
+Cameras, the sound desk and OBS all work on a kiosk. (Before 0.9.75 they didn't — the tiles sat blank.)
+
+**Room audio without a tile.** Edit the dashboard and press **Room audio: on**. Any kiosk showing that dashboard plays the room's audio in the background — no Overflow Listen tile taking up space. On a Mac mini the Chrome flag \`--autoplay-policy=no-user-gesture-required\` is what lets it start with nobody clicking; set the volume on the TV.
+
+**It fills the screen.** A kiosk scales the layout so the tallest column exactly fills the TV, whatever size it is.`,
     settings: "set-kiosk",
     related: ["gateway-passwords", "ndi"],
   },

@@ -32,6 +32,9 @@ export interface TrackedItem {
   splAvg: number;
   live: boolean;
   tracked: boolean;
+  /** Epoch-ms the live stretch began; null when not live. Lets a widget count
+   *  down the live item's planned length, even on a kiosk that loaded mid-item. */
+  startedAt?: number | null;
 }
 
 // Per-service metadata, stored alongside the item stats so a saved service can
@@ -123,6 +126,7 @@ function bucketRows(bucket: Record<string, ItemStat>): TrackedItem[] {
     type,
     planned,
     actual: s?.actual ?? 0,
+    startedAt: s?.startedAt ?? null,
     splPeak: s && s.splCount ? s.splPeak : -100,
     splAvg: s && s.splCount ? s.splSum / s.splCount : -100,
     live: false,

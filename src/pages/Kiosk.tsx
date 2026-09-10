@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { startListen, stopListen } from "../lib/listen";
 import GridLayout, { WidthProvider, type Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import { useProDeck } from "../store";
@@ -42,6 +43,31 @@ export function KioskPage({ name }: { name: string }) {
       clearInterval(iv);
     };
   }, []);
+
+  // Fill the screen. A fixed 70px row left the bottom third of a TV empty
+  // and made every widget small. Scale rows so the tallest column exactly
+  // fills the viewport, and re-fit when the window changes.
+  const [vh, setVh] = useState(() => window.innerHeight);
+  useEffect(() => {
+    const onResize = () => setVh(window.innerHeight);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  const dashForFit = dashboards.find((d) => d.name.toLowerCase() === name.toLowerCase());
+  const rowHeight = useMemo(() => {
+    const rows = Math.max(1, ...(dashForFit?.widgets ?? []).map((w) => w.y + w.h));
+    const margin = 14;
+    const pad = 14 * 2 + (connected ? 0 : 52); // page padding (+ the offline banner)
+    return Math.max(44, Math.floor((vh - pad - (rows - 1) * margin) / rows));
+  }, [vh, dashForFit, connected]);
+
+  // Room audio, with no tile. `startListen(true)` owns its own hidden <audio>
+  // and retries on its own; the dashboard's `audio` flag is the whole switch.
+  useEffect(() => {
+    if (!dashForFit?.audio) return;
+    startListen(true);
+    return () => stopListen();
+  }, [dashForFit?.audio]);
 
   // Watchdog: is the booth Mac serving at all? (The SSE stream auto-retries on
   // its own; this is the user-facing signal + the recovery reload.)
@@ -131,7 +157,7 @@ export function KioskPage({ name }: { name: string }) {
         className="layout"
         layout={layout}
         cols={12}
-        rowHeight={70}
+        rowHeight={rowHeight}
         margin={[14, 14]}
         containerPadding={[0, 0]}
         isDraggable={false}

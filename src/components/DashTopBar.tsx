@@ -92,6 +92,8 @@ export function DashTopBar({
   editing,
   onToggleEdit,
   onAddWidget,
+  audio,
+  onToggleAudio,
   onRename,
   onDelete,
   onNew,
@@ -104,6 +106,8 @@ export function DashTopBar({
   editing: boolean;
   onToggleEdit: () => void;
   onAddWidget: () => void;
+  audio: boolean;
+  onToggleAudio: () => void;
   onRename: () => void;
   onDelete: () => void;
   onNew: () => void;
@@ -344,6 +348,13 @@ export function DashTopBar({
           </button>
           <button className="btn small ghost" onClick={onDelete}>
             Delete
+          </button>
+          <button
+            className={`btn small ${audio ? "" : "ghost"}`}
+            title="Play the room's audio on any kiosk showing this dashboard — no tile needed"
+            onClick={onToggleAudio}
+          >
+            {audio ? "Room audio: on" : "Room audio: off"}
           </button>
           <button className="btn small primary" onClick={onAddWidget}>
             <Icon name="dashboard" size={14} /> Add Widget

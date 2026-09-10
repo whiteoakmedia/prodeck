@@ -7822,3 +7822,93 @@ select.input {
   font-size: 10px;
   padding: 1px 6px;
 }
+
+/* Keys to the Stage — read from across a room. */
+.w-stagecall {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 2px;
+  border-radius: 10px;
+}
+.w-stagecall.call {
+  background: var(--warn-soft);
+  outline: 2px solid var(--warn);
+  outline-offset: -2px;
+  padding: 12px 14px;
+  animation: stagecall-pulse 1.6s ease-in-out infinite;
+}
+@keyframes stagecall-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50% { box-shadow: 0 0 0 8px var(--warn-soft); }
+}
+.w-stagecall-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.w-stagecall-eyebrow {
+  font-size: clamp(12px, 1.4vw, 18px);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.w-stagecall.call .w-stagecall-eyebrow {
+  color: var(--warn);
+  font-weight: 800;
+  font-size: clamp(18px, 2.6vw, 40px);
+}
+.w-stagecall-clock {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  font-size: clamp(22px, 3.2vw, 56px);
+  line-height: 1;
+}
+.w-stagecall-clock.small {
+  font-size: clamp(14px, 1.6vw, 22px);
+  font-weight: 600;
+  color: var(--muted);
+}
+.w-stagecall-songs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  overflow: hidden;
+}
+.w-stagecall-song {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: 12px;
+}
+.w-stagecall-key {
+  font-weight: 800;
+  font-size: clamp(18px, 2vw, 30px);
+  min-width: 2.2em;
+  color: var(--accent-hi);
+}
+.w-stagecall.call .w-stagecall-key {
+  font-size: clamp(30px, 4.5vw, 84px);
+  color: var(--text);
+}
+.w-stagecall-title {
+  font-size: clamp(14px, 1.5vw, 22px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.w-stagecall.call .w-stagecall-title {
+  font-size: clamp(18px, 2.4vw, 40px);
+  font-weight: 600;
+}
+.w-stagecall-leader {
+  color: var(--muted);
+  font-size: clamp(12px, 1.2vw, 18px);
+}
+.w-stagecall-foot {
+  margin-top: auto;
+}

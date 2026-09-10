@@ -14,6 +14,12 @@ export interface Dashboard {
   id: string;
   name: string;
   widgets: Widget[];
+  /**
+   * Play the room's audio on any kiosk showing this dashboard, with no tile.
+   * The Overflow Listen widget did this AND took a tile; on a TV in a room
+   * where people are eating, the audio is wanted and the tile is not.
+   */
+  audio?: boolean;
 }
 
 export const loadDashboards = () =>
@@ -39,6 +45,8 @@ export interface DashboardTemplate {
   name: string;
   blurb: string;
   build: () => Widget[];
+  /** Play the room's audio on kiosks showing this dashboard (no tile). */
+  audio?: boolean;
 }
 
 export const DASHBOARD_TEMPLATES: DashboardTemplate[] = [
@@ -85,6 +93,21 @@ export const DASHBOARD_TEMPLATES: DashboardTemplate[] = [
       mk("show_flow", 5, 6, 3, 6),
       mk("audio_meter", 0, 10, 5, 4),
       mk("service_tracking", 8, 9, 4, 5),
+    ],
+  },
+  {
+    key: "greenroom",
+    name: "Green Room",
+    blurb: "For a TV where the team waits: where we are, when they're on, the closing set and its keys — and the room's audio with no tile.",
+    audio: true,
+    build: () => [
+      mk("stage_call", 0, 0, 7, 4),
+      mk("service_clock", 7, 0, 5, 2),
+      mk("live_viewers", 7, 2, 2, 2),
+      mk("clock", 9, 2, 3, 2),
+      mk("show_flow", 0, 4, 4, 4),
+      mk("song_leaders", 4, 4, 4, 4),
+      mk("plan_item", 8, 4, 4, 4),
     ],
   },
   {

@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useRef,
   useState,
   type ComponentType,
   type MouseEvent as ReactMouseEvent,
@@ -56,6 +57,7 @@ import {
 } from "../lib/tauri";
 import type { Widget } from "../lib/dashboards";
 import { usePco, fmtLen, type TeamMember , isDeclined } from "../pcoStore";
+import { stageCallState, fmtClock } from "../lib/stageCall";
 import { useAlerts } from "../alertsStore";
 import { useRelay } from "../relayStore";
 import { Avatar, MicCard } from "../components/PcoBits";
@@ -2814,6 +2816,108 @@ function ConfidenceWidget({ widget }: WidgetProps) {
   );
 }
 
+/**
+ * Keys to the Stage — the worship team's cue, for a green-room TV.
+ *
+ * Counts down the live item's planned length. When songs come next and the
+ * countdown is inside the lead time (five minutes by default), the tile turns
+ * into a CALL: TO THE STAGE, the countdown, and the next songs with their keys
+ * in the biggest type on the wall. The people reading it are eating breakfast
+ * two rooms away and about to play; the keys are the one thing they'll ask.
+ *
+ * The start time comes from service tracking (so a kiosk that loads mid-sermon
+ * still knows), falling back to the moment this screen saw the item go live.
+ */
+function StageCallWidget({ widget, update, editing }: WidgetProps) {
+  const { items, liveItemId } = usePco();
+  const tracking = useTracking();
+  const leadMin: number = Number(widget.config.leadMin ?? 5);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  // Fallback start: the moment THIS screen saw the live item change.
+  const seenRef = useRef<{ id: string | null; at: number }>({ id: null, at: 0 });
+  if (seenRef.current.id !== liveItemId) seenRef.current = { id: liveItemId, at: Date.now() };
+  const tracked = tracking.rows.find((r) => r.itemId === liveItemId)?.startedAt ?? null;
+  const startedAt = tracked ?? (liveItemId ? seenRef.current.at : null);
+
+  const st = stageCallState(items, liveItemId, startedAt, now, leadMin * 60);
+  const calling = st.phase === "call" || st.phase === "over";
+
+  if (items.length === 0) return <NeedsPco hint="Pick this week's plan to see the closing set and its keys" />;
+
+  return (
+    <div className={`w-stagecall ${calling ? "call" : ""}`}>
+      {calling ? (
+        <>
+          <div className="w-stagecall-head">
+            <span className="w-stagecall-eyebrow">To the stage</span>
+            <span className="w-stagecall-clock">
+              {st.phase === "over" ? `over by ${fmtClock(st.remaining!)}` : fmtClock(st.remaining!)}
+            </span>
+          </div>
+          <div className="w-stagecall-songs big">
+            {st.next.map((sng) => (
+              <div key={sng.id} className="w-stagecall-song">
+                <span className="w-stagecall-key">{sng.key || "—"}</span>
+                <span className="w-stagecall-title">{sng.title}</span>
+                {sng.leader && <span className="w-stagecall-leader">{sng.leader}</span>}
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="w-stagecall-head">
+            <span className="w-stagecall-eyebrow">
+              {st.live ? `Now · ${st.live.title}` : "Waiting for the service"}
+            </span>
+            {st.remaining !== null && (
+              <span className="w-stagecall-clock small">{fmtClock(st.remaining)} left</span>
+            )}
+          </div>
+          <div className="w-stagecall-songs">
+            {st.next.length === 0 ? (
+              <span className="muted small">No songs coming up next.</span>
+            ) : (
+              <>
+                <span className="muted small">{st.live ? "Up next" : "Opening set"}</span>
+                {st.next.map((sng) => (
+                  <div key={sng.id} className="w-stagecall-song">
+                    <span className="w-stagecall-key">{sng.key || "—"}</span>
+                    <span className="w-stagecall-title">{sng.title}</span>
+                    {sng.leader && <span className="w-stagecall-leader">{sng.leader}</span>}
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+          {st.live && st.next.length > 0 && st.remaining !== null && (
+            <span className="muted small w-stagecall-foot">
+              Calls the team {leadMin} min before this item is due to end.
+            </span>
+          )}
+        </>
+      )}
+      {editing && (
+        <button
+          className="btn small ghost"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={() => {
+            const cycle = [3, 5, 7, 10];
+            const i = cycle.indexOf(leadMin);
+            update({ leadMin: cycle[(i + 1) % cycle.length] });
+          }}
+        >
+          Call {leadMin} min before
+        </button>
+      )}
+    </div>
+  );
+}
+
 export const WIDGETS: WidgetDef[] = [
   // Mission Control — director overview
   { type: "health_strip", label: "System Health", group: "Mission Control", w: 12, h: 2, component: HealthStripWidget },
@@ -2835,6 +2939,7 @@ export const WIDGETS: WidgetDef[] = [
   { type: "people", label: "Team", group: "Planning Center", w: 3, h: 5, component: PeopleWidget },
   { type: "song_leaders", label: "Song Leaders", group: "Planning Center", w: 4, h: 4, component: SongLeadersWidget },
   { type: "mic_assignment", label: "Mic Assignments", group: "Planning Center", w: 4, h: 5, component: MicAssignmentWidget },
+  { type: "stage_call", label: "Keys to the Stage", group: "Planning Center", w: 6, h: 4, component: StageCallWidget },
   // Audio
   { type: "audio_meter", label: "SPL + RTA", group: "Audio", w: 5, h: 5, component: AudioMeterWidget },
   { type: "listen", label: "Overflow Listen", group: "Audio", w: 3, h: 3, component: ListenWidget },

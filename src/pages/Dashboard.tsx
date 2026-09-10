@@ -250,7 +250,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: any) => void }) {
     let name = base;
     let n = 2;
     while (dashboards.some((d) => d.name === name)) name = `${base} ${n++}`;
-    const d: Dash = { id: newId(), name, widgets: t.build() };
+    const d: Dash = { id: newId(), name, widgets: t.build(), audio: t.audio };
     setDashboards((ds) => [...ds, d]);
     setActiveId(d.id);
   }
@@ -292,6 +292,8 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: any) => void }) {
           setAdding(false);
         }}
         onAddWidget={() => setAdding((a) => !a)}
+        audio={!!active.audio}
+        onToggleAudio={() => patchActive((d) => ({ ...d, audio: !d.audio }))}
         onRename={renameDashboard}
         onDelete={deleteDashboard}
         onNew={newDashboard}
