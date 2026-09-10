@@ -7700,3 +7700,93 @@ select.input {
   flex-direction: column;
   gap: 2px;
 }
+
+/* An inline "learn more" that reads as a link, for use inside a sentence. */
+.link-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--accent-hi);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Guided setup steps inside a Settings card (TapLink, Crew). */
+.guide-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 6px 0 14px;
+}
+.guide-step {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.guide-step.done {
+  border-color: var(--good);
+  background: var(--good-soft);
+}
+.guide-step-n {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.guide-step.done .guide-step-n {
+  background: var(--good);
+  color: var(--accent-ink);
+}
+.guide-step strong {
+  display: block;
+  margin-bottom: 2px;
+}
+.guide-step .cmd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.guide-step .cmd code {
+  flex: 1;
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--bg);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.role-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.role-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 12px;
+}
+.role-chip button {
+  background: none;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+}

@@ -991,12 +991,13 @@ export function SettingsPage() {
           </span>
         </div>
         <p className="muted small">
-          Keeps the Overflow Tap discs' destination in sync with the service. Put{" "}
-          <code>tap:go</code> in a slide's notes and every tap lands on giving the moment that
-          slide goes live; <code>tap:default</code> reverts. Keywords and links are editable
-          below. Only this booth instance follows slides; phones on the web gateway can watch
-          and override, but not change the setup here.
+          NFC discs in your lobby all open one link, and that link follows the service: put{" "}
+          <code>tap:give</code> in a slide's notes and every disc points at giving the moment that
+          slide goes live; <code>tap:default</code> reverts. Only this booth instance follows
+          slides; phones can watch and override, but not change the setup here.{" "}
+          <button className="link-btn" onClick={() => openHelp("taplink-overview")}>What this is</button>
         </p>
+        <TapLinkGuide form={form} tested={tapMsg.startsWith("✓")} />
         <div className="settings-grid">
           <label className="field check">
             <input
@@ -1053,9 +1054,34 @@ export function SettingsPage() {
           <p className="muted small">
             PIN identities for phones — messages carry these verified names. New joins
             wait here until you approve them — or skip the wait entirely by
-            sending a personal invite link below.
+            sending a personal invite link below.{" "}
+            <button className="link-btn" onClick={() => openHelp("crew-overview")}>How the crew system works</button>
           </p>
-          <PersonalInvites />
+          <div className="guide-steps">
+            <div className={`guide-step ${form.web_member_password ? "done" : ""}`}>
+              <span className="guide-step-n">1</span>
+              <div>
+                <strong>Set the crew password</strong>
+                <span className="muted small">In Browser Access. It's what the join link carries, and what every crew phone holds.</span>
+              </div>
+            </div>
+            <div className={`guide-step ${form.web_invite_token ? "done" : ""}`}>
+              <span className="guide-step-n">2</span>
+              <div>
+                <strong>Open joining and share the poster — or send personal invites</strong>
+                <span className="muted small">The poster works only while joining is open (below). A personal invite is for one person and arrives pre-approved.</span>
+              </div>
+            </div>
+            <div className={`guide-step ${crew.some((u) => u.approved) ? "done" : ""}`}>
+              <span className="guide-step-n">3</span>
+              <div>
+                <strong>Approve people as they join</strong>
+                <span className="muted small">Once each. Roles come from this week's Planning Center plan through the PCO link on each person.</span>
+              </div>
+            </div>
+          </div>
+          <CrewRolesEditor roles={form.crew_roles ?? []} onChange={(r) => set("crew_roles", r)} />
+          <PersonalInvites roleSuggestions={form.crew_roles ?? []} />
           {crew.length === 0 && <p className="muted small">Nobody has joined yet.</p>}
           {crew.map((u) => (
             <CrewRow key={u.id} u={u} />
@@ -2165,10 +2191,141 @@ function HardwareStatus({ model }: { model: string }) {
 
 // Personal one-time invites: pre-approved, name+role locked to the link, gone
 // once claimed. The fastest onboarding there is — send it, they pick a PIN.
-function PersonalInvites() {
+/**
+ * The TapLink setup, as a checklist that knows what's done.
+ *
+ * Another church hitting "Edge URL" and "API token" had no idea what to put
+ * there — those only exist once you've deployed the edge, and nothing said so.
+ * Each step is derived from real state (a URL entered, a test passed, links
+ * saved, the watcher armed) so it can't drift from the truth; the commands are
+ * the exact ones, copyable.
+ */
+function TapLinkGuide({ form, tested }: { form: Settings; tested: boolean }) {
+  const [kw, setKw] = useState<number | null>(null);
+  const configured = !!form.tap_edge_url && !!form.tap_token;
+  useEffect(() => {
+    if (!configured || IS_WEB) return;
+    tapMappings()
+      .then((m) => setKw(Object.keys(m?.keywords ?? {}).length))
+      .catch(() => setKw(null));
+  }, [configured, form.tap_edge_url]);
+  const [copied, setCopied] = useState("");
+  const copy = (id: string, text: string) => {
+    navigator.clipboard?.writeText(text).catch(() => {});
+    setCopied(id);
+    setTimeout(() => setCopied(""), 1400);
+  };
+  const Cmd = ({ id, text }: { id: string; text: string }) => (
+    <div className="cmd">
+      <code>{text}</code>
+      <button className="btn small ghost" onClick={() => copy(id, text)}>{copied === id ? "Copied ✓" : "Copy"}</button>
+    </div>
+  );
+  const edge = form.tap_edge_url.replace(/\/+$/, "");
+  const discUrl = edge ? `${edge}/now` : "https://<your edge>/now";
+  return (
+    <div className="guide-steps">
+      <div className={`guide-step ${form.tap_edge_url ? "done" : ""}`}>
+        <span className="guide-step-n">1</span>
+        <div>
+          <strong>Deploy your edge (once, ~10 minutes)</strong>
+          <span className="muted small">
+            A tiny free Cloudflare Worker that the discs point at. From the ProDeck source, in the{" "}
+            <code>taplink-edge</code> folder. The last command prints your token — copy it, Cloudflare won't show it again.
+          </span>
+          <Cmd id="c1" text="npm install && npx wrangler login && npx wrangler deploy" />
+          <Cmd id="c2" text="openssl rand -hex 32 | tee /dev/stderr | npx wrangler secret put TAPLINK_TOKEN" />
+          <span className="muted small">Deploy prints your worker URL — that's the Edge URL below. <button className="link-btn" onClick={() => openHelp("taplink-deploy")}>Full steps</button></span>
+        </div>
+      </div>
+      <div className={`guide-step ${tested ? "done" : ""}`}>
+        <span className="guide-step-n">2</span>
+        <div>
+          <strong>Connect ProDeck</strong>
+          <span className="muted small">Paste the Edge URL and token below, then <em>Save &amp; test connection</em>. Green means reachable and the token works.</span>
+        </div>
+      </div>
+      <div className={`guide-step ${kw && kw > 0 ? "done" : ""}`}>
+        <span className="guide-step-n">3</span>
+        <div>
+          <strong>Set your links</strong>
+          <span className="muted small">
+            In <em>Keywords &amp; links</em> (appears once connected): <code>give</code>, <code>connect</code>, <code>prayer</code>, and a default. Every URL is yours.
+            {kw !== null && ` ${kw} keyword${kw === 1 ? "" : "s"} saved.`}
+          </span>
+        </div>
+      </div>
+      <div className="guide-step">
+        <span className="guide-step-n">4</span>
+        <div>
+          <strong>Write the discs</strong>
+          <span className="muted small">Every disc gets the same URL, written once with any NFC-writer app (NTAG213 or better):</span>
+          <Cmd id="c3" text={discUrl} />
+        </div>
+      </div>
+      <div className={`guide-step ${form.tap_enabled ? "done" : ""}`}>
+        <span className="guide-step-n">5</span>
+        <div>
+          <strong>Tag your slides and arm the watcher</strong>
+          <span className="muted small">Put <code>tap:give</code> in the notes of the giving slide (and so on), then tick <em>Follow slides</em> below and Save.</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The roles this church uses. Roles on people come from this week's Planning
+ * Center plan; this list is offered wherever a role is typed by hand instead
+ * (a personal invite for someone not on the plan), so the leader board and
+ * role channels don't fragment into "Camera 1", "Cam 1" and "camera1".
+ */
+function CrewRolesEditor({ roles, onChange }: { roles: string[]; onChange: (r: string[]) => void }) {
+  const [draft, setDraft] = useState("");
+  const add = () => {
+    const r = draft.trim();
+    if (!r) return;
+    if (!roles.some((x) => x.toLowerCase() === r.toLowerCase())) onChange([...roles, r]);
+    setDraft("");
+  };
+  return (
+    <div className="field wide">
+      <span>
+        Roles you use{" "}
+        <button className="link-btn" onClick={() => openHelp("crew-roles")}>what roles do</button>
+      </span>
+      <span className="hint">
+        Suggested wherever a role is typed by hand. People on this week's Planning Center plan get their
+        position automatically — this list is for everyone else. Remember to Save.
+      </span>
+      <div className="role-chips">
+        {roles.map((r) => (
+          <span key={r} className="role-chip">
+            {r}
+            <button title={`Remove ${r}`} onClick={() => onChange(roles.filter((x) => x !== r))}>×</button>
+          </span>
+        ))}
+      </div>
+      <div className="field-row" style={{ marginTop: 6 }}>
+        <input
+          className="input"
+          placeholder="Add a role, e.g. Camera 3"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
+        />
+        <button className="btn small" onClick={add} disabled={!draft.trim()}>Add</button>
+      </div>
+    </div>
+  );
+}
+
+function PersonalInvites({ roleSuggestions = [] }: { roleSuggestions?: string[] }) {
   const pco = usePco();
   const [invites, setInvites] = useState<Invite[]>([]);
   const [who, setWho] = useState("");
+  // Typed only when the person isn't on this week's plan; a roster match wins.
+  const [typedRole, setTypedRole] = useState("");
   const [copiedTok, setCopiedTok] = useState("");
 
   const load = () => inviteList().then(setInvites).catch(() => {});
@@ -2182,8 +2339,10 @@ function PersonalInvites() {
   async function create() {
     const name = who.trim();
     if (!name) return;
-    const role = roster.find((m) => m.name.toLowerCase() === name.toLowerCase())?.position ?? "";
+    const onPlan = roster.find((m) => m.name.toLowerCase() === name.toLowerCase())?.position;
+    const role = onPlan ?? typedRole.trim();
     await inviteCreate(name, role).catch(() => {});
+    setTypedRole("");
     setWho("");
     load();
   }
@@ -2234,6 +2393,26 @@ function PersonalInvites() {
             <option key={m.id} value={m.name} />
           ))}
         </datalist>
+        {/* Only when the name isn't on the plan: the plan's position wins, so
+            offering a role field for a rostered person would just be ignored. */}
+        {who.trim() && !roster.some((m) => m.name.toLowerCase() === who.trim().toLowerCase()) && (
+          <>
+            <input
+              className="input"
+              list="invite-roles"
+              placeholder="Role (optional)"
+              value={typedRole}
+              onChange={(e) => setTypedRole(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && create()}
+              style={{ maxWidth: 180 }}
+            />
+            <datalist id="invite-roles">
+              {roleSuggestions.map((r) => (
+                <option key={r} value={r} />
+              ))}
+            </datalist>
+          </>
+        )}
         <button className="btn small primary" disabled={!who.trim()} onClick={create}>
           Invite
         </button>

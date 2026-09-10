@@ -38,6 +38,12 @@ pub struct Settings {
     /// gateway, it answers only inside a window the booth opens on purpose.
     #[serde(default)]
     pub crew_join_until_ms: u64,
+    /// The roles this church uses ("Camera 1", "Audio A2", "Lyrics"…). Roles
+    /// are still free text on a person; this list is offered as suggestions
+    /// wherever a role is typed, so the leader board and the role chat channels
+    /// don't fragment into "Camera 1", "Cam 1" and "camera1".
+    #[serde(default = "default_crew_roles")]
+    pub crew_roles: Vec<String>,
     /// Bearer token the booth uses to push tokens/extras to the crew-edge
     /// worker (your-domain/edge). Empty = edge push off.
     pub edge_admin_token: String,
@@ -166,11 +172,19 @@ impl Default for AvantisSoftkey {
     }
 }
 
+fn default_crew_roles() -> Vec<String> {
+    ["Producer", "ProPresenter", "Audio", "Camera 1", "Camera 2", "Lighting", "Stage", "Livestream"]
+        .iter()
+        .map(|s| s.to_string())
+        .collect()
+}
+
 impl Default for Settings {
     fn default() -> Self {
         Self {
             public_url: String::new(),
             crew_join_until_ms: 0,
+            crew_roles: default_crew_roles(),
             avantis_watch_user: String::new(),
             avantis_watch_armed: false,
             ga4_property_id: String::new(),

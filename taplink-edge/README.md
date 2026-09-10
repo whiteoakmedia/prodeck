@@ -1,44 +1,94 @@
 # taplink-edge
 
-Cloudflare Worker + Durable Object behind `go.cornerstonecheshire.com`. NFC discs
-(Overflow Tap, custom link) point at `GET /now`, which 302s to the destination for the
-current service moment. ProDeck pushes state when a slide with a `tap:<keyword>` note
-goes live in ProPresenter. Full design: [../TAPLINK_PLAN.md](../TAPLINK_PLAN.md).
+The tiny web service behind TapLink. NFC discs in your lobby all point at one
+fixed URL on it (`/now`); it redirects each tap to wherever the service is
+right now, and counts the taps. ProDeck tells it what's live when a slide with
+`tap:<keyword>` in its notes goes up in ProPresenter.
 
-## Keywords (slide notes)
+It runs on Cloudflare Workers (free tier is plenty) with a Durable Object for
+state. You deploy one per church. **ProDeck's own Settings → TapLink card walks
+you through this with copyable commands** — this file is the reference.
 
-| Note text | Destination |
+## What you need
+
+- A **Cloudflare account** (free). Nothing else on Cloudflare — no domain
+  required, though a short one like `go.yourchurch.org` is nicer on a disc.
+- **Node.js 18+** on any computer, once, to deploy from.
+- **NFC discs or stickers**, NTAG213 or better.
+
+## Deploy
+
+From the ProDeck source (`git clone https://github.com/whiteoakmedia/prodeck`):
+
+```bash
+cd taplink-edge
+npm install
+npx wrangler login          # opens Cloudflare in your browser
+npx wrangler deploy         # prints your worker URL — that is your Edge URL
+```
+
+Create the token ProDeck will use and store it as a secret. **Copy the value
+this prints** — it's the API token you paste into ProDeck, and Cloudflare will
+not show it again:
+
+```bash
+openssl rand -hex 32 | tee /dev/stderr | npx wrangler secret put TAPLINK_TOKEN
+```
+
+And a separate key for the emergency phone page:
+
+```bash
+openssl rand -hex 16 | tee /dev/stderr | npx wrangler secret put ADMIN_KEY
+```
+
+Then in ProDeck: **Settings → TapLink**, paste the Edge URL and token, **Save &
+test connection**. Green means reachable and authenticated.
+
+### Optional: a short domain
+
+If your domain's DNS is on Cloudflare, uncomment `routes` in
+[wrangler.jsonc](wrangler.jsonc), set your hostname, and `npx wrangler deploy`
+again. Cloudflare creates the DNS record. Your Edge URL becomes
+`https://go.yourchurch.org`.
+
+## Links and keywords
+
+The edge stores a mapping of keyword → URL, plus a default. **Edit it in ProDeck**
+(Settings → TapLink → Keywords & links); [mappings.json](mappings.json) is only
+a starter for a brand-new deploy, and ProDeck's copy wins the moment anyone
+saves there.
+
+| Slide note | What every disc opens |
 |---|---|
-| `tap:go` | PushPay giving |
-| `tap:connect` | Connect card (Church Center form) |
-| `tap:notes` | Sermon notes (FaithNotes) |
-| `tap:prayer` | Prayer request form |
-| `tap:groups` | Small group signup |
-| `tap:default` | Back to default (connect card) |
+| `tap:give` | your giving page (reverts after 15 min by default) |
+| `tap:connect` | connect card |
+| `tap:notes` | sermon notes |
+| `tap:prayer` | prayer request form |
+| `tap:groups` | small-group signup |
+| `tap:default` | back to the default |
 
-State is sticky until another keyword fires, a manual override, or its timer
-expires (then taps land on the default again). Timers: **`go` reverts after
-15 min**; everything else uses the global `ttl_minutes` (180). A keyword maps
-to a bare URL or `{ "url": ..., "ttl_minutes": N }` for a per-keyword timer.
-**The live mapping is whatever the edge has stored** — since ProDeck 0.1.64 it is
-normally edited in the app (Settings → TapLink → *Keywords & links*, which PUTs
-here). [mappings.json](mappings.json) is the seed/bootstrap copy and will drift
-once anyone edits in-app; `GET /api/mappings` is the source of truth, so re-dump
-it there before treating the file as current.
+Both `tap:give` and `tap: give` are accepted. State is sticky until another
+keyword fires, a manual override, or its timer runs out (then taps land on the
+default). A keyword is a bare URL or `{ "url": ..., "ttl_minutes": N }`.
 
-Renaming or removing a keyword does **not** touch ProPresenter: the trigger lives
-in the slide's notes, so any slide still tagged with the old `tap:<keyword>`
-silently stops switching the discs until it is re-tagged by hand. (The in-app
-editor warns and asks for confirmation before saving such a change.) A state
-whose keyword disappears falls back to the default on the edge's next read.
+Renaming or removing a keyword does **not** touch ProPresenter — a slide still
+tagged with the old word silently stops switching until it's re-tagged. The
+in-app editor warns before saving such a change.
+
+## Writing the discs
+
+Every disc gets the same URL: your Edge URL plus `/now`, e.g.
+`https://go.yourchurch.org/now`. Any NFC-writer phone app (NFC Tools is free):
+choose *URL*, paste, hold the disc to the phone. Because the URL never changes,
+you can add discs forever without rewriting one.
 
 ## Endpoints
 
-- `GET /now` (or `/`) — public tap path, 302 to current destination, logs an anonymous tap.
-- `POST /api/state` — `{"state":"go"}` / `{"state":null}`. Bearer `TAPLINK_TOKEN`.
-- `GET /api/state`, `GET|PUT /api/mappings`, `POST /api/heartbeat`, `GET /api/stats` — Bearer.
-- `GET /admin/<ADMIN_KEY>` — operator-only phone remote (emergency override buttons).
+- `GET /now` (or `/`) — public tap path: 302 to the current destination, logs an anonymous tap.
 - `GET /api/health` — public.
+- `POST /api/state` — `{"state":"give"}` / `{"state":null}`. Bearer `TAPLINK_TOKEN`.
+- `GET /api/state`, `GET|PUT /api/mappings`, `POST /api/heartbeat`, `GET /api/stats` — Bearer.
+- `GET /admin/<ADMIN_KEY>` — operator-only phone remote with override buttons. Works even when the booth computer is off.
 
 ## Local dev
 
@@ -46,24 +96,3 @@ whose keyword disappears falls back to the default on the edge's next read.
 npm install
 npx wrangler dev   # uses .dev.vars (TAPLINK_TOKEN=dev-token, ADMIN_KEY=dev-admin-key)
 ```
-
-## Deploy
-
-```bash
-npx wrangler login
-npx wrangler deploy
-openssl rand -hex 32 | npx wrangler secret put TAPLINK_TOKEN
-openssl rand -hex 16 | npx wrangler secret put ADMIN_KEY
-```
-
-Then:
-
-1. Push the mapping: `curl -X PUT https://<worker-url>/api/mappings -H "Authorization: Bearer <token>" --data @mappings.json`
-2. Custom domain: uncomment `routes` in [wrangler.jsonc](wrangler.jsonc) once
-   `cornerstonecheshire.com` DNS is on Cloudflare, redeploy — the DNS record is created
-   automatically.
-3. Overflow dashboard → Tap group → custom link → `https://go.cornerstonecheshire.com/now`.
-4. Save the admin URL (`https://go.cornerstonecheshire.com/admin/<ADMIN_KEY>`) to the
-   booth phone's home screen.
-
-Keep `TAPLINK_TOKEN` in ProDeck settings (watcher, phase 2) and nowhere public.

@@ -262,6 +262,10 @@ export interface Settings {
   web_password: string;
   web_member_password: string;
   web_invite_token: string;
+  /** Epoch-ms until which /join hands out the crew token; 0 = closed. */
+  crew_join_until_ms: number;
+  /** Role suggestions offered wherever a role is typed by hand. */
+  crew_roles: string[];
   edge_admin_token: string;
   gemini_api_key: string | null;
   ga4_property_id: string;

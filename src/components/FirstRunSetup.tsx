@@ -22,7 +22,8 @@ import {
 } from "../lib/dashboards";
 import { requestSettingsJump } from "../lib/settingsJump";
 import { STARTER_CHECKLISTS, addStarterChecklists } from "../lib/checklistTemplates";
-import { keepaliveStatus, keepaliveInstall, setDemo, type KeepaliveStatus } from "../lib/tauri";
+import { keepaliveStatus, keepaliveInstall, setDemo, crewJoinOpen, crewJoinState, type KeepaliveStatus } from "../lib/tauri";
+import { openHelp } from "../help/nav";
 import { isFreshInstall, readSetupDone, writeSetupDone, ONBOARDING_EVENT } from "../lib/onboarding";
 import { ConnectCard } from "./ConnectCard";
 import { Icon } from "./Icon";
@@ -49,6 +50,7 @@ type Stage =
   | "web"
   | "console"
   | "team"
+  | "taplink"
   | "dashboards"
   | "done";
 
@@ -60,6 +62,7 @@ const STAGES: { id: Stage; label: string }[] = [
   { id: "web", label: "Phones & kiosks" },
   { id: "console", label: "Sound console" },
   { id: "team", label: "Your team" },
+  { id: "taplink", label: "Lobby tap discs" },
   { id: "dashboards", label: "Dashboards" },
   { id: "done", label: "Done" },
 ];
@@ -332,6 +335,27 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
 
   const idx = STAGES.findIndex((s) => s.id === stage);
   const go = (s: Stage) => setStage(s);
+
+  // /join only answers while joining is open. This step SHOWS the join QR, so
+  // it has to open the window itself — otherwise a volunteer scanning the code
+  // on screen during setup was told "joining is closed", which is absurd.
+  // An hour covers a volunteer meeting; it closes by itself.
+  const [joinLeft, setJoinLeft] = useState<number | null>(null);
+  useEffect(() => {
+    if (stage !== "team") return;
+    let alive = true;
+    crewJoinOpen(60).catch(() => {});
+    const tick = () =>
+      crewJoinState()
+        .then((st) => alive && setJoinLeft(st.open ? st.secondsLeft : 0))
+        .catch(() => {});
+    tick();
+    const t = setInterval(tick, 1000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, [stage]);
   // Functional updates: a delayed `next` must step from wherever the user IS.
   const step = (delta: number) =>
     setStage((cur) => {
@@ -790,6 +814,15 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
               screen, their phone gets pages and chat even when the app is closed.
               Print it and hang it in the booth — the code never changes.
             </p>
+            <p className="muted small">
+              {joinLeft === null
+                ? "Opening joining…"
+                : joinLeft > 0
+                  ? `Joining is open for the next ${Math.ceil(joinLeft / 60)} min — long enough for a volunteer meeting. After that, open it again from Settings → Crew Members whenever you're signing people up.`
+                  : "Joining is closed. Open it from Settings → Crew Members when you're ready to sign people up."}
+              {" "}
+              <button className="link-btn" onClick={() => openHelp("crew-joining")}>How joining works</button>
+            </p>
             {joinMsg && <p className="error small">{joinMsg}</p>}
             {joinUrl && (
               <div className="ob-join">
@@ -814,9 +847,40 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
           </div>
         )}
 
+        {stage === "taplink" && (
+          <div className="ob-stage">
+            <span className="ob-eyebrow">Step 6 · Optional</span>
+            <h1>Lobby tap discs that follow the service.</h1>
+            <p className="ob-lead">
+              TapLink is NFC discs in your lobby that all open <strong>one</strong> link —
+              and that link points at giving while the giving slide is up, at sermon
+              notes during the message, and at your connect card the rest of the
+              time. You tag slides in ProPresenter; the discs do the rest.
+            </p>
+            <div className="ob-tools">
+              <div className="ob-tool">
+                <strong>You'll need</strong>
+                <span>A free Cloudflare account, a computer with Node.js to deploy from once, and NFC discs (NTAG213 or better, a few dollars each).</span>
+              </div>
+              <div className="ob-tool">
+                <strong>Setting it up takes about 20 minutes</strong>
+                <span>Settings → TapLink walks you through it with copyable commands, then you set your own links and write the discs.</span>
+              </div>
+            </div>
+            <p className="muted small">
+              This is optional and can wait until everything else is running. Nothing else depends on it.
+            </p>
+            <div className="ob-actions">
+              <button className="btn ghost" onClick={back}>← Back</button>
+              <button className="btn" onClick={() => { requestSettingsJump("set-taplink"); onNavigate?.("settings"); }}>Set it up now</button>
+              <button className="btn primary lg" onClick={next}>Skip for now →</button>
+            </div>
+          </div>
+        )}
+
         {stage === "dashboards" && (
           <div className="ob-stage">
-            <span className="ob-eyebrow">Step 6 · Dashboards</span>
+            <span className="ob-eyebrow">Step 7 · Dashboards</span>
             <h1>Start with layouts that already work.</h1>
             <p className="ob-lead">
               Each one is a real dashboard built from what you connected — open it,

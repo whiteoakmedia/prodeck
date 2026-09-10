@@ -99,6 +99,15 @@ asks for your environment as it goes, and writes site-specific values to
 **gitignored local files** — your fork never carries your church's config in
 code.
 
+## Crew and TapLink, explained
+
+- [docs/CREW.md](docs/CREW.md) — accounts, joining, approval, roles, and what
+  the two passwords actually decide.
+- [docs/TAPLINK.md](docs/TAPLINK.md) — the lobby NFC discs: what you need, how
+  to deploy your own edge, links, discs, slide tags.
+
+Both are also in the app: **Help** in the sidebar, searchable, offline.
+
 ## The full guide
 
 [`docs/ADOPTERS_GUIDE.html`](docs/ADOPTERS_GUIDE.html) is the honest
