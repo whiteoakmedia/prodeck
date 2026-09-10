@@ -35,6 +35,46 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.77 — 10 September 2026
+
+### New — permissions per person
+
+Until now a phone's power came entirely from which password it typed: the
+**admin** password meant everything, the **crew** password meant looking. So
+letting one volunteer do one thing — the kids worker putting a child alert on
+stage, the worship leader driving ProPresenter — meant giving them the admin
+password, which can't be taken back from one person without changing it for
+everyone.
+
+Now each crew account can be granted exactly what its job needs. **Settings →
+Crew Members → Edit** on a person, then tick:
+
+- **Page** — send pages and re-buzz them
+- **Stage** — put text on the stage displays and confidence screens
+- **Control** — ProPresenter, the sound console, OBS scenes, Planning Center LIVE
+- **Tap discs** — override where the lobby NFC discs point
+- **Manage crew** — approve, edit and remove crew; invites; open joining
+
+A phone signed in with the crew password gets that person's grants on top of
+everything a viewer could already do. Nobody loses anything: a crew member with
+no grants sees exactly what they saw yesterday. The admin password still does
+everything, and is the **only** thing that can grant — *Manage crew* on purpose
+does not include granting, because someone who could grant themselves Control
+would just be an admin with extra steps. Revoking a person's approval removes
+every grant at once.
+
+Grants reach the phone within a few seconds; no sign-out. If a phone says
+*"needs the page permission"*, that's exactly the box to tick.
+
+### Also
+
+- **Help** has a *Permissions* topic, and the crew topics no longer describe
+  this as "coming next".
+- **Demo mode** shows a small crew with a couple of grants, so the card
+  demonstrates itself.
+
+---
+
 ## 0.9.76 — 10 September 2026
 
 For the churches now downloading this: help that lives in the app, and the two
