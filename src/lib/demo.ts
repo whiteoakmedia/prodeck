@@ -186,6 +186,26 @@ function pcoPlanTimes() {
   };
 }
 /** Which item is "live" — walks the plan on the service clock. */
+/**
+ * The current demo live item's window — what PCO's live_start_at and length
+ * would say. Mirrors liveIndex() exactly, including the slow loop it falls
+ * into once the plan has run out (45 s per item), or a demo left open all
+ * afternoon shows "over by 454:38".
+ */
+function liveWindow(): { start: number; len: number } {
+  const elapsed = NOW() - serviceStart();
+  const idx = liveIndex();
+  let acc = 0;
+  for (let i = 0; i < SONGS.length; i++) acc += SONGS[i].len * 1000;
+  if (elapsed >= 0 && elapsed < acc) {
+    let before = 0;
+    for (let i = 0; i < idx; i++) before += SONGS[i].len * 1000;
+    return { start: serviceStart() + before, len: SONGS[idx].len };
+  }
+  // Looping: each item gets a 45 s slot; the current slot started at the last boundary.
+  return { start: NOW() - (Math.max(0, elapsed) % 45_000), len: 45 };
+}
+
 function liveIndex(): number {
   const elapsed = NOW() - serviceStart();
   if (elapsed < 0) return 0;
@@ -198,9 +218,14 @@ function liveIndex(): number {
   return Math.floor((elapsed / 45_000) % SONGS.length);
 }
 function pcoLive() {
+  // Shaped like PCO's current_item_time: live_start_at / live_end_at are what
+  // the LIVE screen counts down from, and what Keys to the Stage reads.
+  const idx = liveIndex();
+  const { start, len } = liveWindow();
   return {
     data: {
-      relationships: { item: { data: { id: `demo-item-${liveIndex() + 1}`, type: "Item" } } },
+      attributes: { live_start_at: iso(start), live_end_at: null, length: len, length_offset: 0, exclude: false },
+      relationships: { item: { data: { id: `demo-item-${idx + 1}`, type: "Item" } } },
     },
   };
 }

@@ -21,8 +21,12 @@ const PLAN: PlanItem[] = [
 describe("keys to the stage", () => {
   const T0 = 1_000_000_000;
 
-  it("counts down the live item and lists the songs that follow, with keys", () => {
-    const s = stageCallState(PLAN, "msg", T0, T0 + 600_000, 300);
+  // PCO publishes live_start_at (+ length) for the current item; the store turns
+  // that into an END time. Every case below hands the widget that end time.
+  const MSG_ENDS = T0 + 2100_000;
+
+  it("counts down to Planning Center's end time and lists the songs that follow, with keys", () => {
+    const s = stageCallState(PLAN, "msg", MSG_ENDS, T0 + 600_000, 300);
     expect(s.phase).toBe("waiting");
     expect(s.remaining).toBe(2100 - 600);
     expect(s.next.map((x) => `${x.title} (${x.key})`)).toEqual([
@@ -32,14 +36,14 @@ describe("keys to the stage", () => {
   });
 
   it("calls the team five minutes before the sermon ends", () => {
-    const fiveMinLeft = T0 + (2100 - 300) * 1000;
-    expect(stageCallState(PLAN, "msg", T0, fiveMinLeft - 1000, 300).phase).toBe("waiting");
-    expect(stageCallState(PLAN, "msg", T0, fiveMinLeft, 300).phase).toBe("call");
-    expect(stageCallState(PLAN, "msg", T0, fiveMinLeft + 200_000, 300).phase).toBe("call");
+    const fiveMinLeft = MSG_ENDS - 300_000;
+    expect(stageCallState(PLAN, "msg", MSG_ENDS, fiveMinLeft - 1000, 300).phase).toBe("waiting");
+    expect(stageCallState(PLAN, "msg", MSG_ENDS, fiveMinLeft, 300).phase).toBe("call");
+    expect(stageCallState(PLAN, "msg", MSG_ENDS, fiveMinLeft + 200_000, 300).phase).toBe("call");
   });
 
   it("keeps calling when the sermon runs long", () => {
-    const s = stageCallState(PLAN, "msg", T0, T0 + 2200_000, 300);
+    const s = stageCallState(PLAN, "msg", MSG_ENDS, T0 + 2200_000, 300);
     expect(s.phase).toBe("over");
     expect(s.remaining).toBeLessThan(0);
   });
@@ -51,13 +55,13 @@ describe("keys to the stage", () => {
 
   it("does not call when nothing musical is next", () => {
     // Closing is live; nothing follows.
-    expect(stageCallState(PLAN, "close", T0, T0 + 119_000, 300).phase).toBe("waiting");
+    expect(stageCallState(PLAN, "close", T0 + 120_000, T0 + 119_000, 300).phase).toBe("waiting");
     // Announcements is live and the next item is the message, not a song.
-    expect(stageCallState(PLAN, "ann", T0, T0 + 239_000, 300).next).toEqual([]);
+    expect(stageCallState(PLAN, "ann", T0 + 240_000, T0 + 239_000, 300).next).toEqual([]);
   });
 
-  it("never calls from an unknown start time", () => {
-    // A kiosk that loaded mid-item with no tracked start must not guess.
+  it("never calls when Planning Center hasn't published an end time", () => {
+    // Nobody holds LIVE control, or the item is excluded: don't guess.
     const s = stageCallState(PLAN, "msg", null, T0, 300);
     expect(s.phase).toBe("waiting");
     expect(s.remaining).toBeNull();

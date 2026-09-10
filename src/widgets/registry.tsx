@@ -1,6 +1,5 @@
 import {
   useEffect,
-  useRef,
   useState,
   type ComponentType,
   type MouseEvent as ReactMouseEvent,
@@ -2825,25 +2824,23 @@ function ConfidenceWidget({ widget }: WidgetProps) {
  * in the biggest type on the wall. The people reading it are eating breakfast
  * two rooms away and about to play; the keys are the one thing they'll ask.
  *
- * The start time comes from service tracking (so a kiosk that loads mid-sermon
- * still knows), falling back to the moment this screen saw the item go live.
+ * The clock is Planning Center's own (live_end_at for the current LIVE item),
+ * so a kiosk that switches on mid-sermon shows the same number as the booth.
  */
 function StageCallWidget({ widget, update, editing }: WidgetProps) {
-  const { items, liveItemId } = usePco();
-  const tracking = useTracking();
+  // The countdown is Planning Center's, not ours: `liveEndsAt` is the
+  // live_end_at PCO publishes for the current LIVE item — the same clock the
+  // LIVE screen shows whoever is driving it. No local start-time guessing, so
+  // the booth and a kiosk that just switched on agree to the second.
+  const { items, liveItemId, liveEndsAt } = usePco();
   const leadMin: number = Number(widget.config.leadMin ?? 5);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
-  // Fallback start: the moment THIS screen saw the live item change.
-  const seenRef = useRef<{ id: string | null; at: number }>({ id: null, at: 0 });
-  if (seenRef.current.id !== liveItemId) seenRef.current = { id: liveItemId, at: Date.now() };
-  const tracked = tracking.rows.find((r) => r.itemId === liveItemId)?.startedAt ?? null;
-  const startedAt = tracked ?? (liveItemId ? seenRef.current.at : null);
 
-  const st = stageCallState(items, liveItemId, startedAt, now, leadMin * 60);
+  const st = stageCallState(items, liveItemId, liveEndsAt, now, leadMin * 60);
   const calling = st.phase === "call" || st.phase === "over";
 
   if (items.length === 0) return <NeedsPco hint="Pick this week's plan to see the closing set and its keys" />;

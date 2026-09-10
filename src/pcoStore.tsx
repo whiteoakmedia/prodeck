@@ -489,6 +489,31 @@ function parseLiveItemId(j: Json | null): string | null {
   return itemId ? String(itemId) : null;
 }
 
+/**
+ * When Planning Center says the live item ENDS, as epoch ms — the clock PCO's
+ * own LIVE screen counts down from.
+ *
+ * Checked against a real `current_item_time` from this church's account: while
+ * an item is live, `live_start_at` is set and `live_end_at` is NULL — PCO only
+ * fills the end once the item has been advanced past. So the countdown is
+ * `live_start_at + (length + length_offset)`, exactly as LIVE computes it;
+ * `live_end_at` is used when present (it will be, briefly, after an advance).
+ * `exclude` means this item doesn't run in this service time → no countdown.
+ * Null means PCO hasn't said; cue-ing widgets must treat that as "don't know",
+ * never as zero.
+ */
+export function parseLiveEndsAt(j: Json | null): number | null {
+  const a = j?.data?.attributes ?? {};
+  if (a.exclude === true) return null;
+  const end = a.live_end_at ? Date.parse(String(a.live_end_at)) : NaN;
+  if (Number.isFinite(end)) return end;
+  const start = a.live_start_at ? Date.parse(String(a.live_start_at)) : NaN;
+  const len = Number(a.length ?? j?.included?.find?.((x: Json) => x?.type === "Item")?.attributes?.length);
+  const off = Number(a.length_offset ?? 0) || 0;
+  if (Number.isFinite(start) && Number.isFinite(len) && len + off > 0) return start + (len + off) * 1000;
+  return null;
+}
+
 export interface ServiceTime {
   id: string;
   name: string;
@@ -567,6 +592,8 @@ interface PcoStore {
   checkinTimes: Record<string, string>;
   setCheckinTime: (role: string, hhmm: string | null) => void;
   liveItemId: string | null;
+  /** Planning Center's own end time for the live item (epoch ms), or null when unknown. */
+  liveEndsAt: number | null;
   syncing: boolean;
   canControl: boolean;
   controller: PcoController | null;
@@ -648,6 +675,7 @@ export function PcoProvider({ children }: { children: ReactNode }) {
   // beat the PCO schedule: when Zach says cameras arrive 8:45, that's the law.
   const [checkinTimes, setCheckinTimes] = useState<Record<string, string>>({});
   const [liveItemId, setLiveItemId] = useState<string | null>(null);
+  const [liveEndsAt, setLiveEndsAt] = useState<number | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [canControl, setCanControl] = useState(true);
   // Who holds the LIVE controller, and the last failure from a live action —
@@ -876,6 +904,7 @@ export function PcoProvider({ children }: { children: ReactNode }) {
         `services/v2/service_types/${st}/plans/${plan}/live/current_item_time?include=item`,
       );
       setLiveItemId(parseLiveItemId(j));
+      setLiveEndsAt(parseLiveEndsAt(j));
     } catch (e) {
       // Only a 404 means "nothing is live". A transient failure (timeout, 429,
       // 5xx) must NOT clear the live item — that un-tracked it and re-armed
@@ -1588,7 +1617,12 @@ export function PcoProvider({ children }: { children: ReactNode }) {
     subs.push(on<Json>("pco:team", (j) => setTeam(parseTeam(j))));
     subs.push(on<Json>("pco:times", (j) => applyPlanTimes(j)));
     subs.push(on<Json>("pco:attachments", (j) => setAttachMaps(parseAllAttachments(j))));
-    subs.push(on<Json | null>("pco:live", (j) => setLiveItemId(parseLiveItemId(j))));
+    subs.push(
+      on<Json | null>("pco:live", (j) => {
+        setLiveItemId(parseLiveItemId(j));
+        setLiveEndsAt(parseLiveEndsAt(j));
+      }),
+    );
     subs.push(on("pco:sync_started", () => setSyncing(true)));
     subs.push(on("pco:sync_stopped", () => setSyncing(false)));
     // Track ProPresenter's live presentation UUID so we never re-trigger (and
@@ -1797,6 +1831,7 @@ export function PcoProvider({ children }: { children: ReactNode }) {
         return next;
       }),
     liveItemId,
+    liveEndsAt,
     syncing,
     canControl,
     controller,

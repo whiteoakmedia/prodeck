@@ -3,7 +3,7 @@ import type { PlanItem } from "../pcoStore";
 /**
  * "Keys to the stage" — the worship team's cue.
  *
- * While an item is live, count down its planned length. When the items that
+ * While an item is live, count down to the end time Planning Center publishes for it. When the items that
  * follow it are songs and the countdown is inside the lead time, it's a CALL:
  * the team should be walking, and what they need to know is the keys. The
  * classic case is the closing set after the sermon, but it is deliberately
@@ -19,7 +19,7 @@ export interface StageCallState {
   phase: StageCallPhase;
   /** The live item, if any. */
   live: PlanItem | null;
-  /** Seconds until the live item's planned end; negative = over. null = unknown start. */
+  /** Seconds until Planning Center says the live item ends; negative = over. null = PCO hasn't said. */
   remaining: number | null;
   /** The songs coming up next (the contiguous run after the live item). */
   next: PlanItem[];
@@ -36,10 +36,18 @@ export function nextSongsAfter(items: PlanItem[], fromIdx: number): PlanItem[] {
   return out;
 }
 
+/**
+ * `endsAt` is Planning Center's own end time for the live item — the clock the
+ * LIVE screen counts down from, published as `live_end_at`. It is the one
+ * source that matches what the person driving PCO actually did, and it is the
+ * same on the booth and on a kiosk that just switched on. Null means PCO
+ * hasn't said (nobody holds LIVE control, or the item has no length), and
+ * the answer is then "no countdown", never a guess.
+ */
 export function stageCallState(
   items: PlanItem[],
   liveItemId: string | null,
-  startedAt: number | null,
+  endsAt: number | null,
   now: number,
   leadSec: number,
 ): StageCallState {
@@ -53,8 +61,7 @@ export function stageCallState(
   }
   const live = items[liveIdx];
   const next = nextSongsAfter(items, liveIdx);
-  const remaining =
-    startedAt !== null && live.length > 0 ? live.length - (now - startedAt) / 1000 : null;
+  const remaining = endsAt !== null ? (endsAt - now) / 1000 : null;
   if (next.length === 0 || remaining === null) {
     return { phase: "waiting", live, remaining, next };
   }
