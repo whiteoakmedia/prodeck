@@ -35,6 +35,41 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.78 — 10 September 2026
+
+For a TV in the room where the team waits — a green room, the office, wherever
+breakfast happens during the service.
+
+### New — Keys to the Stage
+
+A widget that counts down the live item and, **five minutes before the sermon
+is due to end**, turns into a call: *TO THE STAGE*, the countdown, and the
+closing songs with their **keys** in the biggest type on the wall. It works for
+any run of songs after any timed item, so it also covers the opening set. If
+the sermon runs long the call stays up and says by how much. Change the lead
+time (3, 5, 7 or 10 minutes) in the widget's edit mode.
+
+### New — room audio without a tile
+
+Edit a dashboard and press **Room audio: on**. Any kiosk showing it plays the
+room's audio in the background — no Overflow Listen tile using up the screen.
+(On a Mac mini the Chrome autoplay flag in the kiosk guide is what lets it start
+with nobody clicking.)
+
+### Fixed — kiosks now fill the TV
+
+A fixed row height left the bottom third of a TV empty and every widget small.
+Kiosks now scale the layout so it exactly fills the screen, whatever size it is.
+
+### Also
+
+- A **Green Room** starter template with this layout and room audio on: Keys
+  to the Stage, Service Countdown, Live Viewers, Clock, Show Flow, Song
+  Leaders, Now/Next.
+- Help topics for the widget and for room audio.
+
+---
+
 ## 0.9.77 — 10 September 2026
 
 ### New — permissions per person
