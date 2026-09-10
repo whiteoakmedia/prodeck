@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { usePerms } from "../lib/perms";
 import GridLayout, { WidthProvider, type Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
@@ -19,6 +20,9 @@ import {
 } from "../lib/dashboards";
 
 const Grid = WidthProvider(GridLayout);
+
+/** Which dashboard was open last, so leaving and returning lands on it. */
+const ACTIVE_DASH_KEY = "prodeck.activeDashboard";
 
 export function Dashboard({ onNavigate }: { onNavigate: (p: any) => void }) {
   const { connected, connect, settings } = useProDeck();
@@ -52,6 +56,20 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: any) => void }) {
   const [adding, setAdding] = useState(false);
   const [pickQuery, setPickQuery] = useState("");
   const [saveError, setSaveError] = useState("");
+  useEffect(() => {
+    if (!activeId) return;
+    try {
+      localStorage.setItem(ACTIVE_DASH_KEY, activeId);
+    } catch {
+      /* storage unavailable */
+    }
+  }, [activeId]);
+  // Editing writes the whole dashboards file, which only the admin password
+  // may do. A crew-password screen used to get the full editor anyway: every
+  // drag looked like it worked, every save was refused, and leaving the page
+  // "reverted" it. Don't offer what can't be kept.
+  const { isAdmin, loaded: permsLoaded } = usePerms();
+  const canEdit = !IS_WEB || (permsLoaded && isAdmin);
   /// dashboards.json is present but unreadable — refuse to render or persist.
   const [loadError, setLoadError] = useState("");
   // The widget just added, so it can be scrolled to and briefly marked.
@@ -89,7 +107,17 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: any) => void }) {
         data = defaultDashboards();
       }
       setDashboards(data);
-      setActiveId(data[0].id);
+      // Come back to the dashboard you were on. Always selecting the first one
+      // meant that arranging "Green Room", leaving, and returning showed
+      // "Front of House" — which reads as "my changes reverted" even though
+      // they were saved and one picker click away.
+      let remembered: string | null = null;
+      try {
+        remembered = localStorage.getItem(ACTIVE_DASH_KEY);
+      } catch {
+        /* storage unavailable */
+      }
+      setActiveId(data.find((d) => d.id === remembered)?.id ?? data[0].id);
       lastSaved.current = JSON.stringify(data);
       loaded.current = true;
     })();
@@ -291,6 +319,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: any) => void }) {
           setEditing((e) => !e);
           setAdding(false);
         }}
+        canEdit={canEdit}
         onAddWidget={() => setAdding((a) => !a)}
         audio={!!active.audio}
         onToggleAudio={() => patchActive((d) => ({ ...d, audio: !d.audio }))}
@@ -327,7 +356,9 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: any) => void }) {
 
       {saveError && (
         <div className="banner dash-banner">
-          Couldn't save this dashboard — {saveError}
+          {/needs admin access/i.test(saveError)
+            ? "This screen is signed in with the crew password, so its changes can't be saved. Edit dashboards on the booth computer or a browser signed in as admin."
+            : `Couldn't save this dashboard — ${saveError}`}
           <button className="btn small" onClick={() => setSaveError("")}>
             Dismiss
           </button>
@@ -379,7 +410,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: any) => void }) {
           <p className="muted">
             Turn on <strong>Edit</strong> and add widgets to build your layout.
           </p>
-          {!editing && (
+          {!editing && canEdit && (
             <button className="btn primary" onClick={() => { setEditing(true); setAdding(true); }}>
               Start building
             </button>

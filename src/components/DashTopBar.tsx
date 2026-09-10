@@ -92,6 +92,7 @@ export function DashTopBar({
   editing,
   onToggleEdit,
   onAddWidget,
+  canEdit,
   audio,
   onToggleAudio,
   onRename,
@@ -106,6 +107,8 @@ export function DashTopBar({
   editing: boolean;
   onToggleEdit: () => void;
   onAddWidget: () => void;
+  /** False on a crew-password screen: saves would be refused, so don't offer the editor. */
+  canEdit: boolean;
   audio: boolean;
   onToggleAudio: () => void;
   onRename: () => void;
@@ -361,13 +364,19 @@ export function DashTopBar({
           </button>
         </>
       )}
-      <button
-        className={`pb-icon ${editing ? "on" : ""}`}
-        title={editing ? "Done editing" : "Edit this dashboard"}
-        onClick={onToggleEdit}
-      >
-        <Icon name="edit" size={15} />
-      </button>
+      {canEdit ? (
+        <button
+          className={`pb-icon ${editing ? "on" : ""}`}
+          title={editing ? "Done editing" : "Edit this dashboard"}
+          onClick={onToggleEdit}
+        >
+          <Icon name="edit" size={15} />
+        </button>
+      ) : (
+        <span className="muted small" title="Dashboards are saved by the booth. Sign in with the admin password to edit here.">
+          view only
+        </span>
+      )}
       <button className="pb-icon" title="Settings" onClick={() => onNavigate("settings")}>
         <Icon name="settings" size={15} />
       </button>
