@@ -67,6 +67,8 @@ import { useRelay } from "../relayStore";
 import { Avatar, MicCard } from "../components/PcoBits";
 import { SongKeyLeader } from "../components/SongKeyLeader";
 import { KeyStrip } from "../components/KeyStrip";
+import { useAutomix } from "../automix";
+import { useAutopilot } from "../autopilot";
 import { askConfirm, askText } from "../lib/dialogs";
 import { listenSnapshot, onListen, startListen, stopListen } from "../lib/listen";
 import { Icon } from "../components/Icon";
@@ -3075,6 +3077,64 @@ function KeyChangeWidget() {
   );
 }
 
+
+// Automix on the home screen: one button to arm it, and a feed of every move
+// it (and the speech-mic Autopilot) makes, newest first.
+function AutomixWidget() {
+  const am = useAutomix();
+  const ap = useAutopilot();
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(t);
+  }, []);
+  if (!am) return <div className="muted small">Automix runs on the booth.</div>;
+  const feed = [...am.log.map((l) => ({ ...l, tag: "mix" })), ...ap.log.map((l) => ({ ...l, tag: "mic" }))].sort((a, b) => b.at - a.at).slice(0, 40);
+  return (
+    <div className="w-automix">
+      <div className="w-automix-top">
+        {am.armed ? (
+          <button className="btn danger w-automix-arm" onClick={am.disarm}>
+            Automix ON — disarm
+          </button>
+        ) : (
+          <button className="btn primary w-automix-arm" onClick={am.arm}>
+            Arm automix
+          </button>
+        )}
+        {am.armed && (
+          <button className="btn" onClick={am.goHome}>
+            Back to my positions
+          </button>
+        )}
+      </div>
+      <div className="w-automix-status small">
+        <span className={`chip ${am.bpm ? "online" : ""}`}>{am.bpm ? `clock ${Math.round(am.bpm)} BPM` : "no clock"}</span>
+        <span className="chip">{am.last ? `guide: ${am.last}` : "no guide call yet"}</span>
+        {am.pending && <span className="chip online">{am.pending.key} in {Math.max(0, (am.pending.at - now) / 1000).toFixed(1)} s</span>}
+      </div>
+      <div className="w-automix-dcas small">
+        {am.dcas.map((d) => (
+          <span key={d.id} className={`chip ${d.letGo ? "warn" : d.now == null ? "" : "online"}`} title={d.now == null ? "Move this DCA once so ProDeck knows where it is" : d.letGo ? "You have this one for the rest of the song" : ""}>
+            {d.name} {d.now != null ? `${d.now.toFixed(1)}` : "?"}
+            {am.armed && d.home != null && d.now != null && Math.abs(d.now - d.home) >= 0.5 ? ` (${(d.now - d.home > 0 ? "+" : "") + (d.now - d.home).toFixed(1)})` : ""}
+            {d.letGo ? " · yours" : ""}
+          </span>
+        ))}
+      </div>
+      <ul className="w-automix-feed small">
+        {feed.length === 0 && <li className="muted">Nothing yet — arm it and play a song with the guide.</li>}
+        {feed.map((l) => (
+          <li key={l.at + l.text}>
+            <span className="mono muted">{new Date(l.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" })}</span>{" "}
+            <span className={`w-automix-tag ${l.tag}`}>{l.tag === "mix" ? "MIX" : "MIC"}</span> {l.text}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export const WIDGETS: WidgetDef[] = [
   // Mission Control — director overview
   { type: "health_strip", label: "System Health", group: "Mission Control", w: 12, h: 2, component: HealthStripWidget },
@@ -3102,6 +3162,7 @@ export const WIDGETS: WidgetDef[] = [
   { type: "listen", label: "Overflow Listen", group: "Audio", w: 3, h: 3, component: ListenWidget },
   { type: "avantis", label: "Sound Desk (Avantis)", group: "Audio", w: 6, h: 4, component: AvantisWidget },
   { type: "key_change", label: "Song Key → Waves", group: "Audio", w: 6, h: 2, component: KeyChangeWidget },
+  { type: "automix", label: "Automix", group: "Audio", w: 4, h: 6, component: AutomixWidget },
   { type: "readiness", label: "Sunday Readiness", group: "General", w: 4, h: 4, component: ReadinessWidget },
   // Video & Switcher
   { type: "obs", label: "OBS — Live & Scene", group: "Video", w: 4, h: 3, component: ObsWidget },
