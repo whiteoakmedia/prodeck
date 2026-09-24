@@ -315,6 +315,9 @@ pub fn start_transcription(
             for v in window.iter_mut() {
                 *v *= gain;
             }
+            if crate::rig::GUIDE_BUSY.load(Ordering::Acquire) {
+                continue; // the guide is talking: its cue goes first
+            }
             let prompt = running.prompt.lock().unwrap_or_else(|p| p.into_inner()).clone();
             let t0 = now_ms();
             let heard = match (&server, &client) {

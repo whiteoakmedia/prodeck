@@ -12,7 +12,13 @@
 use crate::audio::AudioState;
 use crate::transcription::TranscriptionState;
 use std::sync::atomic::Ordering;
+use std::sync::atomic::AtomicBool;
 use tauri::{AppHandle, Emitter};
+
+/// The guide has a voice on it (or a cue is being read): the lyric listener
+/// skips its turn so the cue gets the GPU at once. A cue waited 4.9 s behind
+/// lyric windows in the first live test.
+pub static GUIDE_BUSY: AtomicBool = AtomicBool::new(false);
 
 fn now_ms() -> u64 {
     std::time::SystemTime::now()
@@ -110,7 +116,9 @@ async fn guide_loop(app: AppHandle, audio: AudioState, running: TranscriptionSta
         buf.extend_from_slice(&xs);
         // Keep at most 6 s when nobody is talking.
         let frame = (sr / 50) as usize; // 20 ms
-        if let Some((a, b)) = vad.feed(&buf, frame, sr) {
+        let seg = vad.feed(&buf, frame, sr);
+        GUIDE_BUSY.store(vad.speaking() || seg.is_some(), Ordering::Release);
+        if let Some((a, b)) = seg {
             let pre = (sr as usize / 5).min(a); // 200 ms before the voice
             let seg = &buf[a - pre..b.min(buf.len())];
             let t0 = buf_t0 + ((a - pre) as u64 * 1000 / sr as u64);
@@ -133,6 +141,7 @@ async fn guide_loop(app: AppHandle, audio: AudioState, running: TranscriptionSta
                     app.emit("follow:cue", serde_json::json!({ "text": text, "t0": t0, "t1": t1, "words": words, "ms": now_ms() - t })).ok();
                 }
             }
+            GUIDE_BUSY.store(false, Ordering::Release);
             // Drop what's been handled.
             let cut = b.min(buf.len());
             buf.drain(..cut);

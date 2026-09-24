@@ -49,7 +49,7 @@ export interface Heard {
   /** Per-word times (absolute ms) from Whisper, when it gives them. */
   words?: { w: string; t0: number; t1: number; p?: number }[];
 }
-export type Via = "heard" | "predicted" | "clock" | "cue" | "model" | "pro";
+export type Via = "heard" | "predicted" | "clock" | "beat" | "cue" | "model" | "pro";
 export type Action =
   | { type: "trigger"; song: FSong; slide: number; via: Via; reason: string }
   | { type: "ask"; song: FSong; current: number; transcript: string; expect: number | null }
@@ -428,7 +428,11 @@ export class FollowEngine {
   };
   /** The click, as a clock. */
   clock = new BeatClock();
-  private jump: { songId: string; slide: number; at: number; cue: string; t0: number } | null = null;
+  /** The current section's first downbeat — the zero of its beat map. */
+  private anchor: { songId: string; group: number; t: number; fromCue: boolean } | null = null;
+  /** ProPresenter's active presentation, even before it reports a slide. */
+  activeSongId: string | null = null;
+  private lastSongIdx = -1;
   private lastCueFor: { songId: string; slide: number; t0: number } | null = null;
   private cueHeardAt = -Infinity;
 
@@ -518,6 +522,18 @@ export class FollowEngine {
     // only from one person's move to the next slide after another.
     if (!ours && this.pro && this.pro.songId === song.id && slide === this.pro.slide + 1) this.learn(song, this.pro.slide, now - this.pro.at);
     this.pro = ours ? null : { songId: song.id, slide, at: now };
+    // A person's click inside a section teaches the beat map (they click a
+    // touch before the singing; the map stores where the singing starts).
+    if (!ours && this.clock.period) {
+      const g = this.groups(song).find((x) => x.start === slide);
+      if (g && (!this.anchor || this.anchor.songId !== song.id || this.anchor.group !== g.start)) {
+        // A person started a section: its downbeat is the nearest bar line.
+        const P = this.clock.period;
+        const bar = this.clock.hasBar() ? this.clock.nextDownbeat(now + 500 - (P * this.clock.meter) / 2) : this.clock.snap(now + 500);
+        this.anchor = { songId: song.id, group: g.start, t: bar ?? now + 500, fromCue: false };
+      }
+      this.noteBeats(song, slide, now + 500);
+    }
     // A person landed the section a cue called: learn how many beats after
     // the cue they like it.
     if (!ours && this.lastCueFor && this.lastCueFor.songId === song.id && this.lastCueFor.slide === slide && this.clock.period) {
@@ -581,8 +597,10 @@ export class FollowEngine {
     this.view.clickBpm = this.clock.bpm();
   }
 
-  /** A cue from the guide track: a section call lands that section's first
-   *  slide just before its first downbeat. */
+  /** A cue from the guide track. The guide is the band's own map: a section
+   *  call goes there now — ahead, or back if the band's arrangement differs
+   *  from ProPresenter's — and anchors that section's beat map at the
+   *  downbeat it announces. */
   onCue(c: Cue, now: number): Action[] {
     this.view.lastCue = c.text;
     const parsed = parseCue(c.text);
@@ -590,25 +608,47 @@ export class FollowEngine {
       // A count-in: "1" is a downbeat.
       const one = [...(c.words ?? [])].reverse().find((w) => /^(1|one|won)[.,!]?$/i.test(w.w.trim()));
       if (one) this.clock.setDownbeat(one.t0);
+      else if (/^\W*(1|one)\W*$/i.test(c.text)) this.clock.setDownbeat(c.t0 + 150);
       return [];
     }
-    const song = this.song;
-    if (!parsed.section || !song || this.cur == null) return [];
+    if (!parsed.section) return [];
+    // No song yet: the one ProPresenter shows, the only one, or the next one.
+    if (!this.song) {
+      const pick =
+        (this.activeSongId && this.byId.get(this.activeSongId)) ||
+        (this.songs.length === 1 ? this.songs[0] : null) ||
+        (this.lastSongIdx >= 0 ? this.songs[this.lastSongIdx + 1] : null) ||
+        null;
+      if (!pick) return [];
+      this.setPosition(pick, 0, now);
+    }
+    const song = this.song!;
+    const cur = this.cur ?? 0;
     this.cueHeardAt = now;
     const groups = this.groups(song);
-    const gi = groups.findIndex((g) => g.start <= this.cur! && this.cur! <= g.end);
-    // The next matching section within the next four, never behind us.
-    const target = groups.slice(gi + 1, gi + 5).find((g) => sectionMatches(g.section, parsed.section!));
+    const gi = Math.max(0, groups.findIndex((g) => g.start <= cur && cur <= g.end));
+    // "Intro" / "Instrumental" while already on a blank or matching slide: stay.
+    const k = parsed.section.kind;
+    if ((k === "intro" || k === "instrumental" || k === "outro") && sectionMatches(groups[gi]?.section ?? null, parsed.section)) return [];
+    const ahead = groups.slice(gi + 1, gi + 6).find((g) => sectionMatches(g.section, parsed.section!));
+    // Not ahead (the band repeated a verse ProPresenter's arrangement
+    // doesn't have): the nearest match anywhere, forward first.
+    const target =
+      ahead ??
+      groups
+        .filter((g, i) => i !== gi && sectionMatches(g.section, parsed.section!))
+        .sort((x, y) => Math.abs(x.start - cur) - Math.abs(y.start - cur))[0];
     if (!target) {
-      this.debug?.(`cue "${c.text}" matches nothing ahead of slide ${this.cur}`);
+      this.debug?.(`cue "${c.text}" matches no section in ${song.name}`);
       return [];
     }
     const at = this.landing(c.t0);
-    this.jump = { songId: song.id, slide: target.start, at, cue: c.text, t0: c.t0 };
+    this.anchor = { songId: song.id, group: target.start, t: at, fromCue: true };
     this.lastCueFor = { songId: song.id, slide: target.start, t0: c.t0 };
     this.view.cueTarget = { slide: target.start, section: song.slides[target.start]?.section ?? "", at };
-    this.debug?.(`cue "${c.text}" → slide ${target.start} at ${(at / 1000).toFixed(1)}`);
-    return this.clockCheck(now);
+    this.debug?.(`cue "${c.text}" → slide ${target.start} now (section downbeat ${(at / 1000).toFixed(1)})`);
+    if (target.start === this.cur) return [];
+    return this.trigger(song, target.start, "cue", `guide said "${c.text}"`, now);
   }
 
   /** When the section a cue called begins. Learned from people's clicks
@@ -641,6 +681,38 @@ export class FollowEngine {
     }
     this.groupCache.set(song.id, g);
     return g;
+  }
+
+  /** Where slide `slide` starts in its section, in beats from the section's
+   *  downbeat: this song's own learned value for that slide, else the same
+   *  position in an earlier occurrence of the same section (the second
+   *  chorus sings like the first). */
+  private beatsFor(song: FSong, g: { start: number; section: Section | null }, slide: number): number | null {
+    const own = this.timing[song.id]?.slides[`b:${slide}`];
+    if (own?.length) return median(own)!;
+    const pos = slide - g.start;
+    const kind = g.section ? `${g.section.kind}${g.section.n ?? ""}` : "blank";
+    const same = this.timing[song.id]?.slides[`k:${kind}:${pos}`];
+    return same?.length ? median(same)! : null;
+  }
+
+  /** Record where a slide started, in beats from its section's downbeat. */
+  private noteBeats(song: FSong, slide: number, t: number) {
+    const P = this.clock.period;
+    const a = this.anchor;
+    if (!P || !a || a.songId !== song.id) return;
+    const g = this.groups(song).find((x) => x.start === a.group);
+    if (!g || slide < g.start || slide > g.end) return;
+    const beats = Math.round(((t - a.t) / P) * 4) / 4; // to the sixteenth
+    if (beats < 0 || beats > 256) return;
+    const T = (this.timing[song.id] ??= { bpm: song.bpm, slides: {} });
+    const kind = g.section ? `${g.section.kind}${g.section.n ?? ""}` : "blank";
+    for (const key of [`b:${slide}`, `k:${kind}:${slide - g.start}`]) {
+      const xs = (T.slides[key] ??= []);
+      xs.push(beats);
+      if (xs.length > 6) xs.shift();
+    }
+    this.timingDirty = true;
   }
 
   /** The model's answer to an "ask". */
@@ -749,15 +821,31 @@ export class FollowEngine {
 
   /** Note line starts from matched words: the line's first or second word,
    *  and at least two words of that line matched (one stray "and" isn't a
-   *  line). */
+   *  line). A slide's first line starting is where that slide starts: it
+   *  anchors a section without a cue and teaches the beat map. */
   private noteLines(path: [number, number][], toks: HeardTok[], f: Flat, rate: number) {
     const per = new Map<number, number>();
     for (const [, li] of path) per.set(f.line[li], (per.get(f.line[li]) ?? 0) + 1);
+    const song = this.song!;
     for (const [hi, li] of path) {
       const L = f.line[li];
       const off = li - f.lineFirst[L];
       if (off > 1 || this.lineStarts.has(L) || (per.get(L) ?? 0) < 2) continue;
-      this.lineStarts.set(L, toks[hi].t0 - off * rate);
+      const t = toks[hi].t0 - off * rate;
+      this.lineStarts.set(L, t);
+      const slide = f.slide[li];
+      if (f.first.get(slide) !== f.lineFirst[L]) continue; // not the slide's first line
+      const g = this.groups(song).find((x) => x.start <= slide && slide <= x.end);
+      if (!g) continue;
+      if (slide === g.start && this.clock.period && (!this.anchor || this.anchor.songId !== song.id || this.anchor.group !== g.start || this.anchor.fromCue)) {
+        // The section's first words: its downbeat is the nearest bar line
+        // (a cue's guess is replaced by what was actually sung).
+        const bar = this.clock.hasBar() ? this.clock.nextDownbeat(t - (this.clock.period * this.clock.meter) / 2) : this.clock.snap(t);
+        const guess = this.anchor?.group === g.start ? this.anchor.t : null;
+        const tt = bar ?? t;
+        if (guess == null || Math.abs(tt - guess) <= this.clock.period * this.clock.meter) this.anchor = { songId: song.id, group: g.start, t: tt, fromCue: false };
+      }
+      this.noteBeats(song, slide, t);
     }
     if (this.lineStarts.size > 80) {
       const ks = [...this.lineStarts.keys()].sort((x, y) => x - y);
@@ -849,22 +937,25 @@ export class FollowEngine {
     const cur = this.cur;
     this.view.dueAt = null;
     if (!song || cur == null || this.startedAt == null) return [];
-    // A section the guide called: land it just before its downbeat.
-    if (this.jump && this.jump.songId === song.id) {
-      const lead = Math.min(900, this.clock.period ?? 900);
-      if (now >= this.jump.at - lead && now - this.lastTrigger >= 300) {
-        const j = this.jump;
-        this.jump = null;
-        this.view.cueTarget = null;
-        if (j.slide !== cur) return this.trigger(song, j.slide, "cue", `guide said "${j.cue}"`, now);
-      }
-      this.view.dueAt = this.jump?.at ?? null;
-      if (this.jump) return [];
-    }
     const next = cur + 1 < song.slides.length ? cur + 1 : null;
     if (next == null) return [];
     const f = this.flat(song);
     const last = f.last.get(cur);
+    // The beat map: when this section's next slide starts, in beats from the
+    // section's downbeat — learned from the first time through (lyrics) and
+    // from people's clicks. With the click running it simply fires on time;
+    // the lyrics only correct it afterwards.
+    const P = this.clock.period;
+    const g = this.groups(song).find((x) => x.start <= cur && cur <= x.end);
+    if (P && this.clock.running(now) && g && next <= g.end && this.anchor?.songId === song.id && this.anchor.group === g.start) {
+      const b = this.beatsFor(song, g, next);
+      if (b != null) {
+        const due = this.anchor.t + b * P;
+        this.view.dueAt = due;
+        if (now >= due - Math.min(700, P) && now - this.lastTrigger >= TUNING.minGap) return this.trigger(song, next, "beat", "on the beat", now);
+        if (now < due - Math.min(700, P)) return [];
+      }
+    }
     // With the guide talking, a new section is the guide's call: the words
     // alone don't cross into it until a bar past their own estimate.
     const guideOn = now - this.cueHeardAt < 120_000;
@@ -945,9 +1036,10 @@ export class FollowEngine {
       this.p = -1;
     }
     if (!sameSong) {
-      this.jump = null;
+      this.anchor = null;
       this.view.cueTarget = null;
       this.clock.prior = song.bpm ?? null;
+      this.lastSongIdx = this.songs.findIndex((x) => x.id === song.id);
     }
     this.song = song;
     this.cur = slide;

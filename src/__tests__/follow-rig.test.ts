@@ -70,17 +70,40 @@ const song: FSong = {
 const trig = (a: Action[]) => a.filter((x) => x.type === "trigger") as Extract<Action, { type: "trigger" }>[];
 
 describe("a section call lands on its downbeat", () => {
-  it("'Chorus' from Verse 1 lands the chorus's first slide just before the next bar's downbeat", () => {
+  it("'Chorus' goes to the chorus now — no waiting — and anchors its beat map on the downbeat it announces", () => {
     const e = new FollowEngine([song], {});
     for (const b of beats(120, 40)) e.onBeat(b); // 500 ms beats, bar = 2 s, downbeats at 0, 2000, …
     e.onLive("s", 2, 10_000);
-    // Guide says "Chorus" at 16.0 s (beat 1 of the bar before): lands at the 18.0 s downbeat.
-    const a = e.onCue({ text: "Chorus.", t0: 16_000, t1: 16_600 }, 17_000);
-    expect(trig(a)).toHaveLength(0);
-    expect(e.view.cueTarget).toMatchObject({ slide: 3, at: 18_000 });
-    expect(trig(e.onTick(17_400))).toHaveLength(0);
-    const t = trig(e.onTick(17_550)); // 450 ms early (one beat capped at 900 ms → 500 ms)
+    const t = trig(e.onCue({ text: "Chorus.", t0: 16_000, t1: 16_600 }, 17_000));
     expect(t[0]).toMatchObject({ slide: 3, via: "cue" });
+    expect(e.view.cueTarget).toMatchObject({ slide: 3, at: 18_000 });
+  });
+  it("with nothing locked, a cue locks the song ProPresenter has up", () => {
+    const e = new FollowEngine([song, { ...song, id: "other", name: "Other" }], {});
+    e.activeSongId = "s";
+    const t = trig(e.onCue({ text: "Verse 2", t0: 1000, t1: 1500 }, 2000));
+    expect(t[0]).toMatchObject({ slide: 4 });
+    expect(t[0].song.id).toBe("s");
+  });
+  it("the band repeating a section ProPresenter doesn't have ahead: the guide wins, back it goes", () => {
+    const e = new FollowEngine([song], {});
+    e.onLive("s", 5, 0);
+    expect(trig(e.onCue({ text: "Verse one", t0: 1000, t1: 1400 }, 2000))[0]).toMatchObject({ slide: 1 });
+  });
+  it("the second time through a section, its slides change on the beat", () => {
+    const e = new FollowEngine([song], {});
+    for (const b of beats(120, 200)) e.onBeat(b);
+    // First verse: a person clicks slide 2 eight beats into the section.
+    e.onCue({ text: "Verse 1", t0: 2000, t1: 2400 }, 3000); // → slide 1, section downbeat 4.0 s
+    e.onLive("s", 1, 3000);
+    e.onLive("s", 2, 7500); // 4.0 + 8 beats = 8.0 s, clicked 0.5 s early
+    expect(e.timing["s"].slides["b:2"]).toEqual([8]);
+    // Next time (a new run of the song): cue, and slide 2 comes up by itself.
+    e.onLive("s", 5, 40_000);
+    e.onCue({ text: "Verse 1", t0: 42_000, t1: 42_400 }, 43_000); // downbeat 44.0 → slide 2 due 48.0
+    e.onLive("s", 1, 43_100);
+    expect(trig(e.onTick(47_000))).toHaveLength(0);
+    expect(trig(e.onTick(47_550))[0]).toMatchObject({ slide: 2, via: "beat" }); // a beat (0.5 s) early
   });
   it("a numbered call skips a look-alike: 'Verse 2' never lands Verse 1", () => {
     const e = new FollowEngine([song], {});
@@ -89,10 +112,10 @@ describe("a section call lands on its downbeat", () => {
     e.onCue({ text: "Verse two", t0: 12_000, t1: 12_500 }, 13_000);
     expect(e.view.cueTarget?.slide).toBe(4);
   });
-  it("a call that matches nothing ahead does nothing (no jumping back on a mishearing)", () => {
+  it("a call that matches no section in the song does nothing", () => {
     const e = new FollowEngine([song], {});
     e.onLive("s", 4, 0);
-    e.onCue({ text: "Verse one", t0: 1000, t1: 1400 }, 2000);
+    e.onCue({ text: "Bridge", t0: 1000, t1: 1400 }, 2000);
     expect(e.view.cueTarget).toBeNull();
   });
   it("learns how many beats after the cue a person lands the section", () => {

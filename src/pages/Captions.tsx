@@ -180,7 +180,7 @@ function AutoFollowCard() {
     return () => clearInterval(t);
   }, [lf.armed]);
   const due = v.dueAt != null && v.slideStartedAt != null ? { left: Math.max(0, v.dueAt - now), frac: Math.min(1, (now - v.slideStartedAt) / Math.max(1, v.dueAt - v.slideStartedAt)) } : null;
-  const via = { heard: "heard it", predicted: "the song's pace", clock: "on the clock", cue: "the guide called it", model: "the model read the lyric", pro: "moved in ProPresenter" } as const;
+  const via = { heard: "heard it", predicted: "the song's pace", clock: "on the clock", cue: "the guide called it", beat: "on the beat", model: "the model read the lyric", pro: "moved in ProPresenter" } as const;
   const hearing = { words: "hearing words", music: "music only", quiet: "quiet", idle: "idle" } as const;
   return (
     <section className="card">

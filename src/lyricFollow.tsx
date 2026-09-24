@@ -297,6 +297,12 @@ export function LyricFollowProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Follow may need the song before ProPresenter reports a slide (a guide
+  // cue with nothing locked): tell the engine what Pro has up.
+  useEffect(() => {
+    if (engineRef.current) engineRef.current.activeSongId = activeUuidRef.current;
+  });
+
   // The playback rig: clicks and guide cues.
   useEffect(() => {
     const b = on<BeatEvent>("follow:beat", (ev) => {
