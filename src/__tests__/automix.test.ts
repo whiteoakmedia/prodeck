@@ -6,7 +6,7 @@ const home = { EGs: -5, KEYs: -8, Pad: -12, Drums: -3 };
 
 describe("rules", () => {
   it("parses the operator's lines", () => {
-    expect(rules.verse).toEqual({ EGs: -3, KEYs: -2, Pad: -2, Drums: -1 });
+    expect(rules.verse).toMatchObject({ EGs: -3, KEYs: -2, Pad: -2, Drums: -1, TRX: -2, "Lead Voc": 1, BGVs: -2 });
     expect(rules.breakdown.Drums).toBe(-8);
     expect(parseRules("pre-chorus: EGs -1.5\n# note\nbogus")).toEqual({ prechorus: { EGs: -1.5 } });
   });
@@ -23,7 +23,7 @@ describe("rules", () => {
 describe("a move", () => {
   it("lands on the downbeat, fades over one bar, relative to the operator's own positions", () => {
     const p = plan("verse", rules, home, new Set(), 10_000, 500)!;
-    expect(p.targets).toEqual({ EGs: -8, KEYs: -10, Pad: -14, Drums: -4 });
+    expect(p.targets).toEqual({ EGs: -8, KEYs: -10, Pad: -14, Drums: -4 }); // only the ones with a home
     expect(p.fadeMs).toBe(2000);
     const from = { EGs: -5, KEYs: -8, Pad: -12, Drums: -3 };
     expect(faderAt(p, from, 9_000).EGs).toBe(-5); // before the downbeat: nothing yet

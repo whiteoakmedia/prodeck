@@ -323,6 +323,7 @@ export interface Settings {
   autopilot_message_min: number;
   autopilot_message_max: number;
   automix_rules: string;
+  automix_fx_mute: string;
   audio_measure_channels: number[];
   audio_overflow_channels: number[];
   keysend_enabled: boolean;

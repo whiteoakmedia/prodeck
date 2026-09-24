@@ -395,7 +395,8 @@ pub fn query_bytes(model: DeskModel, base_nibble: u8) -> Vec<u8> {
         _ => {
             // Volunteer-facing surfaces first; the widget's big toggles and
             // the watchdog's FX lines need names to read as names.
-            let wanted: &[&str] = &["input", "main", "dca", "mgrp", "fxs", "sfxs", "fxr", "ufxs", "ufxr"];
+            // Groups too: the automix rides the Lead Voc and BGVs groups by name.
+            let wanted: &[&str] = &["input", "main", "dca", "grp", "sgrp", "mgrp", "fxs", "sfxs", "fxr", "ufxs", "ufxr"];
             let mut sysex = |chan: u8, op: u8, tail: &[u8]| {
                 out.extend_from_slice(&SYSEX_HEADER);
                 out.push(chan);

@@ -3396,7 +3396,8 @@ function AutomixCard({ form, set }: { form: Settings; set: <K extends keyof Sett
         moment (Verse, Chorus, Bridge, Breakdown, Build, All in), the MIDI clock finds the downbeat, and your DCAs move
         by the amounts below <em>from your own positions</em>, with a one-bar fade (Build ramps over four bars). Arm it
         with your mix where you want it: that's home. Touch any DCA and it lets go of that one for the rest of the song.
-        Every move you make is recorded so it can learn your habits.
+        Every move you make is recorded so it can learn your habits. The FX DCA is muted when a song ends (Playback
+        stops, or the plan leaves the songs) and unmuted when the next song starts.
       </p>
       <div className="controls-row">
         {am.armed ? (
@@ -3427,8 +3428,12 @@ function AutomixCard({ form, set }: { form: Settings; set: <K extends keyof Sett
         {am.last ? `Last guide call: ${am.last}` : "No guide call heard yet."}
         {am.pending ? ` · next move (${am.pending.key}) in ${Math.max(0, (am.pending.at - now) / 1000).toFixed(1)} s` : ""}
       </p>
+      <label className="field">
+        <span>FX to mute between songs (DCA name, empty = off)</span>
+        <input className="input" value={form.automix_fx_mute ?? "All FX"} onChange={(e) => set("automix_fx_mute", e.target.value)} />
+      </label>
       <label className="field wide">
-        <span>Moves (one line per moment, dB from your positions)</span>
+        <span>Moves (one line per moment, dB from your positions — DCAs or groups by their desk names)</span>
         <textarea className="input mono" rows={10} value={form.automix_rules || DEFAULT_RULES} onChange={(e) => set("automix_rules", e.target.value)} />
       </label>
       {am.log.length > 0 && (

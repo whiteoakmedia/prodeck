@@ -1,10 +1,13 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { avantisSetFader, followDebugLog, IS_WEB, on, type AvantisSnapshot } from "./lib/tauri";
+import { avantisSetFader, avantisSetMute, followDebugLog, IS_WEB, on, type AvantisSnapshot } from "./lib/tauri";
 import { useProDeck } from "./store";
 import { usePco } from "./pcoStore";
 import { BeatClock, type BeatEvent } from "./lib/rig";
 import { cueKey, DEFAULT_RULES, faderAt, parseRules, plan, type Planned } from "./lib/automix";
 import { dbToRaw, rawToDb } from "./lib/autopilotMix";
+
+/** What the automix may move: DCAs and groups (mono and stereo). */
+const MIXABLE = /^(dca|grp|sgrp):/;
 
 // The automix, live (see lib/automix.ts). Armed by hand, never at launch:
 // arming captures the operator's current DCA positions as home. Booth only.
@@ -49,6 +52,18 @@ export function AutomixProvider({ children }: { children: ReactNode }) {
   const sent = useRef(new Map<string, { raw: number; t: number }>());
   const active = useRef<{ p: Planned; from: Record<string, number> | null } | null>(null);
   const lastKey = useRef("");
+  const lastClockAt = useRef(0);
+  const fxName = useRef("All FX");
+  fxName.current = settings?.automix_fx_mute ?? "All FX";
+  /** The FX DCA: muted between songs so reverb tails don't hang over the talking. */
+  const fxMute = (muted: boolean, why: string) => {
+    if (!armedRef.current || !fxName.current) return;
+    const id = names.current[fxName.current];
+    if (!id) return;
+    avantisSetMute(id, muted)
+      .then(() => say(`${muted ? "Muted" : "Unmuted"} ${fxName.current}: ${why}.`))
+      .catch(() => {});
+  };
   const rulesRef = useRef(parseRules(DEFAULT_RULES));
   rulesRef.current = parseRules(settings?.automix_rules?.trim() || DEFAULT_RULES);
 
@@ -64,10 +79,10 @@ export function AutomixProvider({ children }: { children: ReactNode }) {
     const u = on<AvantisSnapshot>("avantis:state", (s) => {
       if (!s) return;
       const now = Date.now();
-      for (const [id, nm] of Object.entries(s.names ?? {})) if (id.startsWith("dca:") && nm) names.current[String(nm)] = id;
+      for (const [id, nm] of Object.entries(s.names ?? {})) if (MIXABLE.test(id) && nm) names.current[String(nm)] = id;
       const since = s.connectedAt ?? Infinity;
       for (const [id, raw] of Object.entries(s.faders ?? {})) {
-        if (raw == null || !id.startsWith("dca:")) continue;
+        if (raw == null || !MIXABLE.test(id)) continue;
         // Only a position the desk reported this connection is the
         // operator's; a cached one may be days old.
         if ((s.faderSeen?.[id] ?? 0) < since) continue;
@@ -100,11 +115,20 @@ export function AutomixProvider({ children }: { children: ReactNode }) {
     const a = on<BeatEvent>("follow:beat", (b) => b && clock.current.onBeat(b));
     const m = on<{ t: number; beat: number | null; bpm: number | null }>("follow:mbeat", (b) => {
       if (!b) return;
+      lastClockAt.current = Date.now();
       clock.current.onMidiBeat(b.t, b.beat, b.bpm);
       setBpm(clock.current.bpm());
     });
-    const s = on<{ t: number }>("follow:mstart", (b) => b && clock.current.onMidiStart(b.t));
-    const x = on("follow:mstop", () => clock.current.onMidiStop());
+    const s = on<{ t: number }>("follow:mstart", (b) => {
+      if (!b) return;
+      clock.current.onMidiStart(b.t);
+      lastClockAt.current = Date.now();
+      fxMute(false, "Playback started the song");
+    });
+    const x = on("follow:mstop", () => {
+      clock.current.onMidiStop();
+      fxMute(true, "Playback stopped — the song ended");
+    });
     return () => {
       [a, m, s, x].forEach((u) => u.then((f) => f()));
     };
@@ -139,9 +163,19 @@ export function AutomixProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // A new song: hand every DCA back to the automix.
+  // A new plan item: hand every DCA back; and without Playback's clock,
+  // the plan says when songs start and end (for the FX mute).
+  const wasSong = useRef<boolean | null>(null);
   useEffect(() => {
     if (letGo.current.size) letGo.current.clear();
+    const isSong = items.find((i) => i.id === liveItemId)?.type === "song";
+    const prev = wasSong.current;
+    wasSong.current = isSong;
+    if (prev == null) return;
+    const clockLive = Date.now() - lastClockAt.current < 10_000;
+    if (prev && !isSong) fxMute(true, "the plan left the songs");
+    else if (!prev && isSong && !clockLive) fxMute(false, "the plan reached a song");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveItemId]);
 
   // Carry out the active move: 20 steps a second while fading.

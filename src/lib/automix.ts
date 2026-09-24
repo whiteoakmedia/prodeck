@@ -13,16 +13,16 @@ import { parseCue, parseSection, type Section } from "./rig";
 /** Offsets in dB per DCA name, for one kind of moment. */
 export type Move = Record<string, number>;
 
-export const DEFAULT_RULES = `verse: EGs -3, KEYs -2, Pad -2, Drums -1
-prechorus: EGs -1.5, KEYs -1, Pad -1
-chorus: EGs 0, KEYs 0, Pad 0, Drums 0
-bridge: EGs 0, KEYs 0, Pad 0, Drums 0
-breakdown: Drums -8, EGs -4, KEYs -1
-build: EGs 0, KEYs 0, Pad 0, Drums 0
-allin: EGs 0, KEYs 0, Pad 0, Drums 0
-intro: EGs 0, KEYs 0, Pad 0, Drums 0
-instrumental: EGs 0, KEYs 0, Pad 0, Drums 0
-outro: Drums -2`;
+export const DEFAULT_RULES = `verse: EGs -3, KEYs -2, Pad -2, Drums -1, TRX -2, AGs 0, BGVs -2, Lead Voc +1, All FX 0
+prechorus: EGs -1.5, KEYs -1, Pad -1, TRX -1, BGVs -1, Lead Voc +0.5
+chorus: EGs 0, KEYs 0, Pad 0, Drums 0, TRX 0, AGs 0, BGVs 0, Lead Voc 0, All FX 0
+bridge: EGs 0, KEYs 0, Pad 0, Drums 0, TRX 0, AGs 0, BGVs +1, Lead Voc 0, All FX +1
+breakdown: Drums -8, EGs -4, KEYs -1, TRX -3, AGs +1, BGVs -1, Lead Voc +1, All FX +2
+build: EGs 0, KEYs 0, Pad 0, Drums 0, TRX 0, AGs 0, BGVs 0, Lead Voc 0, All FX 0
+allin: EGs 0, KEYs 0, Pad 0, Drums 0, TRX 0, AGs 0, BGVs 0, Lead Voc 0, All FX 0
+intro: EGs 0, KEYs 0, Pad 0, Drums 0, TRX 0, AGs 0
+instrumental: EGs 0, KEYs 0, Pad 0, Drums 0, TRX 0, AGs 0, Lead Voc 0
+outro: Drums -2, TRX -2, All FX +1`;
 
 /** "verse: EGs -3, KEYs -2" lines → { verse: { EGs: -3, KEYs: -2 } }. */
 export function parseRules(text: string): Record<string, Move> {

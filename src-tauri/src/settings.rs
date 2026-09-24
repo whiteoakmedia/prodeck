@@ -151,6 +151,9 @@ pub struct Settings {
     /// The automix's moves: one line per moment ("verse: EGs -3, KEYs -2").
     /// Empty = the built-in defaults.
     pub automix_rules: String,
+    /// The FX DCA the automix mutes when a song ends (Playback stops, or the
+    /// plan leaves the songs) and unmutes when the next one starts. "" = off.
+    pub automix_fx_mute: String,
     /// Multi-channel (Dante) routing — 1-based channel numbers on the audio input
     /// device. The measurement engine (SPL/RTA/LUFS) mixes these channels; empty
     /// means "all channels" (legacy behaviour).
@@ -325,6 +328,7 @@ impl Default for Settings {
             autopilot_message_min: 65.0,
             autopilot_message_max: 70.0,
             automix_rules: String::new(),
+            automix_fx_mute: "All FX".into(),
             audio_measure_channels: Vec::new(),
             audio_overflow_channels: Vec::new(),
             audio_mic_channels: std::collections::HashMap::new(),
