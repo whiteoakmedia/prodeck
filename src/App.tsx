@@ -53,6 +53,7 @@ import { ChecklistProvider, useChecklists } from "./checklistStore";
 import { RoutingProvider } from "./routingStore";
 import { LyricFollowProvider } from "./lyricFollow";
 import { AutopilotProvider } from "./autopilot";
+import { AutomixProvider } from "./automix";
 import { DialogHost } from "./lib/dialogs";
 import { ChecklistsPage } from "./pages/Checklists";
 import { ClearDock } from "./components/ClearDock";
@@ -635,6 +636,7 @@ export default function App() {
               <TrackingProvider>
                 <LyricFollowProvider>
                 <AutopilotProvider>
+                <AutomixProvider>
                   <ChecklistProvider>
                     <AlertsProvider>
                       <RoutingProvider>
@@ -658,6 +660,7 @@ export default function App() {
                       </RoutingProvider>
                     </AlertsProvider>
                   </ChecklistProvider>
+                </AutomixProvider>
                 </AutopilotProvider>
                 </LyricFollowProvider>
               </TrackingProvider>

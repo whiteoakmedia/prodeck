@@ -36,12 +36,14 @@ describe("the click as a clock", () => {
 });
 
 describe("guide cues", () => {
-  it("reads section calls, count-ins, and ignores band calls", () => {
+  it("reads section calls, count-ins and band calls", () => {
     expect(parseCue("Verse two.")).toEqual({ section: { kind: "verse", n: 2 } });
     expect(parseCue("Pre-Chorus")).toEqual({ section: { kind: "prechorus" } });
     expect(parseCue("1, 2, 1, 2, 3, 4.")).toEqual({ count: true });
-    expect(parseCue("Breakdown.")).toEqual({});
-    expect(parseCue("All in.")).toEqual({});
+    expect(parseCue("Breakdown.")).toEqual({ dynamic: "breakdown" });
+    expect(parseCue("Break down.")).toEqual({ dynamic: "breakdown" });
+    expect(parseCue("All in.")).toEqual({ dynamic: "allin" });
+    expect(parseCue("Build.")).toEqual({ dynamic: "build" });
   });
   it("matches ProPresenter group names", () => {
     expect(sectionMatches(parseSection("Verse 2"), { kind: "verse", n: 2 })).toBe(true);

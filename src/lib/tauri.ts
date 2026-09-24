@@ -322,6 +322,7 @@ export interface Settings {
   autopilot_worship_max: number;
   autopilot_message_min: number;
   autopilot_message_max: number;
+  automix_rules: string;
   audio_measure_channels: number[];
   audio_overflow_channels: number[];
   keysend_enabled: boolean;
@@ -387,6 +388,8 @@ export interface AvantisSnapshot {
   /** Epoch ms the DESK last reported each mute. Older than connectedAt =
    *  remembered from the cache, not confirmed this connection. */
   muteSeen?: Record<string, number>;
+  /** When the desk (or ProDeck) last set each fader; older than connectedAt = cached. */
+  faderSeen?: Record<string, number>;
   connectedAt?: number | null;
   faders: Record<string, number>;
   names: Record<string, string>;

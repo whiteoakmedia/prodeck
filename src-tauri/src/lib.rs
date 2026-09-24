@@ -306,6 +306,7 @@ pub fn run() {
             avantis::spawn_mirror(app.handle().clone());
             netmidi::spawn_keeper(app.handle().clone());
             speech::spawn(app.handle().clone());
+            rig::spawn_always(app.handle().clone());
             avantis::spawn_watch_flush(app.handle().clone());
             obs::spawn_client(app.handle().clone());
             x32::spawn_mirror(app.handle().clone());

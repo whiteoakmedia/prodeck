@@ -26,6 +26,21 @@ fn now_ms() -> u64 {
         .unwrap_or(0)
 }
 
+/// Start the rig listeners for the life of the app, from Settings (changing
+/// the channels or the MIDI port needs a restart, like the audio input).
+pub fn spawn_always(app: AppHandle) {
+    use tauri::Manager;
+    let (bin, click, guide, midi) = {
+        let st = app.state::<crate::settings::SettingsState>();
+        let s = st.lock().unwrap_or_else(|p| p.into_inner());
+        (s.whisper_bin.clone().unwrap_or_default(), s.follow_click_channel > 0, s.follow_guide_channel > 0, s.follow_midi_port.clone())
+    };
+    let audio = app.state::<AudioState>().inner().clone();
+    let running: TranscriptionState = std::sync::Arc::new(crate::transcription::TranscriptionInner::new());
+    running.running.store(true, Ordering::Release);
+    spawn(app, audio, running, bin, click, guide, midi);
+}
+
 pub fn spawn(app: AppHandle, audio: AudioState, running: TranscriptionState, bin: String, click: bool, guide: bool, midi_port: Option<String>) {
     if let Some(port) = midi_port.filter(|p| !p.trim().is_empty()) {
         let app = app.clone();

@@ -3,6 +3,8 @@ import { ANCHOR_TOPIC, openHelp } from "../help/nav";
 import { consumeSettingsJump } from "../lib/settingsJump";
 import { useProDeck } from "../store";
 import { useAutopilot } from "../autopilot";
+import { useAutomix } from "../automix";
+import { DEFAULT_RULES } from "../lib/automix";
 import { DEFAULT_LAPEL_WORDS, DEFAULT_MC_WORDS, micFor, parseWords } from "../lib/speechMics";
 import { useAlerts } from "../alertsStore";
 import { useRelay } from "../relayStore";
@@ -1064,6 +1066,7 @@ export function SettingsPage() {
       </section>
 
       <AutopilotCard form={form} set={set} />
+      <AutomixCard form={form} set={set} />
 
       <section className="card">
         <div className="card-head"><h3 id="set-inputs">Control Inputs</h3><HelpLink section="features" /></div>
@@ -3291,7 +3294,6 @@ function AutopilotCard({ form, set }: { form: Settings; set: <K extends keyof Se
       <div className="card-head">
         <h3 id="set-autopilot">Autopilot</h3>
         <span className={`chip ${form.autopilot_speech ? "online" : ""}`}>{form.autopilot_speech ? "speech mics on" : "speech mics off"}</span>
-        <span className={`chip ${form.autopilot_room ? "online" : ""}`}>{form.autopilot_room ? "room hold on" : "room hold off"}</span>
         {spl != null && <span className="chip">{spl.toFixed(1)} dB(A)</span>}
       </div>
       <p className="muted small">
@@ -3301,8 +3303,7 @@ function AutopilotCard({ form, set }: { form: Settings; set: <K extends keyof Se
         it's still open instead. Pressing that mute on the desk yourself hands the mic back to you until the next
         item. The lapel lives on its fader: opening brings it to its home level, and while he preaches it is ridden
         within ±6 dB — steady as he turns and leans, the room held in the message band — and pulled down 3 dB at the
-        first sign of feedback. <strong>Room hold</strong> keeps songs in the worship band with LR + Sub, within ±3 dB
-        of its home. Touching either fader yourself makes Autopilot let go of it. (The lead-vocal scene per song is
+        first sign of feedback. Touching the lapel fader yourself makes Autopilot let go of it. (The lead-vocal scene per song is
         the <em>Desk Scenes</em> toggle on the Planning Center page.)
       </p>
       {let_go.length > 0 && <p className="hint">Let go (you moved it): {let_go.join(", ")}</p>}
@@ -3340,25 +3341,6 @@ function AutopilotCard({ form, set }: { form: Settings; set: <K extends keyof Se
             <input className="input" type="number" value={form.autopilot_message_max ?? 70} onChange={num("autopilot_message_max")} />
           </span>
         </label>
-        <label className="field check">
-          <input type="checkbox" checked={!!form.autopilot_room} onChange={(e) => set("autopilot_room", e.target.checked)} />
-          <span>Room hold in songs</span>
-        </label>
-        <label className="field">
-          <span>Room fader</span>
-          <input className="input" value={form.autopilot_room_fader ?? "dca:16"} onChange={(e) => set("autopilot_room_fader", e.target.value)} />
-        </label>
-        <label className="field">
-          <span>Room fader home (dB)</span>
-          <input className="input" type="number" step={0.5} value={form.autopilot_room_home_db ?? 0} onChange={num("autopilot_room_home_db")} />
-        </label>
-        <label className="field">
-          <span>Worship room band (dB(A))</span>
-          <span className="controls-row">
-            <input className="input" type="number" value={form.autopilot_worship_min ?? 90} onChange={num("autopilot_worship_min")} />
-            <input className="input" type="number" value={form.autopilot_worship_max ?? 93} onChange={num("autopilot_worship_max")} />
-          </span>
-        </label>
         <label className="field wide">
           <span>Plan words that open the lapel</span>
           <input className="input" placeholder={DEFAULT_LAPEL_WORDS.join(", ")} value={form.autopilot_lapel_words ?? ""} onChange={(e) => set("autopilot_lapel_words", e.target.value)} />
@@ -3384,6 +3366,74 @@ function AutopilotCard({ form, set }: { form: Settings; set: <K extends keyof Se
       {log.length > 0 && (
         <ul className="ap-log small">
           {log.map((l) => (
+            <li key={l.at + l.text}>
+              <span className="mono muted">{new Date(l.at).toLocaleTimeString()}</span> {l.text}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function AutomixCard({ form, set }: { form: Settings; set: <K extends keyof Settings>(k: K, v: Settings[K]) => void }) {
+  const am = useAutomix();
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(t);
+  }, []);
+  if (!am) return null;
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h3 id="set-automix">Automix</h3>
+        <span className={`chip ${am.armed ? "online" : ""}`}>{am.armed ? "armed" : "off"}</span>
+        <span className="chip">{am.bpm ? `MIDI clock ${Math.round(am.bpm)} BPM` : "no clock"}</span>
+      </div>
+      <p className="muted small">
+        Instrument moves at the right moments — never the main faders, never because it's loud. The guide calls the
+        moment (Verse, Chorus, Bridge, Breakdown, Build, All in), the MIDI clock finds the downbeat, and your DCAs move
+        by the amounts below <em>from your own positions</em>, with a one-bar fade (Build ramps over four bars). Arm it
+        with your mix where you want it: that's home. Touch any DCA and it lets go of that one for the rest of the song.
+        Every move you make is recorded so it can learn your habits.
+      </p>
+      <div className="controls-row">
+        {am.armed ? (
+          <>
+            <button className="btn danger" onClick={am.disarm}>
+              Disarm
+            </button>
+            <button className="btn" onClick={am.goHome}>
+              Back to my positions
+            </button>
+          </>
+        ) : (
+          <button className="btn primary" onClick={am.arm}>
+            Arm — my positions now are home
+          </button>
+        )}
+      </div>
+      <ul className="ap-preview-list small">
+        {am.dcas.map((d) => (
+          <li key={d.id} className={d.letGo ? "muted" : ""}>
+            <strong>{d.name}</strong> {d.now != null ? `${d.now.toFixed(1)} dB` : "position unknown — move it once"}
+            {am.armed && d.home != null ? ` · home ${d.home.toFixed(1)}` : ""}
+            {d.letGo ? " · you have it" : ""}
+          </li>
+        ))}
+      </ul>
+      <p className="muted small">
+        {am.last ? `Last guide call: ${am.last}` : "No guide call heard yet."}
+        {am.pending ? ` · next move (${am.pending.key}) in ${Math.max(0, (am.pending.at - now) / 1000).toFixed(1)} s` : ""}
+      </p>
+      <label className="field wide">
+        <span>Moves (one line per moment, dB from your positions)</span>
+        <textarea className="input mono" rows={10} value={form.automix_rules || DEFAULT_RULES} onChange={(e) => set("automix_rules", e.target.value)} />
+      </label>
+      {am.log.length > 0 && (
+        <ul className="ap-log small">
+          {am.log.map((l) => (
             <li key={l.at + l.text}>
               <span className="mono muted">{new Date(l.at).toLocaleTimeString()}</span> {l.text}
             </li>

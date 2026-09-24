@@ -148,6 +148,9 @@ pub struct Settings {
     pub autopilot_worship_max: f32,
     pub autopilot_message_min: f32,
     pub autopilot_message_max: f32,
+    /// The automix's moves: one line per moment ("verse: EGs -3, KEYs -2").
+    /// Empty = the built-in defaults.
+    pub automix_rules: String,
     /// Multi-channel (Dante) routing — 1-based channel numbers on the audio input
     /// device. The measurement engine (SPL/RTA/LUFS) mixes these channels; empty
     /// means "all channels" (legacy behaviour).
@@ -321,6 +324,7 @@ impl Default for Settings {
             autopilot_worship_max: 93.0,
             autopilot_message_min: 65.0,
             autopilot_message_max: 70.0,
+            automix_rules: String::new(),
             audio_measure_channels: Vec::new(),
             audio_overflow_channels: Vec::new(),
             audio_mic_channels: std::collections::HashMap::new(),

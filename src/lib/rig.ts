@@ -225,11 +225,23 @@ export function parseSection(name: string): Section | null {
 
 /** What a guide cue said: a section, a count-in, or a band call to ignore
  *  ("Breakdown", "All in", "Build"). */
-export function parseCue(text: string): { section?: Section; count?: boolean } {
+export type Dynamic = "breakdown" | "build" | "allin" | "drums" | "hits" | "halftime" | "quiet";
+
+/** What a guide cue said: a section, a count-in, or a band call — the
+ *  MultiTracks dynamics ("Breakdown", "Build", "All in") the automix acts on. */
+export function parseCue(text: string): { section?: Section; count?: boolean; dynamic?: Dynamic } {
   const w = norm(text);
   if (!w) return {};
   const toks = w.split(" ");
   if (toks.every((t) => /^[1-8]$/.test(t) || NUM[t] != null)) return { count: true };
+  const joined = w.replace(/\s+/g, "");
+  if (/breakdown|breakit?down/.test(joined)) return { dynamic: "breakdown" };
+  if (/allin|everybodyin|fullband/.test(joined)) return { dynamic: "allin" };
+  if (/^build|buildup/.test(joined)) return { dynamic: "build" };
+  if (/halftime/.test(joined)) return { dynamic: "halftime" };
+  if (/drumsin/.test(joined)) return { dynamic: "drums" };
+  if (/hits/.test(joined)) return { dynamic: "hits" };
+  if (/quiet|down|softly|soft/.test(joined) && !parseSection(w)) return { dynamic: "quiet" };
   const s = parseSection(w);
   if (s && s.kind !== "blank") return { section: s };
   return {};

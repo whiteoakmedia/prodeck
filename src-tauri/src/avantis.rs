@@ -42,6 +42,10 @@ pub struct AvantisInner {
     pub scene_at: Option<u64>,
     /// Raw 0-127 fader values (dB = value/127*64 - 54, per the protocol table).
     pub faders: HashMap<String, u8>,
+    /// When the desk (or ProDeck itself) last set each fader (epoch ms). A
+    /// value older than `connected_at` is only remembered from the cache —
+    /// the automix won't treat it as the operator's position. Not persisted.
+    pub fader_seen: HashMap<String, u64>,
     pub names: HashMap<String, String>,
     pub colors: HashMap<String, u8>,
     /// Writer half of the live connection (a try_clone of the mirror's
@@ -116,6 +120,7 @@ pub fn snapshot(state: &AvantisState) -> Value {
         "scene": s.scene,
         "mutes": s.mutes,
         "muteSeen": s.mute_seen,
+        "faderSeen": s.fader_seen,
         "connectedAt": s.connected_at,
         "sceneAt": s.scene_at,
         "faders": s.faders,
@@ -280,6 +285,7 @@ pub async fn avantis_set_fader(
     write_desk(&st, &bytes)?;
     {
         let mut s = st.lock().unwrap_or_else(|p| p.into_inner());
+        s.fader_seen.insert(id.clone(), now_ms());
         s.faders.insert(id, v);
     }
     app.emit("avantis:state", snapshot(&st)).ok();
@@ -325,6 +331,7 @@ pub(crate) fn apply_mute(s: &mut AvantisInner, kk: String, muted: bool) -> bool 
 
 /// Apply a desk-reported fader value (ProDeck 0-127 scale).
 pub(crate) fn apply_fader(s: &mut AvantisInner, kk: String, val: u8) -> bool {
+    s.fader_seen.insert(kk.clone(), now_ms());
     let old = s.faders.insert(kk.clone(), val);
     if let Some(o) = old {
         if o != val && is_setup_key(&kk) {

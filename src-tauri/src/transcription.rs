@@ -261,7 +261,9 @@ pub fn start_transcription(
             }
         }
         app2.emit("caption:status", "listening").ok();
-        crate::rig::spawn(app2.clone(), audio.clone(), running.clone(), bin.clone(), rig_click, rig_guide, rig_midi);
+        // The rig listeners (click, guide, MIDI Clock) run for the life of the
+        // app now (rig::spawn_always), shared by Follow and the automix.
+        let _ = (rig_click, rig_guide, rig_midi);
 
         // The last WINDOW of audio at the device's own rate; each hop it is
         // filtered and brought down to 16 kHz whole (a stateless resample, so
