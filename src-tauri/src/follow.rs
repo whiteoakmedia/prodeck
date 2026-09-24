@@ -107,3 +107,23 @@ pub fn follow_timing_save(timing: Value) -> Result<(), String> {
     std::fs::write(&tmp, timing.to_string()).map_err(|e| e.to_string())?;
     std::fs::rename(&tmp, timing_path()).map_err(|e| e.to_string())
 }
+
+fn debug_dir() -> std::path::PathBuf {
+    let d = config_dir().join("follow-debug");
+    let _ = std::fs::create_dir_all(&d);
+    d
+}
+
+/// One line of what Follow saw and did (armed, ProPresenter moved, Follow
+/// moved or would have) — the ground truth a replay is scored against.
+#[tauri::command]
+pub fn follow_debug_log(line: Value) {
+    use std::io::Write;
+    let mut line = line;
+    if let Some(o) = line.as_object_mut() {
+        o.entry("at").or_insert(json!(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)));
+    }
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(debug_dir().join("events.jsonl")) {
+        let _ = writeln!(f, "{line}");
+    }
+}

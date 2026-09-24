@@ -395,6 +395,7 @@ pub fn run() {
             follow::follow_status,
             follow::follow_timing_load,
             follow::follow_timing_save,
+            follow::follow_debug_log,
             transcription::stop_transcription,
             // Gemini smart matching
             gemini::gemini_pick_slide,

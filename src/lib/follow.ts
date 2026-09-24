@@ -10,9 +10,16 @@
 // Whisper prompt.
 //
 // The rule Zach set: a slide two seconds late is a sin, one second early is
-// forgivable. So the engine advances on the END of the current slide (its
-// last line being sung), not on the start of the next, and the learned clock
-// moves it at the moment it usually ends when the singing agrees.
+// forgivable.
+//
+// v3 (24 Sep, after the first live test lost "Build My Life" at the chorus):
+// position is a WORD POINTER through the song's words in arrangement order,
+// moved by aligning each Whisper window (with per-word times) to the lyric
+// near it — a score follower. Order resolves what word sets can't: Verse 2
+// ends on the same lines as Verse 1, and its last line repeats on two
+// identical slides. The next slide is shown as the current slide's last
+// word lands (words left × this slide's pace); blank slides move on their
+// learned length.
 
 export interface FSlide {
   index: number; // position in the playlist item's arrangement = trigger index
@@ -36,8 +43,10 @@ export interface Heard {
   quiet?: boolean;
   langP?: number | null;
   logprob?: number | null;
+  /** Per-word times (absolute ms) from Whisper, when it gives them. */
+  words?: { w: string; t0: number; t1: number; p?: number }[];
 }
-export type Via = "heard" | "clock" | "model" | "pro";
+export type Via = "heard" | "predicted" | "clock" | "model" | "pro";
 export type Action =
   | { type: "trigger"; song: FSong; slide: number; via: Via; reason: string }
   | { type: "ask"; song: FSong; current: number; transcript: string; expect: number | null }
@@ -139,18 +148,6 @@ function explains(heard: Set<string>, text: Set<string>, idf: (t: string) => num
   return { score: den > 0 ? num / den : 0, hits, mass: num };
 }
 
-/** How much of `part` was heard (0..1), idf-weighted. */
-function covered(part: string[], heard: Set<string>, idf: (t: string) => number): number {
-  let num = 0;
-  let den = 0;
-  for (const t of new Set(part)) {
-    const w = idf(t);
-    den += w;
-    if (heard.has(t)) num += w;
-  }
-  return den > 0 ? num / den : 0;
-}
-
 export function median(xs: number[]): number | null {
   if (!xs.length) return null;
   const s = [...xs].sort((a, b) => a - b);
@@ -158,62 +155,242 @@ export function median(xs: number[]): number | null {
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 }
 
+// ---- alignment -------------------------------------------------------------
+
+/** How alike two words are, 0..1 — Whisper hears "pain" for "plains". */
+export function wordSim(a: string, b: string): number {
+  if (a === b) return 1;
+  if (a.length < 3 || b.length < 3) return 0;
+  if (a.length >= 4 && b.length >= 4 && (a.startsWith(b) || b.startsWith(a))) return 0.8;
+  const m = a.length;
+  const n = b.length;
+  if (Math.abs(m - n) > 3) return 0;
+  let prev = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) {
+    const row = [i];
+    for (let j = 1; j <= n; j++) row[j] = Math.min(prev[j] + 1, row[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = row;
+  }
+  const s = 1 - prev[n] / Math.max(m, n);
+  return s >= 0.66 ? s : 0;
+}
+
+/** A song as one run of words in arrangement order, each tagged with its slide. */
+export interface Flat {
+  toks: string[];
+  slide: number[];
+  /** Global line number of each word (a slide's text lines, in order). */
+  line: number[];
+  lineFirst: number[];
+  weight: number[];
+  first: Map<number, number>;
+  last: Map<number, number>;
+}
+
+export function flatten(song: FSong, idf: (t: string) => number): Flat {
+  const f: Flat = { toks: [], slide: [], line: [], lineFirst: [], weight: [], first: new Map(), last: new Map() };
+  for (const sl of song.slides) {
+    for (const ln of sl.text.split(/\r?\n/)) {
+      const ts = tokenize(ln);
+      if (!ts.length) continue;
+      f.lineFirst.push(f.toks.length);
+      const L = f.lineFirst.length - 1;
+      for (const t of ts) {
+        if (!f.first.has(sl.index)) f.first.set(sl.index, f.toks.length);
+        f.last.set(sl.index, f.toks.length);
+        f.toks.push(t);
+        f.slide.push(sl.index);
+        f.line.push(L);
+        // Order does the work; rarity only nudges. (Weighting by rarity
+        // alone scored a perfectly sung chorus — the song's most repeated
+        // words — below the bar.)
+        f.weight.push(Math.max(0.8, Math.min(1.5, 0.8 + idf(t) / 4)));
+      }
+    }
+  }
+  return f;
+}
+
+export interface HeardTok {
+  tok: string;
+  t0: number;
+  t1: number;
+}
+
+export interface Alignment {
+  score: number;
+  matches: number;
+  /** [heard index, lyric index] for each matched word, in order. */
+  path: [number, number][];
+}
+
+/** Local alignment (Smith–Waterman) of heard words against lyric words
+ *  lo..hi. Among equally good placements — a repeated line — the one whose
+ *  end is nearest `expect` wins. */
+export function align(
+  heard: HeardTok[],
+  f: Flat,
+  lo: number,
+  hi: number,
+  expect: number,
+  prefer?: (path: [number, number][]) => number,
+): Alignment | null {
+  const m = heard.length;
+  lo = Math.max(0, lo);
+  hi = Math.min(f.toks.length - 1, hi);
+  if (!m || hi < lo) return null;
+  const n = hi - lo + 1;
+  const S = Array.from({ length: m + 1 }, () => new Float32Array(n + 1));
+  const B = Array.from({ length: m + 1 }, () => new Uint8Array(n + 1)); // 1 diag-match 2 diag-miss 3 up 4 left
+  let best = 0;
+  const cells: [number, number, number][] = [];
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const lj = lo + j - 1;
+      const sim = wordSim(heard[i - 1].tok, f.toks[lj]);
+      const diag = S[i - 1][j - 1] + (sim > 0 ? f.weight[lj] * sim : -0.7);
+      const up = S[i - 1][j] - 0.5; // a heard word that isn't in the lyric
+      const left = S[i][j - 1] - 0.35; // a lyric word Whisper didn't catch
+      let v = 0;
+      let b = 0;
+      if (diag > v) (v = diag), (b = sim > 0 ? 1 : 2);
+      if (up > v) (v = up), (b = 3);
+      if (left > v) (v = left), (b = 4);
+      S[i][j] = v;
+      B[i][j] = b;
+      if (b === 1) {
+        if (v > best) best = v;
+        cells.push([v, i, j]);
+      }
+    }
+  }
+  if (best <= 0) return null;
+  const trace = (i: number, j: number) => {
+    const path: [number, number][] = [];
+    while (i > 0 && j > 0 && S[i][j] > 0) {
+      const b = B[i][j];
+      if (b === 1) path.push([i - 1, lo + j - 1]);
+      if (b === 1 || b === 2) (i--, j--);
+      else if (b === 3) i--;
+      else if (b === 4) j--;
+      else break;
+    }
+    return path.reverse();
+  };
+  // Every placement about as good as the best is a candidate (a repeated
+  // line gives several); the caller's `prefer` — or nearness to `expect` —
+  // decides between them.
+  let pick: { score: number; path: [number, number][]; cost: number } | null = null;
+  for (const [v, i, j] of cells) {
+    if (v < best - 0.3) continue;
+    const path = trace(i, j);
+    if (!path.length) continue;
+    const cost = prefer ? prefer(path) : Math.abs(path[path.length - 1][1] - expect);
+    if (!pick || cost < pick.cost - 1e-6 || (Math.abs(cost - pick.cost) <= 1e-6 && v > pick.score)) pick = { score: v, path, cost };
+  }
+  if (!pick) return null;
+  // A match that leaps more than three lyric words between two heard words
+  // has skipped a phrase to reach a look-alike: keep only what came before.
+  let path = pick.path;
+  let score = pick.score;
+  for (let k = 1; k < path.length; k++) {
+    if (path[k][1] - path[k - 1][1] > 4) {
+      score = (score * k) / path.length;
+      path = path.slice(0, k);
+      break;
+    }
+  }
+  return { score, matches: path.length, path };
+}
+
+/** A window's words with times: Whisper's per-word times when present,
+ *  else spread evenly across the window. */
+export function heardTokens(h: Heard): HeardTok[] {
+  const out: HeardTok[] = [];
+  if (h.words?.length) {
+    // Words Whisper invented to finish a line it only half heard come back
+    // squashed into the last instant of the window, several at one time.
+    // Keep the first of such a tail cluster, drop the rest.
+    const ws = [...h.words];
+    let k = ws.length - 1;
+    while (k > 0 && h.end - ws[k].t0 < 800 && Math.abs(ws[k].t0 - ws[k - 1].t0) < 100) k--;
+    if (k < ws.length - 2) ws.length = k + 1;
+    for (const w of ws) for (const tok of tokenize(w.w)) out.push({ tok, t0: w.t0, t1: w.t1 });
+    return out;
+  }
+  const toks = tokenize(h.text);
+  const span = Math.max(1, h.end - h.start);
+  toks.forEach((tok, k) => out.push({ tok, t0: h.start + (span * k) / toks.length, t1: h.start + (span * (k + 1)) / toks.length }));
+  return out;
+}
+
 // ---- the engine ------------------------------------------------------------
 
 export const TUNING = {
   /** Whisper's own confidence: below these it was guessing at a band. */
   // Latin and held vowels ("Gloria… excelsis") score low as English, so the
-  // gate is loose; a window still has to match the lyric to count for anything.
+  // gate is loose; a window still has to line up with the lyric to count.
   minLangP: 0.3,
   minLogprob: -1.0,
   /** Locking onto a song from nothing wants cleaner hearing. */
   lockLangP: 0.5,
   strongLangP: 0.5,
-  /** idf mass of matched words needed to move on hearing: ~two distinctive words. */
-  minMass: 3,
   lockScore: 0.4,
   lockGap: 0.15,
   lockHits: 3,
-  /** A slide ahead must explain this much of the last window to jump to it. */
-  floor: 0.45,
-  /** Share of the current slide's last line heard that means "it's ending". */
-  tailCover: 0.5,
-  /** Show the next slide this long before the clock's expected change. */
-  lead: 700,
-  /** Beyond the clock's expected change, move on without hearing it. */
+  /** Alignment needed to move the pointer: ~three words in order. */
+  minAlign: 2.2,
+  minMatches: 2,
+  /** A weak window (Whisper unsure) must line up better than that. */
+  weakAlign: 3.2,
+  /** Going back, or jumping far ahead, wants this — twice. */
+  strongAlign: 3.5,
+  farAhead: 40,
+  /** Show the next slide this long before its last word is due to end. */
+  lead: 400,
+  /** Beyond a blank slide's learned length, move on without hearing it. */
   clockGrace: 1500,
   minGap: 1200,
   relockGap: 0.25,
   silenceRelease: 60_000,
   askEvery: 5000,
+  /** Lost this many windows running while singing → ask the model. */
+  lostWindows: 3,
 };
-
-const PRIOR = (d: number) => (d === 0 || d === 1 ? 1 : d === 2 ? 0.8 : d > 2 ? 0.55 : 0.45);
 
 export class FollowEngine {
   private idf: (t: string) => number;
   private byId = new Map<string, FSong>();
+  private flats = new Map<string, Flat>();
   private windows: { tokens: Set<string>; start: number; end: number; weak: boolean }[] = [];
   private song: FSong | null = null;
   private cur: number | null = null;
   private startedAt: number | null = null;
+  /** The word pointer: index of the last word known sung, and when. */
+  private p = -1;
+  private pTime = 0;
+  private lastCommitT = 0;
+  /** When each line (global index) was first heard starting, this run. */
+  private lineStarts = new Map<number, number>();
+  private pPrev = -1;
+  private lastAligned = 0;
+  private lost = 0;
   private lastTrigger = 0;
   private ourTarget: { songId: string; slide: number; at: number; via: Via } | null = null;
-  private clockOnly = 0; // consecutive clock moves without hearing the new slide
-  private lastWords = 0; // last window with sung words
-  private lastSound = 0; // last window that wasn't quiet
-  private matchedCurAt = 0; // last time a window matched the current slide
-  /** First sighting of the current slide's last line, and when it should end. */
-  private tailSeenAt = 0;
-  private endAt: number | null = null;
-  /** The current slide was entered at its start (an advance from the one
-   *  before), so its length is worth learning. Not after a lock or a jump. */
-  private clean = false;
+  private clockOnly = 0;
+  private lastWords = 0;
+  private lastSound = 0;
   private relockStreak: { id: string; n: number } | null = null;
-  private backStreak: { slide: number; n: number; at: number } | null = null;
+  private jumpStreak: { p: number; n: number; at: number } | null = null;
   private lastAsk = 0;
   private asking = false;
   private lastPrompt = "";
+  timingDirty = false;
+  /** Practice: every ProPresenter move is a person's (Follow moves nothing). */
+  practice = false;
+  private pro: { songId: string; slide: number; at: number } | null = null;
+  /** Optional trace (replay harness / debug log). */
+  debug?: (msg: string) => void;
   view: FollowView = {
     song: null,
     songId: null,
@@ -238,9 +415,15 @@ export class FollowEngine {
     for (const s of songs) this.byId.set(s.id, s);
   }
 
+  private flat(song: FSong): Flat {
+    let f = this.flats.get(song.id);
+    if (!f) this.flats.set(song.id, (f = flatten(song, this.idf)));
+    return f;
+  }
+
   // ---- the clock ----
 
-  /** Expected dwell of a slide (ms), rescaled if the song's tempo changed. */
+  /** Learned length of a slide (ms), rescaled if the song's tempo changed. */
   dwell(song: FSong, slide: number): number | null {
     const t = this.timing[song.id];
     const xs = t?.slides[String(slide)];
@@ -249,40 +432,38 @@ export class FollowEngine {
     return t.bpm && song.bpm && t.bpm !== song.bpm ? (m * t.bpm) / song.bpm : m;
   }
 
-  /** How long a sung line lasts in this song: this run's own pace once a
-   *  couple of slides have gone by, else two bars at the arrangement's BPM
-   *  (most worship lines are two bars of 4/4), else four seconds. */
-  lineMs(song: FSong): number {
-    const run = this.pace.get(song.id) ?? [];
-    const bars = song.bpm ? (8 * 60_000) / song.bpm : null;
-    if (run.length >= 2) return median(run)!;
-    if (run.length === 1) return bars ? (run[0] + bars) / 2 : run[0];
-    return bars ?? 4000;
+  /** How long one sung line lasts: the slide's learned length over its
+   *  lines (from people's clicks), else this run's measured line starts,
+   *  else two bars at the BPM. Lines are the steady unit — a held word can
+   *  last four seconds, but lines keep the song's phrase length. */
+  lineMs(song: FSong, slide: number): number {
+    const f = this.flat(song);
+    const a = f.first.get(slide);
+    const b = f.last.get(slide);
+    const d = this.dwell(song, slide);
+    if (d != null && a != null && b != null) return clamp(d / (f.line[b] - f.line[a] + 1), 1200, 20_000);
+    const gaps: number[] = [];
+    const ks = [...this.lineStarts.keys()].sort((x, y) => x - y);
+    for (let k = 1; k < ks.length; k++) {
+      if (ks[k] !== ks[k - 1] + 1) continue;
+      const dt = this.lineStarts.get(ks[k])! - this.lineStarts.get(ks[k - 1])!;
+      if (dt >= 1200 && dt <= 20_000) gaps.push(dt);
+    }
+    if (gaps.length) return median(gaps)!;
+    return song.bpm ? (8 * 60_000) / song.bpm : 4000;
   }
-  /** The clock's number if it has one, else lines × line length. */
-  expected(song: FSong, slide: number): number {
-    const sl = song.slides[slide];
-    const lines = Math.max(1, sl?.text.split(/\r?\n/).filter((l) => l.trim()).length ?? 1);
-    return this.dwell(song, slide) ?? lines * this.lineMs(song);
-  }
-  private pace = new Map<string, number[]>();
-  private notePace(song: FSong, slide: number, ms: number) {
-    const sl = song.slides[slide];
-    if (!sl?.tokens.length || ms < 1500 || ms > 60_000) return;
-    const lines = Math.max(1, sl.text.split(/\r?\n/).filter((l) => l.trim()).length);
-    const xs = this.pace.get(song.id) ?? [];
-    xs.push(ms / lines);
-    if (xs.length > 8) xs.shift();
-    this.pace.set(song.id, xs);
+
+  private msPerWord(song: FSong, slide: number): number {
+    const f = this.flat(song);
+    const a = f.first.get(slide);
+    const b = f.last.get(slide);
+    const words = a != null && b != null ? (b - a + 1) / (f.line[b] - f.line[a] + 1) : 6;
+    return clamp(this.lineMs(song, slide) / Math.max(1, words), 150, 4000);
   }
 
   private learn(song: FSong, slide: number, ms: number) {
-    if (!this.clean) return;
-    this.notePace(song, slide, ms);
-    if (ms < 1500 || ms > 60_000) return;
+    if (ms < 1200 || ms > 90_000) return;
     const t = (this.timing[song.id] ??= { bpm: song.bpm, slides: {} });
-    // A tempo change invalidates nothing — store at the new tempo by scaling
-    // the old observations once.
     if (t.bpm && song.bpm && t.bpm !== song.bpm) {
       const k = t.bpm / song.bpm;
       for (const key of Object.keys(t.slides)) t.slides[key] = t.slides[key].map((x) => Math.round(x * k));
@@ -294,26 +475,24 @@ export class FollowEngine {
     if (xs.length > 6) xs.shift();
     this.timingDirty = true;
   }
-  timingDirty = false;
 
   // ---- inputs ----
 
-  /** ProPresenter says this slide is live (our trigger or anyone's). */
+  /** ProPresenter says this slide is live (our move or anyone's). */
   onLive(songId: string | null, slide: number | null, now: number): Action[] {
     const song = songId ? this.byId.get(songId) ?? null : null;
     if (!song || slide == null) {
-      // Something outside the playlist (or nothing) is live.
       if (song == null && songId) this.release("Pro left the playlist");
+      this.pro = null;
       return [];
     }
-    const ours = this.ourTarget && this.ourTarget.songId === song.id && this.ourTarget.slide === slide && now - this.ourTarget.at < 3000;
+    const ours = !this.practice && !!this.ourTarget && this.ourTarget.songId === song.id && this.ourTarget.slide === slide && now - this.ourTarget.at < 3000;
+    // Slide lengths are learned from people only — a clock learned from
+    // Follow's own (slightly early) moves drags earlier every week — and
+    // only from one person's move to the next slide after another.
+    if (!ours && this.pro && this.pro.songId === song.id && slide === this.pro.slide + 1) this.learn(song, this.pro.slide, now - this.pro.at);
+    this.pro = ours ? null : { songId: song.id, slide, at: now };
     if (this.song?.id === song.id && this.cur === slide) return [];
-    if (this.song?.id === song.id && this.cur != null && this.startedAt != null && slide === this.cur + 1) {
-      // Learn how long the slide lasted — from a person's advance, or from
-      // ours when it came from hearing (a clock move would teach itself).
-      const via = ours ? this.ourTarget!.via : "pro";
-      if (via !== "clock") this.learn(song, this.cur, now - this.startedAt);
-    }
     if (!ours) {
       this.view.lastVia = "pro";
       this.view.lastReason = "moved in ProPresenter";
@@ -335,29 +514,22 @@ export class FollowEngine {
       !looksLooped(h.text) &&
       (h.langP == null || h.langP >= (this.song ? TUNING.minLangP : TUNING.lockLangP)) &&
       (h.logprob == null || h.logprob >= TUNING.minLogprob);
-    if (!sung) {
-      this.view.hearing = "music";
-      return this.clockCheck(now);
-    }
-    const tokens = new Set(tokenize(h.text));
-    if (tokens.size === 0) {
+    const toks = sung ? heardTokens(h) : [];
+    if (!toks.length) {
       this.view.hearing = "music";
       return this.clockCheck(now);
     }
     this.view.hearing = "words";
     this.view.heard = h.text;
     this.lastWords = now;
-    // Weak: Whisper wasn't sure it heard English words. In an instrumental
-    // it will "remember" the song's lyrics at about this confidence, so a
-    // weak window can confirm where we are but never moves us by itself.
     const weak = (h.langP != null && h.langP < TUNING.strongLangP) || (h.logprob != null && h.logprob < -0.6);
-    this.windows.push({ tokens, start: h.start, end: h.end, weak });
+    this.windows.push({ tokens: new Set(toks.map((t) => t.tok)), start: h.start, end: h.end, weak });
     while (this.windows.length && this.windows[0].end < h.end - 20_000) this.windows.shift();
 
     if (!this.song) return this.tryLock(now);
-    const acts = this.checkSong(now);
-    if (acts) return acts;
-    return this.position(tokens, now);
+    const relock = this.checkSong(now);
+    if (relock) return relock;
+    return [...this.follow(toks, weak, now), ...this.clockCheck(now)];
   }
 
   onTick(now: number): Action[] {
@@ -376,7 +548,7 @@ export class FollowEngine {
     this.asking = false;
   }
 
-  // ---- decisions ----
+  // ---- song lock (bag of words across the playlist) ----
 
   private recent(ms: number): Set<string> {
     const out = new Set<string>();
@@ -394,155 +566,175 @@ export class FollowEngine {
       .sort((a, b) => b.score - a.score);
   }
 
+  /** Where in `song` the recent words line up, over the whole song. */
+  private placeIn(song: FSong): number | null {
+    const f = this.flat(song);
+    const toks: HeardTok[] = [];
+    for (const w of this.windows.slice(-3)) for (const tok of w.tokens) toks.push({ tok, t0: w.end, t1: w.end });
+    const a = align(toks, f, 0, f.toks.length - 1, 0);
+    return a && a.score >= TUNING.minAlign ? a.path[a.path.length - 1][1] : null;
+  }
+
   private tryLock(now: number): Action[] {
-    const heard = this.recent(20_000);
-    const [a, b] = this.songScores(heard);
+    const [a, b] = this.songScores(this.recent(20_000));
     if (!a) return [];
     this.view.confidence = a.score;
     if (a.score >= TUNING.lockScore && a.hits >= TUNING.lockHits && a.score - (b?.score ?? 0) >= TUNING.lockGap) {
-      const slide = this.bestSlide(a.song, this.recent(6000), null)?.slide ?? firstLyric(a.song);
+      const f = this.flat(a.song);
+      const at = this.placeIn(a.song);
+      const slide = at != null ? f.slide[at] : firstLyric(a.song);
       if (slide == null) return [];
-      return this.trigger(a.song, slide, "heard", `heard ${a.song.name}`, now);
+      const acts = this.trigger(a.song, slide, "heard", `heard ${a.song.name}`, now);
+      if (at != null) this.commit(at, now, now);
+      return acts;
     }
     return [];
   }
 
   /** A different song clearly outscoring the locked one, twice running. */
   private checkSong(now: number): Action[] | null {
-    const heard = this.recent(12_000);
-    const scores = this.songScores(heard);
+    const scores = this.songScores(this.recent(12_000));
     const mine = scores.find((s) => s.song.id === this.song!.id)?.score ?? 0;
     const top = scores[0];
     if (top && top.song.id !== this.song!.id && top.hits >= TUNING.lockHits && top.score - mine >= TUNING.relockGap) {
       this.relockStreak = this.relockStreak?.id === top.song.id ? { id: top.song.id, n: this.relockStreak.n + 1 } : { id: top.song.id, n: 1 };
       if (this.relockStreak.n >= 2) {
         this.relockStreak = null;
-        const slide = this.bestSlide(top.song, this.recent(6000), null)?.slide ?? firstLyric(top.song);
-        if (slide != null) return this.trigger(top.song, slide, "heard", `switched to ${top.song.name}`, now);
+        const f = this.flat(top.song);
+        const at = this.placeIn(top.song);
+        const slide = at != null ? f.slide[at] : firstLyric(top.song);
+        if (slide != null) {
+          const acts = this.trigger(top.song, slide, "heard", `switched to ${top.song.name}`, now);
+          if (at != null) this.commit(at, now, now);
+          return acts;
+        }
       }
     } else this.relockStreak = null;
     return null;
   }
 
-  private bestSlide(song: FSong, heard: Set<string>, cur: number | null) {
-    type C = { slide: number; score: number; weighted: number; mass: number };
-    let best: C | null = null;
-    let second: C | null = null;
-    for (const sl of song.slides) {
-      if (!sl.tokens.length) continue;
-      const { score, mass } = explains(heard, new Set(sl.tokens), this.idf);
-      const d = cur == null ? 0 : sl.index - cur;
-      const weighted = score * PRIOR(d);
-      const cand = { slide: sl.index, score, weighted, mass };
-      const better = (x: typeof cand, y: typeof cand | null) =>
-        !y || x.weighted > y.weighted + 1e-9 || (Math.abs(x.weighted - y.weighted) <= 1e-9 && fwd(x.slide, cur) < fwd(y.slide, cur));
-      if (better(cand, best)) {
-        if (best && song.slides[best.slide].text !== sl.text) second = best;
-        best = cand;
-      } else if (song.slides[best!.slide].text !== sl.text && better(cand, second)) second = cand;
-    }
-    return best ? { ...best, second } : null;
+  // ---- the word pointer ----
+
+  private commit(p: number, t: number, now: number) {
+    this.p = p;
+    this.pTime = t;
+    this.lastAligned = now;
   }
 
-  private position(win: Set<string>, now: number): Action[] {
-    const song = this.song!;
-    const cur = this.cur;
-    if (cur == null) return [];
-    const here = song.slides[cur];
-    const nextIdx = cur + 1 < song.slides.length ? cur + 1 : null;
+  /** Between placements of a repeated line, prefer the line that should be
+   *  starting when its first heard word was sung: lines keep the song's
+   *  phrase length, word rates don't (held notes). */
+  private linePrefer(toks: HeardTok[], f: Flat, song: FSong) {
+    let Lk = -1;
+    let tk = 0;
+    for (const [L, t] of this.lineStarts) if (t > tk) (Lk = L), (tk = t);
+    if (Lk < 0 || this.cur == null) return undefined;
+    const lm = this.lineMs(song, this.cur);
+    return (path: [number, number][]) => {
+      const [hi, li] = path[0];
+      const L = f.line[li];
+      const next = f.lineFirst[L + 1] ?? f.toks.length;
+      const frac = (li - f.lineFirst[L]) / Math.max(1, next - f.lineFirst[L]);
+      const expected = Lk + (toks[hi].t0 - tk) / lm;
+      return Math.abs(L + frac - expected);
+    };
+  }
 
-    // 1) The current slide's last line is being sung → the next one is due.
-    //    Guard: a slide whose last line repeats its first ("Gloria…" twice)
-    //    must also have run long enough to be at its end.
-    //    Hearing the last line START isn't its end: on a slow song a line
-    //    lasts six or seven seconds. So note when it was first heard and
-    //    move when a line's length has gone by (the tick does the moving).
-    if (here?.tokens.length && nextIdx != null) {
-      const tailHeard = covered(here.tail, win, this.idf);
-      const curScore = explains(win, new Set(here.tokens), this.idf).score;
-      if (curScore >= 0.3) this.matchedCurAt = now;
-      const head = here.tokens.slice(0, Math.max(0, here.tokens.length - here.tail.length));
-      const tailInHead = here.tail.length > 0 && here.tail.every((t) => head.includes(t));
-      const elapsed = this.startedAt != null ? now - this.startedAt : 0;
-      const longEnough = elapsed >= this.expected(song, cur) * (tailInHead ? 0.6 : 0.35) && elapsed >= 1500;
-      const w = this.windows[this.windows.length - 1];
-      const prev = this.windows[this.windows.length - 2];
-      const prevTail = !!prev && covered(here.tail, prev.tokens, this.idf) >= 0.3;
-      const trust = !w?.weak || prevTail;
-      // When the last line was first heard counts from any window; moving
-      // on it needs a trusted one.
-      if (tailHeard >= 0.3 && longEnough && !this.tailSeenAt) this.tailSeenAt = this.lastWindowEnd();
-      // A slide that sings the same line twice can't be placed by its words:
-      // once it's confirmed being sung, it ends when its length has run.
-      if (tailInHead && curScore >= 0.3 && this.startedAt != null && this.endAt == null) {
-        this.endAt = this.startedAt + this.expected(song, cur);
-      }
-      if (tailHeard >= TUNING.tailCover && longEnough && trust) {
-        if (!this.tailSeenAt) this.tailSeenAt = this.lastWindowEnd();
-        // The line began about half a window before the window that first
-        // caught it; it ends a line's length after that. A slide that sings
-        // the same line twice can't be placed by its words — it ends when
-        // its expected length has run.
-        if (!tailInHead) this.endAt = this.tailSeenAt - 1500 + this.lineMs(song);
-        if (this.endAt != null && now >= this.endAt - TUNING.lead) return this.trigger(song, nextIdx, "heard", "heard the end of the slide", now);
-      }
+  /** Note line starts from matched words: the line's first or second word,
+   *  and at least two words of that line matched (one stray "and" isn't a
+   *  line). */
+  private noteLines(path: [number, number][], toks: HeardTok[], f: Flat, rate: number) {
+    const per = new Map<number, number>();
+    for (const [, li] of path) per.set(f.line[li], (per.get(f.line[li]) ?? 0) + 1);
+    for (const [hi, li] of path) {
+      const L = f.line[li];
+      const off = li - f.lineFirst[L];
+      if (off > 1 || this.lineStarts.has(L) || (per.get(L) ?? 0) < 2) continue;
+      this.lineStarts.set(L, toks[hi].t0 - off * rate);
     }
+    if (this.lineStarts.size > 80) {
+      const ks = [...this.lineStarts.keys()].sort((x, y) => x - y);
+      for (const k of ks.slice(0, ks.length - 80)) this.lineStarts.delete(k);
+    }
+  }
 
-    // 2) Where does the last window place us? Not with words sung before
-    //    our own last move — overlapping windows still hold them.
-    const last = this.windows[this.windows.length - 1];
-    if ((last?.start ?? 0) < this.lastTrigger - 1000) return [];
-    const best = this.bestSlide(song, win, cur);
-    if (!best) return [];
-    this.view.confidence = best.score;
-    const curScore = here?.tokens.length ? explains(win, new Set(here.tokens), this.idf).score : 0;
-    if (best.slide === cur || song.slides[best.slide].text === here?.text) {
-      if (best.score >= 0.4) this.clockOnly = 0;
+  private follow(toks: HeardTok[], weak: boolean, now: number): Action[] {
+    const song = this.song!;
+    const f = this.flat(song);
+    if (!f.toks.length || this.cur == null) return [];
+    const rate = this.msPerWord(song, this.cur);
+    // Where the singers should be as of the LAST WORD IN THIS WINDOW — not
+    // "now", which includes Whisper's second of processing. Measured from
+    // now, a re-heard line looked like the next identical line and the
+    // pointer skipped a whole line (the "Gloria… Gloria…" slide).
+    const tLast = toks[toks.length - 1].t0;
+    const expect = Math.min(this.p + 20, Math.max(this.p, this.p + (tLast - this.pTime) / rate));
+    const lostLong = this.lost >= TUNING.lostWindows;
+    const prefer = this.linePrefer(toks, f, song);
+    const a = lostLong ? align(toks, f, 0, f.toks.length - 1, expect, prefer) : align(toks, f, this.p - 30, this.p + 90, expect, prefer);
+    const need = weak ? TUNING.weakAlign : TUNING.minAlign;
+    if (!a || a.score < need || a.matches < TUNING.minMatches) {
+      this.lost++;
+      this.view.confidence = a ? Math.min(1, a.score / 6) : 0;
+      return this.maybeAsk(now);
+    }
+    this.lost = 0;
+    this.view.confidence = Math.min(1, a.score / 6);
+    // Only words sung since the last one counted can move the pointer: the
+    // windows overlap by two seconds, so a line is heard twice.
+    const prevCommit = this.lastCommitT;
+    const fresh = a.path.filter(([hi]) => toks[hi].t0 > this.lastCommitT - 150);
+    this.lastCommitT = Math.max(this.lastCommitT, ...toks.map((t) => t.t0));
+    if (!fresh.length) {
+      this.lastAligned = now;
       return [];
     }
-    const d = best.slide - cur;
-    // Moving on hearing alone wants real words: "the Lord, the Lord" fits
-    // half the songs in the building.
-    if (last?.weak || best.mass < TUNING.minMass) return [];
-    // Catch-up: a slide just ahead is being sung — we are late, go now.
-    if (d >= 1 && d <= 2 && best.score >= TUNING.floor && best.score > curScore + 0.15) {
-      return this.trigger(song, best.slide, "heard", d === 1 ? "heard the next slide" : "caught up two slides", now);
+    const [hiEnd, np] = fresh[fresh.length - 1];
+    const t = toks[hiEnd].t1;
+    this.debug?.(`align p=${this.p} expect=${expect.toFixed(1)} rate=${Math.round(rate)} score=${a.score.toFixed(2)} path=${a.path.map(([h, l]) => `${toks[h].tok}@${(toks[h].t0 / 1000).toFixed(1)}→${l}`).join(" ")} fresh→${np} lastCommit=${(prevCommit / 1000).toFixed(1)}`);
+    // Whisper unsure of its words (in a break it "recalls" the song's
+    // lyrics at exactly this confidence): it may confirm the next few words,
+    // never skip ahead.
+    if (weak && np > this.p + 4) return [];
+    const back = np < this.p - 2;
+    const far = np > this.p + TUNING.farAhead;
+    if (back || far) {
+      // Going back (a repeat) or leaping ahead (a skipped section): strong
+      // and twice, near the same place.
+      if (a.score < TUNING.strongAlign || now - this.lastTrigger < 4000) return [];
+      this.jumpStreak =
+        this.jumpStreak && Math.abs(this.jumpStreak.p - np) <= 6 && now - this.jumpStreak.at < 8000
+          ? { p: np, n: this.jumpStreak.n + 1, at: this.jumpStreak.at }
+          : { p: np, n: 1, at: now };
+      if (this.jumpStreak.n < 2) return [];
+      this.jumpStreak = null;
+      this.commit(np, t, now);
+      return this.trigger(song, f.slide[np], "heard", back ? "went back" : "jumped ahead", now, true);
     }
-    // A jump elsewhere (a repeated chorus, a skipped verse, going back):
-    // confident twice running, and never within 6 s of our own move (the
-    // overlapping windows still hold the previous slide's words).
-    const sinceMove = now - this.lastTrigger;
-    if (best.score >= 0.6 && sinceMove > 6000) {
-      // Two sightings of the same slide within ~6 s (a misheard window in
-      // between doesn't reset it).
-      this.backStreak =
-        this.backStreak?.slide === best.slide && now - this.backStreak.at < 7000
-          ? { slide: best.slide, n: this.backStreak.n + 1, at: this.backStreak.at }
-          : { slide: best.slide, n: 1, at: now };
-      if (this.backStreak.n >= 2) {
-        this.backStreak = null;
-        return this.trigger(song, best.slide, "heard", d < 0 ? "went back" : "jumped ahead", now);
-      }
+    this.jumpStreak = null;
+    if (np <= this.p) {
+      this.lastAligned = now;
+      return [];
     }
-    // Two different slides equally likely — let the model read the lyric.
-    if (
-      this.opts.modelReady &&
-      !this.asking &&
-      now - this.lastAsk > TUNING.askEvery &&
-      sinceMove > 3000 &&
-      best.score >= 0.4 &&
-      best.second &&
-      Math.abs(best.score - best.second.score) < 0.1
-    ) {
-      this.asking = true;
-      this.lastAsk = now;
-      return [{ type: "ask", song, current: cur, transcript: this.transcript(), expect: nextIdx }];
+    this.pPrev = this.p;
+    this.commit(np, t, now);
+    // Line starts only from words that moved the pointer forward.
+    this.noteLines(fresh.filter(([, li]) => li > this.pPrev && li <= np), toks, f, rate);
+    this.clockOnly = 0;
+    const sp = f.slide[np];
+    if (sp > this.cur) {
+      // Words from a later slide: we are late. Go now.
+      return this.trigger(song, sp, "heard", sp === this.cur + 1 ? "heard the next slide" : "caught up", now, true);
     }
     return [];
   }
 
-  private lastWindowEnd(): number {
-    return this.windows[this.windows.length - 1]?.end ?? 0;
+  private maybeAsk(now: number): Action[] {
+    const song = this.song!;
+    if (!this.opts.modelReady || this.asking || this.lost < TUNING.lostWindows || now - this.lastAsk < TUNING.askEvery || this.cur == null) return [];
+    this.asking = true;
+    this.lastAsk = now;
+    return [{ type: "ask", song, current: this.cur, transcript: this.transcript(), expect: this.cur + 1 < song.slides.length ? this.cur + 1 : null }];
   }
 
   private clockCheck(now: number): Action[] {
@@ -550,79 +742,110 @@ export class FollowEngine {
     const cur = this.cur;
     this.view.dueAt = null;
     if (!song || cur == null || this.startedAt == null) return [];
-    const nextIdx = cur + 1 < song.slides.length ? cur + 1 : null;
-    // The last line was heard; its end is due. (Hearing beats the clock
-    // here: a clock learned from last week's slightly-early moves would pull
-    // every change earlier still.)
-    if (nextIdx != null && this.endAt != null) {
-      this.view.dueAt = this.endAt;
-      if (now >= this.endAt - TUNING.lead) return this.trigger(song, nextIdx, "heard", "heard the end of the slide", now);
-      return [];
-    }
-    const d = this.dwell(song, cur);
-    if (nextIdx == null || d == null) return [];
-    const endAt = this.startedAt + d;
-    this.view.dueAt = endAt;
-    if (now - this.lastTrigger < TUNING.minGap) return [];
-    const here = song.slides[cur];
-    const singingHere = now - this.matchedCurAt < 6000;
-    // Pre-advance: the clock says it's ending and the singing is on this
-    // slide (or it's a blank/instrumental slide with the band playing).
-    if (now >= endAt - TUNING.lead && (singingHere || (!here.tokens.length && now - this.lastSound < 4000))) {
-      if (this.clockOnly < 1) {
-        this.clockOnly++;
-        return this.trigger(song, nextIdx, "clock", "on time by the clock", now);
+    const next = cur + 1 < song.slides.length ? cur + 1 : null;
+    if (next == null) return [];
+    const f = this.flat(song);
+    const last = f.last.get(cur);
+    if (last != null) {
+      // A slide with words ends one line-length after its last line starts.
+      // Needs the pointer on this slide (or at the very end of the one
+      // before) and the singing to be recent.
+      const first = f.first.get(cur)!;
+      if (this.p < first - 1 || this.p > last) return [];
+      const lm = this.lineMs(song, cur);
+      const lastLine = f.line[last];
+      let due: number;
+      const learned = this.dwell(song, cur);
+      if (this.p >= first) {
+        // Anchor on the latest line of this slide we saw start. Until the
+        // LAST line has been heard starting, only a learned length (from
+        // people's clicks) may move it — a tempo guess alone fired a whole
+        // line early in testing.
+        let L = f.line[this.p];
+        while (L > f.line[first] && !this.lineStarts.has(L)) L--;
+        const t0 = this.lineStarts.get(L) ?? this.startedAt;
+        const onLastLine = f.line[this.p] === lastLine || (this.p + 1 <= last && f.line[this.p + 1] === lastLine && this.lineStarts.has(lastLine));
+        due = onLastLine || this.lineStarts.has(lastLine) ? t0 + (lastLine - L + 1) * lm : learned != null ? this.startedAt + learned : Infinity;
+        // Heard the last word itself: it may be held (three or four seconds
+        // is common) or the line may simply be short. Late is the sin, so
+        // take the earlier of "a line after it started" and half a line
+        // after its last word.
+        if (this.p === last) due = Math.min(due, this.pTime + 0.5 * lm);
+      } else {
+        due = learned != null ? this.startedAt + learned : this.startedAt + (lastLine - f.line[first] + 1) * lm;
       }
+      this.view.dueAt = Number.isFinite(due) ? due : null;
+      if (now - this.lastAligned > 8000) return []; // nobody's singing it: hold
+      if (now < due - TUNING.lead || now - this.lastTrigger < TUNING.minGap) return [];
+      if (this.p < first) {
+        // Not one word of this slide heard yet: a prediction, one slide
+        // only, and only if the slide before was heard right to its end.
+        if (this.clockOnly >= 1 || this.p < 0 || this.pTime < this.startedAt - 3000) return [];
+        this.clockOnly++;
+        return this.trigger(song, next, "predicted", "on time by the song's pace", now);
+      }
+      return this.trigger(song, next, "heard", this.p === last ? "heard the last word" : "last line ending now", now);
     }
-    // Catch-up: well past its usual length, the band is playing, nothing
-    // heard places us here — hearing failed. One slide on the clock alone.
-    if (now >= endAt + TUNING.clockGrace && now - this.lastSound < 4000 && !singingHere && this.clockOnly < 1) {
-      this.clockOnly++;
-      return this.trigger(song, nextIdx, "clock", "past its usual length", now);
-    }
-    return [];
+    // A blank slide (instrumental): its learned length, then the next.
+    const d = this.dwell(song, cur);
+    if (d == null) return [];
+    const due = this.startedAt + d;
+    this.view.dueAt = due;
+    if (now < due - TUNING.lead || now - this.lastTrigger < TUNING.minGap || this.clockOnly >= 1) return [];
+    if (now - this.lastSound > 4000) return []; // the band stopped: hold
+    this.clockOnly++;
+    return this.trigger(song, next, "clock", "on time by the clock", now);
   }
 
   // ---- effects ----
 
-  private trigger(song: FSong, slide: number, via: Via, reason: string, now: number): Action[] {
-    if (now - this.lastTrigger < TUNING.minGap && this.song?.id === song.id) return [];
+  private trigger(song: FSong, slide: number, via: Via, reason: string, now: number, keepPointer = false): Action[] {
+    if (now - this.lastTrigger < TUNING.minGap && this.song?.id === song.id && via !== "heard") return [];
     if (this.song?.id === song.id && this.cur === slide) return [];
-    if (via !== "clock") this.clockOnly = 0;
-    // Learn from our own hearing-driven advance too (the end was heard).
-    if (via !== "clock" && this.song?.id === song.id && this.cur != null && this.startedAt != null && slide === this.cur + 1) {
-      this.learn(song, this.cur, now - this.startedAt);
-    }
+    if (via === "heard" || via === "model") this.clockOnly = 0;
     this.lastTrigger = now;
     this.ourTarget = { songId: song.id, slide, at: now, via };
     this.view.lastVia = via;
     this.view.lastReason = reason;
-    this.setPosition(song, slide, now);
+    this.setPosition(song, slide, now, keepPointer);
     return [{ type: "trigger", song, slide, via, reason }, ...this.promptAction()];
   }
 
-  private setPosition(song: FSong, slide: number, now: number) {
-    this.clean = this.song?.id === song.id && this.cur != null && slide === this.cur + 1;
-    if (this.song?.id !== song.id) {
+  private setPosition(song: FSong, slide: number, now: number, keepPointer = false) {
+    const sameSong = this.song?.id === song.id;
+    if (!sameSong) {
       this.windows = this.windows.slice(-1);
       this.relockStreak = null;
+      this.lineStarts.clear();
+      this.p = -1;
     }
     this.song = song;
     this.cur = slide;
     this.startedAt = now;
-    this.backStreak = null;
-    this.matchedCurAt = 0;
-    this.tailSeenAt = 0;
-    this.endAt = null;
+    this.jumpStreak = null;
+    // The pointer stays if it already sits on (or just before) this slide;
+    // otherwise it moves to just before the slide's first word.
+    const f = this.flat(song);
+    const first = f.first.get(slide);
+    const last = f.last.get(slide);
+    if (!keepPointer) {
+      if (first != null) {
+        if (this.p < first - 1 || this.p > last!) {
+          this.p = first - 1;
+          this.pTime = now;
+        }
+      } else {
+        // Blank slide: the pointer rests at the end of the words before it.
+        let q = -1;
+        for (let k = 0; k < f.toks.length && f.slide[k] < slide; k++) q = k;
+        if (this.p < q - 1 || this.p > q) {
+          this.p = q;
+          this.pTime = now;
+        }
+      }
+    }
     const sl = song.slides[slide];
-    Object.assign(this.view, {
-      song: song.name,
-      songId: song.id,
-      bpm: song.bpm ?? null,
-      slide,
-      section: sl?.section ?? "",
-      slideStartedAt: now,
-    });
+    Object.assign(this.view, { song: song.name, songId: song.id, bpm: song.bpm ?? null, slide, section: sl?.section ?? "", slideStartedAt: now });
   }
 
   private release(why: string) {
@@ -631,17 +854,16 @@ export class FollowEngine {
     this.cur = null;
     this.startedAt = null;
     this.windows = [];
+    this.p = -1;
+    this.lineStarts.clear();
     Object.assign(this.view, { song: null, songId: null, bpm: null, slide: null, section: "", dueAt: null, slideStartedAt: null, lastReason: why });
   }
 
-  /** Whisper hears better when it knows the words that are coming. */
+  /** Whisper hears better when it knows the words on screen. Never the
+   *  lines still to come: prompted with those it "hears" them early. */
   private promptAction(): Action[] {
     const song = this.song;
-    // Never the lines still to come: prompted with them, Whisper "hears"
-    // the next line before it is sung (seen in the replay) and Follow moves
-    // early. The current slide only, or nothing.
-    const text =
-      song && this.cur != null && this.opts.prompt === "current" ? song.slides[this.cur]?.text.replace(/\s+/g, " ").trim() ?? "" : "";
+    const text = song && this.cur != null && this.opts.prompt === "current" ? song.slides[this.cur]?.text.replace(/\s+/g, " ").trim() ?? "" : "";
     if (text === this.lastPrompt) return [];
     this.lastPrompt = text;
     return [{ type: "prompt", text }];
@@ -655,14 +877,12 @@ export class FollowEngine {
   }
 }
 
-function firstLyric(song: FSong): number | null {
-  return song.slides.find((s) => s.tokens.length)?.index ?? null;
+function clamp(x: number, a: number, b: number) {
+  return Math.max(a, Math.min(b, x));
 }
 
-function fwd(slide: number, cur: number | null): number {
-  if (cur == null) return slide;
-  const d = slide - cur;
-  return d >= 0 ? d : 1000 - d;
+function firstLyric(song: FSong): number | null {
+  return song.slides.find((s) => s.tokens.length)?.index ?? null;
 }
 
 // ---- the model's question ----------------------------------------------------

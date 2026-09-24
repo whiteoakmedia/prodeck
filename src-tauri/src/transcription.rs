@@ -81,6 +81,42 @@ const QUIET_RMS: f32 = 0.0005;
 /// Each window is brought up to about -20 dBFS before Whisper hears it.
 const TARGET_RMS: f32 = 0.1;
 
+/// The whole listening session as one 16 kHz WAV (<data>/follow-debug/
+/// session-<ms>.wav), so a rehearsal can be replayed through the engine
+/// exactly. Capped at 45 minutes; the newest six sessions are kept.
+struct SessionRec {
+    w: hound::WavWriter<std::io::BufWriter<std::fs::File>>,
+    n: usize,
+}
+impl SessionRec {
+    const CAP: usize = 16_000 * 60 * 45;
+    fn start(dir: &std::path::Path) -> Option<Self> {
+        let mut old: Vec<_> = std::fs::read_dir(dir)
+            .ok()?
+            .filter_map(|e| e.ok())
+            .map(|e| e.path())
+            .filter(|p| p.file_name().map(|n| n.to_string_lossy().starts_with("session-")).unwrap_or(false))
+            .collect();
+        old.sort();
+        while old.len() >= 6 {
+            let _ = std::fs::remove_file(old.remove(0));
+        }
+        let spec = hound::WavSpec { channels: 1, sample_rate: 16000, bits_per_sample: 16, sample_format: hound::SampleFormat::Int };
+        let w = hound::WavWriter::create(dir.join(format!("session-{}.wav", now_ms())), spec).ok()?;
+        Some(Self { w, n: 0 })
+    }
+    fn push(&mut self, xs: &[f32]) -> bool {
+        for &x in xs {
+            let _ = self.w.write_sample((x.clamp(-1.0, 1.0) * 32767.0) as i16);
+        }
+        self.n += xs.len();
+        if self.n % (16_000 * 10) < xs.len() {
+            let _ = self.w.flush(); // readable mid-session
+        }
+        self.n < Self::CAP
+    }
+}
+
 /// What Follow heard, kept for a look afterwards: the last 60 windows (two
 /// minutes) as WAVs plus one JSON line per window, in <data>/follow-debug.
 struct DebugRing {
@@ -118,6 +154,26 @@ fn resolve_model(s: &crate::settings::Settings) -> Option<String> {
         .clone()
         .filter(|m| std::path::Path::new(m).exists())
         .or_else(crate::settings::detect_whisper_model)
+}
+
+/// whisper.cpp's DTW alignment-head preset for a model file, if it has one.
+fn dtw_preset(model: &str) -> Option<&'static str> {
+    let m = model.to_lowercase();
+    [
+        ("large-v3-turbo", "large.v3.turbo"),
+        ("large-v3", "large.v3"),
+        ("large-v2", "large.v2"),
+        ("medium.en", "medium.en"),
+        ("small.en", "small.en"),
+        ("base.en", "base.en"),
+        ("tiny.en", "tiny.en"),
+        ("medium", "medium"),
+        ("small", "small"),
+        ("base", "base"),
+    ]
+    .iter()
+    .find(|(k, _)| m.contains(k))
+    .map(|(_, v)| *v)
 }
 
 fn server_bin(cli: &str) -> Option<String> {
@@ -169,7 +225,9 @@ pub fn start_transcription(
             let _ = std::process::Command::new("/usr/bin/pkill").args(["-f", INFERENCE_PATH]).status();
             if let Some(port) = free_port() {
                 let mut cmd = tokio::process::Command::new(&sbin);
-                cmd.args(["-m", &model, "-l", "en", "-t", "4", "-nt", "--host", "127.0.0.1"])
+                // Timestamps on: Follow places every word on the clock (per-word
+                // times come back in verbose_json).
+                cmd.args(["-m", &model, "-l", "en", "-t", "4", "--host", "127.0.0.1"])
                     // Greedy, no temperature fallback: same words on sung lyrics in
                     // testing, and no 5–7 s windows when Whisper doubts itself.
                     .args(["-nf", "-bs", "1", "-bo", "1"])
@@ -179,6 +237,12 @@ pub fn start_transcription(
                     .kill_on_drop(true);
                 if actx > 0 {
                     cmd.args(["-ac", &actx.to_string()]);
+                }
+                // Accurate per-word times (DTW alignment): Whisper's plain word
+                // times were off by up to two seconds, which is the difference
+                // between on time and late. Needs flash attention off.
+                if let Some(preset) = dtw_preset(&model) {
+                    cmd.args(["-nfa", "--dtw", preset]);
                 }
                 match cmd.spawn() {
                     Ok(child) => server = Some((child, port)),
@@ -204,6 +268,7 @@ pub fn start_transcription(
         let mut ring: std::collections::VecDeque<f32> = std::collections::VecDeque::new();
         let mut n: u64 = 0;
         let debug = DebugRing::new();
+        let mut session = SessionRec::start(&debug.dir);
         audio.drain(); // start fresh, not with 30 s of backlog
         while running.running.load(Ordering::Acquire) {
             tokio::time::sleep(std::time::Duration::from_millis(HOP_MS)).await;
@@ -214,6 +279,11 @@ pub fn start_transcription(
             let end = now_ms();
             if sr == 0 {
                 continue;
+            }
+            if let Some(rec) = session.as_mut() {
+                if !rec.push(&resample_to_16k(&samples, sr)) {
+                    session = None; // hit the length cap
+                }
             }
             ring.extend(samples.iter().copied());
             let keep = (sr as u64 * WINDOW_MS / 1000) as usize;
@@ -257,6 +327,12 @@ pub fn start_transcription(
                         "caption:heard",
                         serde_json::json!({
                             "text": text, "start": start, "end": end, "ms": now_ms() - t0,
+                            "words": h.words.iter().map(|w| serde_json::json!({
+                                "w": w["w"],
+                                "t0": start + (w["t0"].as_f64().unwrap_or(0.0) * 1000.0) as u64,
+                                "t1": start + (w["t1"].as_f64().unwrap_or(0.0) * 1000.0) as u64,
+                                "p": w["p"],
+                            })).collect::<Vec<_>>(),
                             "langP": h.lang_p, "logprob": h.logprob, "noSpeech": h.no_speech,
                         }),
                     )
@@ -287,9 +363,39 @@ pub fn start_transcription(
 
 struct Heard {
     text: String,
+    /// Words with absolute times (ms), merged from Whisper's sub-word tokens.
+    words: Vec<serde_json::Value>,
     lang_p: Option<f64>,
     logprob: Option<f64>,
     no_speech: Option<f64>,
+}
+
+/// Whisper splits words into tokens (" Sweet" + "ly"); a token that starts
+/// with a space starts a new word. Times are seconds into the window.
+fn words_of(segs: &[serde_json::Value]) -> Vec<serde_json::Value> {
+    let mut out: Vec<(String, f64, f64, f64)> = Vec::new();
+    for s in segs {
+        for w in s.get("words").and_then(|w| w.as_array()).into_iter().flatten() {
+            let t = w.get("word").and_then(|x| x.as_str()).unwrap_or("");
+            // t_dtw (centiseconds) when DTW is on: the token's aligned time.
+            let dtw = w.get("t_dtw").and_then(|x| x.as_f64()).filter(|t| *t >= 0.0).map(|t| t / 100.0);
+            let a = dtw.or_else(|| w.get("start").and_then(|x| x.as_f64())).unwrap_or(0.0);
+            let b = dtw.map(|t| t + 0.15).or_else(|| w.get("end").and_then(|x| x.as_f64())).unwrap_or(a);
+            let p = w.get("probability").and_then(|x| x.as_f64()).unwrap_or(0.0);
+            if t.trim().is_empty() || t.trim_start().starts_with('[') {
+                continue;
+            }
+            match out.last_mut() {
+                Some(last) if !t.starts_with(' ') => {
+                    last.0.push_str(t);
+                    last.2 = b;
+                    last.3 = last.3.min(p);
+                }
+                _ => out.push((t.trim().to_string(), a, b, p)),
+            }
+        }
+    }
+    out.into_iter().map(|(w, a, b, p)| serde_json::json!({ "w": w, "t0": a, "t1": b, "p": p })).collect()
 }
 
 async fn infer_server(c: &reqwest::Client, port: u16, window: &[f32], prompt: &str) -> Result<Heard, String> {
@@ -317,6 +423,7 @@ async fn infer_server(c: &reqwest::Client, port: u16, window: &[f32], prompt: &s
     };
     Ok(Heard {
         text: v.get("text").and_then(|t| t.as_str()).unwrap_or("").to_string(),
+        words: words_of(&segs),
         lang_p: v.get("detected_language_probability").and_then(|x| x.as_f64()),
         logprob: mean("avg_logprob"),
         no_speech: mean("no_speech_prob"),
@@ -333,7 +440,7 @@ async fn infer_cli(bin: &str, model: &str, window: &[f32]) -> Result<Heard, Stri
         .await;
     let _ = std::fs::remove_file(&path);
     let out = out.map_err(|e| e.to_string())?;
-    Ok(Heard { text: String::from_utf8_lossy(&out.stdout).to_string(), lang_p: None, logprob: None, no_speech: None })
+    Ok(Heard { text: String::from_utf8_lossy(&out.stdout).to_string(), words: Vec::new(), lang_p: None, logprob: None, no_speech: None })
 }
 
 fn now_ms() -> u64 {

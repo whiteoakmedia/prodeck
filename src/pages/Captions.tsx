@@ -180,7 +180,7 @@ function AutoFollowCard() {
     return () => clearInterval(t);
   }, [lf.armed]);
   const due = v.dueAt != null && v.slideStartedAt != null ? { left: Math.max(0, v.dueAt - now), frac: Math.min(1, (now - v.slideStartedAt) / Math.max(1, v.dueAt - v.slideStartedAt)) } : null;
-  const via = { heard: "heard it", clock: "on the clock", model: "the model read the lyric", pro: "moved in ProPresenter" } as const;
+  const via = { heard: "heard it", predicted: "the song's pace", clock: "on the clock", model: "the model read the lyric", pro: "moved in ProPresenter" } as const;
   const hearing = { words: "hearing words", music: "music only", quiet: "quiet", idle: "idle" } as const;
   return (
     <section className="card">
@@ -227,6 +227,14 @@ function AutoFollowCard() {
           </button>
         )}
       </div>
+      <label className="field check af-practice">
+        <input type="checkbox" checked={lf.practice} onChange={(e) => lf.setPractice(e.target.checked)} />
+        <span>
+          <strong>Practice</strong> — listen and score, never move ProPresenter. Click slides as usual; Follow shows where it
+          would have moved and how early or late. Your clicks also teach it each slide's length.
+        </span>
+      </label>
+      {lf.armed && lf.practice && <PracticeScoreLine score={lf.score} />}
       {lf.modelNote && (
         <p className="error" style={{ marginTop: 6 }}>
           ⚠ {lf.modelNote}
@@ -235,7 +243,7 @@ function AutoFollowCard() {
       {lf.armed && (
         <div className="af-status">
           <div className="af-now">
-            <span className="af-label">NOW</span>
+            <span className="af-label">{lf.practice ? "WOULD BE ON" : "NOW"}</span>
             <span className="af-song">{v.song || "waiting for a song…"}</span>
             {v.slide != null && (
               <span className="af-slide">
@@ -277,5 +285,23 @@ function AutoFollowCard() {
         </div>
       )}
     </section>
+  );
+}
+
+function PracticeScoreLine({ score }: { score: import("../lyricFollow").PracticeScore }) {
+  const d = score.deltas;
+  if (!d.length && !score.wrong && !score.missed) return <p className="muted small af-score">Practice: no slide changes scored yet.</p>;
+  const sorted = [...d].sort((a, b) => a - b);
+  const med = sorted.length ? sorted[sorted.length >> 1] : 0;
+  const within = d.filter((x) => x >= -1500 && x <= 1000).length;
+  const late = d.filter((x) => x > 1000).length;
+  const fmt = (ms: number) => `${ms < 0 ? "" : "+"}${(ms / 1000).toFixed(1)} s`;
+  return (
+    <p className="af-score small">
+      <strong>Practice:</strong> {d.length} changes scored · {within} on time (within 1.5 s early / 1 s late) · {late} late
+      {sorted.length ? ` · typical ${fmt(med)} · range ${fmt(sorted[0])} to ${fmt(sorted[sorted.length - 1])}` : ""}
+      {score.wrong ? ` · ${score.wrong} wrong` : ""}
+      {score.missed ? ` · ${score.missed} missed` : ""}
+    </p>
   );
 }

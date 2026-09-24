@@ -5123,6 +5123,13 @@ select.input {
   font-style: italic;
   min-height: 1.3em;
 }
+.af-practice {
+  margin-top: 8px;
+}
+.af-score {
+  margin: 6px 0 0;
+  font-variant-numeric: tabular-nums;
+}
 .af-next {
   margin: -2px 0 6px;
   font-variant-numeric: tabular-nums;
