@@ -54,11 +54,13 @@ export function Captions() {
   return (
     <div className="page">
       <header className="page-head">
-        <h1>Captions</h1>
+        <h1>Auto-Follow</h1>
         <span className={`chip ${audioRunning ? "online" : ""}`}>
           {captionStatus}
         </span>
       </header>
+
+      <AutoFollowCard />
 
       {cfg && !cfg.configured && (
         <div className="banner warn">
@@ -102,7 +104,6 @@ export function Captions() {
         {error && <p className="error">{error}</p>}
       </section>
 
-      <AutoFollowCard />
 
       <section className="card lower-third-preview">
         <div className="card-head">

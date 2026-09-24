@@ -84,14 +84,14 @@ type Page =
   | "settings"
   | "help";
 
-// Multiview and Captions are hidden (Aug 2026): the only NDI source here is
-// ProPresenter's stage output — there are no NDI cameras — and captions never
-// entered service. The pages and routes still exist; add an entry back here
-// to resurface one.
+// Multiview is hidden (Aug 2026): the only NDI source here is ProPresenter's
+// stage output — there are no NDI cameras. The Captions page came back in
+// Sep 2026 as "Auto-Follow" (lyrics → ProPresenter slides live there).
 const NAV: { id: Page; label: string; icon: string }[] = [
   { id: "dashboard", label: "Dashboard", icon: "dashboard" },
   { id: "setup", label: "Setup", icon: "checklist" },
   { id: "propresenter", label: "ProPresenter", icon: "slides" },
+  { id: "captions", label: "Auto-Follow", icon: "captions" },
   { id: "planning", label: "Planning Center", icon: "calendar" },
   { id: "checklists", label: "Checklists", icon: "checklist" },
   { id: "routing", label: "Routing", icon: "grid" },

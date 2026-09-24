@@ -777,7 +777,7 @@ Setup lives in **Settings → Song Key**: the MIDI output (your Network MIDI ses
     group: "ProPresenter",
     title: "Auto-Follow: slides that change themselves as the song is sung",
     aliases: ["auto follow", "lyric follow", "follow lyrics", "slides by themselves", "whisper", "slides late", "slides early", "follow the singing"],
-    body: `**Captions → Auto‑Follow ProPresenter.** Choose the Sunday playlist and press **Start auto‑follow**. From then on ProDeck listens to the singing, works out which song in the playlist it is, and moves ProPresenter's slides as each slide's **last line finishes** — a beat early rather than late, because a late slide is the one the room notices.
+    body: `**Auto‑Follow** in the sidebar (under ProPresenter). Choose the Sunday playlist and press **Start auto‑follow**. From then on ProDeck listens to the singing, works out which song in the playlist it is, and moves ProPresenter's slides as each slide's **last line finishes** — a beat early rather than late, because a late slide is the one the room notices.
 
 How it knows where it is:
 - **It hears.** Whisper runs on this Mac (audio never leaves the building) on four‑second slices every two seconds. When the words it hears are the end of the slide on screen, the next slide is due.
@@ -787,7 +787,7 @@ How it knows where it is:
 
 What it won't do: move on words it isn't sure of. In a guitar solo Whisper often "hears" the song's own lyrics; those windows are marked low‑confidence and can't move a slide by themselves.
 
-**You are always in charge.** Click any slide in ProPresenter and Follow picks up from there. **Back one / Forward one** on the Captions page do the same and teach it. **Stop follow** hands everything back.
+**You are always in charge.** Click any slide in ProPresenter and Follow picks up from there. **Back one / Forward one** on the Auto‑Follow page do the same and teach it. **Stop follow** hands everything back.
 
 The card shows the song, the section, a bar for how far through the slide the learned clock thinks you are, and why the last move happened (heard it, on the clock, the model, or moved in ProPresenter).
 

@@ -1018,7 +1018,7 @@ export function SettingsPage() {
           <span className={`chip ${form.assist_api_key ? "online" : ""}`}>{form.assist_api_key ? "model on standby" : "by ear only"}</span>
         </div>
         <p className="muted small">
-          Auto‑Follow (Captions page) hears the singing on this Mac with Whisper — audio never leaves
+          Auto‑Follow (its own page in the sidebar) hears the singing on this Mac with Whisper — audio never leaves
           the building — and moves ProPresenter at the end of each slide. When two slides are equally
           likely it asks Claude to read the lyric, using the Anthropic key from the Troubleshooter
           card above, on its own monthly budget. Without a key it follows by ear alone.
