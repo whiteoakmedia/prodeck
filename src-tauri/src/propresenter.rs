@@ -40,6 +40,21 @@ impl ProPresenterConnection {
 
 pub type ProPresenterState = Arc<Mutex<Option<ProPresenterConnection>>>;
 
+/// ProPresenter's IPv4 address, looked up once per connect. Reached by its
+/// Bonjour name (Cornerstones-Mac-Studio.local) every fresh connection cost
+/// ~210 ms before anything was sent — the name resolves to an address that
+/// doesn't answer first and the system waits before falling back — and
+/// commands open a fresh connection each time (see pp_connect). Pinning the
+/// address makes a slide press ~5 ms on the wire. The Host header keeps the
+/// name. A changed address is picked up on the next reconnect.
+async fn pinned_v4(host: &str, port: u16) -> Option<std::net::SocketAddr> {
+    if host.parse::<std::net::IpAddr>().is_ok() {
+        return None; // already an address
+    }
+    let addrs = tokio::time::timeout(std::time::Duration::from_secs(3), tokio::net::lookup_host((host, port))).await.ok()?.ok()?;
+    addrs.into_iter().find(|a| a.is_ipv4())
+}
+
 pub(crate) async fn current_config(
     state: &ProPresenterState,
 ) -> Result<(reqwest::Client, String), String> {
@@ -84,11 +99,14 @@ pub async fn pp_connect(
     // failure surfaces as an intermittent, unexplainable command error rather
     // than as anything connection-shaped. On a LAN a fresh connection costs
     // about a millisecond.
-    let client = reqwest::Client::builder()
+    let pin = pinned_v4(&config.host, config.port).await;
+    let mut cb = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(4))
-        .pool_max_idle_per_host(0)
-        .build()
-        .map_err(|e| e.to_string())?;
+        .pool_max_idle_per_host(0);
+    if let Some(addr) = pin {
+        cb = cb.resolve(&config.host, addr);
+    }
+    let client = cb.build().map_err(|e| e.to_string())?;
 
     // The REST API often isn't on the Bonjour-advertised port (that's the stage
     // display). Try the requested port, then fall back to the API default 1025,
@@ -132,10 +150,11 @@ pub async fn pp_connect(
     // timeout on `client` would abort them every few seconds (showing up as
     // recurring "error decoding response body" retries), so give the streams a
     // dedicated client with only a connect timeout and no overall deadline.
-    let stream_client = reqwest::Client::builder()
-        .connect_timeout(std::time::Duration::from_secs(4))
-        .build()
-        .map_err(|e| e.to_string())?;
+    let mut sb = reqwest::Client::builder().connect_timeout(std::time::Duration::from_secs(4));
+    if let Some(addr) = pin {
+        sb = sb.resolve(&config.host, addr);
+    }
+    let stream_client = sb.build().map_err(|e| e.to_string())?;
     let tasks = spawn_status_streams(&stream_client, &cfg, app.clone());
 
     {

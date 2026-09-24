@@ -79,7 +79,14 @@ export function AutomixProvider({ children }: { children: ReactNode }) {
     const u = on<AvantisSnapshot>("avantis:state", (s) => {
       if (!s) return;
       const now = Date.now();
-      for (const [id, nm] of Object.entries(s.names ?? {})) if (MIXABLE.test(id) && nm) names.current[String(nm)] = id;
+      for (const [id, nm] of Object.entries(s.names ?? {})) {
+        if (!MIXABLE.test(id) || !nm) continue;
+        // A DCA and a group can share a name ("Drums"): the DCA wins — that's
+        // what the operator mixes from.
+        const had = names.current[String(nm)];
+        if (had && had.startsWith("dca:") && !id.startsWith("dca:")) continue;
+        names.current[String(nm)] = id;
+      }
       const since = s.connectedAt ?? Infinity;
       for (const [id, raw] of Object.entries(s.faders ?? {})) {
         if (raw == null || !MIXABLE.test(id)) continue;
