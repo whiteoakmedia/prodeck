@@ -307,6 +307,13 @@ export interface Settings {
   follow_click_channel: number;
   follow_guide_channel: number;
   follow_midi_port: string | null;
+  autopilot_speech: boolean;
+  autopilot_lapel: string;
+  autopilot_mc: string;
+  autopilot_lapel_audio: number;
+  autopilot_mc_audio: number;
+  autopilot_lapel_words: string;
+  autopilot_mc_words: string;
   audio_measure_channels: number[];
   audio_overflow_channels: number[];
   keysend_enabled: boolean;

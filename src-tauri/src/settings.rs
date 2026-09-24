@@ -125,6 +125,17 @@ pub struct Settings {
     /// MIDI input carrying Playback's MIDI Clock (e.g. "Network RTP Session 4").
     /// None = not used. ProDeck keeps its network session connected.
     pub follow_midi_port: Option<String>,
+    /// Autopilot: the speech mics follow the plan (lapel for the message,
+    /// MC for transitions). Desk channel ids, the Dante channels their
+    /// pre-fader feeds land on (0 = none: never auto-close, remind instead),
+    /// and the plan words that call each (empty = defaults).
+    pub autopilot_speech: bool,
+    pub autopilot_lapel: String,
+    pub autopilot_mc: String,
+    pub autopilot_lapel_audio: u32,
+    pub autopilot_mc_audio: u32,
+    pub autopilot_lapel_words: String,
+    pub autopilot_mc_words: String,
     /// Multi-channel (Dante) routing — 1-based channel numbers on the audio input
     /// device. The measurement engine (SPL/RTA/LUFS) mixes these channels; empty
     /// means "all channels" (legacy behaviour).
@@ -283,6 +294,13 @@ impl Default for Settings {
             follow_click_channel: 0,
             follow_guide_channel: 0,
             follow_midi_port: None,
+            autopilot_speech: false,
+            autopilot_lapel: "input:44".into(),
+            autopilot_mc: "input:43".into(),
+            autopilot_lapel_audio: 0,
+            autopilot_mc_audio: 0,
+            autopilot_lapel_words: String::new(),
+            autopilot_mc_words: String::new(),
             audio_measure_channels: Vec::new(),
             audio_overflow_channels: Vec::new(),
             audio_mic_channels: std::collections::HashMap::new(),

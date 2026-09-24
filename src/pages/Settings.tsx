@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ANCHOR_TOPIC, openHelp } from "../help/nav";
 import { consumeSettingsJump } from "../lib/settingsJump";
 import { useProDeck } from "../store";
+import { useAutopilot } from "../autopilot";
+import { DEFAULT_LAPEL_WORDS, DEFAULT_MC_WORDS, micFor, parseWords } from "../lib/speechMics";
 import { useAlerts } from "../alertsStore";
 import { useRelay } from "../relayStore";
 import { useUpdater } from "../updaterStore";
@@ -1060,6 +1062,8 @@ export function SettingsPage() {
           folder (large‑v3‑turbo). What it listens to is under Audio → “Auto‑Follow listens to”.
         </p>
       </section>
+
+      <AutopilotCard form={form} set={set} />
 
       <section className="card">
         <div className="card-head"><h3 id="set-inputs">Control Inputs</h3><HelpLink section="features" /></div>
@@ -3266,6 +3270,85 @@ function NdiCard() {
         widget itself. Each dashboard can show a different feed, which is why the choice
         lives on the widget rather than here.
       </p>
+    </section>
+  );
+}
+
+function AutopilotCard({ form, set }: { form: Settings; set: <K extends keyof Settings>(k: K, v: Settings[K]) => void }) {
+  const { items } = usePco();
+  const { log } = useAutopilot();
+  const cfg = {
+    lapelWords: parseWords(form.autopilot_lapel_words, DEFAULT_LAPEL_WORDS),
+    mcWords: parseWords(form.autopilot_mc_words, DEFAULT_MC_WORDS),
+  };
+  const tagged = items.filter((i) => i.type !== "header").map((i) => ({ i, mic: micFor(i, cfg) }));
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h3 id="set-autopilot">Autopilot</h3>
+        <span className={`chip ${form.autopilot_speech ? "online" : ""}`}>{form.autopilot_speech ? "speech mics on" : "off"}</span>
+      </div>
+      <p className="muted small">
+        The speech mics follow the plan: the <strong>lapel</strong> opens when the message starts and{" "}
+        <strong>8 MC</strong> for the moments of transition. A mic is closed only after its moment has ended and its
+        own feed has been quiet for 8 s — with no feed routed it is never closed automatically; Autopilot tells you
+        it's still open instead. Pressing that mute on the desk yourself hands the mic back to you until the next
+        item. (The lead-vocal scene per song is the <em>Desk Scenes</em> toggle on the Planning Center page.)
+      </p>
+      <div className="settings-grid">
+        <label className="field check">
+          <input type="checkbox" checked={!!form.autopilot_speech} onChange={(e) => set("autopilot_speech", e.target.checked)} />
+          <span>Speech mics follow the plan</span>
+        </label>
+        <label className="field">
+          <span>Lapel desk channel</span>
+          <input className="input" value={form.autopilot_lapel ?? "input:44"} onChange={(e) => set("autopilot_lapel", e.target.value)} />
+        </label>
+        <label className="field">
+          <span>Lapel feed on audio input (0 = none)</span>
+          <input className="input" type="number" min={0} max={128} value={form.autopilot_lapel_audio ?? 0}
+            onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n) && n >= 0) set("autopilot_lapel_audio", n); }} />
+        </label>
+        <label className="field">
+          <span>MC desk channel</span>
+          <input className="input" value={form.autopilot_mc ?? "input:43"} onChange={(e) => set("autopilot_mc", e.target.value)} />
+        </label>
+        <label className="field">
+          <span>MC feed on audio input (0 = none)</span>
+          <input className="input" type="number" min={0} max={128} value={form.autopilot_mc_audio ?? 0}
+            onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n) && n >= 0) set("autopilot_mc_audio", n); }} />
+        </label>
+        <label className="field wide">
+          <span>Plan words that open the lapel</span>
+          <input className="input" placeholder={DEFAULT_LAPEL_WORDS.join(", ")} value={form.autopilot_lapel_words ?? ""} onChange={(e) => set("autopilot_lapel_words", e.target.value)} />
+        </label>
+        <label className="field wide">
+          <span>Plan words that open 8 MC</span>
+          <input className="input" placeholder={DEFAULT_MC_WORDS.join(", ")} value={form.autopilot_mc_words ?? ""} onChange={(e) => set("autopilot_mc_words", e.target.value)} />
+        </label>
+      </div>
+      {tagged.length > 0 && (
+        <div className="ap-preview">
+          <div className="muted small">This week's plan:</div>
+          <ul>
+            {tagged.map(({ i, mic }) => (
+              <li key={i.id} className={mic ? "on" : ""}>
+                <span>{i.title}</span>
+                <span className="muted small">{mic === "lapel" ? "opens the lapel" : mic === "mc" ? "opens 8 MC" : i.type === "song" ? "song" : "—"}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {log.length > 0 && (
+        <ul className="ap-log small">
+          {log.map((l) => (
+            <li key={l.at + l.text}>
+              <span className="mono muted">{new Date(l.at).toLocaleTimeString()}</span> {l.text}
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

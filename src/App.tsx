@@ -52,6 +52,7 @@ import { UpdaterProvider, useUpdater } from "./updaterStore";
 import { ChecklistProvider, useChecklists } from "./checklistStore";
 import { RoutingProvider } from "./routingStore";
 import { LyricFollowProvider } from "./lyricFollow";
+import { AutopilotProvider } from "./autopilot";
 import { DialogHost } from "./lib/dialogs";
 import { ChecklistsPage } from "./pages/Checklists";
 import { ClearDock } from "./components/ClearDock";
@@ -633,6 +634,7 @@ export default function App() {
             <PcoProvider>
               <TrackingProvider>
                 <LyricFollowProvider>
+                <AutopilotProvider>
                   <ChecklistProvider>
                     <AlertsProvider>
                       <RoutingProvider>
@@ -656,6 +658,7 @@ export default function App() {
                       </RoutingProvider>
                     </AlertsProvider>
                   </ChecklistProvider>
+                </AutopilotProvider>
                 </LyricFollowProvider>
               </TrackingProvider>
             </PcoProvider>

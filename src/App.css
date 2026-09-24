@@ -9312,3 +9312,30 @@ select.input {
     grid-template-columns: repeat(7, minmax(0, 1fr));
   }
 }
+
+/* Autopilot card */
+.ap-preview ul,
+.ap-log {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 3px;
+}
+.ap-preview li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+.ap-preview li.on {
+  background: var(--panel-2);
+  font-weight: 600;
+}
+.ap-log {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--hairline);
+}
