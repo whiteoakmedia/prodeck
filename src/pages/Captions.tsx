@@ -260,7 +260,7 @@ function AutoFollowCard() {
             {v.lastVia ? ` · last move: ${via[v.lastVia]}${v.lastReason && v.lastVia !== "pro" ? ` (${v.lastReason})` : ""}` : ""}
           </div>
           <div className="af-rig muted small">
-            {v.clickBpm ? `Click ${Math.round(v.clickBpm)} BPM` : "No click"}
+            {v.clickBpm ? `${v.clockSource === "midi" ? "MIDI clock" : "Click"} ${Math.round(v.clickBpm)} BPM` : "No click"}
             {" · "}
             {v.lastCue ? `Guide: “${v.lastCue}”` : "No guide cue yet"}
             {v.cueTarget ? ` → ${v.cueTarget.section || `slide ${v.cueTarget.slide + 1}`} in ${Math.max(0, (v.cueTarget.at - now) / 1000).toFixed(1)} s` : ""}

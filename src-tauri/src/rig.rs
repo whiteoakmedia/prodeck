@@ -26,7 +26,12 @@ fn now_ms() -> u64 {
         .unwrap_or(0)
 }
 
-pub fn spawn(app: AppHandle, audio: AudioState, running: TranscriptionState, bin: String, click: bool, guide: bool) {
+pub fn spawn(app: AppHandle, audio: AudioState, running: TranscriptionState, bin: String, click: bool, guide: bool, midi_port: Option<String>) {
+    if let Some(port) = midi_port.filter(|p| !p.trim().is_empty()) {
+        let app = app.clone();
+        let running = running.clone();
+        std::thread::Builder::new().name("follow-midi".into()).spawn(move || midi_clock_loop(app, running, port)).ok();
+    }
     if click {
         let app = app.clone();
         let audio = audio.clone();
@@ -205,5 +210,95 @@ impl Vad {
             self.pos += frame;
         }
         None
+    }
+}
+
+
+/// Playback's MIDI Clock: 24 pulses a beat, Start when a song starts. Each
+/// beat goes out as `follow:mbeat` { t, beat (since Start, or null), bpm };
+/// Start/Stop as `follow:mstart` / `follow:mstop`. Exact where the audio click
+/// is an estimate — and when network MIDI drops, the audio click carries on.
+fn midi_clock_loop(app: AppHandle, running: TranscriptionState, port_name: String) {
+    use std::sync::{Arc, Mutex};
+    struct Clock {
+        pulses: Option<u64>, // since Start; None until a Start is seen
+        count: u64,          // pulses since we started listening
+        stamps: std::collections::VecDeque<u64>,
+    }
+    let st = Arc::new(Mutex::new(Clock { pulses: None, count: 0, stamps: Default::default() }));
+    while running.running.load(Ordering::Acquire) {
+        let Ok(mut input) = midir::MidiInput::new("ProDeck-follow") else { return };
+        // midir drops timing messages unless told otherwise.
+        input.ignore(midir::Ignore::None);
+        let port = input.ports().into_iter().find(|p| input.port_name(p).map(|n| n == port_name).unwrap_or(false));
+        let Some(port) = port else {
+            std::thread::sleep(std::time::Duration::from_secs(5));
+            continue;
+        };
+        let st2 = st.clone();
+        let app2 = app.clone();
+        let conn = input.connect(
+            &port,
+            "prodeck-follow",
+            move |_, msg, _| {
+                let t = now_ms();
+                let mut c = st2.lock().unwrap_or_else(|p| p.into_inner());
+                match msg.first().copied() {
+                    Some(0xF8) => {
+                        c.count += 1;
+                        if let Some(p) = c.pulses.as_mut() {
+                            *p += 1;
+                        }
+                        c.stamps.push_back(t);
+                        if c.stamps.len() > 97 {
+                            c.stamps.pop_front();
+                        }
+                        let on_beat = match c.pulses {
+                            Some(p) => p % 24 == 0,
+                            None => c.count % 24 == 0,
+                        };
+                        if on_beat && c.stamps.len() >= 25 {
+                            let n = c.stamps.len() as f64 - 1.0;
+                            let span = (c.stamps.back().unwrap() - c.stamps.front().unwrap()) as f64;
+                            let bpm = if span > 0.0 { 60_000.0 * n / 24.0 / span } else { 0.0 };
+                            let beat = c.pulses.map(|p| p / 24);
+                            app2.emit("follow:mbeat", serde_json::json!({ "t": t, "beat": beat, "bpm": bpm })).ok();
+                        }
+                    }
+                    Some(0xFA) => {
+                        c.pulses = Some(0);
+                        app2.emit("follow:mstart", serde_json::json!({ "t": t })).ok();
+                        app2.emit("follow:mbeat", serde_json::json!({ "t": t, "beat": 0, "bpm": null })).ok();
+                    }
+                    Some(0xFB) => {}
+                    Some(0xFC) => {
+                        c.pulses = None;
+                        app2.emit("follow:mstop", serde_json::json!({ "t": t })).ok();
+                    }
+                    // Song Position Pointer: sixteenths since the top.
+                    Some(0xF2) if msg.len() >= 3 => {
+                        let sixteenths = (msg[1] as u64) | ((msg[2] as u64) << 7);
+                        c.pulses = Some(sixteenths * 6);
+                    }
+                    _ => {}
+                }
+            },
+            (),
+        );
+        let Ok(conn) = conn else {
+            std::thread::sleep(std::time::Duration::from_secs(5));
+            continue;
+        };
+        // Hold the connection while listening; re-open if the port vanishes.
+        while running.running.load(Ordering::Acquire) {
+            std::thread::sleep(std::time::Duration::from_secs(2));
+            let still = midir::MidiInput::new("ProDeck-follow-check")
+                .map(|i| i.ports().iter().any(|p| i.port_name(p).map(|n| n == port_name).unwrap_or(false)))
+                .unwrap_or(true);
+            if !still {
+                break;
+            }
+        }
+        drop(conn);
     }
 }

@@ -26,7 +26,48 @@ export class BeatClock {
    *  eighth-note click. */
   prior: number | null = null;
 
+  /** Last MIDI Clock beat, and whether it carried a position (a Start was seen). */
+  private midiAt = -Infinity;
+  private midiPhase = false;
+  source: "midi" | "click" | null = null;
+
+  /** A beat from Playback's MIDI Clock. With a position (beats since Start)
+   *  it sets tempo, beat and bar exactly; without one, only the tempo. */
+  onMidiBeat(t: number, beat: number | null, bpm: number | null) {
+    this.midiAt = t;
+    this.source = "midi";
+    if (bpm && bpm > 20 && bpm < 300) {
+      const p = 60_000 / bpm;
+      this.period = this.period && Math.abs(this.period - p) / p < 0.05 ? this.period * 0.8 + p * 0.2 : p;
+    }
+    if (beat != null && this.period) {
+      this.midiPhase = true;
+      this.anchor = t;
+      this.downbeat = t - (beat % this.meter) * this.period;
+    }
+  }
+
+  /** Playback pressed Play: this instant is beat 1 of bar 1. */
+  onMidiStart(t: number) {
+    this.midiAt = t;
+    this.midiPhase = true;
+    this.anchor = t;
+    this.downbeat = t;
+  }
+
+  onMidiStop() {
+    this.midiPhase = false;
+    this.midiAt = -Infinity;
+  }
+
+  private midiFresh(t: number) {
+    return t - this.midiAt < 2000;
+  }
+
   onBeat(b: BeatEvent) {
+    // MIDI Clock with a position is exact: the audio click is only the
+    // stand-in for when network MIDI drops.
+    if (this.midiFresh(b.t) && this.midiPhase) return;
     this.on.push(b);
     if (this.on.length > 32) this.on.shift();
     const iois: number[] = [];
@@ -44,7 +85,10 @@ export class BeatClock {
       const err = this.prior ? Math.abs(bpm - this.prior) / this.prior : bpm >= 60 && bpm <= 170 ? k * 0.01 : 10 + k;
       if (err < bestErr) (bestErr = err), (best = k);
     }
-    this.period = base * best;
+    if (!this.midiFresh(b.t)) {
+      this.period = base * best;
+      this.source = "click";
+    }
     // Which phase is the beat: the strongest class of onsets.
     const last = this.on[this.on.length - 1].t;
     const cls = new Map<number, { s: number; n: number; latest: number }>();
@@ -98,6 +142,7 @@ export class BeatClock {
   }
 
   running(now: number): boolean {
+    if (this.midiFresh(now)) return true;
     const last = this.on[this.on.length - 1]?.t;
     return last != null && this.period != null && now - last < Math.max(1500, this.period * 2.5);
   }

@@ -122,6 +122,9 @@ pub struct Settings {
     /// cues ("Verse 2", "Chorus") a bar before each section.
     pub follow_click_channel: u32,
     pub follow_guide_channel: u32,
+    /// MIDI input carrying Playback's MIDI Clock (e.g. "Network RTP Session 4").
+    /// None = not used. ProDeck keeps its network session connected.
+    pub follow_midi_port: Option<String>,
     /// Multi-channel (Dante) routing — 1-based channel numbers on the audio input
     /// device. The measurement engine (SPL/RTA/LUFS) mixes these channels; empty
     /// means "all channels" (legacy behaviour).
@@ -279,6 +282,7 @@ impl Default for Settings {
             caption_channels: Vec::new(),
             follow_click_channel: 0,
             follow_guide_channel: 0,
+            follow_midi_port: None,
             audio_measure_channels: Vec::new(),
             audio_overflow_channels: Vec::new(),
             audio_mic_channels: std::collections::HashMap::new(),

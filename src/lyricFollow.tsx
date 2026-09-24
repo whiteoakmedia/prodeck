@@ -318,9 +318,29 @@ export function LyricFollowProvider({ children }: { children: ReactNode }) {
       run(e.onCue(cue, Date.now()));
       publish();
     });
+    const mb = on<{ t: number; beat: number | null; bpm: number | null }>("follow:mbeat", (m) => {
+      const e = engineRef.current;
+      if (!armedRef.current || !e || !m) return;
+      e.onMidiBeat(m.t, m.beat, m.bpm);
+      followDebugLog({ kind: "mbeat", t: m.t, beat: m.beat, bpm: m.bpm }).catch(() => {});
+    });
+    const ms = on<{ t: number }>("follow:mstart", (m) => {
+      const e = engineRef.current;
+      if (!armedRef.current || !e || !m) return;
+      followDebugLog({ kind: "mstart", t: m.t }).catch(() => {});
+      run(e.onMidiStart(m.t, Date.now()));
+      publish();
+    });
+    const mx = on<{ t: number }>("follow:mstop", (m) => {
+      engineRef.current?.onMidiStop();
+      followDebugLog({ kind: "mstop", t: m?.t }).catch(() => {});
+    });
     return () => {
       b.then((f) => f());
       c.then((f) => f());
+      mb.then((f) => f());
+      ms.then((f) => f());
+      mx.then((f) => f());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -199,9 +199,9 @@ pub fn start_transcription(
     settings: tauri::State<'_, SettingsState>,
     app: AppHandle,
 ) -> Result<(), String> {
-    let (bin, model, actx, rig_click, rig_guide) = {
+    let (bin, model, actx, rig_click, rig_guide, rig_midi) = {
         let s = settings.lock().unwrap_or_else(|p| p.into_inner());
-        (s.whisper_bin.clone(), resolve_model(&s), s.whisper_audio_ctx, s.follow_click_channel > 0, s.follow_guide_channel > 0)
+        (s.whisper_bin.clone(), resolve_model(&s), s.whisper_audio_ctx, s.follow_click_channel > 0, s.follow_guide_channel > 0, s.follow_midi_port.clone())
     };
     let bin = bin.ok_or("Whisper isn't installed (set its path in Settings)")?;
     let model = model.ok_or("No Whisper model found (Settings → Captions, or put one in ProDeck/models)")?;
@@ -261,7 +261,7 @@ pub fn start_transcription(
             }
         }
         app2.emit("caption:status", "listening").ok();
-        crate::rig::spawn(app2.clone(), audio.clone(), running.clone(), bin.clone(), rig_click, rig_guide);
+        crate::rig::spawn(app2.clone(), audio.clone(), running.clone(), bin.clone(), rig_click, rig_guide, rig_midi);
 
         // The last WINDOW of audio at the device's own rate; each hop it is
         // filtered and brought down to 16 kHz whole (a stateless resample, so

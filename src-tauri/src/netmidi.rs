@@ -70,11 +70,16 @@ pub fn spawn_keeper(app: AppHandle) {
             let mut repairs = 0u32;
             let mut last_repair: Option<u64> = None;
             loop {
-                let port = {
+                let (port, extra) = {
                     let st = app.state::<crate::settings::SettingsState>();
                     let s = st.lock().unwrap_or_else(|p| p.into_inner());
-                    s.keysend_midi_port.clone()
+                    (s.keysend_midi_port.clone(), s.follow_midi_port.clone())
                 };
+                // Auto-Follow's MIDI Clock session is kept the same way,
+                // quietly (its status isn't shown on the key strip).
+                if let Some(sess) = extra.as_deref().and_then(session_of) {
+                    keep_quiet(sess, &mut remembered);
+                }
                 let Some(session) = port.as_deref().and_then(session_of).map(str::to_string) else {
                     *STATUS.lock().unwrap_or_else(|p| p.into_inner()) = None;
                     std::thread::sleep(TICK);
@@ -146,6 +151,31 @@ pub fn spawn_keeper(app: AppHandle) {
             }
         })
         .ok();
+}
+
+/// Learn/repair one session without touching STATUS (for sessions other than
+/// the key-send one).
+fn keep_quiet(session: &str, remembered: &mut std::collections::BTreeMap<String, Vec<Peer>>) {
+    let Some(mut sess) = sys::read_session(session) else { return };
+    let peers = sys::peers_of(&sess);
+    let ok: Vec<Peer> = peers.iter().filter(|(_, _, st)| healthy(st)).map(|(n, a, _)| Peer { name: n.clone(), address: a.clone() }).collect();
+    let want = remembered.get(session).cloned().unwrap_or_default();
+    if !ok.is_empty() {
+        // Remember everyone who's connected (a peer that's merely offline
+        // today is kept from before).
+        let mut merged = want.clone();
+        for p in ok {
+            if !merged.contains(&p) {
+                merged.push(p);
+            }
+        }
+        if merged != want {
+            remembered.insert(session.to_string(), merged);
+            save_remembered(remembered);
+        }
+    } else if !want.is_empty() && peers.is_empty() && sys::set_peers(session, &mut sess, &want) {
+        eprintln!("[netmidi] session {session}: reconnecting");
+    }
 }
 
 fn now_ms() -> u64 {

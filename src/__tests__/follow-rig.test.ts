@@ -131,3 +131,24 @@ describe("a section call lands on its downbeat", () => {
     expect(e.timing["__rig"].slides["cueBeats"]).toEqual([7, 7]);
   });
 });
+
+describe("Playback's MIDI Clock", () => {
+  it("Start makes bar 1 exact and the clock outranks the audio click", () => {
+    const c = new BeatClock();
+    c.onMidiStart(10_000);
+    for (let b = 1; b <= 8; b++) c.onMidiBeat(10_000 + b * 857, b, 70);
+    expect(c.bpm()).toBeCloseTo(70, 0);
+    expect(c.source).toBe("midi");
+    expect(c.nextDownbeat(10_000 + 5 * 857)).toBeCloseTo(10_000 + 8 * 857, -1);
+    // A stray audio click while MIDI is flowing changes nothing.
+    c.onBeat({ t: 10_000 + 8 * 857 + 100, strength: 1, zcr: 9 });
+    expect(c.nextDownbeat(10_000 + 5 * 857)).toBeCloseTo(10_000 + 8 * 857, -1);
+    expect(c.running(10_000 + 9 * 857)).toBe(true);
+  });
+  it("Play with nothing locked picks the song ProPresenter has up", () => {
+    const e = new FollowEngine([song], {});
+    e.activeSongId = "s";
+    e.onMidiStart(5000, 5000);
+    expect(e.view.song).toBe("Holy");
+  });
+});

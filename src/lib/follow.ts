@@ -75,6 +75,7 @@ export interface FollowView {
   /** The rig: click tempo (null = no click), last guide cue, and the
    *  section it called with when that lands. */
   clickBpm: number | null;
+  clockSource?: "midi" | "click" | null;
   lastCue: string;
   cueTarget: { slide: number; section: string; at: number } | null;
 }
@@ -595,6 +596,30 @@ export class FollowEngine {
   onBeat(b: BeatEvent) {
     this.clock.onBeat(b);
     this.view.clickBpm = this.clock.bpm();
+    this.view.clockSource = this.clock.source;
+  }
+
+  /** Playback's MIDI Clock: a beat (with its number since Start, if known). */
+  onMidiBeat(t: number, beat: number | null, bpm: number | null) {
+    this.clock.onMidiBeat(t, beat, bpm);
+    this.view.clickBpm = this.clock.bpm();
+    this.view.clockSource = this.clock.source;
+  }
+
+  /** Playback pressed Play: bar 1 starts now. With no song locked, take the
+   *  one ProPresenter has up (or the next in the playlist). */
+  onMidiStart(t: number, now: number): Action[] {
+    this.clock.onMidiStart(t);
+    if (this.song) return [];
+    const pick = (this.activeSongId && this.byId.get(this.activeSongId)) || (this.lastSongIdx >= 0 ? this.songs[this.lastSongIdx + 1] : null) || (this.songs.length === 1 ? this.songs[0] : null);
+    if (!pick) return [];
+    this.setPosition(pick, 0, now);
+    this.view.lastReason = `Playback started ${pick.name}`;
+    return this.promptAction();
+  }
+
+  onMidiStop() {
+    this.clock.onMidiStop();
   }
 
   /** A cue from the guide track. The guide is the band's own map: a section
