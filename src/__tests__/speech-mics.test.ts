@@ -21,7 +21,7 @@ describe("the keeper", () => {
     const k = new SpeechKeeper({ lapel: true, mc: true });
     expect(k.onItem("lapel", 0)).toEqual([{ type: "open", mic: "lapel", reason: "the message started" }]);
     k.onItem(null, 60_000); // plan moved to a song
-    k.onLevel("lapel", 0.3, 64_000); // pastor still talking into the song
+    k.onLevel("lapel", -20, 64_000); // pastor still talking into the song
     expect(k.onTick(70_000)).toEqual([]);
     expect(k.onTick(72_100)).toEqual([expect.objectContaining({ type: "close", mic: "lapel" })]);
   });

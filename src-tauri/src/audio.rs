@@ -440,6 +440,10 @@ pub struct AudioInner {
     /// the device rate; drained by the beat tracker and the guide listener.
     pub click: Mutex<Vec<f32>>,
     pub guide: Mutex<Vec<f32>>,
+    /// Autopilot's speech mics (lapel, MC), raw, for the speech meter and the
+    /// feedback guard.
+    pub lapel: Mutex<Vec<f32>>,
+    pub mc: Mutex<Vec<f32>>,
     /// Rolling window of recent samples for spectrum analysis (not drained).
     pub analysis: Mutex<Vec<f32>>,
     pub device_name: Mutex<Option<String>>,
@@ -458,6 +462,8 @@ impl AudioInner {
             mono: Mutex::new(Vec::new()),
             click: Mutex::new(Vec::new()),
             guide: Mutex::new(Vec::new()),
+            lapel: Mutex::new(Vec::new()),
+            mc: Mutex::new(Vec::new()),
             analysis: Mutex::new(Vec::new()),
             device_name: Mutex::new(None),
             overflow_tx,
@@ -466,6 +472,11 @@ impl AudioInner {
 
     pub fn drain_click(&self) -> (Vec<f32>, u32) {
         let mut buf = self.click.lock().unwrap_or_else(|p| p.into_inner());
+        (std::mem::take(&mut *buf), self.sample_rate.load(Ordering::Relaxed))
+    }
+    pub fn drain_speech(&self, lapel: bool) -> (Vec<f32>, u32) {
+        let m = if lapel { &self.lapel } else { &self.mc };
+        let mut buf = m.lock().unwrap_or_else(|p| p.into_inner());
         (std::mem::take(&mut *buf), self.sample_rate.load(Ordering::Relaxed))
     }
     pub fn drain_guide(&self) -> (Vec<f32>, u32) {
@@ -667,10 +678,10 @@ pub async fn start_audio_capture(
             .filter(|&i| i < channels)
             .collect()
     };
-    let (click_idx, guide_idx) = {
+    let (click_idx, guide_idx, lapel_idx, mc_idx) = {
         let s = settings.lock().unwrap_or_else(|p| p.into_inner());
         let one = |c: u32| (c as usize).checked_sub(1).filter(|&i| i < channels);
-        (one(s.follow_click_channel), one(s.follow_guide_channel))
+        (one(s.follow_click_channel), one(s.follow_guide_channel), one(s.autopilot_lapel_audio), one(s.autopilot_mc_audio))
     };
     let (measure_idx, overflow_idx, caption_idx) = {
         let s = settings.lock().unwrap_or_else(|p| p.into_inner());
@@ -742,6 +753,8 @@ pub async fn start_audio_capture(
                         let mut caption: Vec<f32> = Vec::with_capacity(if caption_idx.is_empty() { 0 } else { frames });
                         let mut click_s: Vec<f32> = Vec::with_capacity(if click_idx.is_some() { frames } else { 0 });
                         let mut guide_s: Vec<f32> = Vec::with_capacity(if guide_idx.is_some() { frames } else { 0 });
+                        let mut lapel_s: Vec<f32> = Vec::with_capacity(if lapel_idx.is_some() { frames } else { 0 });
+                        let mut mc_s: Vec<f32> = Vec::with_capacity(if mc_idx.is_some() { frames } else { 0 });
                         let mut overflow_pcm: Vec<i16> =
                             Vec::with_capacity(if overflow_idx.is_empty() { 0 } else { frames });
                         let mut lufs_out: Option<LufsReading> = None;
@@ -788,6 +801,12 @@ pub async fn start_audio_capture(
                             if let Some(i) = guide_idx {
                                 guide_s.push(f32::from_sample(data[base + i]));
                             }
+                            if let Some(i) = lapel_idx {
+                                lapel_s.push(f32::from_sample(data[base + i]));
+                            }
+                            if let Some(i) = mc_idx {
+                                mc_s.push(f32::from_sample(data[base + i]));
+                            }
                             if !caption_idx.is_empty() {
                                 let mut acc = 0.0f32;
                                 for &i in caption_idx.iter() {
@@ -826,7 +845,7 @@ pub async fn start_audio_capture(
                                 buf.drain(0..excess);
                             }
                         }
-                        for (dst, src) in [(&inner_cb.click, &click_s), (&inner_cb.guide, &guide_s)] {
+                        for (dst, src) in [(&inner_cb.click, &click_s), (&inner_cb.guide, &guide_s), (&inner_cb.lapel, &lapel_s), (&inner_cb.mc, &mc_s)] {
                             if src.is_empty() {
                                 continue;
                             }

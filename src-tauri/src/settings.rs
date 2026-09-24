@@ -136,6 +136,18 @@ pub struct Settings {
     pub autopilot_mc_audio: u32,
     pub autopilot_lapel_words: String,
     pub autopilot_mc_words: String,
+    /// The lapel is parked with its fader down: opening brings it to this
+    /// (dB) and the ride works ±6 dB around it.
+    pub autopilot_lapel_home_db: f32,
+    /// Hold the room in the worship band during songs with this fader
+    /// (±3 dB of its home), and the message band via the lapel ride.
+    pub autopilot_room: bool,
+    pub autopilot_room_fader: String,
+    pub autopilot_room_home_db: f32,
+    pub autopilot_worship_min: f32,
+    pub autopilot_worship_max: f32,
+    pub autopilot_message_min: f32,
+    pub autopilot_message_max: f32,
     /// Multi-channel (Dante) routing — 1-based channel numbers on the audio input
     /// device. The measurement engine (SPL/RTA/LUFS) mixes these channels; empty
     /// means "all channels" (legacy behaviour).
@@ -301,6 +313,14 @@ impl Default for Settings {
             autopilot_mc_audio: 0,
             autopilot_lapel_words: String::new(),
             autopilot_mc_words: String::new(),
+            autopilot_lapel_home_db: -5.0,
+            autopilot_room: false,
+            autopilot_room_fader: "dca:16".into(),
+            autopilot_room_home_db: 0.0,
+            autopilot_worship_min: 90.0,
+            autopilot_worship_max: 93.0,
+            autopilot_message_min: 65.0,
+            autopilot_message_max: 70.0,
             audio_measure_channels: Vec::new(),
             audio_overflow_channels: Vec::new(),
             audio_mic_channels: std::collections::HashMap::new(),

@@ -3,6 +3,7 @@ mod audio;
 mod avantis;
 mod beat;
 mod rig;
+mod speech;
 mod backup;
 mod diag;
 mod keepalive;
@@ -304,6 +305,7 @@ pub fn run() {
             tap::spawn_heartbeat(app.handle().clone());
             avantis::spawn_mirror(app.handle().clone());
             netmidi::spawn_keeper(app.handle().clone());
+            speech::spawn(app.handle().clone());
             avantis::spawn_watch_flush(app.handle().clone());
             obs::spawn_client(app.handle().clone());
             x32::spawn_mirror(app.handle().clone());

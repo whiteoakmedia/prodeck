@@ -3276,7 +3276,11 @@ function NdiCard() {
 
 function AutopilotCard({ form, set }: { form: Settings; set: <K extends keyof Settings>(k: K, v: Settings[K]) => void }) {
   const { items } = usePco();
-  const { log } = useAutopilot();
+  const { log, spl, let_go } = useAutopilot();
+  const num = (k: keyof Settings) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const n = parseFloat(e.target.value);
+    if (Number.isFinite(n)) set(k, n as never);
+  };
   const cfg = {
     lapelWords: parseWords(form.autopilot_lapel_words, DEFAULT_LAPEL_WORDS),
     mcWords: parseWords(form.autopilot_mc_words, DEFAULT_MC_WORDS),
@@ -3286,15 +3290,22 @@ function AutopilotCard({ form, set }: { form: Settings; set: <K extends keyof Se
     <section className="card">
       <div className="card-head">
         <h3 id="set-autopilot">Autopilot</h3>
-        <span className={`chip ${form.autopilot_speech ? "online" : ""}`}>{form.autopilot_speech ? "speech mics on" : "off"}</span>
+        <span className={`chip ${form.autopilot_speech ? "online" : ""}`}>{form.autopilot_speech ? "speech mics on" : "speech mics off"}</span>
+        <span className={`chip ${form.autopilot_room ? "online" : ""}`}>{form.autopilot_room ? "room hold on" : "room hold off"}</span>
+        {spl != null && <span className="chip">{spl.toFixed(1)} dB(A)</span>}
       </div>
       <p className="muted small">
         The speech mics follow the plan: the <strong>lapel</strong> opens when the message starts and{" "}
         <strong>8 MC</strong> for the moments of transition. A mic is closed only after its moment has ended and its
         own feed has been quiet for 8 s — with no feed routed it is never closed automatically; Autopilot tells you
         it's still open instead. Pressing that mute on the desk yourself hands the mic back to you until the next
-        item. (The lead-vocal scene per song is the <em>Desk Scenes</em> toggle on the Planning Center page.)
+        item. The lapel lives on its fader: opening brings it to its home level, and while he preaches it is ridden
+        within ±6 dB — steady as he turns and leans, the room held in the message band — and pulled down 3 dB at the
+        first sign of feedback. <strong>Room hold</strong> keeps songs in the worship band with LR + Sub, within ±3 dB
+        of its home. Touching either fader yourself makes Autopilot let go of it. (The lead-vocal scene per song is
+        the <em>Desk Scenes</em> toggle on the Planning Center page.)
       </p>
+      {let_go.length > 0 && <p className="hint">Let go (you moved it): {let_go.join(", ")}</p>}
       <div className="settings-grid">
         <label className="field check">
           <input type="checkbox" checked={!!form.autopilot_speech} onChange={(e) => set("autopilot_speech", e.target.checked)} />
@@ -3317,6 +3328,36 @@ function AutopilotCard({ form, set }: { form: Settings; set: <K extends keyof Se
           <span>MC feed on audio input (0 = none)</span>
           <input className="input" type="number" min={0} max={128} value={form.autopilot_mc_audio ?? 0}
             onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n) && n >= 0) set("autopilot_mc_audio", n); }} />
+        </label>
+        <label className="field">
+          <span>Lapel home (dB)</span>
+          <input className="input" type="number" step={0.5} value={form.autopilot_lapel_home_db ?? -5} onChange={num("autopilot_lapel_home_db")} />
+        </label>
+        <label className="field">
+          <span>Message room band (dB(A))</span>
+          <span className="controls-row">
+            <input className="input" type="number" value={form.autopilot_message_min ?? 65} onChange={num("autopilot_message_min")} />
+            <input className="input" type="number" value={form.autopilot_message_max ?? 70} onChange={num("autopilot_message_max")} />
+          </span>
+        </label>
+        <label className="field check">
+          <input type="checkbox" checked={!!form.autopilot_room} onChange={(e) => set("autopilot_room", e.target.checked)} />
+          <span>Room hold in songs</span>
+        </label>
+        <label className="field">
+          <span>Room fader</span>
+          <input className="input" value={form.autopilot_room_fader ?? "dca:16"} onChange={(e) => set("autopilot_room_fader", e.target.value)} />
+        </label>
+        <label className="field">
+          <span>Room fader home (dB)</span>
+          <input className="input" type="number" step={0.5} value={form.autopilot_room_home_db ?? 0} onChange={num("autopilot_room_home_db")} />
+        </label>
+        <label className="field">
+          <span>Worship room band (dB(A))</span>
+          <span className="controls-row">
+            <input className="input" type="number" value={form.autopilot_worship_min ?? 90} onChange={num("autopilot_worship_min")} />
+            <input className="input" type="number" value={form.autopilot_worship_max ?? 93} onChange={num("autopilot_worship_max")} />
+          </span>
         </label>
         <label className="field wide">
           <span>Plan words that open the lapel</span>

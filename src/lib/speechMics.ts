@@ -87,9 +87,14 @@ export class SpeechKeeper {
     if (now - this.ours[mic] > 2500) this.mics[mic].manual = true;
   }
 
-  /** The mic's own feed level (0..1 peak), when routed. */
-  onLevel(mic: SpeechMic, peak: number, now: number) {
-    if (peak > 0.02) this.mics[mic].lastLoud = now; // ≈ −34 dBFS: someone talking
+  /** The mic's own feed level (RMS dBFS over 100 ms), when routed. */
+  onLevel(mic: SpeechMic, db: number, now: number) {
+    if (db > -45) this.mics[mic].lastLoud = now; // someone talking
+  }
+
+  /** Is this mic open (its moment is live, or it hasn't been closed yet)? */
+  isOpen(mic: SpeechMic): boolean {
+    return this.need === mic || this.mics[mic].releasedAt != null;
   }
 
   onTick(now: number): SpeechAction[] {

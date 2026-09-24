@@ -314,6 +314,14 @@ export interface Settings {
   autopilot_mc_audio: number;
   autopilot_lapel_words: string;
   autopilot_mc_words: string;
+  autopilot_lapel_home_db: number;
+  autopilot_room: boolean;
+  autopilot_room_fader: string;
+  autopilot_room_home_db: number;
+  autopilot_worship_min: number;
+  autopilot_worship_max: number;
+  autopilot_message_min: number;
+  autopilot_message_max: number;
   audio_measure_channels: number[];
   audio_overflow_channels: number[];
   keysend_enabled: boolean;
