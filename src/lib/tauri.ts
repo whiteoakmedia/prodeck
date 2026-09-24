@@ -304,6 +304,8 @@ export interface Settings {
   follow_monthly_cap: number;
   whisper_audio_ctx: number;
   caption_channels: number[];
+  follow_click_channel: number;
+  follow_guide_channel: number;
   audio_measure_channels: number[];
   audio_overflow_channels: number[];
   keysend_enabled: boolean;

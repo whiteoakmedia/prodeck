@@ -436,6 +436,10 @@ pub struct AudioInner {
     pub channels: AtomicU32,
     /// Device-rate mono samples, drained by the transcription engine.
     pub mono: Mutex<Vec<f32>>,
+    /// The playback rig's click and guide channels (Auto-Follow), raw, at
+    /// the device rate; drained by the beat tracker and the guide listener.
+    pub click: Mutex<Vec<f32>>,
+    pub guide: Mutex<Vec<f32>>,
     /// Rolling window of recent samples for spectrum analysis (not drained).
     pub analysis: Mutex<Vec<f32>>,
     pub device_name: Mutex<Option<String>>,
@@ -452,10 +456,21 @@ impl AudioInner {
             sample_rate: AtomicU32::new(0),
             channels: AtomicU32::new(0),
             mono: Mutex::new(Vec::new()),
+            click: Mutex::new(Vec::new()),
+            guide: Mutex::new(Vec::new()),
             analysis: Mutex::new(Vec::new()),
             device_name: Mutex::new(None),
             overflow_tx,
         }
+    }
+
+    pub fn drain_click(&self) -> (Vec<f32>, u32) {
+        let mut buf = self.click.lock().unwrap_or_else(|p| p.into_inner());
+        (std::mem::take(&mut *buf), self.sample_rate.load(Ordering::Relaxed))
+    }
+    pub fn drain_guide(&self) -> (Vec<f32>, u32) {
+        let mut buf = self.guide.lock().unwrap_or_else(|p| p.into_inner());
+        (std::mem::take(&mut *buf), self.sample_rate.load(Ordering::Relaxed))
     }
 
     /// Take everything captured so far (used by the transcription window).
@@ -652,6 +667,11 @@ pub async fn start_audio_capture(
             .filter(|&i| i < channels)
             .collect()
     };
+    let (click_idx, guide_idx) = {
+        let s = settings.lock().unwrap_or_else(|p| p.into_inner());
+        let one = |c: u32| (c as usize).checked_sub(1).filter(|&i| i < channels);
+        (one(s.follow_click_channel), one(s.follow_guide_channel))
+    };
     let (measure_idx, overflow_idx, caption_idx) = {
         let s = settings.lock().unwrap_or_else(|p| p.into_inner());
         // What Follow/captions hear: their own channels, else the Listen feed
@@ -720,6 +740,8 @@ pub async fn start_audio_capture(
                         let frames = data.len() / channels.max(1);
                         let mut chunk: Vec<f32> = Vec::with_capacity(frames);
                         let mut caption: Vec<f32> = Vec::with_capacity(if caption_idx.is_empty() { 0 } else { frames });
+                        let mut click_s: Vec<f32> = Vec::with_capacity(if click_idx.is_some() { frames } else { 0 });
+                        let mut guide_s: Vec<f32> = Vec::with_capacity(if guide_idx.is_some() { frames } else { 0 });
                         let mut overflow_pcm: Vec<i16> =
                             Vec::with_capacity(if overflow_idx.is_empty() { 0 } else { frames });
                         let mut lufs_out: Option<LufsReading> = None;
@@ -760,6 +782,12 @@ pub async fn start_audio_capture(
                                 lufs_out = Some(r);
                             }
                             chunk.push(s);
+                            if let Some(i) = click_idx {
+                                click_s.push(f32::from_sample(data[base + i]));
+                            }
+                            if let Some(i) = guide_idx {
+                                guide_s.push(f32::from_sample(data[base + i]));
+                            }
                             if !caption_idx.is_empty() {
                                 let mut acc = 0.0f32;
                                 for &i in caption_idx.iter() {
@@ -796,6 +824,18 @@ pub async fn start_audio_capture(
                             if buf.len() > cap {
                                 let excess = buf.len() - cap;
                                 buf.drain(0..excess);
+                            }
+                        }
+                        for (dst, src) in [(&inner_cb.click, &click_s), (&inner_cb.guide, &guide_s)] {
+                            if src.is_empty() {
+                                continue;
+                            }
+                            let mut b = dst.lock().unwrap_or_else(|p| p.into_inner());
+                            b.extend_from_slice(src);
+                            let cap = sr * 30;
+                            if b.len() > cap {
+                                let excess = b.len() - cap;
+                                b.drain(0..excess);
                             }
                         }
                         {

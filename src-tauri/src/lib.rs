@@ -1,6 +1,8 @@
 mod ahmap;
 mod audio;
 mod avantis;
+mod beat;
+mod rig;
 mod backup;
 mod diag;
 mod keepalive;

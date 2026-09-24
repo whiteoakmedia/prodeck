@@ -157,7 +157,7 @@ fn resolve_model(s: &crate::settings::Settings) -> Option<String> {
 }
 
 /// whisper.cpp's DTW alignment-head preset for a model file, if it has one.
-fn dtw_preset(model: &str) -> Option<&'static str> {
+pub(crate) fn dtw_preset(model: &str) -> Option<&'static str> {
     let m = model.to_lowercase();
     [
         ("large-v3-turbo", "large.v3.turbo"),
@@ -176,7 +176,7 @@ fn dtw_preset(model: &str) -> Option<&'static str> {
     .map(|(_, v)| *v)
 }
 
-fn server_bin(cli: &str) -> Option<String> {
+pub(crate) fn server_bin(cli: &str) -> Option<String> {
     let p = std::path::Path::new(cli).with_file_name("whisper-server");
     p.exists().then(|| p.to_string_lossy().to_string())
 }
@@ -199,9 +199,9 @@ pub fn start_transcription(
     settings: tauri::State<'_, SettingsState>,
     app: AppHandle,
 ) -> Result<(), String> {
-    let (bin, model, actx) = {
+    let (bin, model, actx, rig_click, rig_guide) = {
         let s = settings.lock().unwrap_or_else(|p| p.into_inner());
-        (s.whisper_bin.clone(), resolve_model(&s), s.whisper_audio_ctx)
+        (s.whisper_bin.clone(), resolve_model(&s), s.whisper_audio_ctx, s.follow_click_channel > 0, s.follow_guide_channel > 0)
     };
     let bin = bin.ok_or("Whisper isn't installed (set its path in Settings)")?;
     let model = model.ok_or("No Whisper model found (Settings → Captions, or put one in ProDeck/models)")?;
@@ -222,7 +222,7 @@ pub fn start_transcription(
     tauri::async_runtime::spawn(async move {
         let mut server: Option<(tokio::process::Child, u16)> = None;
         if let Some(sbin) = server_bin(&bin) {
-            let _ = std::process::Command::new("/usr/bin/pkill").args(["-f", INFERENCE_PATH]).status();
+            let _ = std::process::Command::new("/usr/bin/pkill").args(["-f", "/prodeck-(inference|guide)"]).status();
             if let Some(port) = free_port() {
                 let mut cmd = tokio::process::Command::new(&sbin);
                 // Timestamps on: Follow places every word on the clock (per-word
@@ -261,6 +261,7 @@ pub fn start_transcription(
             }
         }
         app2.emit("caption:status", "listening").ok();
+        crate::rig::spawn(app2.clone(), audio.clone(), running.clone(), bin.clone(), rig_click, rig_guide);
 
         // The last WINDOW of audio at the device's own rate; each hop it is
         // filtered and brought down to 16 kHz whole (a stateless resample, so
@@ -361,13 +362,13 @@ pub fn start_transcription(
     Ok(())
 }
 
-struct Heard {
-    text: String,
-    /// Words with absolute times (ms), merged from Whisper's sub-word tokens.
-    words: Vec<serde_json::Value>,
-    lang_p: Option<f64>,
-    logprob: Option<f64>,
-    no_speech: Option<f64>,
+pub(crate) struct Heard {
+    pub text: String,
+    /// Words with times in seconds into the window, merged from sub-word tokens.
+    pub words: Vec<serde_json::Value>,
+    pub lang_p: Option<f64>,
+    pub logprob: Option<f64>,
+    pub no_speech: Option<f64>,
 }
 
 /// Whisper splits words into tokens (" Sweet" + "ly"); a token that starts
@@ -399,6 +400,10 @@ fn words_of(segs: &[serde_json::Value]) -> Vec<serde_json::Value> {
 }
 
 async fn infer_server(c: &reqwest::Client, port: u16, window: &[f32], prompt: &str) -> Result<Heard, String> {
+    infer_server_at(c, port, INFERENCE_PATH, window, prompt).await
+}
+
+pub(crate) async fn infer_server_at(c: &reqwest::Client, port: u16, path: &str, window: &[f32], prompt: &str) -> Result<Heard, String> {
     let wav = wav_bytes(window)?;
     let mut form = reqwest::multipart::Form::new()
         .part("file", reqwest::multipart::Part::bytes(wav).file_name("w.wav").mime_str("audio/wav").map_err(|e| e.to_string())?)
@@ -408,7 +413,7 @@ async fn infer_server(c: &reqwest::Client, port: u16, window: &[f32], prompt: &s
         form = form.text("prompt", prompt.to_string());
     }
     let v: serde_json::Value = c
-        .post(format!("http://127.0.0.1:{port}{INFERENCE_PATH}"))
+        .post(format!("http://127.0.0.1:{port}{path}"))
         .multipart(form)
         .send()
         .await
@@ -459,7 +464,7 @@ pub fn stop_transcription(state: tauri::State<'_, TranscriptionState>, app: AppH
 /// Device rate → 16 kHz for Whisper, with a proper low-pass first. Plain
 /// interpolation from 48 kHz folds everything above 8 kHz (cymbals, hi-hat,
 /// sibilance) back into the vocal band as noise.
-fn resample_to_16k(input: &[f32], sr: u32) -> Vec<f32> {
+pub(crate) fn resample_to_16k(input: &[f32], sr: u32) -> Vec<f32> {
     if sr == 16000 || input.is_empty() {
         return input.to_vec();
     }
@@ -527,7 +532,7 @@ fn write_wav(samples: &[f32]) -> Result<std::path::PathBuf, String> {
 
 /// whisper.cpp emits bracketed non-speech markers and stray whitespace; strip
 /// them so only clean caption text reaches the UI.
-fn clean_whisper_text(raw: &str) -> String {
+pub(crate) fn clean_whisper_text(raw: &str) -> String {
     let mut out = String::new();
     for line in raw.lines() {
         let line = line.trim();

@@ -16,7 +16,8 @@ import {
 import { useProDeck } from "./store";
 import { usePco } from "./pcoStore";
 import { matchPresentationToItem } from "./lib/proFollow";
-import { askBody, FollowEngine, makeSlide, parsePick, type Action, type FollowView, type FSong, type Heard } from "./lib/follow";
+import { askBody, FollowEngine, makeSlide, parsePick, type Action, type Cue, type FollowView, type FSong, type Heard } from "./lib/follow";
+import type { BeatEvent } from "./lib/rig";
 
 // Auto-Follow v2 (design/AUTOFOLLOW.md). This provider is the plumbing; the
 // decisions live in lib/follow.ts. It builds the song list from the armed
@@ -97,6 +98,9 @@ const IDLE_VIEW: FollowView = {
   heard: "",
   hearing: "idle",
   confidence: 0,
+  clickBpm: null,
+  lastCue: "",
+  cueTarget: null,
 };
 const Ctx = createContext<LyricFollowCtx | null>(null);
 
@@ -214,8 +218,14 @@ export function LyricFollowProvider({ children }: { children: ReactNode }) {
         const slides = [];
         let i = 0;
         for (const g of display) {
+          let first = true;
           for (const sl of Array.isArray(g?.slides) ? g.slides : []) {
-            slides.push(makeSlide(i++, String(g?.name ?? ""), String(sl?.text ?? "")));
+            const made = makeSlide(i++, String(g?.name ?? ""), String(sl?.text ?? ""));
+            // Each entry in the arrangement is its own section occurrence,
+            // even "Chorus, Chorus" back to back — the guide calls each.
+            if (first) made.groupStart = true;
+            first = false;
+            slides.push(made);
           }
         }
         // Tempo from Planning Center: the plan item this presentation is.
@@ -283,6 +293,28 @@ export function LyricFollowProvider({ children }: { children: ReactNode }) {
     });
     return () => {
       sub.then((f) => f());
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // The playback rig: clicks and guide cues.
+  useEffect(() => {
+    const b = on<BeatEvent>("follow:beat", (ev) => {
+      const e = engineRef.current;
+      if (!armedRef.current || !e || !ev) return;
+      e.onBeat(ev);
+      followDebugLog({ kind: "beat", t: ev.t, s: ev.strength, z: ev.zcr }).catch(() => {});
+    });
+    const c = on<Cue>("follow:cue", (cue) => {
+      const e = engineRef.current;
+      if (!armedRef.current || !e || !cue) return;
+      followDebugLog({ kind: "cue", ...cue }).catch(() => {});
+      run(e.onCue(cue, Date.now()));
+      publish();
+    });
+    return () => {
+      b.then((f) => f());
+      c.then((f) => f());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

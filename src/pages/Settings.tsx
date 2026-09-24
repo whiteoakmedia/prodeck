@@ -1035,11 +1035,26 @@ export function SettingsPage() {
               onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n) && n >= 0) set("follow_monthly_cap", n); }} />
           </label>
           <label className="field">
+            <span>Click channel (0 = none)</span>
+            <input className="input" type="number" min={0} max={128} value={form.follow_click_channel ?? 0}
+              onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n) && n >= 0) set("follow_click_channel", n); }} />
+          </label>
+          <label className="field">
+            <span>Guide channel (0 = none)</span>
+            <input className="input" type="number" min={0} max={128} value={form.follow_guide_channel ?? 0}
+              onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n) && n >= 0) set("follow_guide_channel", n); }} />
+          </label>
+          <label className="field">
             <span>Whisper audio context (0 = full)</span>
             <input className="input" type="number" min={0} max={1500} value={form.whisper_audio_ctx ?? 768}
               onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n) && n >= 0) set("whisper_audio_ctx", n); }} />
           </label>
         </div>
+        <p className="hint">
+          <strong>Click and guide</strong> from the playback rig (the channels on this Mac's audio input they're
+          routed to): with them Follow knows the beat and hears the guide's section calls a bar early, and lands each
+          section on its downbeat. Restart audio capture after changing.
+        </p>
         <p className="hint">
           Whisper's model: leave the path under Audio empty and ProDeck uses the best one in its models
           folder (large‑v3‑turbo). What it listens to is under Audio → “Auto‑Follow listens to”.

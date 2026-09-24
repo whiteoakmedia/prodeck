@@ -117,6 +117,11 @@ pub struct Settings {
     /// ("Listen") channels when set — a board mix is far cleaner than room
     /// mics — else the measurement channels.
     pub caption_channels: Vec<u32>,
+    /// The playback rig's click and guide on the audio input (1-based; 0 =
+    /// not routed). With them Follow knows the beat and hears the section
+    /// cues ("Verse 2", "Chorus") a bar before each section.
+    pub follow_click_channel: u32,
+    pub follow_guide_channel: u32,
     /// Multi-channel (Dante) routing — 1-based channel numbers on the audio input
     /// device. The measurement engine (SPL/RTA/LUFS) mixes these channels; empty
     /// means "all channels" (legacy behaviour).
@@ -272,6 +277,8 @@ impl Default for Settings {
             follow_monthly_cap: 2000,
             whisper_audio_ctx: 768,
             caption_channels: Vec::new(),
+            follow_click_channel: 0,
+            follow_guide_channel: 0,
             audio_measure_channels: Vec::new(),
             audio_overflow_channels: Vec::new(),
             audio_mic_channels: std::collections::HashMap::new(),

@@ -180,7 +180,7 @@ function AutoFollowCard() {
     return () => clearInterval(t);
   }, [lf.armed]);
   const due = v.dueAt != null && v.slideStartedAt != null ? { left: Math.max(0, v.dueAt - now), frac: Math.min(1, (now - v.slideStartedAt) / Math.max(1, v.dueAt - v.slideStartedAt)) } : null;
-  const via = { heard: "heard it", predicted: "the song's pace", clock: "on the clock", model: "the model read the lyric", pro: "moved in ProPresenter" } as const;
+  const via = { heard: "heard it", predicted: "the song's pace", clock: "on the clock", cue: "the guide called it", model: "the model read the lyric", pro: "moved in ProPresenter" } as const;
   const hearing = { words: "hearing words", music: "music only", quiet: "quiet", idle: "idle" } as const;
   return (
     <section className="card">
@@ -258,6 +258,12 @@ function AutoFollowCard() {
           <div className="af-next muted small">
             {due ? (due.left > 0 ? `next slide in ${(due.left / 1000).toFixed(1)} s` : "next slide due now") : v.song ? "next slide when its last line is heard" : ""}
             {v.lastVia ? ` · last move: ${via[v.lastVia]}${v.lastReason && v.lastVia !== "pro" ? ` (${v.lastReason})` : ""}` : ""}
+          </div>
+          <div className="af-rig muted small">
+            {v.clickBpm ? `Click ${Math.round(v.clickBpm)} BPM` : "No click"}
+            {" · "}
+            {v.lastCue ? `Guide: “${v.lastCue}”` : "No guide cue yet"}
+            {v.cueTarget ? ` → ${v.cueTarget.section || `slide ${v.cueTarget.slide + 1}`} in ${Math.max(0, (v.cueTarget.at - now) / 1000).toFixed(1)} s` : ""}
           </div>
           <div className="af-heard">{v.heard || "listening…"}</div>
           <div className="controls-row">
