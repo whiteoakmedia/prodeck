@@ -6,8 +6,7 @@
 //!   "Chorus", "1, 2, 3, 4"). The guide channel is silent between cues, so a
 //!   cue is sent to Whisper the moment the voice stops — not on a fixed
 //!   window — which is what makes it early enough to act on. It uses its own
-//!   small, fast Whisper (small.en when present), so a lyric window in flight
-//!   never delays a cue.
+//!   tiny Whisper on the CPU, so a lyric window on the GPU never delays a cue.
 
 use crate::audio::AudioState;
 use crate::transcription::TranscriptionState;
@@ -70,7 +69,9 @@ const CUE_PROMPT: &str = "Intro. Verse 1. Verse 2. Verse 3. Pre-chorus. Chorus. 
 
 async fn guide_loop(app: AppHandle, audio: AudioState, running: TranscriptionState, bin: String) {
     let models = crate::settings::data_dir().join("models");
-    let model = ["ggml-small.en-q5_1.bin", "ggml-small.en.bin", "ggml-base.en.bin", "ggml-large-v3-turbo-q5_0.bin"]
+    // tiny.en on the CPU: a guide cue is one clean word or two, and the GPU
+    // belongs to the lyric model — sharing it, cues waited up to 6 s.
+    let model = ["ggml-tiny.en.bin", "ggml-base.en.bin", "ggml-small.en-q5_1.bin"]
         .iter()
         .map(|n| models.join(n))
         .find(|p| p.exists());
@@ -79,14 +80,11 @@ async fn guide_loop(app: AppHandle, audio: AudioState, running: TranscriptionSta
     let Some(sbin) = crate::transcription::server_bin(&bin) else { return };
     let Some(port) = std::net::TcpListener::bind("127.0.0.1:0").ok().and_then(|l| l.local_addr().ok()).map(|a| a.port()) else { return };
     let mut cmd = tokio::process::Command::new(&sbin);
-    cmd.args(["-m", &model, "-l", "en", "-t", "2", "--host", "127.0.0.1", "-nf", "-bs", "1", "-bo", "1", "-ac", "512"])
+    cmd.args(["-m", &model, "-l", "en", "-t", "4", "--host", "127.0.0.1", "-nf", "-bs", "1", "-bo", "1", "-ac", "256", "-ng"])
         .args(["--port", &port.to_string(), "--inference-path", "/prodeck-guide"])
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .kill_on_drop(true);
-    if let Some(p) = crate::transcription::dtw_preset(&model) {
-        cmd.args(["-nfa", "--dtw", p]);
-    }
     let Ok(mut child) = cmd.spawn() else { return };
     let client = match reqwest::Client::builder().timeout(std::time::Duration::from_secs(6)).build() {
         Ok(c) => c,
@@ -158,7 +156,7 @@ async fn guide_loop(app: AppHandle, audio: AudioState, running: TranscriptionSta
 }
 
 /// Voice on/off on a mostly silent channel: a segment starts when a 20 ms
-/// frame rises 12 dB over the floor, ends after 300 ms quiet or 3.5 s long.
+/// frame rises 12 dB over the floor, ends after 200 ms quiet or 2.5 s long.
 #[derive(Default)]
 struct Vad {
     pos: usize,
@@ -197,7 +195,7 @@ impl Vad {
                 Some(s) => {
                     self.quiet_frames = if loud { 0 } else { self.quiet_frames + 1 };
                     let len = self.pos + frame - s;
-                    if self.quiet_frames * frame >= sr as usize * 3 / 10 || len >= sr as usize * 7 / 2 {
+                    if self.quiet_frames * frame >= sr as usize / 5 || len >= sr as usize * 5 / 2 {
                         let end = self.pos + frame;
                         self.pos += frame;
                         return Some((s, end));
