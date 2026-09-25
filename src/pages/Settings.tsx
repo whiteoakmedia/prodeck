@@ -3461,7 +3461,7 @@ function RecorderCard({ form, set }: { form: Settings; set: <K extends keyof Set
       </p>
       <label className="field check">
         <input type="checkbox" checked={form.multitrack_auto ?? false} onChange={(e) => set("multitrack_auto", e.target.checked)} />
-        <span>Record every service — starts when Planning Center LIVE or Playback starts, stops 20 minutes after both go quiet</span>
+        <span>Record every service and rehearsal — starts when Planning Center LIVE or Playback (clock, click or guide) starts, stops 20 minutes after both go quiet</span>
       </label>
       <label className="field check">
         <input type="checkbox" checked={form.multitrack_drop_silent ?? true} onChange={(e) => set("multitrack_drop_silent", e.target.checked)} />

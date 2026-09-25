@@ -71,15 +71,21 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
       }
     });
     const b = on<string | null>("multitrack:error", (e) => e && setError(e));
+    // Playback running: its MIDI clock, or the click heard on the click channel.
     const c = on("follow:mbeat", () => (clockAt.current = Date.now()));
+    const g = on("follow:beat", () => (clockAt.current = Date.now()));
     const d = on("follow:mstart", () => {
       clockAt.current = Date.now();
       mark(`▶ ${songRef.current || "Playback started"}`);
     });
     const e = on("follow:mstop", () => mark("■ Playback stopped"));
-    const f = on<{ text: string }>("follow:cue", (c) => c?.text && mark(`Guide: ${c.text.trim()}`));
+    const f = on<{ text: string }>("follow:cue", (c) => {
+      if (!c?.text) return;
+      clockAt.current = Date.now();
+      mark(`Guide: ${c.text.trim()}`);
+    });
     return () => {
-      [a, b, c, d, e, f].forEach((u) => u.then((x) => x()));
+      [a, b, c, d, e, f, g].forEach((u) => u.then((x) => x()));
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -1,7 +1,8 @@
 // When the multitrack recorder starts and stops by itself (booth, with
 // "Record every service" on). Pure, clock-injected; tested.
 //
-// Busy = Planning Center LIVE has an item up, or Playback's clock is running.
+// Busy = Planning Center LIVE has an item up, or Playback is running (its MIDI
+// clock, the click heard on the click channel, or a guide call).
 // Busy starts a recording. It stops 20 minutes after the last busy moment,
 // and only a recording it started itself (a manual one is yours to stop).
 // Stopping by hand while busy keeps it from starting again until things
