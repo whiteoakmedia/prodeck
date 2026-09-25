@@ -1,8 +1,8 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { IS_WEB, multitrackMarker, multitrackReveal, multitrackStart, multitrackStatus, multitrackStop, on, type RecLast, type RecLive } from "./lib/tauri";
+import { IS_WEB, pcoGet, multitrackMarker, multitrackReveal, multitrackStart, multitrackStatus, multitrackStop, on, type RecLast, type RecLive } from "./lib/tauri";
 import { useProDeck } from "./store";
 import { usePco } from "./pcoStore";
-import { decide, sessionLabel, type AutoState } from "./lib/recorderAuto";
+import { decide, plansFromJson, sameLocalDay, serviceLabel, type AutoState } from "./lib/recorderAuto";
 
 // The multitrack recorder, booth side (the recording itself is Rust:
 // src-tauri/src/multitrack.rs). Starts and stops with the service when
@@ -11,6 +11,8 @@ import { decide, sessionLabel, type AutoState } from "./lib/recorderAuto";
 
 interface Ctx {
   recording: boolean;
+  /** What the next recording's folder will be called (today's PCO service). */
+  label: string;
   live: RecLive | null;
   last: RecLast | null;
   error: string;
@@ -24,7 +26,7 @@ export const useRecorder = () => useContext(C);
 
 export function RecorderProvider({ children }: { children: ReactNode }) {
   const { settings, status: ppStatus } = useProDeck();
-  const { liveItemId, items, plans, selectedPlanId } = usePco();
+  const { liveItemId, items, plans, selectedPlanId, serviceTypes, selectedServiceTypeId } = usePco();
   const [live, setLive] = useState<RecLive | null>(null);
   const [last, setLast] = useState<RecLast | null>(null);
   const [recording, setRecording] = useState(false);
@@ -34,9 +36,9 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
   const retryAt = useRef(0);
   const liveRef = useRef<string | null>(null);
   liveRef.current = liveItemId;
-  const planTitle = plans.find((p) => p.id === selectedPlanId)?.title ?? null;
-  const planTitleRef = useRef(planTitle);
-  planTitleRef.current = planTitle;
+  const [label, setLabel] = useState("Recording");
+  const labelRef = useRef("Recording");
+  labelRef.current = label;
   const autoOn = useRef(false);
   autoOn.current = !!settings?.multitrack_auto;
   const songRef = useRef("");
@@ -98,8 +100,49 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveItemId]);
 
+  // Today's service, by its Planning Center name: the plan the booth is on
+  // if it's today's, else whichever service type has a plan today (21 types
+  // here — Men's Conference isn't the Sunday one). No plan today: the
+  // booth's plan, marked as a rehearsal.
+  useEffect(() => {
+    if (IS_WEB) return;
+    let dead = false;
+    const resolve = async () => {
+      const now = Date.now();
+      const stName = (id: string | null) => serviceTypes.find((t) => t.id === id)?.name ?? "";
+      const sel = plans.find((p) => p.id === selectedPlanId);
+      if (sel && sameLocalDay(sel.sortDate, now)) {
+        setLabel(serviceLabel(stName(selectedServiceTypeId), sel.title, sel.date));
+        return;
+      }
+      for (const st of serviceTypes) {
+        if (dead) return;
+        try {
+          const [fut, past] = await Promise.all([
+            pcoGet(`services/v2/service_types/${st.id}/plans?filter=future&order=sort_date&per_page=1`).catch(() => null),
+            pcoGet(`services/v2/service_types/${st.id}/plans?filter=past&order=-sort_date&per_page=1`).catch(() => null),
+          ]);
+          const hit = [...plansFromJson(fut), ...plansFromJson(past)].find((p) => sameLocalDay(p.sortDate, now));
+          if (hit) {
+            if (!dead) setLabel(serviceLabel(st.name, hit.title, hit.dates));
+            return;
+          }
+        } catch {
+          /* PCO offline — keep looking, then fall back */
+        }
+      }
+      if (!dead) setLabel(sel ? `${serviceLabel(stName(selectedServiceTypeId), sel.title, sel.date)} (rehearsal)` : "Recording");
+    };
+    resolve();
+    const iv = setInterval(resolve, 15 * 60_000);
+    return () => {
+      dead = true;
+      clearInterval(iv);
+    };
+  }, [serviceTypes, plans, selectedPlanId, selectedServiceTypeId]);
+
   async function doStart(autoStarted: boolean) {
-    const label = sessionLabel(planTitleRef.current, !!liveRef.current);
+    const label = labelRef.current;
     try {
       const r = await multitrackStart(label);
       auto.current = { ...auto.current, recording: true, autoStarted };
@@ -146,6 +189,7 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
 
   const value: Ctx = {
     recording,
+    label,
     live,
     last,
     error,

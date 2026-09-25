@@ -334,6 +334,7 @@ export interface Settings {
   stream_report_offset_db: number;
   multitrack_volume: string;
   multitrack_names: Record<string, string>;
+  multitrack_sources: Record<string, string>;
   multitrack_auto: boolean;
   multitrack_drop_silent: boolean;
   audio_measure_channels: number[];
@@ -676,6 +677,18 @@ export const multitrackMarker = (text: string) => invoke<number>("multitrack_mar
 export const multitrackStatus = () => invoke<{ recording: boolean; live: RecLive | null; last: RecLast | null }>("multitrack_status");
 export const multitrackVolumes = () => invoke<RecVolume[]>("multitrack_volumes");
 export const multitrackReveal = () => invoke<void>("multitrack_reveal");
+export interface RecSession {
+  dir: string;
+  folder: string;
+  label: string;
+  start: number;
+  seconds: number;
+  tracks: number;
+  markers: number;
+  note: string | null;
+}
+export const multitrackSessions = () => invoke<RecSession[]>("multitrack_sessions");
+export const multitrackOpen = (dir: string) => invoke<void>("multitrack_open", { dir });
 export const streamReportsList = () => invoke<import("./streamReport").StreamReportMeta[]>("stream_reports_list");
 export const streamReportGet = (id: string) => invoke<import("./streamReport").StreamReportData>("stream_report_get", { id });
 export const followDebugLog = (line: Record<string, unknown>) => invoke<void>("follow_debug_log", { line });

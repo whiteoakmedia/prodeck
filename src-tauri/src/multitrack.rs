@@ -55,14 +55,40 @@ fn now_s() -> u64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
 }
 
-/// "2026-09-27 0915" in local time.
-fn local_stamp(t: u64) -> String {
+fn local_tm(t: u64) -> libc::tm {
     unsafe {
         let tt = t as libc::time_t;
         let mut tm: libc::tm = std::mem::zeroed();
         libc::localtime_r(&tt, &mut tm);
-        format!("{:04}-{:02}-{:02} {:02}{:02}", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min)
+        tm
     }
+}
+/// "2026-09-27" in local time.
+fn local_date(t: u64) -> String {
+    let tm = local_tm(t);
+    format!("{:04}-{:02}-{:02}", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday)
+}
+/// "0915" in local time.
+fn local_hm(t: u64) -> String {
+    let tm = local_tm(t);
+    format!("{:02}{:02}", tm.tm_hour, tm.tm_min)
+}
+
+/// A session's folder: "2026-09-25 Men's Conference"; a second recording
+/// of the same service that day gets its start time ("… 1930").
+fn session_dir(root: &Path, t: u64, label: &str) -> PathBuf {
+    let base = format!("{} {}", local_date(t), label);
+    let first = root.join(&base);
+    if !first.exists() {
+        return first;
+    }
+    let mut dir = root.join(format!("{base} {}", local_hm(t)));
+    let mut k = 2;
+    while dir.exists() {
+        dir = root.join(format!("{base} {} {k}", local_hm(t)));
+        k += 1;
+    }
+    dir
 }
 
 fn free_gb(p: &Path) -> Option<f64> {
@@ -377,12 +403,7 @@ pub fn start_core(app: &AppHandle, label: &str) -> Result<Value, String> {
     raise_fd_limit();
     let start_epoch = now_s();
     let label = if label.trim().is_empty() { "Recording".to_string() } else { clean(label) };
-    let mut dir = root.join(format!("{} {}", local_stamp(start_epoch), label));
-    let mut k = 2;
-    while dir.exists() {
-        dir = root.join(format!("{} {} {k}", local_stamp(start_epoch), label));
-        k += 1;
-    }
+    let dir = session_dir(&root, start_epoch, &label);
     let names: Vec<String> = (1..=ch).map(|i| names_map.get(&i.to_string()).filter(|s| !s.trim().is_empty()).cloned().unwrap_or_else(|| format!("In {i:02}"))).collect();
     let writers = open_writers(&dir, &names, sr).map_err(|e| format!("couldn't create files in {}: {e}", dir.display()))?;
     let (tx, rx) = sync_channel::<Vec<f32>>(QUEUE_BLOCKS);
@@ -518,6 +539,44 @@ pub fn multitrack_volumes() -> Vec<Value> {
     out
 }
 
+/// Recorded sessions on this Mac and the chosen drive, newest first.
+#[tauri::command]
+pub fn multitrack_sessions(app: AppHandle) -> Vec<Value> {
+    let v = app.state::<SettingsState>().lock().unwrap_or_else(|p| p.into_inner()).multitrack_volume.clone();
+    let mut roots = vec![internal_root()];
+    let (r, _) = root_for(&v);
+    if !roots.contains(&r) {
+        roots.push(r);
+    }
+    let mut out: Vec<Value> = vec![];
+    for root in roots {
+        let Ok(rd) = std::fs::read_dir(&root) else { continue };
+        for e in rd.flatten() {
+            let d = e.path();
+            let Ok(t) = std::fs::read_to_string(d.join("session.json")) else { continue };
+            let Ok(s) = serde_json::from_str::<Value>(&t) else { continue };
+            out.push(json!({
+                "dir": d, "folder": e.file_name().to_string_lossy(), "label": s["label"], "start": s["start"],
+                "seconds": s["seconds"], "tracks": s["tracks"].as_array().map(|a| a.len()).unwrap_or(0),
+                "markers": s["markers"].as_array().map(|a| a.len()).unwrap_or(0), "note": s["note"],
+            }));
+        }
+    }
+    out.sort_by_key(|s| std::cmp::Reverse(s["start"].as_u64().unwrap_or(0)));
+    out.truncate(50);
+    out
+}
+
+/// Open a session folder in Finder (only folders the recorder made).
+#[tauri::command]
+pub fn multitrack_open(dir: String) -> Result<(), String> {
+    let p = PathBuf::from(&dir);
+    if !p.join("session.json").exists() {
+        return Err("not a recording folder".into());
+    }
+    std::process::Command::new("open").arg(&p).spawn().map(|_| ()).map_err(|e| e.to_string())
+}
+
 /// Open the recordings folder (the last session's, else the root) in Finder.
 #[tauri::command]
 pub fn multitrack_reveal(app: AppHandle) -> Result<(), String> {
@@ -559,6 +618,19 @@ mod tests {
         let rpp = std::fs::read_to_string(dir.join("Sunday.RPP")).unwrap();
         assert!(rpp.contains("FILE \"01 Kick IN.wav\"") && rpp.contains("MARKER 1 1.500 \"Chorus\""));
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn folders_are_named_for_the_service_and_date() {
+        let root = std::env::temp_dir().join(format!("mt-names-{}", now_s()));
+        std::fs::create_dir_all(&root).unwrap();
+        let t = now_s();
+        let a = session_dir(&root, t, "Men's Conference");
+        assert_eq!(a.file_name().unwrap().to_string_lossy(), format!("{} Men's Conference", local_date(t)));
+        std::fs::create_dir_all(&a).unwrap();
+        let b = session_dir(&root, t, "Men's Conference");
+        assert_eq!(b.file_name().unwrap().to_string_lossy(), format!("{} Men's Conference {}", local_date(t), local_hm(t)));
+        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]

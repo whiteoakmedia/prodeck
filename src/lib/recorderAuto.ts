@@ -29,10 +29,37 @@ export function decide(s: AutoState, busy: boolean, now: number): { action: "sta
   return { action: null, state: st };
 }
 
-/** A folder label: the plan's title when there's a live plan, else Rehearsal. */
-export function sessionLabel(planTitle: string | null | undefined, planLive: boolean): string {
-  if (planLive && planTitle?.trim()) return planTitle.trim();
-  return planLive ? "Service" : "Rehearsal";
+/** Same calendar day, here. */
+export function sameLocalDay(iso: string | undefined, now: number): boolean {
+  if (!iso) return false;
+  const a = new Date(iso);
+  const b = new Date(now);
+  return !isNaN(+a) && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+/** The service's name for a folder: the plan's own title when it has one
+ *  ("Men's Conference"), with the service type in front when that adds
+ *  something ("Sunday Services – Grace, week 3"). A title that is only the
+ *  date, or PCO's "Untitled plan", isn't a name. */
+export function serviceLabel(serviceType: string | null | undefined, planTitle: string | null | undefined, planDates?: string): string {
+  const st = (serviceType ?? "").trim();
+  let t = (planTitle ?? "").trim();
+  if (!t || t === "Untitled plan" || (planDates && t === planDates.trim()) || /^\w+ \d{1,2}(,? \d{4})?$/.test(t)) t = "";
+  let out = !t ? st : !st || t.toLowerCase().includes(st.toLowerCase()) ? t : st.toLowerCase().includes(t.toLowerCase()) ? st : `${st} – ${t}`;
+  out = out.replace(/[/:\\]/g, "-").trim();
+  return out.slice(0, 60) || "Recording";
+}
+
+/** A plan from Planning Center's JSON, as the recorder needs it. */
+export interface PlanPick {
+  title: string;
+  dates: string;
+  sortDate: string;
+}
+export function plansFromJson(j: any): PlanPick[] {
+  const data = j?.data;
+  if (!Array.isArray(data)) return [];
+  return data.map((d: any) => ({ title: d.attributes?.title ?? "", dates: d.attributes?.dates ?? "", sortDate: d.attributes?.sort_date ?? "" }));
 }
 
 /** Track names ProDeck can already work out from its own settings. */

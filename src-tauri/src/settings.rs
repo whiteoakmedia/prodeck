@@ -176,6 +176,9 @@ pub struct Settings {
     pub multitrack_volume: String,
     /// Track names by input number ("9" → "Kick IN"); unnamed = "In 09".
     pub multitrack_names: std::collections::HashMap<String, String>,
+    /// What feeds each input, for the Recording page ("Avantis Dante 14 ·
+    /// HH direct out").
+    pub multitrack_sources: std::collections::HashMap<String, String>,
     /// Start with the service (plan goes live / Playback plays) and stop
     /// after it; manual keys always work.
     pub multitrack_auto: bool,
@@ -366,6 +369,7 @@ impl Default for Settings {
             stream_report_offset_db: 0.0,
             multitrack_volume: String::new(),
             multitrack_names: std::collections::HashMap::new(),
+            multitrack_sources: std::collections::HashMap::new(),
             multitrack_auto: false,
             multitrack_drop_silent: true,
             audio_measure_channels: Vec::new(),

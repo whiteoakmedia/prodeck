@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decide, namesFromSettings, parseNames, formatNames, STOP_AFTER_MS, type AutoState } from "../lib/recorderAuto";
+import { decide, namesFromSettings, parseNames, formatNames, sameLocalDay, serviceLabel, STOP_AFTER_MS, type AutoState } from "../lib/recorderAuto";
 
 const idle: AutoState = { recording: false, autoStarted: false, lastBusy: 0, suppressed: false };
 
@@ -35,5 +35,22 @@ describe("track names", () => {
     const m = parseNames("9: Kick IN\n10 = SN Top\nnonsense\n");
     expect(m).toEqual({ "9": "Kick IN", "10": "SN Top" });
     expect(formatNames(m)).toBe("9: Kick IN\n10: SN Top");
+  });
+});
+
+describe("folder names", () => {
+  it("use the service's Planning Center name", () => {
+    expect(serviceLabel("Men's Conference", "")).toBe("Men's Conference");
+    expect(serviceLabel("Sunday Services", "Grace, week 3")).toBe("Sunday Services – Grace, week 3");
+    expect(serviceLabel("Men's Conference", "Men's Conference 2026")).toBe("Men's Conference 2026");
+    expect(serviceLabel("Sunday Services", "September 27, 2026", "September 27, 2026")).toBe("Sunday Services");
+    expect(serviceLabel("Sunday Services", "Untitled plan")).toBe("Sunday Services");
+    expect(serviceLabel("Youth", "Night 1/2")).toBe("Youth – Night 1-2");
+    expect(serviceLabel("", "")).toBe("Recording");
+  });
+  it("know which plan is today", () => {
+    const now = new Date(2026, 8, 25, 18, 0).getTime();
+    expect(sameLocalDay(new Date(2026, 8, 25, 9, 0).toISOString(), now)).toBe(true);
+    expect(sameLocalDay(new Date(2026, 8, 27, 9, 0).toISOString(), now)).toBe(false);
   });
 });

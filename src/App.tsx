@@ -68,6 +68,7 @@ import { Multiview } from "./pages/Multiview";
 import { Captions } from "./pages/Captions";
 import { PlanningCenter } from "./pages/PlanningCenter";
 import { Report } from "./pages/Report";
+import { RecordingPage } from "./pages/Recording";
 import { SettingsPage } from "./pages/Settings";
 import { HelpPage } from "./pages/Help";
 import { HELP_EVENT } from "./help/nav";
@@ -84,6 +85,7 @@ type Page =
   | "checklists"
   | "routing"
   | "report"
+  | "recording"
   | "settings"
   | "help";
 
@@ -98,6 +100,7 @@ const NAV: { id: Page; label: string; icon: string }[] = [
   { id: "planning", label: "Planning Center", icon: "calendar" },
   { id: "checklists", label: "Checklists", icon: "checklist" },
   { id: "routing", label: "Routing", icon: "grid" },
+  { id: "recording", label: "Recording", icon: "mic" },
   { id: "report", label: "Analytics", icon: "report" },
   { id: "help", label: "Help", icon: "help" },
   { id: "settings", label: "Settings", icon: "settings" },
@@ -349,6 +352,7 @@ function Shell() {
         {page === "checklists" && <ChecklistsPage />}
         {page === "routing" && <RoutingPage />}
         {page === "report" && <Report />}
+        {page === "recording" && <RecordingPage />}
         {page === "settings" && <SettingsPage />}
         {page === "help" && (
           <HelpPage
