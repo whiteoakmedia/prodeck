@@ -4,6 +4,9 @@ import { consumeSettingsJump } from "../lib/settingsJump";
 import { useProDeck } from "../store";
 import { useAutopilot } from "../autopilot";
 import { useAutomix } from "../automix";
+import { fmtClock, useRecorder } from "../recorder";
+import { formatNames, namesFromSettings, parseNames } from "../lib/recorderAuto";
+import { multitrackVolumes, type RecVolume } from "../lib/tauri";
 import { DEFAULT_RULES } from "../lib/automix";
 import { DEFAULT_LAPEL_WORDS, DEFAULT_MC_WORDS, micFor, parseWords } from "../lib/speechMics";
 import { useAlerts } from "../alertsStore";
@@ -1067,6 +1070,7 @@ export function SettingsPage() {
 
       <AutopilotCard form={form} set={set} />
       <AutomixCard form={form} set={set} />
+      <RecorderCard form={form} set={set} />
 
       <section className="card">
         <div className="card-head"><h3 id="set-inputs">Control Inputs</h3><HelpLink section="features" /></div>
@@ -3372,6 +3376,121 @@ function AutopilotCard({ form, set }: { form: Settings; set: <K extends keyof Se
           ))}
         </ul>
       )}
+    </section>
+  );
+}
+
+/** Multitrack recording: where to, when, and what each input is called. */
+function RecorderCard({ form, set }: { form: Settings; set: <K extends keyof Settings>(k: K, v: Settings[K]) => void }) {
+  const rec = useRecorder();
+  const [vols, setVols] = useState<RecVolume[]>([]);
+  const [namesText, setNamesText] = useState(() => formatNames(form.multitrack_names ?? {}));
+  const refresh = () => multitrackVolumes().then(setVols).catch(() => {});
+  useEffect(() => {
+    refresh();
+  }, []);
+  if (!rec) return null;
+  const chosen = form.multitrack_volume ?? "";
+  const missing = chosen !== "" && !vols.some((v) => v.path === chosen);
+  // 64 mono tracks of 24-bit 48 kHz ≈ 33 GB an hour; silent ones are removed afterwards.
+  const hours = (gb: number | null) => (gb == null ? "" : ` · ${gb.toFixed(0)} GB free ≈ ${(gb / 33).toFixed(0)} h of 64 tracks`);
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h3 id="set-recorder">Multitrack recording</h3>
+        <span className={`chip ${rec.recording ? "bad" : ""}`}>{rec.recording ? `REC ${fmtClock(rec.live?.secs ?? 0)}` : "stopped"}</span>
+      </div>
+      <p className="muted small">
+        Every input of the audio device (the Dante Virtual Soundcard: 64 channels) to its own 24-bit/48 kHz WAV, lined up
+        from the first sample, with markers for every plan item, song and guide call. Each session gets a folder with the
+        tracks, a Reaper project, <code>Markers.mid</code> (drag into Logic for the markers) and a marker list. Inputs
+        that stayed silent are removed at the end.
+      </p>
+      <div className="controls-row">
+        {rec.recording ? (
+          <>
+            <button className="btn danger" onClick={rec.stop}>
+              Stop recording
+            </button>
+            <button className="btn" onClick={() => rec.marker()}>
+              Add marker
+            </button>
+          </>
+        ) : (
+          <button className="btn primary" onClick={rec.start}>
+            Record now
+          </button>
+        )}
+        <button className="btn ghost" onClick={rec.reveal}>
+          Show in Finder
+        </button>
+      </div>
+      {rec.error && <p className="error small">{rec.error}</p>}
+      {rec.recording && rec.live && (
+        <p className="muted small">
+          {rec.live.withSignal ?? 0} of {rec.live.channels ?? 0} inputs have signal · {rec.live.freeGb} GB free (~{rec.live.hoursLeft} h) · {rec.live.dir}
+          {rec.live.dropped ? ` · ${rec.live.dropped} audio blocks dropped (disk too slow?)` : ""}
+        </p>
+      )}
+      {!rec.recording && rec.last && (
+        <p className="muted small">
+          Last: {rec.last.label}, {fmtClock(rec.last.secs)}, {rec.last.tracks} tracks ({rec.last.silentRemoved} silent removed), {rec.last.markers} markers
+          {rec.last.note ? ` — ${rec.last.note}` : ""}
+        </p>
+      )}
+      <label className="field">
+        <span>Record to</span>
+        <div className="controls-row">
+          <select className="input" value={chosen} onChange={(e) => set("multitrack_volume", e.target.value)}>
+            {vols.map((v) => (
+              <option key={v.path} value={v.path}>
+                {v.name}
+                {hours(v.freeGb)}
+              </option>
+            ))}
+            {missing && <option value={chosen}>{chosen.replace(/^\/Volumes\//, "")} — not connected</option>}
+          </select>
+          <button className="btn small ghost" onClick={refresh} title="Look for drives again">
+            Refresh
+          </button>
+        </div>
+      </label>
+      <p className="muted small">
+        Recordings go in a “ProDeck Recordings” folder on that drive. If the drive isn't plugged in when a recording starts,
+        or drops out during one, recording carries on on this Mac so nothing is lost. Save settings to apply.
+      </p>
+      <label className="field check">
+        <input type="checkbox" checked={form.multitrack_auto ?? false} onChange={(e) => set("multitrack_auto", e.target.checked)} />
+        <span>Record every service — starts when Planning Center LIVE or Playback starts, stops 20 minutes after both go quiet</span>
+      </label>
+      <label className="field check">
+        <input type="checkbox" checked={form.multitrack_drop_silent ?? true} onChange={(e) => set("multitrack_drop_silent", e.target.checked)} />
+        <span>Remove inputs that were silent the whole time</span>
+      </label>
+      <label className="field wide">
+        <span>Track names (input: name, one per line — unnamed inputs are “In 09”)</span>
+        <textarea
+          className="input mono"
+          rows={10}
+          value={namesText}
+          onChange={(e) => {
+            setNamesText(e.target.value);
+            set("multitrack_names", parseNames(e.target.value));
+          }}
+        />
+      </label>
+      <div className="controls-row">
+        <button
+          className="btn small ghost"
+          onClick={() => {
+            const merged = { ...namesFromSettings(form), ...parseNames(namesText) };
+            setNamesText(formatNames(merged));
+            set("multitrack_names", merged);
+          }}
+        >
+          Fill in what ProDeck knows
+        </button>
+      </div>
     </section>
   );
 }

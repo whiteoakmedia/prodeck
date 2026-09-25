@@ -54,6 +54,7 @@ import { RoutingProvider } from "./routingStore";
 import { LyricFollowProvider } from "./lyricFollow";
 import { AutopilotProvider } from "./autopilot";
 import { AutomixProvider } from "./automix";
+import { RecorderProvider } from "./recorder";
 import { DialogHost } from "./lib/dialogs";
 import { ChecklistsPage } from "./pages/Checklists";
 import { ClearDock } from "./components/ClearDock";
@@ -637,6 +638,7 @@ export default function App() {
                 <LyricFollowProvider>
                 <AutopilotProvider>
                 <AutomixProvider>
+                <RecorderProvider>
                   <ChecklistProvider>
                     <AlertsProvider>
                       <RoutingProvider>
@@ -660,6 +662,7 @@ export default function App() {
                       </RoutingProvider>
                     </AlertsProvider>
                   </ChecklistProvider>
+                </RecorderProvider>
                 </AutomixProvider>
                 </AutopilotProvider>
                 </LyricFollowProvider>

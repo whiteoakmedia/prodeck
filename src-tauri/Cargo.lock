@@ -3861,6 +3861,7 @@ dependencies = [
  "image",
  "include_dir",
  "jsonwebtoken",
+ "libc",
  "libloading 0.8.9",
  "mdns-sd",
  "midir",

@@ -9505,3 +9505,79 @@ select.input {
 .sr-tip.bad .sr-dot {
   background: var(--over);
 }
+
+/* Multitrack recorder widget */
+.w-rec {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+}
+.w-rec-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.w-rec-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  min-width: 110px;
+  justify-content: center;
+}
+.w-rec-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--over);
+}
+.w-rec-btn.on {
+  background: var(--over);
+  color: #fff;
+  border-color: var(--over);
+}
+.w-rec-btn.on .w-rec-dot {
+  background: #fff;
+  border-radius: 2px;
+}
+.w-rec-clock {
+  font-size: 26px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.w-rec-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.w-rec-meters {
+  display: grid;
+  grid-template-columns: repeat(32, 1fr);
+  gap: 2px;
+  height: 36px;
+}
+.w-rec-m {
+  position: relative;
+  background: var(--line, rgba(127, 145, 170, 0.16));
+  border-radius: 1px;
+  overflow: hidden;
+}
+.w-rec-m::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--h);
+  background: var(--good);
+}
+.w-rec-mark {
+  display: flex;
+  gap: 6px;
+}
+.w-rec-mark .input {
+  flex: 1;
+  min-width: 0;
+}

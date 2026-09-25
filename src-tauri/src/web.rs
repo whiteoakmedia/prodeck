@@ -676,6 +676,10 @@ async fn handle_conn(
                 crate::follow::automix_command(&app, cmd);
                 Ok(json!({ "sent": cmd }))
             }
+            // Multitrack recording from the deck: toggle, or drop a marker
+            // (&text= optional).
+            "record-toggle" => crate::multitrack::toggle_core(&app, if text.is_empty() { "Recording" } else { &text }),
+            "record-marker" => crate::multitrack::marker_core(&app, if text.is_empty() { "Marker (Stream Deck)" } else { &text }).map(|t| json!({ "at": t })),
             // Song key → Waves by hand: &text=G (C, C#/Db … B) or &text=off
             // (Tune off). The booth's key-send loop does the sending, with
             // its own dedupe and reconnect — same path as a phone's press.
@@ -930,8 +934,10 @@ async fn handle_conn(
                     })
                 };
                 let automix = app.state::<crate::follow::AutomixDeck>().0.lock().unwrap_or_else(|p| p.into_inner()).clone();
+                let recording = crate::multitrack::deck_state(&app);
                 Ok(json!({
                     "automix": automix,
+                    "recording": recording,
                     "songKey": song_key,
                     "tap": tap.get("state").cloned().unwrap_or(Value::Null),
                     "spl": spl,

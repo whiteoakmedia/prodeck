@@ -444,6 +444,11 @@ pub struct AudioInner {
     /// feedback guard.
     pub lapel: Mutex<Vec<f32>>,
     pub mc: Mutex<Vec<f32>>,
+    /// Multitrack recording: while a session runs, every callback's
+    /// interleaved block goes here (never waited on; a full queue drops the
+    /// block and counts it).
+    pub rec: Mutex<Option<std::sync::mpsc::SyncSender<Vec<f32>>>>,
+    pub rec_dropped: std::sync::atomic::AtomicU64,
     /// The stream mix (L, R interleaved), for the weekly stream report.
     pub stream: Mutex<Vec<f32>>,
     /// Rolling window of recent samples for spectrum analysis (not drained).
@@ -467,6 +472,8 @@ impl AudioInner {
             lapel: Mutex::new(Vec::new()),
             mc: Mutex::new(Vec::new()),
             stream: Mutex::new(Vec::new()),
+            rec: Mutex::new(None),
+            rec_dropped: std::sync::atomic::AtomicU64::new(0),
             analysis: Mutex::new(Vec::new()),
             device_name: Mutex::new(None),
             overflow_tx,
@@ -871,6 +878,15 @@ pub async fn start_audio_capture(
                             if buf.len() > cap {
                                 let excess = buf.len() - cap;
                                 buf.drain(0..excess);
+                            }
+                        }
+                        // Multitrack: hand the whole block over, don't wait.
+                        if let Ok(g) = inner_cb.rec.try_lock() {
+                            if let Some(tx) = g.as_ref() {
+                                let block: Vec<f32> = data.iter().map(|&x| f32::from_sample(x)).collect();
+                                if let Err(std::sync::mpsc::TrySendError::Full(_)) = tx.try_send(block) {
+                                    inner_cb.rec_dropped.fetch_add(1, Ordering::Relaxed);
+                                }
                             }
                         }
                         if !stream_s.is_empty() {

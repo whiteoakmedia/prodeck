@@ -68,6 +68,7 @@ import { Avatar, MicCard } from "../components/PcoBits";
 import { SongKeyLeader } from "../components/SongKeyLeader";
 import { KeyStrip } from "../components/KeyStrip";
 import { useAutomix } from "../automix";
+import { fmtClock as fmtRecClock, useRecorder } from "../recorder";
 import { useAutopilot } from "../autopilot";
 import { askConfirm, askText } from "../lib/dialogs";
 import { listenSnapshot, onListen, startListen, stopListen } from "../lib/listen";
@@ -3146,6 +3147,64 @@ function AutomixWidget() {
   );
 }
 
+// Multitrack recorder on the home screen: one big REC, how it's going, a marker.
+function RecorderWidget() {
+  const rec = useRecorder();
+  const [note, setNote] = useState("");
+  if (!rec) return <div className="muted small">Recording runs on the booth.</div>;
+  const l = rec.live;
+  return (
+    <div className="w-rec">
+      <div className="w-rec-top">
+        <button className={`btn w-rec-btn ${rec.recording ? "on" : ""}`} onClick={rec.recording ? rec.stop : rec.start}>
+          <span className="w-rec-dot" aria-hidden="true" />
+          {rec.recording ? "Stop" : "Record"}
+        </button>
+        <div className="w-rec-clock mono">{rec.recording ? fmtRecClock(l?.secs ?? 0) : "0:00:00"}</div>
+      </div>
+      {rec.recording && l ? (
+        <div className="w-rec-stats small">
+          <span className="chip online">{l.withSignal ?? 0}/{l.channels ?? 0} with signal</span>
+          <span className={`chip ${(l.hoursLeft ?? 99) < 3 ? "warn" : ""}`}>{l.freeGb} GB · ~{l.hoursLeft} h left</span>
+          {!!l.dropped && <span className="chip bad">{l.dropped} dropped</span>}
+        </div>
+      ) : rec.last ? (
+        <div className="w-rec-stats small muted">
+          Last: {rec.last.label} · {fmtRecClock(rec.last.secs)} · {rec.last.tracks} tracks
+          <button className="btn small ghost" onClick={rec.reveal}>
+            Show
+          </button>
+        </div>
+      ) : (
+        <div className="w-rec-stats small muted">Nothing recorded yet.</div>
+      )}
+      {rec.error && <div className="error small">{rec.error}</div>}
+      {rec.recording && l?.levels && (
+        <div className="w-rec-meters" aria-label="Input levels">
+          {l.levels.map((db, i) => (
+            <span key={i} className="w-rec-m" title={`In ${i + 1}: ${db.toFixed(0)} dBFS`} style={{ ["--h" as string]: `${Math.max(0, Math.min(100, ((db + 60) / 60) * 100))}%` }} />
+          ))}
+        </div>
+      )}
+      {rec.recording && (
+        <form
+          className="w-rec-mark"
+          onSubmit={(e) => {
+            e.preventDefault();
+            rec.marker(note);
+            setNote("");
+          }}
+        >
+          <input className="input" id="w-rec-note" placeholder="Marker (e.g. great take)" value={note} onChange={(e) => setNote(e.target.value)} />
+          <button className="btn small" type="submit">
+            Mark
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
 export const WIDGETS: WidgetDef[] = [
   // Mission Control — director overview
   { type: "health_strip", label: "System Health", group: "Mission Control", w: 12, h: 2, component: HealthStripWidget },
@@ -3174,6 +3233,7 @@ export const WIDGETS: WidgetDef[] = [
   { type: "avantis", label: "Sound Desk (Avantis)", group: "Audio", w: 6, h: 4, component: AvantisWidget },
   { type: "key_change", label: "Song Key → Waves", group: "Audio", w: 6, h: 2, component: KeyChangeWidget },
   { type: "automix", label: "Automix", group: "Audio", w: 4, h: 6, component: AutomixWidget },
+  { type: "recorder", label: "Multitrack Recorder", group: "Audio", w: 4, h: 4, component: RecorderWidget },
   { type: "readiness", label: "Sunday Readiness", group: "General", w: 4, h: 4, component: ReadinessWidget },
   // Video & Switcher
   { type: "obs", label: "OBS — Live & Scene", group: "Video", w: 4, h: 3, component: ObsWidget },

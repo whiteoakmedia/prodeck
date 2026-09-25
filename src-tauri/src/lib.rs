@@ -5,6 +5,7 @@ mod beat;
 mod rig;
 mod speech;
 mod streamrep;
+mod multitrack;
 mod backup;
 mod diag;
 mod keepalive;
@@ -274,6 +275,7 @@ pub fn run() {
         .manage(midi::MidiOutState::new())
         .manage(midi::KeySendState(std::sync::Mutex::new(serde_json::Value::Null)))
         .manage(follow::AutomixDeck(std::sync::Mutex::new(serde_json::Value::Null)))
+        .manage(multitrack::RecState::default())
         .manage(Arc::new(osc::OscInner::new()) as osc::OscState)
         .manage(Arc::new(pco::PcoInner::new()) as pco::PcoState)
         .manage(Arc::new(web::WebInner::new()) as web::WebState)
@@ -405,6 +407,12 @@ pub fn run() {
             follow::follow_timing_save,
             follow::follow_debug_log,
             streamrep::stream_reports_list,
+            multitrack::multitrack_start,
+            multitrack::multitrack_stop,
+            multitrack::multitrack_marker,
+            multitrack::multitrack_status,
+            multitrack::multitrack_volumes,
+            multitrack::multitrack_reveal,
             streamrep::stream_report_get,
             follow::automix_store_load,
             follow::automix_store_save,

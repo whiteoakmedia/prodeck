@@ -35,6 +35,7 @@ midir = "0.10"
 plist = "1"
 rosc = "0.10"
 hound = "3.5"
+libc = "0.2"
 base64 = "0.22"
 # RS256 signing for the GA4 service-account JWT (realtime viewer count).
 jsonwebtoken = { version = "9", default-features = false, features = ["use_pem"] }

@@ -170,6 +170,17 @@ pub struct Settings {
     /// What the encoder adds or takes away (the YouTube loudness minus the
     /// feed's), so the report can speak in stream terms.
     pub stream_report_offset_db: f32,
+    /// Multitrack recording. Volume: "" = this Mac (~/Music/ProDeck
+    /// Recordings), else a drive's mount point ("/Volumes/SSD") — recordings
+    /// go in its "ProDeck Recordings" folder; if it isn't plugged in, this Mac.
+    pub multitrack_volume: String,
+    /// Track names by input number ("9" → "Kick IN"); unnamed = "In 09".
+    pub multitrack_names: std::collections::HashMap<String, String>,
+    /// Start with the service (plan goes live / Playback plays) and stop
+    /// after it; manual keys always work.
+    pub multitrack_auto: bool,
+    /// Delete tracks that were digital silence the whole session.
+    pub multitrack_drop_silent: bool,
     /// Multi-channel (Dante) routing — 1-based channel numbers on the audio input
     /// device. The measurement engine (SPL/RTA/LUFS) mixes these channels; empty
     /// means "all channels" (legacy behaviour).
@@ -353,6 +364,10 @@ impl Default for Settings {
             stream_report_on: true,
             stream_report_channels: Vec::new(),
             stream_report_offset_db: 0.0,
+            multitrack_volume: String::new(),
+            multitrack_names: std::collections::HashMap::new(),
+            multitrack_auto: false,
+            multitrack_drop_silent: true,
             audio_measure_channels: Vec::new(),
             audio_overflow_channels: Vec::new(),
             audio_mic_channels: std::collections::HashMap::new(),

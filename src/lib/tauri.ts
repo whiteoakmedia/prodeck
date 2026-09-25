@@ -332,6 +332,10 @@ export interface Settings {
   stream_report_on: boolean;
   stream_report_channels: number[];
   stream_report_offset_db: number;
+  multitrack_volume: string;
+  multitrack_names: Record<string, string>;
+  multitrack_auto: boolean;
+  multitrack_drop_silent: boolean;
   audio_measure_channels: number[];
   audio_overflow_channels: number[];
   keysend_enabled: boolean;
@@ -632,6 +636,46 @@ export const followTimingSave = (timing: unknown) => invoke<void>("follow_timing
 export const automixStoreLoad = () => invoke<any>("automix_store_load");
 export const automixStoreSave = (store: unknown) => invoke<void>("automix_store_save", { store });
 export const automixSetState = (state: unknown) => invoke<void>("automix_set_state", { state });
+export interface RecVolume {
+  path: string;
+  name: string;
+  internal: boolean;
+  folder: string;
+  freeGb: number | null;
+  totalGb: number | null;
+}
+export interface RecLive {
+  recording: boolean;
+  id?: string;
+  dir?: string;
+  secs?: number;
+  channels?: number;
+  withSignal?: number;
+  freeGb?: number;
+  hoursLeft?: number;
+  dropped?: number;
+  levels?: number[];
+  error?: string | null;
+}
+export interface RecLast {
+  recording: false;
+  id: string;
+  label: string;
+  dir: string;
+  folders: string[];
+  secs: number;
+  tracks: number;
+  silentRemoved: number;
+  markers: number;
+  dropped: number;
+  note: string | null;
+}
+export const multitrackStart = (label: string) => invoke<{ dir: string; channels: number; note: string | null }>("multitrack_start", { label });
+export const multitrackStop = () => invoke<unknown>("multitrack_stop");
+export const multitrackMarker = (text: string) => invoke<number>("multitrack_marker", { text });
+export const multitrackStatus = () => invoke<{ recording: boolean; live: RecLive | null; last: RecLast | null }>("multitrack_status");
+export const multitrackVolumes = () => invoke<RecVolume[]>("multitrack_volumes");
+export const multitrackReveal = () => invoke<void>("multitrack_reveal");
 export const streamReportsList = () => invoke<import("./streamReport").StreamReportMeta[]>("stream_reports_list");
 export const streamReportGet = (id: string) => invoke<import("./streamReport").StreamReportData>("stream_report_get", { id });
 export const followDebugLog = (line: Record<string, unknown>) => invoke<void>("follow_debug_log", { line });
