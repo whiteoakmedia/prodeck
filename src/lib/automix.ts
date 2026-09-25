@@ -22,7 +22,7 @@ build: EGs 0, KEYs 0, Pad 0, Drums 0, ch 10 0, TRX 0, AGs 0, BGVs 0, Lead Voc 0,
 allin: EGs 0, KEYs 0, Pad 0, Drums 0, ch 10 0, TRX 0, AGs 0, BGVs 0, Lead Voc 0, All FX 0
 intro: EGs 0, KEYs 0, Pad 0, TRX 0, AGs 0
 instrumental: EGs 0, KEYs 0, Pad 0, TRX 0, AGs 0, Lead Voc 0
-outro: TRX -2, All FX +1`;
+outro: TRX -2, All FX -3`;
 
 /** "verse: EGs -3, KEYs -2" lines → { verse: { EGs: -3, KEYs: -2 } }. */
 export function parseRules(text: string): Record<string, Move> {
@@ -86,3 +86,38 @@ export function faderAt(p: Planned, from: Record<string, number>, t: number): Re
 }
 
 export { parseSection, type Section };
+
+// ---- the song's map: where each section starts, in beats from Play --------
+
+/** One section as it happened: the beat (from Playback's Start) it began
+ *  on, and what it was. Playback plays the same arrangement at the same
+ *  tempo every time, so next time the move can start ON the downbeat
+ *  instead of after the guide's call is read. */
+export interface MapSection {
+  beat: number;
+  key: string;
+}
+export interface SongMap {
+  name: string;
+  bpm: number;
+  sections: MapSection[];
+}
+
+/** The bar line (from Start) nearest a time. */
+export function barBeat(t: number, startT: number, beatMs: number, meter = 4): number {
+  return Math.max(0, Math.round((t - startT) / beatMs / meter) * meter);
+}
+
+/** Add a section to this run's map, ignoring the guide repeating itself
+ *  ("Interlude." … "Interlude." a bar later is still one interlude). */
+export function recordSection(run: MapSection[], s: MapSection): MapSection[] {
+  const last = run[run.length - 1];
+  if (last && last.key === s.key && s.beat - last.beat <= 8) return run;
+  return [...run, s];
+}
+
+/** Does a guide call agree with the map? A scheduled section of the same
+ *  kind within four bars of where the call lands. */
+export function confirms(map: MapSection[], key: string, beat: number): number {
+  return map.findIndex((s) => s.key === key && Math.abs(s.beat - beat) <= 16);
+}

@@ -1,9 +1,9 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { avantisSetFader, avantisSetMute, followDebugLog, IS_WEB, on, type AvantisSnapshot } from "./lib/tauri";
+import { automixStoreLoad, automixStoreSave, avantisSetFader, avantisSetMute, followDebugLog, IS_WEB, on, type AvantisSnapshot } from "./lib/tauri";
 import { useProDeck } from "./store";
 import { usePco } from "./pcoStore";
 import { BeatClock, type BeatEvent } from "./lib/rig";
-import { cueKey, DEFAULT_RULES, faderAt, parseRules, plan, type Planned } from "./lib/automix";
+import { barBeat, confirms, cueKey, DEFAULT_RULES, faderAt, parseRules, plan, recordSection, type MapSection, type Planned, type SongMap } from "./lib/automix";
 import { dbToRaw, rawToDb } from "./lib/autopilotMix";
 
 /** What the automix may move: DCAs, groups (mono and stereo), and input
@@ -35,7 +35,25 @@ const C = createContext<Ctx | null>(null);
 export const useAutomix = () => useContext(C);
 
 export function AutomixProvider({ children }: { children: ReactNode }) {
-  const { settings } = useProDeck();
+  const { settings, status: ppStatus } = useProDeck();
+  // The song is whatever ProPresenter has up (rehearsal has no live plan).
+  const songRef = useRef<{ id: string; name: string } | null>(null);
+  {
+    const p = (ppStatus.activePresentation as any)?.presentation?.id;
+    songRef.current = p?.uuid ? { id: p.uuid, name: p.name ?? "" } : null;
+  }
+  // Per-song memory: section maps (beats from Play) and chorus levels.
+  const store = useRef<{ maps: Record<string, SongMap>; homes: Record<string, Record<string, number>> }>({ maps: {}, homes: {} });
+  useEffect(() => {
+    if (IS_WEB) return;
+    automixStoreLoad()
+      .then((v) => (store.current = { maps: v?.maps ?? {}, homes: v?.homes ?? {} }))
+      .catch(() => {});
+  }, []);
+  const saveStore = () => automixStoreSave(store.current).catch(() => {});
+  // This run of the song (from Playback's Start).
+  const run = useRef<{ startT: number; song: { id: string; name: string } | null; sections: MapSection[] } | null>(null);
+  const schedule = useRef<(MapSection & { done: boolean })[] | null>(null);
   const { liveItemId, items } = usePco();
   const [armed, setArmed] = useState(false);
   const armedRef = useRef(false);
@@ -73,7 +91,39 @@ export function AutomixProvider({ children }: { children: ReactNode }) {
     setLog((l) => [{ at: Date.now(), text }, ...l].slice(0, 50));
     followDebugLog({ kind: "automix", text }).catch(() => {});
   };
-  const songName = () => items.find((i) => i.id === liveItemId)?.title ?? "";
+  const songName = () => run.current?.song?.name || songRef.current?.name || items.find((i) => i.id === liveItemId)?.title || "";
+
+  /** Leaving a chorus: these are the operator's chorus levels for this song. */
+  const sectionChanged = (next: string) => {
+    const song = run.current?.song ?? songRef.current;
+    if (lastKey.current === "chorus" && next !== "chorus" && song) {
+      const snap: Record<string, number> = {};
+      for (const [name, id] of Object.entries(names.current)) {
+        if (!Object.values(rulesRef.current).some((m) => name in m)) continue;
+        const raw = faders.current[id];
+        if (raw != null) snap[name] = Math.round(rawToDb(raw) * 10) / 10;
+      }
+      if (Object.keys(snap).length) store.current.homes[song.id] = { ...(store.current.homes[song.id] ?? {}), ...snap };
+    }
+    lastKey.current = next;
+  };
+
+  /** Start a move now or on its downbeat. */
+  const startMove = (key: string, at: number, why: string) => {
+    const P = clock.current.period ?? 600;
+    const p = plan(key, rulesRef.current, home.current, letGo.current, at, P);
+    if (!p) {
+      say(`${why} — no move for ${key}.`);
+      return;
+    }
+    active.current = { p, from: null };
+    setPending(p);
+    const desc = Object.entries(p.targets)
+      .map(([n, db]) => `${n} ${(db - (home.current[n] ?? db)).toFixed(1)}`)
+      .join(", ");
+    const inS = (at - Date.now()) / 1000;
+    say(`${why} → ${key}: ${desc || "—"} ${inS > 0.05 ? `on the downbeat in ${inS.toFixed(1)} s` : "now"}.`);
+  };
 
   // The desk: names, positions, and a person's hand on a DCA we drive.
   useEffect(() => {
@@ -139,10 +189,36 @@ export function AutomixProvider({ children }: { children: ReactNode }) {
       clock.current.onMidiStart(b.t);
       lastClockAt.current = Date.now();
       fxMute(false, "Playback started the song");
+      const song = songRef.current;
+      run.current = { startT: b.t, song, sections: [] };
+      lastKey.current = "";
+      letGo.current.clear();
+      schedule.current = null;
+      if (!armedRef.current || !song) return;
+      // Your chorus levels for this song, if it has seen you mix it.
+      const h = store.current.homes[song.id];
+      if (h) {
+        home.current = { ...home.current, ...h };
+        say(`${song.name}: home = your chorus levels from last time (${Object.entries(h).map(([n, db]) => `${n} ${db.toFixed(1)}`).join(", ")}).`);
+      }
+      const map = store.current.maps[song.id];
+      if (map?.sections?.length) {
+        schedule.current = map.sections.map((x) => ({ ...x, done: false }));
+        say(`${song.name}: moves will land on the beat from last time's map (${map.sections.length} sections); the guide checks it.`);
+      }
     });
     const x = on("follow:mstop", () => {
       clock.current.onMidiStop();
       fxMute(true, "Playback stopped — the song ended");
+      const r = run.current;
+      run.current = null;
+      schedule.current = null;
+      sectionChanged("");
+      if (r?.song && r.sections.length >= 3) {
+        store.current.maps[r.song.id] = { name: r.song.name, bpm: clock.current.bpm() ?? 0, sections: r.sections };
+        say(`Learned ${r.song.name}'s map: ${r.sections.length} sections.`);
+      }
+      saveStore();
     });
     return () => {
       [a, m, s, x].forEach((u) => u.then((f) => f()));
@@ -157,21 +233,25 @@ export function AutomixProvider({ children }: { children: ReactNode }) {
       const key = cueKey(c.text);
       if (!key) return;
       setLast(`${c.text} → ${key}`);
-      if (!armedRef.current) return;
-      lastKey.current = key;
       const P = clock.current.period ?? 600;
       const at = (clock.current.hasBar() ? clock.current.nextDownbeat(c.t0 + 1.5 * P) : null) ?? c.t1 + 4 * P;
-      const p = plan(key, rulesRef.current, home.current, letGo.current, at, P);
-      if (!p) {
-        say(`Heard "${c.text}" — no move for ${key}.`);
+      // Record it in this run's map (learned whether armed or not).
+      const r = run.current;
+      const beat = r && clock.current.period ? barBeat(at, r.startT, P, clock.current.meter) : null;
+      if (r && beat != null) r.sections = recordSection(r.sections, { beat, key });
+      if (!armedRef.current) {
+        sectionChanged(key);
         return;
       }
-      active.current = { p, from: null };
-      setPending(p);
-      const desc = Object.entries(p.targets)
-        .map(([n, db]) => `${n} ${(db - (home.current[n] ?? db)).toFixed(1)}`)
-        .join(", ");
-      say(`Heard "${c.text}" → ${key}: ${desc} (from your positions) on the downbeat in ${Math.max(0, (at - Date.now()) / 1000).toFixed(1)} s.`);
+      // The map already has it: the move was (or will be) on the beat.
+      if (schedule.current && beat != null) {
+        const i = confirms(schedule.current, key, beat);
+        if (i >= 0) return;
+        schedule.current = null;
+        say(`The band went a different way (guide said "${c.text}", the map expected otherwise) — following the guide for the rest of this song.`);
+      }
+      sectionChanged(key);
+      startMove(key, at, `Heard "${c.text}"`);
     });
     return () => {
       u.then((f) => f());
@@ -197,9 +277,24 @@ export function AutomixProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!armed) return;
     const iv = setInterval(() => {
+      const now = Date.now();
+      // The song's map: start each section's move on its downbeat.
+      const sch = schedule.current;
+      const r = run.current;
+      const P = clock.current.period;
+      if (sch && r && P) {
+        for (const x of sch) {
+          if (x.done) continue;
+          const due = r.startT + x.beat * P;
+          if (now < due - 40) break;
+          x.done = true;
+          if (now - due > 4 * P) continue; // long gone (armed mid-song)
+          sectionChanged(x.key);
+          startMove(x.key, due, "On the beat (song map)");
+        }
+      }
       const a = active.current;
       if (!a) return;
-      const now = Date.now();
       if (now < a.p.at) return;
       if (!a.from) {
         a.from = {};

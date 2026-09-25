@@ -127,3 +127,24 @@ pub fn follow_debug_log(line: Value) {
         let _ = writeln!(f, "{line}");
     }
 }
+
+fn automix_path() -> std::path::PathBuf {
+    config_dir().join("automix.json")
+}
+
+/// The automix's memory per song: where each section starts (beats from
+/// Playback's Start) and the operator's chorus levels.
+#[tauri::command]
+pub fn automix_store_load() -> Value {
+    std::fs::read_to_string(automix_path())
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_else(|| json!({ "maps": {}, "homes": {} }))
+}
+
+#[tauri::command]
+pub fn automix_store_save(store: Value) -> Result<(), String> {
+    let tmp = automix_path().with_extension("json.tmp");
+    std::fs::write(&tmp, serde_json::to_vec_pretty(&store).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+    std::fs::rename(&tmp, automix_path()).map_err(|e| e.to_string())
+}

@@ -40,3 +40,28 @@ describe("a move", () => {
     expect(p.targets).toEqual({ Drums: -5 }); // breakdown: drums only -2 now
   });
 });
+
+import { barBeat, confirms, recordSection } from "../lib/automix";
+
+describe("the song's map", () => {
+  it("records sections on bar lines and ignores the guide repeating itself", () => {
+    const P = 857; // 70 BPM
+    expect(barBeat(10_000 + 31.6 * P, 10_000, P)).toBe(32);
+    let run = recordSection([], { beat: 8, key: "verse" });
+    run = recordSection(run, { beat: 12, key: "verse" }); // same call a bar later
+    run = recordSection(run, { beat: 40, key: "chorus" });
+    expect(run).toEqual([
+      { beat: 8, key: "verse" },
+      { beat: 40, key: "chorus" },
+    ]);
+  });
+  it("a guide call confirms the map within four bars, or tells us the band went elsewhere", () => {
+    const map = [
+      { beat: 8, key: "verse" },
+      { beat: 40, key: "chorus" },
+      { beat: 72, key: "verse" },
+    ];
+    expect(confirms(map, "chorus", 44)).toBe(1);
+    expect(confirms(map, "bridge", 72)).toBe(-1);
+  });
+});

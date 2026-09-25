@@ -621,6 +621,8 @@ export const followComplete = (body: unknown) => invoke<any>("follow_complete", 
 export const followTimingLoad = () => invoke<Record<string, any>>("follow_timing_load");
 export const followTimingSave = (timing: unknown) => invoke<void>("follow_timing_save", { timing });
 /** One line in <data>/follow-debug/events.jsonl (armed / Pro moved / Follow moved or would have). */
+export const automixStoreLoad = () => invoke<any>("automix_store_load");
+export const automixStoreSave = (store: unknown) => invoke<void>("automix_store_save", { store });
 export const followDebugLog = (line: Record<string, unknown>) => invoke<void>("follow_debug_log", { line });
 
 // ---------------------------------------------------------------------------

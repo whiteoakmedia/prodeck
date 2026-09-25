@@ -401,6 +401,8 @@ pub fn run() {
             follow::follow_timing_load,
             follow::follow_timing_save,
             follow::follow_debug_log,
+            follow::automix_store_load,
+            follow::automix_store_save,
             transcription::stop_transcription,
             // Gemini smart matching
             gemini::gemini_pick_slide,

@@ -86,6 +86,22 @@ export function AutopilotProvider({ children }: { children: ReactNode }) {
   };
   const lastRaw = useRef(new Map<string, number>());
 
+  /** A desk command, retried every 2 s for up to 30 s — after a ProDeck
+   *  restart the desk link takes a moment, and a transition mic must still
+   *  open (rehearsal, 24 Sep: "not connected to the console", twice). */
+  const retry = async (f: () => Promise<unknown>, what: string) => {
+    for (let k = 0; k < 15; k++) {
+      try {
+        await f();
+        return true;
+      } catch (e) {
+        if (k === 0) say(`${what} — the desk isn't answering yet, retrying.`);
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+    }
+    say(`${what} — gave up after 30 s: ${"the desk never answered"}.`);
+    return false;
+  };
   const act = (acts: SpeechAction[]) => {
     for (const a of acts) {
       const c = cfg.current;
@@ -101,7 +117,7 @@ export function AutopilotProvider({ children }: { children: ReactNode }) {
           frozen.current.delete(c.lapel);
           setLetGo((l) => l.filter((x) => x !== c.lapel));
           ride.current = new LapelRide(c.lapelHome, c.message);
-          avantisSetMute(c.lapel, false).catch(() => {});
+          retry(() => avantisSetMute(c.lapel, false), "Unmuting the lapel");
           ramp(c.lapel, from, dbToRaw(c.lapelHome)).then(() => say(`Lapel up to ${c.lapelHome} dB: ${a.reason}.`));
         } else {
           ride.current = null;
@@ -109,9 +125,9 @@ export function AutopilotProvider({ children }: { children: ReactNode }) {
         }
         continue;
       }
-      avantisSetMute(c.mc, a.type === "close")
-        .then(() => say(`${a.type === "open" ? "Opened" : "Closed"} ${name}: ${a.reason}.`))
-        .catch((e) => say(`Couldn't ${a.type} ${name}: ${String(e)}`));
+      retry(() => avantisSetMute(c.mc, a.type === "close"), `${a.type === "open" ? "Opening" : "Closing"} ${name}`).then((ok) => {
+        if (ok) say(`${a.type === "open" ? "Opened" : "Closed"} ${name}: ${a.reason}.`);
+      });
     }
   };
 
