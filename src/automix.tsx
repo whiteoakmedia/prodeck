@@ -6,8 +6,9 @@ import { BeatClock, type BeatEvent } from "./lib/rig";
 import { cueKey, DEFAULT_RULES, faderAt, parseRules, plan, type Planned } from "./lib/automix";
 import { dbToRaw, rawToDb } from "./lib/autopilotMix";
 
-/** What the automix may move: DCAs and groups (mono and stereo). */
-const MIXABLE = /^(dca|grp|sgrp):/;
+/** What the automix may move: DCAs, groups (mono and stereo), and input
+ *  channels — those by number ("ch 10"), since desk names repeat. */
+const MIXABLE = /^(dca|grp|sgrp|input):/;
 
 // The automix, live (see lib/automix.ts). Armed by hand, never at launch:
 // arming captures the operator's current DCA positions as home. Booth only.
@@ -45,7 +46,8 @@ export function AutomixProvider({ children }: { children: ReactNode }) {
   const [bpm, setBpm] = useState<number | null>(null);
   const [tick, setTick] = useState(0);
   const clock = useRef(new BeatClock());
-  const names = useRef<Record<string, string>>({}); // dca name → id
+  const names = useRef<Record<string, string>>({}); // dca/group name, or "ch N" → id
+  const deskName = useRef<Record<string, string>>({}); // input id → its name on the desk
   const faders = useRef<Record<string, number>>({}); // id → raw
   const home = useRef<Record<string, number>>({}); // name → dB
   const letGo = useRef(new Set<string>());
@@ -80,6 +82,11 @@ export function AutomixProvider({ children }: { children: ReactNode }) {
       if (!s) return;
       const now = Date.now();
       for (const [id, nm] of Object.entries(s.names ?? {})) {
+        if (id.startsWith("input:")) {
+          names.current[`ch ${id.slice(6)}`] = id;
+          deskName.current[id] = String(nm ?? "");
+          continue;
+        }
         if (!MIXABLE.test(id) || !nm) continue;
         // A DCA and a group can share a name ("Drums"): the DCA wins — that's
         // what the operator mixes from.
@@ -90,6 +97,7 @@ export function AutomixProvider({ children }: { children: ReactNode }) {
       const since = s.connectedAt ?? Infinity;
       for (const [id, raw] of Object.entries(s.faders ?? {})) {
         if (raw == null || !MIXABLE.test(id)) continue;
+        if (id.startsWith("input:") && !names.current[`ch ${id.slice(6)}`]) names.current[`ch ${id.slice(6)}`] = id;
         // Only a position the desk reported this connection is the
         // operator's; a cached one may be days old.
         if ((s.faderSeen?.[id] ?? 0) < since) continue;
@@ -222,7 +230,7 @@ export function AutomixProvider({ children }: { children: ReactNode }) {
   const dcas: DcaInfo[] = Object.entries(names.current)
     .filter(([n]) => Object.values(rulesRef.current).some((m) => n in m))
     .map(([name, id]) => ({
-      name,
+      name: id.startsWith("input:") && deskName.current[id] ? `${name} ${deskName.current[id]}` : name,
       id,
       home: home.current[name] ?? null,
       now: faders.current[id] != null ? rawToDb(faders.current[id]) : null,
@@ -235,7 +243,11 @@ export function AutomixProvider({ children }: { children: ReactNode }) {
     arm: () => {
       home.current = {};
       letGo.current.clear();
-      for (const d of dcas) if (d.now != null) home.current[d.name] = d.now;
+      for (const [name, id] of Object.entries(names.current)) {
+        if (!Object.values(rulesRef.current).some((m) => name in m)) continue;
+        const raw = faders.current[id];
+        if (raw != null) home.current[name] = rawToDb(raw);
+      }
       setArmed(true);
       say(`Armed. Home = your positions now: ${Object.entries(home.current).map(([n, db]) => `${n} ${db.toFixed(1)}`).join(", ") || "none known — move each DCA once"}.`);
     },
