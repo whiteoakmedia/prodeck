@@ -31,6 +31,7 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState("");
   const auto = useRef<AutoState>({ recording: false, autoStarted: false, lastBusy: 0, suppressed: false });
   const clockAt = useRef(0);
+  const retryAt = useRef(0);
   const liveRef = useRef<string | null>(null);
   liveRef.current = liveItemId;
   const planTitle = plans.find((p) => p.id === selectedPlanId)?.title ?? null;
@@ -108,7 +109,10 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
       if (it) multitrackMarker(`${it.type === "song" ? "Song" : "Item"}: ${it.title}`).catch(() => {});
     } catch (e) {
       setError(String(e));
-      if (autoStarted) auto.current.suppressed = true; // don't retry every second
+      // Not recording after all. An automatic start tries again in 15 s: at
+      // launch Planning Center LIVE is back before audio capture is running.
+      auto.current = { ...auto.current, recording: false, autoStarted: false };
+      if (autoStarted) retryAt.current = Date.now() + 15_000;
     }
   }
   async function doStop(byHand: boolean) {
@@ -127,6 +131,7 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
     const iv = setInterval(() => {
       if (!autoOn.current) return;
       const now = Date.now();
+      if (now < retryAt.current) return;
       const busy = !!liveRef.current || now - clockAt.current < 15_000;
       const r = decide(auto.current, busy, now);
       auto.current = r.state;
