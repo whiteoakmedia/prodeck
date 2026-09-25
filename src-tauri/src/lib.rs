@@ -4,6 +4,7 @@ mod avantis;
 mod beat;
 mod rig;
 mod speech;
+mod streamrep;
 mod backup;
 mod diag;
 mod keepalive;
@@ -272,6 +273,7 @@ pub fn run() {
         .manage(midi::MidiState::new())
         .manage(midi::MidiOutState::new())
         .manage(midi::KeySendState(std::sync::Mutex::new(serde_json::Value::Null)))
+        .manage(follow::AutomixDeck(std::sync::Mutex::new(serde_json::Value::Null)))
         .manage(Arc::new(osc::OscInner::new()) as osc::OscState)
         .manage(Arc::new(pco::PcoInner::new()) as pco::PcoState)
         .manage(Arc::new(web::WebInner::new()) as web::WebState)
@@ -306,6 +308,7 @@ pub fn run() {
             avantis::spawn_mirror(app.handle().clone());
             netmidi::spawn_keeper(app.handle().clone());
             speech::spawn(app.handle().clone());
+            streamrep::spawn(app.handle().clone());
             rig::spawn_always(app.handle().clone());
             avantis::spawn_watch_flush(app.handle().clone());
             obs::spawn_client(app.handle().clone());
@@ -401,8 +404,11 @@ pub fn run() {
             follow::follow_timing_load,
             follow::follow_timing_save,
             follow::follow_debug_log,
+            streamrep::stream_reports_list,
+            streamrep::stream_report_get,
             follow::automix_store_load,
             follow::automix_store_save,
+            follow::automix_set_state,
             transcription::stop_transcription,
             // Gemini smart matching
             gemini::gemini_pick_slide,

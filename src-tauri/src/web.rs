@@ -669,6 +669,13 @@ async fn handle_conn(
                 else { crate::tap::override_core(&app, Some(text.clone())).await.map(|_| json!({"held": text})) }
             }
             "tap-auto" => crate::tap::resume_core(&app).await.map(|_| json!({"resumed": true})),
+            // Automix keys: the booth's automix does the work (it owns the
+            // desk moves); these just ask.
+            "automix-toggle" | "automix-arm" | "automix-disarm" | "automix-hold" | "automix-home" => {
+                let cmd = action.trim_start_matches("automix-");
+                crate::follow::automix_command(&app, cmd);
+                Ok(json!({ "sent": cmd }))
+            }
             // Song key → Waves by hand: &text=G (C, C#/Db … B) or &text=off
             // (Tune off). The booth's key-send loop does the sending, with
             // its own dedupe and reconnect — same path as a phone's press.
@@ -922,7 +929,9 @@ async fn handle_conn(
                         "rig": v.pointer("/rtp/connected").and_then(|x| x.as_bool()),
                     })
                 };
+                let automix = app.state::<crate::follow::AutomixDeck>().0.lock().unwrap_or_else(|p| p.into_inner()).clone();
                 Ok(json!({
+                    "automix": automix,
                     "songKey": song_key,
                     "tap": tap.get("state").cloned().unwrap_or(Value::Null),
                     "spl": spl,

@@ -148,3 +148,19 @@ pub fn automix_store_save(store: Value) -> Result<(), String> {
     std::fs::write(&tmp, serde_json::to_vec_pretty(&store).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
     std::fs::rename(&tmp, automix_path()).map_err(|e| e.to_string())
 }
+
+/// The automix's state as the booth frontend publishes it (armed, held, last
+/// move…), for deck-state readouts; and deck commands back to it.
+pub struct AutomixDeck(pub Mutex<Value>);
+
+#[tauri::command]
+pub fn automix_set_state(state: Value, st: tauri::State<'_, AutomixDeck>) {
+    *st.0.lock().unwrap_or_else(|p| p.into_inner()) = state;
+}
+
+/// A Stream Deck key asked the automix to do something ("toggle", "hold",
+/// "home", "arm", "disarm"); the booth frontend's automix carries it out.
+pub fn automix_command(app: &tauri::AppHandle, cmd: &str) {
+    use tauri::Emitter;
+    app.emit("automix:command", json!({ "cmd": cmd })).ok();
+}

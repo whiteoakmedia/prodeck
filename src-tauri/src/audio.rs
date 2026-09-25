@@ -37,7 +37,7 @@ const RTA_BANDS: usize = 28;
 // ---------------------------------------------------------------------------
 
 #[derive(Clone)]
-struct Biquad {
+pub(crate) struct Biquad {
     b0: f64,
     b1: f64,
     b2: f64,
@@ -50,11 +50,11 @@ struct Biquad {
 }
 
 impl Biquad {
-    fn new(b0: f64, b1: f64, b2: f64, a1: f64, a2: f64) -> Self {
+    pub(crate) fn new(b0: f64, b1: f64, b2: f64, a1: f64, a2: f64) -> Self {
         Self { b0, b1, b2, a1, a2, x1: 0.0, x2: 0.0, y1: 0.0, y2: 0.0 }
     }
     #[inline]
-    fn process(&mut self, x: f64) -> f64 {
+    pub(crate) fn process(&mut self, x: f64) -> f64 {
         let y = self.b0 * x + self.b1 * self.x1 + self.b2 * self.x2
             - self.a1 * self.y1
             - self.a2 * self.y2;
@@ -68,7 +68,7 @@ impl Biquad {
 
 // K-weighting pre-filter (high shelf) + RLB high-pass, derived for the actual
 // sample rate via the bilinear transform (so it's correct at 44.1k, 48k, etc.).
-fn kweight_filters(fs: f64) -> (Biquad, Biquad) {
+pub(crate) fn kweight_filters(fs: f64) -> (Biquad, Biquad) {
     use std::f64::consts::PI;
     // Stage 1 — high shelf.
     let f0 = 1681.9744509555319;
@@ -444,6 +444,8 @@ pub struct AudioInner {
     /// feedback guard.
     pub lapel: Mutex<Vec<f32>>,
     pub mc: Mutex<Vec<f32>>,
+    /// The stream mix (L, R interleaved), for the weekly stream report.
+    pub stream: Mutex<Vec<f32>>,
     /// Rolling window of recent samples for spectrum analysis (not drained).
     pub analysis: Mutex<Vec<f32>>,
     pub device_name: Mutex<Option<String>>,
@@ -464,6 +466,7 @@ impl AudioInner {
             guide: Mutex::new(Vec::new()),
             lapel: Mutex::new(Vec::new()),
             mc: Mutex::new(Vec::new()),
+            stream: Mutex::new(Vec::new()),
             analysis: Mutex::new(Vec::new()),
             device_name: Mutex::new(None),
             overflow_tx,
@@ -477,6 +480,10 @@ impl AudioInner {
     pub fn drain_speech(&self, lapel: bool) -> (Vec<f32>, u32) {
         let m = if lapel { &self.lapel } else { &self.mc };
         let mut buf = m.lock().unwrap_or_else(|p| p.into_inner());
+        (std::mem::take(&mut *buf), self.sample_rate.load(Ordering::Relaxed))
+    }
+    pub fn drain_stream(&self) -> (Vec<f32>, u32) {
+        let mut buf = self.stream.lock().unwrap_or_else(|p| p.into_inner());
         (std::mem::take(&mut *buf), self.sample_rate.load(Ordering::Relaxed))
     }
     pub fn drain_guide(&self) -> (Vec<f32>, u32) {
@@ -683,6 +690,16 @@ pub async fn start_audio_capture(
         let one = |c: u32| (c as usize).checked_sub(1).filter(|&i| i < channels);
         (one(s.follow_click_channel), one(s.follow_guide_channel), one(s.autopilot_lapel_audio), one(s.autopilot_mc_audio))
     };
+    // The stream mix's left and right (one channel = mono, both sides).
+    let stream_idx: Option<(usize, usize)> = {
+        let s = settings.lock().unwrap_or_else(|p| p.into_inner());
+        let one = |c: u32| (c as usize).checked_sub(1).filter(|&i| i < channels);
+        match (s.stream_report_on, s.stream_report_channels.as_slice()) {
+            (true, [l, r, ..]) => one(*l).zip(one(*r)),
+            (true, [m]) => one(*m).map(|i| (i, i)),
+            _ => None,
+        }
+    };
     let (measure_idx, overflow_idx, caption_idx) = {
         let s = settings.lock().unwrap_or_else(|p| p.into_inner());
         // What Follow/captions hear: their own channels, else the Listen feed
@@ -732,6 +749,10 @@ pub async fn start_audio_capture(
         // Per-channel peak over the emit window — lets the channel-routing UI
         // show which inputs actually carry signal.
         let mut chan_peak: Vec<f32> = vec![0.0; channels.max(1)];
+        // Per-channel mean square over the same ~83 ms (the automix reads
+        // players' levels from their direct outs).
+        let mut chan_sq: Vec<f32> = vec![0.0; channels.max(1)];
+        let mut chan_n: usize = 0;
 
         macro_rules! handle {
             ($t:ty) => {{
@@ -754,6 +775,7 @@ pub async fn start_audio_capture(
                         let mut click_s: Vec<f32> = Vec::with_capacity(if click_idx.is_some() { frames } else { 0 });
                         let mut guide_s: Vec<f32> = Vec::with_capacity(if guide_idx.is_some() { frames } else { 0 });
                         let mut lapel_s: Vec<f32> = Vec::with_capacity(if lapel_idx.is_some() { frames } else { 0 });
+                        let mut stream_s: Vec<f32> = Vec::with_capacity(if stream_idx.is_some() { frames * 2 } else { 0 });
                         let mut mc_s: Vec<f32> = Vec::with_capacity(if mc_idx.is_some() { frames } else { 0 });
                         let mut overflow_pcm: Vec<i16> =
                             Vec::with_capacity(if overflow_idx.is_empty() { 0 } else { frames });
@@ -766,7 +788,9 @@ pub async fn start_audio_capture(
                                 if v > chan_peak[c] {
                                     chan_peak[c] = v;
                                 }
+                                chan_sq[c] += v * v;
                             }
+                            chan_n += 1;
                             // Measurement mono mix: configured channels, or all
                             // channels when none are configured (legacy).
                             let s = if measure_idx.is_empty() {
@@ -807,6 +831,10 @@ pub async fn start_audio_capture(
                             if let Some(i) = mc_idx {
                                 mc_s.push(f32::from_sample(data[base + i]));
                             }
+                            if let Some((l, r)) = stream_idx {
+                                stream_s.push(f32::from_sample(data[base + l]));
+                                stream_s.push(f32::from_sample(data[base + r]));
+                            }
                             if !caption_idx.is_empty() {
                                 let mut acc = 0.0f32;
                                 for &i in caption_idx.iter() {
@@ -843,6 +871,15 @@ pub async fn start_audio_capture(
                             if buf.len() > cap {
                                 let excess = buf.len() - cap;
                                 buf.drain(0..excess);
+                            }
+                        }
+                        if !stream_s.is_empty() {
+                            let mut b = inner_cb.stream.lock().unwrap_or_else(|p| p.into_inner());
+                            b.extend_from_slice(&stream_s);
+                            let cap = sr * 2 * 30;
+                            if b.len() > cap {
+                                let excess = b.len() - cap;
+                                b.drain(0..excess);
                             }
                         }
                         for (dst, src) in [(&inner_cb.click, &click_s), (&inner_cb.guide, &guide_s), (&inner_cb.lapel, &lapel_s), (&inner_cb.mc, &mc_s)] {
@@ -918,6 +955,13 @@ pub async fn start_audio_capture(
                             let chans: Vec<f32> =
                                 chan_peak.iter().map(|p| p.min(1.0)).collect();
                             app_cb.emit("audio:channels", &chans).ok();
+                            let n = chan_n.max(1) as f32;
+                            let rms_db: Vec<f32> = chan_sq.iter().map(|q| (20.0 * ((q / n).sqrt().max(1e-6)).log10() * 10.0).round() / 10.0).collect();
+                            app_cb.emit("audio:channels_rms", &rms_db).ok();
+                            for q in chan_sq.iter_mut() {
+                                *q = 0.0;
+                            }
+                            chan_n = 0;
                             emit_frames = 0;
                             emit_sumsq = 0.0;
                             sumsq_a = 0.0;

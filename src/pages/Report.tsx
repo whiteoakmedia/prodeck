@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { StreamReportCard } from "../components/StreamReport";
 import { usePco } from "../pcoStore";
 import { useTracking, type ServiceHistory } from "../trackingStore";
 import { Icon } from "../components/Icon";
@@ -845,6 +846,7 @@ export function Report() {
           </div>
         </section>
       )}
+      <StreamReportCard />
     </div>
   );
 }

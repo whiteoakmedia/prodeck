@@ -3376,6 +3376,8 @@ function AutopilotCard({ form, set }: { form: Settings; set: <K extends keyof Se
   );
 }
 
+const fmtDb = (d: number) => `${d > 0 ? "+" : ""}${d} dB`;
+
 function AutomixCard({ form, set }: { form: Settings; set: <K extends keyof Settings>(k: K, v: Settings[K]) => void }) {
   const am = useAutomix();
   const [now, setNow] = useState(Date.now());
@@ -3393,17 +3395,22 @@ function AutomixCard({ form, set }: { form: Settings; set: <K extends keyof Sett
       </div>
       <p className="muted small">
         Instrument moves at the right moments — never the main faders, never because it's loud. The guide calls the
-        moment (Verse, Chorus, Bridge, Breakdown, Build, All in), the MIDI clock finds the downbeat, and your DCAs move
-        by the amounts below <em>from your own positions</em>, with a one-bar fade (Build ramps over four bars). Arm it
-        with your mix where you want it: that's home. Touch any DCA and it lets go of that one for the rest of the song.
-        Every move you make is recorded so it can learn your habits. The FX DCA is muted when a song ends (Playback
-        stops, or the plan leaves the songs) and unmuted when the next song starts.
+        moment (Verse, Chorus, Bridge, Breakdown, Build, All in), the MIDI clock finds the downbeat, and your faders
+        move by the amounts below <em>from your own positions</em>, fading so they land on the downbeat (Build ramps
+        over four bars). A second and third Bridge or Chorus climb by the <code>repeat</code> line. Arm it with your
+        chorus mix: that's home (and each song remembers your chorus levels). Touch any fader and it lets go of that
+        one for the rest of the song; Hold freezes everything. The BGVs group tucks when no backing singer is singing,
+        and the instrument feeds let it lift whoever carries an instrumental and trim one that digs in (never drums or
+        bass). The FX DCA mutes when a song ends and unmutes when the next starts. Stream Deck: MIX page.
       </p>
       <div className="controls-row">
         {am.armed ? (
           <>
             <button className="btn danger" onClick={am.disarm}>
               Disarm
+            </button>
+            <button className={`btn ${am.held ? "primary" : ""}`} onClick={am.toggleHold}>
+              {am.held ? "Release hold" : "Hold"}
             </button>
             <button className="btn" onClick={am.goHome}>
               Back to my positions
@@ -3426,8 +3433,30 @@ function AutomixCard({ form, set }: { form: Settings; set: <K extends keyof Sett
       </ul>
       <p className="muted small">
         {am.last ? `Last guide call: ${am.last}` : "No guide call heard yet."}
-        {am.pending ? ` · next move (${am.pending.key}) in ${Math.max(0, (am.pending.at - now) / 1000).toFixed(1)} s` : ""}
+        {am.pending ? ` · ${am.pending.key} lands in ${Math.max(0, (am.pending.at - now) / 1000).toFixed(1)} s` : ""}
+        {am.bgv.on ? ` · BGVs: ${am.bgv.lead ? (am.bgv.singing ? "singing" : "tucked") : "no leader scene yet"}` : ""}
+        {am.nudges.length ? ` · nudges: ${am.nudges.join(", ")}` : ""}
       </p>
+      {am.suggestions.length > 0 && (
+        <div className="am-review">
+          <h4>Learned from you</h4>
+          <p className="muted small">Where you kept moving a fader somewhere else than the automix did, in the same part of the same song.</p>
+          <ul className="ap-preview-list small">
+            {am.suggestions.map((sg) => (
+              <li key={`${sg.song}|${sg.key}|${sg.fader}`}>
+                <strong>{sg.songName}</strong> · {sg.key} · {sg.fader}: {fmtDb(sg.current)} → <strong>{fmtDb(sg.suggested)}</strong>{" "}
+                <span className="muted">({sg.n}×)</span>{" "}
+                <button className="btn small primary" onClick={() => am.accept(sg)}>
+                  Keep
+                </button>{" "}
+                <button className="btn small" onClick={() => am.dismiss(sg)}>
+                  Dismiss
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <label className="field">
         <span>FX to mute between songs (DCA name, empty = off)</span>
         <input className="input" value={form.automix_fx_mute ?? "All FX"} onChange={(e) => set("automix_fx_mute", e.target.value)} />
@@ -3435,6 +3464,28 @@ function AutomixCard({ form, set }: { form: Settings; set: <K extends keyof Sett
       <label className="field wide">
         <span>Moves (one line per moment, dB from your positions — DCAs or groups by their desk names)</span>
         <textarea className="input mono" rows={10} value={form.automix_rules || DEFAULT_RULES} onChange={(e) => set("automix_rules", e.target.value)} />
+      </label>
+      <label className="field check">
+        <input type="checkbox" checked={form.automix_bgv_ride ?? true} onChange={(e) => set("automix_bgv_ride", e.target.checked)} />
+        <span>Ride the BGVs by who's singing (the leader comes from the desk scene)</span>
+      </label>
+      <div className="controls-row">
+        <label className="field">
+          <span>BGV group</span>
+          <input className="input" value={form.automix_bgv_name || "BGVs"} onChange={(e) => set("automix_bgv_name", e.target.value)} />
+        </label>
+        <label className="field">
+          <span>Tuck when nobody's singing (dB)</span>
+          <input className="input" type="number" step={0.5} value={form.automix_bgv_tuck ?? -6} onChange={(e) => set("automix_bgv_tuck", Number(e.target.value))} />
+        </label>
+      </div>
+      <label className="field check">
+        <input type="checkbox" checked={form.automix_feeds_on ?? true} onChange={(e) => set("automix_feeds_on", e.target.checked)} />
+        <span>Listen to the instruments (lift the instrumental's lead, trim one that digs in, skip silent ones)</span>
+      </label>
+      <label className="field wide">
+        <span>Instrument feeds (fader: Dante input channels on this Mac)</span>
+        <input className="input mono" value={form.automix_feeds || "EGs: 17, 18; KEYs: 20; AGs: 19, 21; Drums: 9, 10, 12, 13, 14, 15; ch 10: 16"} onChange={(e) => set("automix_feeds", e.target.value)} />
       </label>
       {am.log.length > 0 && (
         <ul className="ap-log small">

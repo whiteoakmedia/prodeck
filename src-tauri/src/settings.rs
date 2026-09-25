@@ -154,6 +154,22 @@ pub struct Settings {
     /// The FX DCA the automix mutes when a song ends (Playback stops, or the
     /// plan leaves the songs) and unmutes when the next one starts. "" = off.
     pub automix_fx_mute: String,
+    /// The BGV rider: the group rides up when a backing singer (any vocal
+    /// mic but the lead's) sings, and tucks this many dB when none do.
+    pub automix_bgv_ride: bool,
+    pub automix_bgv_name: String,
+    pub automix_bgv_tuck: f32,
+    /// Instruments by their own direct-out feeds: "EGs: 17, 18; KEYs: 20".
+    /// Lifts the one carrying an instrumental, trims one that dug in.
+    pub automix_feeds_on: bool,
+    pub automix_feeds: String,
+    /// The weekly stream report: records the stream mix's loudness, tone and
+    /// width from these input channels (L, R) whenever it carries sound.
+    pub stream_report_on: bool,
+    pub stream_report_channels: Vec<u32>,
+    /// What the encoder adds or takes away (the YouTube loudness minus the
+    /// feed's), so the report can speak in stream terms.
+    pub stream_report_offset_db: f32,
     /// Multi-channel (Dante) routing — 1-based channel numbers on the audio input
     /// device. The measurement engine (SPL/RTA/LUFS) mixes these channels; empty
     /// means "all channels" (legacy behaviour).
@@ -329,6 +345,14 @@ impl Default for Settings {
             autopilot_message_max: 70.0,
             automix_rules: String::new(),
             automix_fx_mute: "All FX".into(),
+            automix_bgv_ride: true,
+            automix_bgv_name: "BGVs".into(),
+            automix_bgv_tuck: -6.0,
+            automix_feeds_on: true,
+            automix_feeds: String::new(),
+            stream_report_on: true,
+            stream_report_channels: Vec::new(),
+            stream_report_offset_db: 0.0,
             audio_measure_channels: Vec::new(),
             audio_overflow_channels: Vec::new(),
             audio_mic_channels: std::collections::HashMap::new(),

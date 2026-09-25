@@ -3103,15 +3103,26 @@ function AutomixWidget() {
           </button>
         )}
         {am.armed && (
+          <button className={`btn ${am.held ? "primary" : ""}`} onClick={am.toggleHold}>
+            {am.held ? "Release" : "Hold"}
+          </button>
+        )}
+        {am.armed && (
           <button className="btn" onClick={am.goHome}>
-            Back to my positions
+            Home
           </button>
         )}
       </div>
       <div className="w-automix-status small">
         <span className={`chip ${am.bpm ? "online" : ""}`}>{am.bpm ? `clock ${Math.round(am.bpm)} BPM` : "no clock"}</span>
         <span className="chip">{am.last ? `guide: ${am.last}` : "no guide call yet"}</span>
-        {am.pending && <span className="chip online">{am.pending.key} in {Math.max(0, (am.pending.at - now) / 1000).toFixed(1)} s</span>}
+        {am.pending && <span className="chip online">{am.pending.key} lands in {Math.max(0, (am.pending.at - now) / 1000).toFixed(1)} s</span>}
+        {am.held && <span className="chip warn">held</span>}
+        {am.armed && am.bgv.on && am.bgv.lead && <span className={`chip ${am.bgv.singing ? "online" : ""}`}>BGVs {am.bgv.singing ? "singing" : "tucked"}</span>}
+        {am.nudges.map((n) => (
+          <span key={n} className="chip">{n}</span>
+        ))}
+        {am.suggestions.length > 0 && <span className="chip warn" title="Settings → Automix → Learned from you">{am.suggestions.length} to review</span>}
       </div>
       <div className="w-automix-dcas small">
         {am.dcas.map((d) => (

@@ -324,6 +324,14 @@ export interface Settings {
   autopilot_message_max: number;
   automix_rules: string;
   automix_fx_mute: string;
+  automix_bgv_ride: boolean;
+  automix_bgv_name: string;
+  automix_bgv_tuck: number;
+  automix_feeds_on: boolean;
+  automix_feeds: string;
+  stream_report_on: boolean;
+  stream_report_channels: number[];
+  stream_report_offset_db: number;
   audio_measure_channels: number[];
   audio_overflow_channels: number[];
   keysend_enabled: boolean;
@@ -623,6 +631,9 @@ export const followTimingSave = (timing: unknown) => invoke<void>("follow_timing
 /** One line in <data>/follow-debug/events.jsonl (armed / Pro moved / Follow moved or would have). */
 export const automixStoreLoad = () => invoke<any>("automix_store_load");
 export const automixStoreSave = (store: unknown) => invoke<void>("automix_store_save", { store });
+export const automixSetState = (state: unknown) => invoke<void>("automix_set_state", { state });
+export const streamReportsList = () => invoke<import("./streamReport").StreamReportMeta[]>("stream_reports_list");
+export const streamReportGet = (id: string) => invoke<import("./streamReport").StreamReportData>("stream_report_get", { id });
 export const followDebugLog = (line: Record<string, unknown>) => invoke<void>("follow_debug_log", { line });
 
 // ---------------------------------------------------------------------------
