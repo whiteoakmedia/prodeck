@@ -1,7 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { usePco } from "../pcoStore";
-import { useProDeck } from "../store";
-import { matchPresentationToItem } from "./proFollow";
+import { useEffect, useRef, useState } from "react";
+import { useLiveSong } from "./liveSong";
 import {
   getSettings,
   connectMidiOut,
@@ -9,6 +7,7 @@ import {
   midiSendKey,
   oscSendKey,
   keysendSetState,
+  followDebugLog,
   on,
   IS_WEB,
   type KeySendState,
@@ -61,8 +60,7 @@ export async function sendKey(s: Settings, key: string, midiConnected: boolean) 
 // Mounted once. Watches the LIVE song's effective key (PCO key or override) and
 // pushes it to the backing-track / vocal-tune rig whenever it changes.
 export function useKeySend() {
-  const { items, liveItemId, followPro, effectiveLink, library } = usePco();
-  const { status } = useProDeck();
+  const { item: liveItem } = useLiveSong();
   const cfgRef = useRef<Settings | null>(null);
   const connectedPort = useRef<string | null>(null);
   const lastSent = useRef<number | null>(null);
@@ -149,26 +147,6 @@ export function useKeySend() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Resolve the live song as FAST as possible. When Following ProPresenter we
-  // match the active presentation directly the instant Pro reports it — instead
-  // of waiting for the ~2.5s settle + step loop that gates the PCO tracker
-  // (liveItemId). Falls back to liveItemId for manual selection / non-follow.
-  const active = (status.activePresentation as any)?.presentation?.id ?? null;
-  const presUuid: string | null = active?.uuid ?? null;
-  const presName: string | null = active?.name ?? null;
-  // Memoized: this provider re-renders ~12×/s while audio meters run, and the
-  // matcher is O(plan items × PP library) with fresh tokenization — unmemoized
-  // it burned real CPU all Sunday. Only re-match when its inputs change.
-  const followedId = useMemo(
-    () =>
-      followPro ? matchPresentationToItem(items, effectiveLink, presUuid, presName) : null,
-    // effectiveLink is a stable-behaviored closure over items/library/rules;
-    // items + library cover its meaningful inputs here.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [followPro, items, library, presUuid, presName],
-  );
-  const liveSongId = followedId ?? liveItemId;
-  const liveItem = items.find((i) => i.id === liveSongId) ?? null;
   const liveKey = liveItem && liveItem.type === "song" ? liveItem.key : "";
   useEffect(() => {
     liveRef.current = { song: liveItem && liveItem.type === "song" ? liveItem.title : null, key: liveKey || null };
@@ -201,11 +179,17 @@ export function useKeySend() {
   useEffect(() => {
     if (IS_WEB) return;
     const cfg = cfgRef.current;
-    if (!cfg || !cfg.keysend_enabled) return;
+    const song = liveItem && liveItem.type === "song" ? liveItem.title : null;
+    const log = (text: string) => song && followDebugLog({ kind: "key", song, key: liveKey || null, text }).catch(() => {});
+    if (!cfg) return;
+    if (!cfg.keysend_enabled) return void log("key-send is off (Settings → Song key → Waves)");
     const pc = keyToPitchClass(liveKey);
-    if (pc == null || lastSent.current === pc) return;
+    if (pc == null) return void log("no key on this song in Planning Center");
+    if (lastSent.current === pc) return;
     lastSent.current = pc;
     sendKey(cfg, liveKey, !!connectedPort.current);
     record(liveKey, "auto");
+    log(connectedPort.current ? `sent ${liveKey}` : `sent ${liveKey} over OSC only — MIDI port ${cfg.keysend_midi_port} isn't connected (retrying every 15 s)`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveKey, ver]);
 }

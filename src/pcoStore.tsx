@@ -8,7 +8,6 @@ import {
   type ReactNode,
 } from "react";
 import {
-  avantisRecallScene,
   chatSend,
   getSettings,
   identityHealPco,
@@ -1266,35 +1265,8 @@ export function PcoProvider({ children }: { children: ReactNode }) {
     });
   }, [items, keyOverrides, leaderOverrides, selectedPlanId, attachMaps]);
 
-  // Auto scene-per-mic: when the live item CHANGES to a song, resolve its
-  // leader to THIS WEEK'S mic (micForLeader reads the PCO assignments), then
-  // the mic to its "Lead: Mic N" scene — the softkey press that swaps the
-  // lead-vocal bus, automated. The scenes are per mic, so the map never
-  // changes as vocalists rotate. Booth only (a web client must never fire
-  // desk control), armed by the Desk Scenes toggle, and it skips the first
-  // observation after launch so a mid-service restart can't surprise the
-  // desk with a recall.
-  const autoSceneRef = useRef<{ prev: string | null; fired: string }>({
-    prev: null,
-    fired: "",
-  });
-  useEffect(() => {
-    const st = autoSceneRef.current;
-    const prev = st.prev;
-    st.prev = liveItemId;
-    if (IS_WEB || !autoScene || !liveItemId || prev === null || prev === liveItemId) return;
-    const item = displayItems.find((i) => i.id === liveItemId);
-    if (!item || item.type !== "song" || !item.leader) return;
-    const mic = micForLeader(item.leader);
-    const scene = mic ? micSceneMap[mic] : undefined;
-    const key = `${liveItemId}:${scene}`;
-    if (!scene || st.fired === key) return;
-    st.fired = key;
-    avantisRecallScene(parseInt(scene)).catch(() => {
-      /* desk offline — the mirror's health light already says so */
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [liveItemId, autoScene, displayItems, micSceneMap, micAssignments]);
+  // Desk scenes by leader: see lib/autoScene.ts (follows the same live song as the key-send).
+
 
   function setMicCount(n: number) {
     setMicCountState(Math.max(0, Math.min(128, Math.floor(n) || 0)));

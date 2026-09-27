@@ -62,6 +62,7 @@ import { Icon } from "./components/Icon";
 import { useProFollow } from "./lib/proFollow";
 import { HealthStrip } from "./components/HealthStrip";
 import { useKeySend } from "./lib/keySend";
+import { useAutoScene } from "./lib/autoScene";
 import { Dashboard } from "./pages/Dashboard";
 import { ProPresenterPage } from "./pages/ProPresenter";
 import { Multiview } from "./pages/Multiview";
@@ -167,6 +168,7 @@ function Shell() {
   const overdueCount = checklists.overdue().length;
   useProFollow();
   useKeySend();
+  useAutoScene();
 
   // New crew signups used to wait invisibly until someone happened to open
   // Settings → Crew Members. Surface them: badge on Settings + a banner that

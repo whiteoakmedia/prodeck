@@ -1,3 +1,4 @@
+import { useAutoSceneStatus } from "../lib/autoScene";
 import { useEffect, useState } from "react";
 import { usePco, fmtLen, type TeamMember , isDeclined } from "../pcoStore";
 import { Icon } from "../components/Icon";
@@ -203,13 +204,14 @@ export function PlanningCenter() {
                 </button>
                 <button
                   className={`btn small ${pco.autoScene ? "primary" : "ghost"}`}
-                  title="When a song goes live, recall its leader's Avantis scene (set up under Setup → Leader scenes)"
+                  title="When a song goes live (ProPresenter first, else PCO LIVE), recall its leader's Avantis scene (set up under Setup → Leader scenes). Independent of Automix."
                   onClick={() => pco.setAutoScene(!pco.autoScene)}
                 >
                   {pco.autoScene ? "✓ " : ""}Desk scenes
                 </button>
               </div>
             </div>
+            <AutoSceneLine />
 
             {pco.items.length === 0 ? (
               <p className="muted">No items.</p>
@@ -1205,5 +1207,16 @@ function FileFiltersEditor() {
         </button>
       </div>
     </>
+  );
+}
+
+/** What the desk-scene switch did for the last song (or why it didn't). */
+function AutoSceneLine() {
+  const st = useAutoSceneStatus();
+  if (!st) return null;
+  return (
+    <p className={`small ${st.ok ? "muted" : ""}`} style={{ margin: "4px 0 8px", color: st.ok ? undefined : "var(--warn)" }}>
+      Desk scene · {st.song}: {st.text} · {new Date(st.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+    </p>
   );
 }
