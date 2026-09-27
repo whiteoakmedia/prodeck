@@ -5,12 +5,15 @@ import { usePco } from "./pcoStore";
 import { toDbfs } from "./lib/audioMeter";
 import { DEFAULT_LAPEL_WORDS, DEFAULT_MC_WORDS, micFor, parseWords, SpeechKeeper, type SpeechAction, type SpeechMic } from "./lib/speechMics";
 import { dbToRaw, LapelRide, rawToDb, RoomHold } from "./lib/autopilotMix";
+import { isMixArmed, onMixArmed } from "./lib/mixArm";
 
 // Autopilot. Part 1: the speech mics follow the plan (lapel by fader, MC by
 // mute). Part 2: the lapel is ridden while he preaches (steady speech, the
 // room at 65–70, a feedback pull) and the room is held at 90–93 in songs
 // with LR + Sub. Everything lets go the moment a person touches that fader.
-// The lead-vocal scene per song lives in pcoStore (Desk Scenes). Booth only.
+// It only ever touches the desk while Automix is ARMED (lib/mixArm.ts):
+// disarmed, it still listens, but sends nothing. The lead-vocal scene per
+// song is separate (lib/autoScene.ts). Booth only.
 
 export interface AutopilotLogLine {
   at: number;
@@ -72,14 +75,18 @@ export function AutopilotProvider({ children }: { children: ReactNode }) {
     setLog((l) => [{ at: Date.now(), text }, ...l].slice(0, 40));
     followDebugLog({ kind: "autopilot", text }).catch(() => {});
   };
+  // Every desk write goes through these two: nothing leaves when disarmed.
   const setFader = (id: string, raw: number) => {
+    if (!isMixArmed()) return Promise.resolve();
     sent.current.set(id, { raw, t: Date.now() });
     return avantisSetFader(id, raw);
   };
+  const setMute = (id: string, muted: boolean) => (isMixArmed() ? avantisSetMute(id, muted) : Promise.resolve());
   /** A short fade instead of a jump. */
   const ramp = async (id: string, from: number, to: number, ms = 500) => {
     const steps = Math.max(1, Math.round(ms / 50));
     for (let k = 1; k <= steps; k++) {
+      if (!isMixArmed()) return; // disarmed mid-fade: stop where it is
       await setFader(id, Math.round(from + ((to - from) * k) / steps)).catch(() => {});
       await new Promise((r) => setTimeout(r, 50));
     }
@@ -91,6 +98,7 @@ export function AutopilotProvider({ children }: { children: ReactNode }) {
    *  open (rehearsal, 24 Sep: "not connected to the console", twice). */
   const retry = async (f: () => Promise<unknown>, what: string) => {
     for (let k = 0; k < 15; k++) {
+      if (!isMixArmed()) return false;
       try {
         await f();
         return true;
@@ -103,6 +111,7 @@ export function AutopilotProvider({ children }: { children: ReactNode }) {
     return false;
   };
   const act = (acts: SpeechAction[]) => {
+    if (!isMixArmed()) return; // Automix off: hands off the lapel and 8 MC
     for (const a of acts) {
       const c = cfg.current;
       const name = a.mic === "lapel" ? "Lapel" : "8 MC";
@@ -117,7 +126,7 @@ export function AutopilotProvider({ children }: { children: ReactNode }) {
           frozen.current.delete(c.lapel);
           setLetGo((l) => l.filter((x) => x !== c.lapel));
           ride.current = new LapelRide(c.lapelHome, c.message);
-          retry(() => avantisSetMute(c.lapel, false), "Unmuting the lapel");
+          retry(() => setMute(c.lapel, false), "Unmuting the lapel");
           ramp(c.lapel, from, dbToRaw(c.lapelHome)).then(() => say(`Lapel up to ${c.lapelHome} dB: ${a.reason}.`));
         } else {
           ride.current = null;
@@ -125,7 +134,7 @@ export function AutopilotProvider({ children }: { children: ReactNode }) {
         }
         continue;
       }
-      retry(() => avantisSetMute(c.mc, a.type === "close"), `${a.type === "open" ? "Opening" : "Closing"} ${name}`).then((ok) => {
+      retry(() => setMute(c.mc, a.type === "close"), `${a.type === "open" ? "Opening" : "Closing"} ${name}`).then((ok) => {
         if (ok) say(`${a.type === "open" ? "Opened" : "Closed"} ${name}: ${a.reason}.`);
       });
     }
@@ -139,6 +148,19 @@ export function AutopilotProvider({ children }: { children: ReactNode }) {
     hold.current = roomOn ? new RoomHold(cfg.current.roomHome, cfg.current.worship) : null;
     frozen.current.delete(cfg.current.roomFader);
   }, [roomOn, settings?.autopilot_room_home_db]);
+
+  // Arm/disarm: disarming drops any ride in progress; arming mid-service
+  // waits for the NEXT item rather than acting on the one already up.
+  useEffect(
+    () =>
+      onMixArmed((on) => {
+        ride.current = null;
+        firstItem.current = undefined;
+        say(on ? "Automix armed — the lapel and 8 MC follow the plan from the next item." : "Automix off — the lapel and 8 MC are yours.");
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
   // The live plan item.
   useEffect(() => {
@@ -206,7 +228,7 @@ export function AutopilotProvider({ children }: { children: ReactNode }) {
       }
     });
     const u3 = on<{ mic: SpeechMic; hz: number; db: number }>("autopilot:ring", (e) => {
-      if (!e || e.mic !== "lapel" || !ride.current || frozen.current.has(cfg.current.lapel)) return;
+      if (!e || e.mic !== "lapel" || !ride.current || frozen.current.has(cfg.current.lapel) || !isMixArmed()) return;
       const db = ride.current.onRing(Date.now());
       setFader(cfg.current.lapel, dbToRaw(db)).catch(() => {});
       say(`Feedback on the lapel at ${Math.round(e.hz)} Hz — pulled it to ${db.toFixed(1)} dB for 20 s.`);

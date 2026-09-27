@@ -3301,7 +3301,8 @@ function AutopilotCard({ form, set }: { form: Settings; set: <K extends keyof Se
         {spl != null && <span className="chip">{spl.toFixed(1)} dB(A)</span>}
       </div>
       <p className="muted small">
-        The speech mics follow the plan: the <strong>lapel</strong> opens when the message starts and{" "}
+        <strong>Only while Automix is armed</strong> — disarmed, nothing on the desk is touched. The speech mics
+        follow the plan: the <strong>lapel</strong> opens when the message starts and{" "}
         <strong>8 MC</strong> for the moments of transition. A mic is closed only after its moment has ended and its
         own feed has been quiet for 8 s — with no feed routed it is never closed automatically; Autopilot tells you
         it's still open instead. Pressing that mute on the desk yourself hands the mic back to you until the next

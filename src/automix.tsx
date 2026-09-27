@@ -27,6 +27,7 @@ import {
   type Suggestion,
 } from "./lib/automix";
 import { dbToRaw, rawToDb } from "./lib/autopilotMix";
+import { setMixArmed } from "./lib/mixArm";
 
 // The automix, live (lib/automix.ts has the logic, with tests). Armed by
 // hand, never at launch. Booth only.
@@ -94,6 +95,7 @@ export function AutomixProvider({ children }: { children: ReactNode }) {
   const [armed, setArmed] = useState(false);
   const armedRef = useRef(false);
   armedRef.current = armed;
+  useEffect(() => setMixArmed(armed), [armed]);
   const [held, setHeld] = useState(false);
   const heldRef = useRef(false);
   heldRef.current = held;
