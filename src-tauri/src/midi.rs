@@ -10,9 +10,13 @@ impl MidiState {
     }
 }
 
-// A persistent MIDI OUTPUT connection — used to push the song key to a backing-
-// track / vocal-tune rig (e.g. a Program Change that recalls a per-key snapshot).
-pub struct MidiOutState(pub Mutex<Option<MidiOutputConnection>>);
+// The MIDI OUTPUT used to push the song key to a backing-track / vocal-tune rig
+// (a Program Change that recalls a per-key snapshot), by port name. The
+// connection is reopened for every send: when the network-MIDI session is
+// rebuilt (the Waves PC reboots, the keeper re-invites it) CoreMIDI gives the
+// port a new endpoint, and a connection held from before keeps "working" —
+// no error — while nothing reaches the rig.
+pub struct MidiOutState(pub Mutex<Option<(String, MidiOutputConnection)>>);
 
 impl MidiOutState {
     pub fn new() -> Self {
@@ -30,22 +34,24 @@ pub fn list_midi_outputs() -> Result<Vec<String>, String> {
         .collect())
 }
 
-#[tauri::command]
-pub fn connect_midi_out(
-    port_name: String,
-    state: tauri::State<'_, MidiOutState>,
-) -> Result<(), String> {
+fn open_out(port_name: &str) -> Result<MidiOutputConnection, String> {
     let midi_out = MidiOutput::new("ProDeck-out").map_err(|e| e.to_string())?;
     let ports = midi_out.ports();
     let port = ports
         .iter()
         .find(|p| midi_out.port_name(p).map(|n| n == port_name).unwrap_or(false))
         .cloned()
-        .ok_or_else(|| "MIDI output port not found".to_string())?;
-    let conn = midi_out
-        .connect(&port, "prodeck-out")
-        .map_err(|e| e.to_string())?;
-    *state.0.lock().unwrap_or_else(|p| p.into_inner()) = Some(conn);
+        .ok_or_else(|| format!("MIDI output port \"{port_name}\" not found"))?;
+    midi_out.connect(&port, "prodeck-out").map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn connect_midi_out(
+    port_name: String,
+    state: tauri::State<'_, MidiOutState>,
+) -> Result<(), String> {
+    let conn = open_out(&port_name)?;
+    *state.0.lock().unwrap_or_else(|p| p.into_inner()) = Some((port_name, conn));
     Ok(())
 }
 
@@ -65,9 +71,13 @@ pub fn midi_send_key(
     state: tauri::State<'_, MidiOutState>,
 ) -> Result<(), String> {
     let mut guard = state.0.lock().unwrap_or_else(|p| p.into_inner());
-    let conn = guard
-        .as_mut()
-        .ok_or_else(|| "No MIDI output connected".to_string())?;
+    let name = guard.as_ref().map(|(n, _)| n.clone()).ok_or_else(|| "No MIDI output connected".to_string())?;
+    // A fresh connection to the port as it exists NOW (see MidiOutState).
+    match open_out(&name) {
+        Ok(c) => *guard = Some((name.clone(), c)),
+        Err(e) => eprintln!("[midi] reopen {name} failed ({e}); sending on the old connection"),
+    }
+    let conn = &mut guard.as_mut().ok_or_else(|| "No MIDI output connected".to_string())?.1;
     // The UI speaks MIDI channels 1–16; the status-byte nibble is 0-based. Using
     // the raw number as the nibble sent everything one channel high (and 16
     // wrapped to channel 1).
