@@ -14,6 +14,7 @@ import {
 } from "../lib/checklistTemplates";
 import { identityList, on, type CrewUser } from "../lib/tauri";
 import { usePco } from "../pcoStore";
+import { useDragReorder } from "../lib/useDragReorder";
 
 function fmtDue(ts: number | null): string {
   if (ts == null) return "No due time";
@@ -32,6 +33,19 @@ export function ChecklistsPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
   const [draft, setDraft] = useState("");
+  // Edit order: drag (or ↑/↓) to rearrange checklists and their steps. Ticking
+  // is locked meanwhile so a drag can't check a step by accident.
+  const [editing, setEditing] = useState(false);
+  const dnd = useDragReorder((group, from, to) => {
+    if (group === "lists") {
+      const c = cl.checklists[from];
+      if (c) cl.moveChecklist(c.id, to);
+    } else {
+      const c = cl.checklists.find((x) => x.id === group);
+      const it = c?.items[from];
+      if (c && it) cl.moveItem(c.id, it.id, to);
+    }
+  });
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 20000);
@@ -95,6 +109,15 @@ export function ChecklistsPage() {
             Add checklist
           </button>
         </div>
+        {cl.checklists.length > 1 || cl.checklists.some((c) => c.items.length > 1) ? (
+          <button
+            className={`btn small ${editing ? "primary" : "ghost"} cl-edit-toggle`}
+            onClick={() => setEditing((v) => !v)}
+            title="Drag checklists and steps into a new order"
+          >
+            {editing ? "Done" : "Edit order"}
+          </button>
+        ) : null}
         {cl.checklists.length > 0 && startersMissing && (
           <button
             className="btn small ghost cl-starter-link"
@@ -133,8 +156,13 @@ export function ChecklistsPage() {
           </button>
         </div>
       ) : (
-        <div className="cl-page-body">
-          {cl.checklists.map((c: Checklist) => {
+        <div className={`cl-page-body ${editing ? "editing" : ""}`}>
+          {editing && (
+            <p className="muted small cl-edit-hint">
+              Drag the ⠿ handle, or use ↑ ↓, to reorder checklists. Open a checklist to reorder its steps. Press Done when finished.
+            </p>
+          )}
+          {cl.checklists.map((c: Checklist, ci: number) => {
             const { done, total } = cl.progress(c);
             const overdue = cl.isOverdue(c, now);
             const complete = total > 0 && done === total;
@@ -147,8 +175,21 @@ export function ChecklistsPage() {
                 c.schedule.map((s, j) => (j === i ? { day, time } : s)),
               );
             return (
-              <div key={c.id} className={`cl-card ${overdue ? "overdue" : ""}`}>
+              <div
+                key={c.id}
+                className={`cl-card ${overdue ? "overdue" : ""} ${editing ? dnd.dropClass("lists", ci) : ""}`}
+                {...(editing ? dnd.rowProps("lists", ci) : {})}
+              >
                 <div className="cl-card-head" onClick={() => setExpanded(isOpen ? null : c.id)}>
+                  {editing && (
+                    <MoveControls
+                      label={c.name}
+                      first={ci === 0}
+                      last={ci === cl.checklists.length - 1}
+                      onUp={() => cl.moveChecklist(c.id, ci - 1)}
+                      onDown={() => cl.moveChecklist(c.id, ci + 1)}
+                    />
+                  )}
                   <span className={`cl-caret ${isOpen ? "open" : ""}`}>▸</span>
                   <span className="cl-card-name">{c.name}</span>
                   <span className={`cl-count ${complete ? "done" : ""}`}>
@@ -205,7 +246,24 @@ export function ChecklistsPage() {
                           ))}
                       </datalist>
                     </div>
-                    {c.items.map((it) =>
+                    {editing
+                      ? c.items.map((it, ii) => (
+                          <div
+                            key={it.id}
+                            className={`cl-item cl-item-edit ${it.header ? "cl-section" : ""} ${dnd.dropClass(c.id, ii)}`}
+                            {...dnd.rowProps(c.id, ii)}
+                          >
+                            <MoveControls
+                              label={it.text}
+                              first={ii === 0}
+                              last={ii === c.items.length - 1}
+                              onUp={() => cl.moveItem(c.id, it.id, ii - 1)}
+                              onDown={() => cl.moveItem(c.id, it.id, ii + 1)}
+                            />
+                            <span className={it.header ? "cl-section-text" : "cl-item-text"}>{it.text}</span>
+                          </div>
+                        ))
+                      : c.items.map((it) =>
                       it.header ? (
                         <div key={it.id} className="cl-section">
                           <span className="cl-section-text">{it.text}</span>
@@ -261,7 +319,7 @@ export function ChecklistsPage() {
                       ),
                     )}
 
-                    <div className="cl-additem">
+                    {!editing && <div className="cl-additem">
                       <input
                         className="input"
                         placeholder='Add a step… (paste a list for many; "# Title" or "Title:" makes a section header)'
@@ -287,7 +345,7 @@ export function ChecklistsPage() {
                           setDraft("");
                         }}
                       />
-                    </div>
+                    </div>}
 
                     <div className="cl-sched">
                       <label className="cl-recur-toggle">
@@ -405,5 +463,27 @@ export function ChecklistsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+/** The drag handle and ↑/↓ buttons in edit mode. Clicks don't reach the row
+ *  underneath (the checklist header would open and close). */
+function MoveControls({ label, first, last, onUp, onDown }: { label: string; first: boolean; last: boolean; onUp: () => void; onDown: () => void }) {
+  const stop = (e: { stopPropagation: () => void; preventDefault: () => void }) => {
+    e.stopPropagation();
+    e.preventDefault();
+  };
+  return (
+    <span className="cl-move" onClick={stop}>
+      <span className="cl-grip" aria-hidden="true" title="Drag to reorder">
+        ⠿
+      </span>
+      <button className="cl-move-btn" disabled={first} aria-label={`Move ${label} up`} onClick={(e) => (stop(e), onUp())}>
+        ↑
+      </button>
+      <button className="cl-move-btn" disabled={last} aria-label={`Move ${label} down`} onClick={(e) => (stop(e), onDown())}>
+        ↓
+      </button>
+    </span>
   );
 }

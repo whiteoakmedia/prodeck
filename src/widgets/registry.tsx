@@ -1,3 +1,6 @@
+import { ndiForScreen } from "../lib/ndiMatch";
+import { useDragReorder } from "../lib/useDragReorder";
+import { moveTo } from "../lib/reorder";
 import {
   useEffect,
   useRef,
@@ -388,9 +391,67 @@ function SlideGridWidget() {
   );
 }
 
+// ---- NDI for the Slide Preview: which NDI source is a ProPresenter screen?
+// ProPresenter publishes a screen's NDI output as "HOST (Screen Name)"; the
+// part in brackets is the screen's name. Found by scanning, cached a minute.
+let ndiCache: { at: number; list: NdiSource[] } | null = null;
+async function ndiSourcesCached(force = false): Promise<NdiSource[]> {
+  if (!force && ndiCache && Date.now() - ndiCache.at < 60_000) return ndiCache.list;
+  const list = await ndiDiscover().catch(() => [] as NdiSource[]);
+  ndiCache = { at: Date.now(), list };
+  return list;
+}
+/** A live MJPEG URL for an NDI source (a local receiver, or the relay host's
+ *  feed on a client); null while connecting or with no source. */
+function useNdiStream(source: string | null): string | null {
+  const [port, setPort] = useState<number | null>(null);
+  const relay = useRelay();
+  const isClient = relay.mode === "client";
+  useEffect(() => {
+    if (!source || isClient) {
+      setPort(null);
+      return;
+    }
+    let cancelled = false;
+    let started = false;
+    ndiStart(source)
+      .then((p) => {
+        started = true;
+        if (cancelled) {
+          ndiStop(source).catch(() => {});
+          return;
+        }
+        setPort(p);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      if (started) ndiStop(source).catch(() => {});
+    };
+  }, [source, isClient]);
+  if (!source) return null;
+  return isClient ? relay.relayNdiUrl(source) : port ? mjpegUrl(port) : null;
+}
+
 function SlidePreviewWidget({ widget, update }: WidgetProps) {
   const { connected, status } = useProDeck();
   const [screens, setScreens] = useState<ScreenInfo[]>([]);
+  const [ndiList, setNdiList] = useState<NdiSource[]>([]);
+  const relay = useRelay();
+  const wantsScreen = widget.config.screenIndex != null;
+  useEffect(() => {
+    if (!wantsScreen) return;
+    if (relay.mode === "client") {
+      setNdiList(relay.ndiSources.map((n) => ({ name: n, url_address: "" })));
+      return;
+    }
+    let alive = true;
+    ndiSourcesCached().then((l) => alive && setNdiList(l));
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantsScreen, relay.mode]);
 
   // Screen list rarely changes — fetch once per connection.
   useEffect(() => {
@@ -413,12 +474,17 @@ function SlidePreviewWidget({ widget, update }: WidgetProps) {
       .catch(() => setScreens([]));
   }, [connected]);
 
+  const sel = widget.config.screenIndex;
+  const screen = screens.find((s) => s.index === sel) ?? null;
+  // A picked screen shows ITSELF when ProPresenter sends it out over NDI;
+  // ProPresenter's API only has the slide, not what each screen displays.
+  const ndiSource = screen ? ndiForScreen(ndiList, screen.name) : null;
+  const streamUrl = useNdiStream(connected ? ndiSource : null);
+
   if (!connected) return <Disconnected />;
 
   const pres = activePresentation(status);
   const idx = currentSlideIndex(status);
-  const sel = widget.config.screenIndex;
-  const screen = screens.find((s) => s.index === sel) ?? null;
 
   // Per-screen layer composition from the current look (audience screens only).
   const lookScreens = (status.currentLook as any)?.screens ?? [];
@@ -447,12 +513,35 @@ function SlidePreviewWidget({ widget, update }: WidgetProps) {
           ))}
         </select>
       )}
-      <div className={`slide-thumb-wrap ${slideOff ? "dim" : ""}`}>
-        <SlideThumb uuid={pres.uuid} index={idx} label="Live slide" />
-        {slideOff && (
-          <div className="slide-off-overlay">Slide layer off on {screen?.name}</div>
-        )}
-      </div>
+      {screen && ndiSource ? (
+        <div className="slide-thumb-wrap w-video">
+          {streamUrl ? <img className="tile-stream" src={streamUrl} alt={`${screen.name} (NDI)`} /> : <span className="muted small">Connecting to {ndiSource}…</span>}
+          {streamUrl && (
+            <div className="tile-overlay">
+              <span className="tile-chip live">
+                <span className="rec-dot" />
+                LIVE · NDI
+              </span>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className={`slide-thumb-wrap ${slideOff ? "dim" : ""}`}>
+          <SlideThumb uuid={pres.uuid} index={idx} label="Live slide" />
+          {slideOff && (
+            <div className="slide-off-overlay">Slide layer off on {screen?.name}</div>
+          )}
+        </div>
+      )}
+      {screen && !ndiSource && (
+        <p className="muted small" style={{ margin: "4px 0 0" }}>
+          Showing the live slide — ProPresenter can't report what {screen.name} itself displays. Turn on NDI output for
+          {" "}{screen.name} in ProPresenter (Screens → {screen.name} → NDI) and it appears here live.{" "}
+          <button className="btn small ghost" onMouseDown={(e) => e.stopPropagation()} onClick={() => ndiSourcesCached(true).then(setNdiList)}>
+            Look again
+          </button>
+        </p>
+      )}
       <div className="w-slide-meta">
         <span className="muted small">
           {screen ? screen.name : pres.name ?? "No presentation"}
@@ -942,12 +1031,25 @@ function ChecklistWidget({ widget, update }: WidgetProps) {
   const active = Math.min(Math.max(0, widget.config.active ?? 0), lists.length - 1);
   const cur = lists[active] ?? lists[0];
   const [draft, setDraft] = useState("");
+  const [editing, setEditing] = useState(false);
   const stop = (e: ReactMouseEvent) => e.stopPropagation();
 
   const commit = (next: NamedList[], activeIdx = active) =>
     update({ lists: next, active: activeIdx, items: undefined });
   const setItems = (items: CheckItem[]) =>
     commit(lists.map((l, i) => (i === active ? { ...l, items } : l)));
+  // Edit order: move a checklist tab (the selection follows it) or a step.
+  const moveList = (from: number, to: number) => {
+    const next = moveTo(lists, from, to);
+    if (next === lists) return;
+    commit(next, next.indexOf(lists[active]));
+  };
+  const moveStep = (from: number, to: number) => {
+    const next = moveTo(cur.items, from, to);
+    if (next !== cur.items) setItems(next);
+  };
+  const dnd = useDragReorder((group, from, to) => (group === "tabs" ? moveList(from, to) : moveStep(from, to)));
+  const dndTabs = useDragReorder((_g, from, to) => moveList(from, to), "x");
 
   async function addList() {
     const name = await askText("New checklist name (e.g. Startup, Shutdown, Soundcheck)");
@@ -977,9 +1079,11 @@ function ChecklistWidget({ widget, update }: WidgetProps) {
         {lists.map((l, i) => (
           <button
             key={i}
-            className={`cl-tab ${i === active ? "active" : ""}`}
+            className={`cl-tab ${i === active ? "active" : ""} ${editing ? `cl-tab-edit ${dndTabs.dropClass("tabs", i)}` : ""}`}
             onClick={() => update({ active: i })}
+            {...(editing ? dndTabs.rowProps("tabs", i) : {})}
           >
+            {editing && <span className="cl-grip" aria-hidden="true">⠿</span>}
             {l.name}
           </button>
         ))}
@@ -992,9 +1096,26 @@ function ChecklistWidget({ widget, update }: WidgetProps) {
           {doneCount}/{cur.items.length} done
         </span>
         <div className="cl-actions">
+          {editing && lists.length > 1 && (
+            <>
+              <button className="btn small ghost" disabled={active === 0} onClick={() => moveList(active, active - 1)} aria-label={`Move ${cur.name} left`}>
+                ◂
+              </button>
+              <button className="btn small ghost" disabled={active === lists.length - 1} onClick={() => moveList(active, active + 1)} aria-label={`Move ${cur.name} right`}>
+                ▸
+              </button>
+            </>
+          )}
+          {(lists.length > 1 || cur.items.length > 1) && (
+            <button className={`btn small ${editing ? "primary" : "ghost"}`} onClick={() => setEditing((v) => !v)} title="Drag checklists and steps into a new order">
+              {editing ? "Done" : "Edit order"}
+            </button>
+          )}
+          {!editing && (
           <button className="btn small ghost" onClick={resetChecks} title="Uncheck all">
             Reset
           </button>
+          )}
           <button className="btn small ghost" onClick={renameList}>
             Rename
           </button>
@@ -1006,7 +1127,22 @@ function ChecklistWidget({ widget, update }: WidgetProps) {
         </div>
       </div>
       <div className="w-check-items">
-        {cur.items.map((it, i) => (
+        {editing &&
+          cur.items.map((it, i) => (
+            <div key={i} className={`w-check-row w-check-edit ${dnd.dropClass("steps", i)}`} onMouseDown={stop} {...dnd.rowProps("steps", i)}>
+              <span className="cl-grip" aria-hidden="true" title="Drag to reorder">
+                ⠿
+              </span>
+              <button className="cl-move-btn" disabled={i === 0} aria-label={`Move ${it.text} up`} onClick={() => moveStep(i, i - 1)}>
+                ↑
+              </button>
+              <button className="cl-move-btn" disabled={i === cur.items.length - 1} aria-label={`Move ${it.text} down`} onClick={() => moveStep(i, i + 1)}>
+                ↓
+              </button>
+              <span className={it.done ? "done" : ""}>{it.text}</span>
+            </div>
+          ))}
+        {!editing && cur.items.map((it, i) => (
           <label key={i} className="w-check-row" onMouseDown={stop}>
             <input
               type="checkbox"

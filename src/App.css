@@ -9771,3 +9771,93 @@ select.input {
 .rec-s-name {
   overflow-wrap: anywhere;
 }
+
+/* Checklist edit order (Checklists page + dashboard widget) */
+.cl-edit-hint {
+  margin: 0 0 8px;
+}
+.cl-move {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: 6px;
+}
+.cl-grip {
+  cursor: grab;
+  color: var(--faint);
+  padding: 0 4px;
+  user-select: none;
+  font-size: 14px;
+  line-height: 1;
+}
+.cl-move-btn {
+  background: transparent;
+  border: 1px solid var(--line, rgba(127, 145, 170, 0.25));
+  border-radius: 4px;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  width: 24px;
+  height: 22px;
+  cursor: pointer;
+}
+.cl-move-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+.cl-move-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.cl-move-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.cl-item-edit,
+.w-check-edit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: default;
+}
+.cl-page-body.editing .cl-card,
+.cl-item-edit,
+.w-check-edit,
+.cl-tab-edit {
+  position: relative;
+}
+.cl-tab-edit {
+  cursor: grab;
+}
+.drop-before::before,
+.drop-after::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+  pointer-events: none;
+}
+.drop-before::before {
+  top: -2px;
+}
+.drop-after::after {
+  bottom: -2px;
+}
+.cl-tab-edit.drop-before::before,
+.cl-tab-edit.drop-after::after {
+  top: 0;
+  bottom: 0;
+  left: auto;
+  right: auto;
+  width: 2px;
+  height: auto;
+}
+.cl-tab-edit.drop-before::before {
+  left: -2px;
+}
+.cl-tab-edit.drop-after::after {
+  right: -2px;
+}

@@ -8,6 +8,7 @@ import {
 } from "react";
 import { IS_WEB, checklistToggle, loadChecklists, on, saveChecklists } from "./lib/tauri";
 import { enqueue } from "./lib/outbox";
+import { moveTo } from "./lib/reorder";
 
 export interface ChItem {
   id: string;
@@ -137,6 +138,10 @@ interface ChecklistStore {
   setRole: (id: string, role: string) => void;
   setVisibility: (id: string, v: Visibility) => void;
   deleteChecklist: (id: string) => void;
+  /** Edit mode: put a checklist at a new position in the list of lists. */
+  moveChecklist: (id: string, to: number) => void;
+  /** Edit mode: put a step (or section header) at a new position in its list. */
+  moveItem: (id: string, itemId: string, to: number) => void;
   setDue: (id: string, due: string | null) => void;
   setSchedule: (id: string, slots: Slot[]) => void;
   resetChecklist: (id: string) => void;
@@ -344,6 +349,10 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
         role: v === "position" ? c.role : undefined,
       })),
     deleteChecklist: (id) => setChecklists((prev) => prev.filter((c) => c.id !== id)),
+    moveChecklist: (id, to) =>
+      setChecklists((prev) => moveTo(prev, prev.findIndex((c) => c.id === id), to)),
+    moveItem: (id, itemId, to) =>
+      patch(id, (c) => ({ ...c, items: moveTo(c.items, c.items.findIndex((it) => it.id === itemId), to) })),
     setDue: (id, due) => patch(id, (c) => ({ ...c, due: due || null })),
     setSchedule: (id, slots) =>
       patch(id, (c) => ({
