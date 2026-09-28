@@ -6,6 +6,8 @@ mod rig;
 mod speech;
 mod streamrep;
 mod multitrack;
+mod avshow;
+mod dante;
 mod backup;
 mod diag;
 mod keepalive;
@@ -276,6 +278,7 @@ pub fn run() {
         .manage(midi::KeySendState(std::sync::Mutex::new(serde_json::Value::Null)))
         .manage(follow::AutomixDeck(std::sync::Mutex::new(serde_json::Value::Null)))
         .manage(multitrack::RecState::default())
+        .manage(dante::DanteState::default())
         .manage(Arc::new(osc::OscInner::new()) as osc::OscState)
         .manage(Arc::new(pco::PcoInner::new()) as pco::PcoState)
         .manage(Arc::new(web::WebInner::new()) as web::WebState)
@@ -311,6 +314,8 @@ pub fn run() {
             netmidi::spawn_keeper(app.handle().clone());
             speech::spawn(app.handle().clone());
             streamrep::spawn(app.handle().clone());
+            avshow::spawn(app.handle().clone());
+            dante::spawn(app.handle().clone());
             rig::spawn_always(app.handle().clone());
             avantis::spawn_watch_flush(app.handle().clone());
             obs::spawn_client(app.handle().clone());
@@ -407,6 +412,8 @@ pub fn run() {
             follow::follow_timing_save,
             follow::follow_debug_log,
             streamrep::stream_reports_list,
+            avshow::avantis_patch_get,
+            dante::dante_snapshot,
             multitrack::multitrack_start,
             multitrack::multitrack_stop,
             multitrack::multitrack_marker,

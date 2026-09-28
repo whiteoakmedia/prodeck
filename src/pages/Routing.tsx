@@ -1,3 +1,4 @@
+import { LiveRouting } from "../components/LiveRouting";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { IS_DEMO, IS_WEB } from "../lib/tauri";
 import { askConfirm } from "../lib/dialogs";
@@ -39,7 +40,7 @@ const RoutingGraph = lazy(() => import("../components/RoutingGraph"));
 // file has been read successfully once — a map a church typed in is not ours
 // to replace with a seed.
 
-type Tab = "channels" | "stage" | "map" | "walk";
+type Tab = "channels" | "stage" | "map" | "walk" | "live";
 
 const PORT_OPTIONS: { value: Transport | ""; label: string }[] = [
   { value: "", label: "— not patched" },
@@ -172,6 +173,9 @@ export function RoutingPage() {
           <button className={tab === "walk" ? "on" : ""} onClick={() => setTab("walk")}>
             No sound?
           </button>
+          <button className={tab === "live" ? "on" : ""} onClick={() => setTab("live")}>
+            Live
+          </button>
         </div>
         <span style={{ flex: 1 }} />
         {tab !== "walk" && CAN_EDIT && !editing && (
@@ -286,6 +290,8 @@ export function RoutingPage() {
           />
         </Suspense>
       )}
+
+      {tab === "live" && <LiveRouting />}
 
       {tab === "walk" && (
         <div className="card rt-walk-card">

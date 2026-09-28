@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { getSettings, IS_WEB, multitrackOpen, multitrackSessions, multitrackVolumes, on, updateSettings, type RecSession, type RecVolume } from "../lib/tauri";
+import { danteSnapshot, getSettings, IS_WEB, multitrackOpen, type DanteSnapshot, multitrackSessions, multitrackVolumes, on, updateSettings, type RecSession, type RecVolume } from "../lib/tauri";
 import { useProDeck } from "../store";
 import { fmtClock, useRecorder } from "../recorder";
 
@@ -24,6 +24,16 @@ export function RecordingPage() {
   const [sessions, setSessions] = useState<RecSession[]>([]);
   const [show, setShow] = useState<"all" | "signal" | "none">("all");
   const pending = useRef<number[] | null>(null);
+  // What each input is actually subscribed to, read live from Dante.
+  const [dante, setDante] = useState<DanteSnapshot | null>(null);
+  useEffect(() => {
+    if (IS_WEB) return;
+    danteSnapshot().then(setDante).catch(() => {});
+    const u = on<DanteSnapshot>("routing:dante", (d) => d && setDante(d));
+    return () => {
+      u.then((f) => f());
+    };
+  }, []);
 
   useEffect(() => {
     if (IS_WEB) return;
@@ -59,12 +69,14 @@ export function RecordingPage() {
   }
 
   const names = settings?.multitrack_names ?? {};
+  const me = dante?.devices.find((d) => d.name === dante.localName);
+  const subs = new Map((me?.rx ?? []).map((r) => [r.ch, r]));
   const sources = settings?.multitrack_sources ?? {};
   const n = Math.max(levels.length, 64);
   const rows = Array.from({ length: n }, (_, i) => {
     const k = String(i + 1);
     const db = levels[i];
-    return { i: i + 1, name: names[k] || `In ${k.padStart(2, "0")}`, named: !!names[k], source: sources[k] ?? "", db, state: stateOf(db) };
+    return { i: i + 1, name: names[k] || `In ${k.padStart(2, "0")}`, named: !!names[k], source: sources[k] ?? "", db, state: stateOf(db), sub: subs.get(i + 1) };
   });
   const counts = { signal: rows.filter((r) => r.state === "signal").length, idle: rows.filter((r) => r.state === "idle").length, none: rows.filter((r) => r.state === "none").length };
   const shown = rows.filter((r) => show === "all" || (show === "signal" ? r.state !== "none" : r.state === "none"));
@@ -188,6 +200,11 @@ export function RecordingPage() {
                     />
                   </td>
                   <td>
+                    {me && (
+                      <div className={`rec-dante small mono ${r.sub?.txDevice ? (r.sub.ok ? "ok" : "bad") : "none"}`} title="Read live from Dante">
+                        {r.sub?.txDevice ? `Dante: ${r.sub.txDevice} · ${r.sub.txChannel}${r.sub.ok ? "" : ` (${r.sub.status})`}` : "Dante: not subscribed"}
+                      </div>
+                    )}
                     <input
                       className="rec-edit src"
                       id={`rec-src-${r.i}`}

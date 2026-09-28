@@ -9861,3 +9861,46 @@ select.input {
 .cl-tab-edit.drop-after::after {
   right: -2px;
 }
+
+/* Routing → Live */
+.lr {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.lr-devices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+.lr-sub {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.lr-h {
+  margin: 14px 0 6px;
+}
+.lr-changes {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.rec-dante {
+  padding: 0 6px;
+  color: var(--faint);
+  font-size: 11px;
+}
+.rec-dante.ok {
+  color: var(--good);
+}
+.rec-dante.bad {
+  color: var(--warn);
+}

@@ -689,6 +689,38 @@ export interface RecSession {
 }
 export const multitrackSessions = () => invoke<RecSession[]>("multitrack_sessions");
 export const multitrackOpen = (dir: string) => invoke<void>("multitrack_open", { dir });
+export interface DanteRx {
+  ch: number;
+  name: string;
+  txChannel: string | null;
+  txDevice: string | null;
+  status: string;
+  ok: boolean;
+}
+export interface DanteDevice {
+  name: string;
+  ip: string;
+  model?: string | null;
+  rxCount?: number;
+  txCount?: number;
+  rx: DanteRx[];
+  tx: { ch: number; name: string }[];
+  error?: string | null;
+}
+export interface DanteSnapshot {
+  at: number;
+  localName?: string | null;
+  devices: DanteDevice[];
+  changes: { at: number; text: string }[];
+}
+export const danteSnapshot = () => invoke<DanteSnapshot | null>("dante_snapshot");
+export interface AvantisPatch {
+  file: string;
+  exportedAt: number;
+  inputs: { ch: number; port: number; socket: number | null; text: string }[];
+  changes: string[];
+}
+export const avantisPatchGet = () => invoke<AvantisPatch | null>("avantis_patch_get");
 export const streamReportsList = () => invoke<import("./streamReport").StreamReportMeta[]>("stream_reports_list");
 export const streamReportGet = (id: string) => invoke<import("./streamReport").StreamReportData>("stream_report_get", { id });
 export const followDebugLog = (line: Record<string, unknown>) => invoke<void>("follow_debug_log", { line });
