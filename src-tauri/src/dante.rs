@@ -42,10 +42,10 @@ pub struct Found {
 }
 
 /// Dante devices announcing their control service, within `window`.
-async fn discover(window: Duration) -> Vec<Found> {
+async fn discover(window: Duration) -> Result<Vec<Found>, String> {
     use mdns_sd::{ServiceDaemon, ServiceEvent};
-    let Ok(daemon) = ServiceDaemon::new() else { return vec![] };
-    let Ok(rx) = daemon.browse(proto::ARC_SERVICE) else { return vec![] };
+    let daemon = ServiceDaemon::new().map_err(|e| format!("mDNS: {e}"))?;
+    let rx = daemon.browse(proto::ARC_SERVICE).map_err(|e| format!("mDNS browse: {e}"))?;
     let mut out: HashMap<String, Found> = HashMap::new();
     let _ = tokio::time::timeout(window, async {
         while let Ok(ev) = rx.recv_async().await {
@@ -60,7 +60,18 @@ async fn discover(window: Duration) -> Vec<Found> {
     })
     .await;
     let _ = daemon.shutdown();
-    out.into_values().collect()
+    Ok(out.into_values().collect())
+}
+
+/// Devices seen before (name, address, control port) — asked directly when
+/// mDNS comes back empty, so a quiet multicast moment isn't "no devices".
+fn remembered(prev: &Value) -> Vec<Found> {
+    prev["devices"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|d| Some(Found { name: d["name"].as_str()?.to_string(), ip: d["ip"].as_str()?.parse().ok()?, port: d["port"].as_u64()? as u16 }))
+        .collect()
 }
 
 /// One device, read in full.
@@ -70,6 +81,7 @@ async fn read_device(f: &Found) -> Value {
         Ok(d) => json!({
             "name": d.name.clone().unwrap_or_else(|| f.name.clone()),
             "ip": f.ip.to_string(),
+            "port": f.port,
             "model": d.model,
             "rxCount": d.rx_count,
             "txCount": d.tx_count,
@@ -80,7 +92,7 @@ async fn read_device(f: &Found) -> Value {
             "tx": d.tx.iter().map(|t| json!({ "ch": t.ch, "name": t.name })).collect::<Vec<_>>(),
             "error": d.error,
         }),
-        Err(e) => json!({ "name": f.name, "ip": f.ip.to_string(), "rx": [], "tx": [], "error": e }),
+        Err(e) => json!({ "name": f.name, "ip": f.ip.to_string(), "port": f.port, "rx": [], "tx": [], "error": e }),
     }
 }
 
@@ -166,7 +178,24 @@ fn stamp(t: u64) -> String {
 }
 
 async fn poll_once(app: &AppHandle, prev: &Value) -> Value {
-    let found = discover(Duration::from_secs(3)).await;
+    let mut note: Option<String> = None;
+    let mut found = match discover(Duration::from_secs(4)).await {
+        Ok(f) => f,
+        Err(e) => {
+            note = Some(e);
+            vec![]
+        }
+    };
+    if found.is_empty() {
+        // One more look, then fall back to the devices it knew.
+        found = discover(Duration::from_secs(4)).await.unwrap_or_default();
+    }
+    if found.is_empty() {
+        found = remembered(prev);
+        if !found.is_empty() {
+            note = Some(note.unwrap_or_else(|| "no mDNS answers — asked the devices it already knew".into()));
+        }
+    }
     let mut devices = vec![];
     for f in &found {
         devices.push(read_device(f).await);
@@ -174,7 +203,7 @@ async fn poll_once(app: &AppHandle, prev: &Value) -> Value {
     devices.sort_by(|a, b| a["name"].as_str().cmp(&b["name"].as_str()));
     let t = now_s();
     let local = local_dvs_name(&devices);
-    let mut snap = json!({ "at": t, "devices": devices, "localName": local });
+    let mut snap = json!({ "at": t, "devices": devices, "localName": local, "note": note });
     // Keep the last 200 changes, newest first.
     let mut changes: Vec<Value> = prev["changes"].as_array().cloned().unwrap_or_default();
     let fresh = if prev["devices"].is_array() { diff(prev, &snap) } else { vec![] };
@@ -254,8 +283,9 @@ mod tests {
     #[tokio::test]
     #[ignore] // live, read-only: cargo test --lib dante::tests::live -- --ignored --nocapture
     async fn live() {
-        let found = discover(Duration::from_secs(4)).await;
+        let found = discover(Duration::from_secs(4)).await.unwrap();
         println!("found {} devices", found.len());
+        for f in &found { println!("SEED {} {} {}", f.name, f.ip, f.port); }
         for f in &found {
             let v = read_device(f).await;
             let subs: Vec<String> = v["rx"].as_array().unwrap().iter().filter(|r| r["txDevice"].is_string())
