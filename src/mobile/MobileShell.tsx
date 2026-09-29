@@ -1,3 +1,4 @@
+import { IS_SHOTS, SHOT_TAB } from "../lib/tauri";
 import { useEffect, useState } from "react";
 import { usePerms } from "../lib/perms";
 import { CrewNav, type CrewTab } from "./CrewNav";
@@ -23,10 +24,11 @@ import { onTrack, seekTrack, skipTrack, stopTrack, toggleTrack, trackSnapshot } 
 // Chat and Dashboards; Home/Checklist arrive with their screens (S03/S08).
 
 export function MobileShell() {
-  const [tab, setTab] = useState<CrewTab>("home");
+  const shotTab = IS_SHOTS && SHOT_TAB && ["home", "chat", "checklist", "dashboards", "more"].includes(SHOT_TAB) ? (SHOT_TAB as CrewTab) : null;
+  const [tab, setTab] = useState<CrewTab>(shotTab ?? "home");
   // "No sound?" is reached from Home (and More), not a sixth tab: the nav is
   // five tabs by design and this is an occasional screen, not a daily one.
-  const [walk, setWalk] = useState(false);
+  const [walk, setWalk] = useState(IS_SHOTS && SHOT_TAB === "walk");
   const [onboarding, setOnboarding] = useState(() => IS_WEB && shouldOnboard());
   const chat = useChat();
   // The overdue dot only counts lists this phone can actually see — an alert
