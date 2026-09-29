@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ReleaseNotesOptIn } from "./ReleaseNotesOptIn";
 import { PcoConnect } from "./PcoConnect";
 import { useProDeck } from "../store";
 import { usePco } from "../pcoStore";
@@ -987,6 +988,7 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
               <SummaryRow ok={state.team} label="Team join code" okText="ready to scan" offText="needs Phones & kiosks on" />
               <SummaryRow ok={state.dashboards} label="Dashboards" okText={`${existing?.length ?? "your"} ready — Dashboard → Edit`} offText="use Dashboard → New" />
             </ul>
+            <ReleaseNotesOptIn />
             <h3 className="ob-h3">Also available — set up anytime</h3>
             <div className="ob-addons">
               {ADDONS.map((a) => (

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ReleaseNotesOptIn } from "../components/ReleaseNotesOptIn";
 import { ANCHOR_TOPIC, openHelp } from "../help/nav";
 import { consumeSettingsJump } from "../lib/settingsJump";
 import { useProDeck } from "../store";
@@ -426,6 +427,13 @@ export function SettingsPage() {
           ProDeck checks for updates a few seconds after launch and shows a banner when one
           is ready. Updates are signed releases from the ProDeck GitHub repository (or your
           own fork's feed, if you build it yourself); installing restarts the app.
+        </p>
+        <ReleaseNotesOptIn compact />
+        <p className="hint made-by">
+          Made by White Oak Media, church websites and Google Ad Grants.{" "}
+          <a href="https://whiteoakmedia.io" onClick={(e) => { e.preventDefault(); window.open("https://whiteoakmedia.io/?utm_source=prodeck&utm_medium=app&utm_campaign=about", "_blank", "noopener"); }}>
+            whiteoakmedia.io
+          </a>
         </p>
       </section>
 

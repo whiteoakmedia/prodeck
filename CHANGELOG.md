@@ -138,6 +138,18 @@ permission entry it didn't have; it's there now.
 
 ## Also in 0.9.96
 
+### New — Release notes by email, if you want them
+
+One optional line at the end of first-run setup and in Settings → Software
+Update: leave an email and you get a short note when a new version comes out.
+Nothing is sent unless you type an address and press the button.
+
+### Windows — recording, the Dante reader and show files work there too
+
+The multitrack recorder reads free space and lists drive letters, the live
+Dante reader finds this computer's own addresses, and console show files unpack
+with the tar that ships in Windows 10 and later.
+
 ### New — Auto-Follow, rebuilt: the slide changes as the line ends
 
 Follow now hears the singing on four-second slices every two seconds, with

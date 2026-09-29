@@ -9910,3 +9910,9 @@ select.input {
   gap: 16px;
   align-items: start;
 }
+/* Release notes by email: one optional line (first-run finish + Settings → Software Update) */
+.release-optin { display: flex; flex-direction: column; gap: 6px; margin: 14px 0 4px; }
+.release-optin-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.release-optin-row .input { flex: 1 1 220px; min-width: 0; }
+.release-optin-err { color: var(--bad, #e5484d); font-size: 12px; }
+.made-by a { color: inherit; text-decoration: underline; }
