@@ -10,8 +10,12 @@
 //! 1–96 (Kick IN ← SLink 1, Click ← Dante 15, AG WL ← Dante 44, FOH TB ←
 //! Local 10 …). 96–191 and 192–287 look like the insert A / B points (codes
 //! 0x22 / 0x24, socket = the channel's own slot unless re-patched) — shown
-//! raw, not confirmed. What follows is the output side; its layout isn't
-//! decoded yet, so it's kept raw for comparison between exports.
+//! raw, not confirmed. Entries 1258–1321 are the 64 Dante (I/O Port 1)
+//! OUTPUTS, found by diffing the 22 Sep export against the 28 Sep one (the
+//! re-patch photographed on 25 Sep lines up output for output): the entry is
+//! the source — 0x04 channel direct out, 0x05 channel insert send, 0x09 mono
+//! group, 0x0a stereo group L/R, 0x0f stereo matrix L/R (Main L+R = 2/3).
+//! Other output ports and source codes are kept raw for comparison.
 //!
 //! A watcher looks for new exports in Downloads, Desktop, Documents and on
 //! any USB drive, every minute, and logs what changed since the last one.
@@ -21,6 +25,29 @@ use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Emitter};
 
 const INPUTS: usize = 96;
+/// Where the 64 Dante (I/O Port 1) outputs start in the Channel Mapper.
+const DANTE_OUT: usize = 1258;
+const DANTE_OUTS: usize = 64;
+
+/// What feeds an output, in words. `names` = channel number → desk name;
+/// groups by their ProDeck ids ("grp:1", "sgrp:2").
+pub fn describe_source(e: &Entry, names: &dyn Fn(&str) -> String) -> String {
+    let k = e.socket as usize;
+    let lr = |k: usize| if k % 2 == 0 { "L" } else { "R" };
+    let named = |id: String, fallback: String| {
+        let n = names(&id);
+        if n.is_empty() { fallback } else { n }
+    };
+    match e.port {
+        0x11 => "—".into(),
+        0x04 => format!("Ch {} {} direct out", k + 1, names(&format!("input:{}", k + 1))).replace("  ", " "),
+        0x05 => format!("Ch {} {} insert send", k + 1, names(&format!("input:{}", k + 1))).replace("  ", " "),
+        0x09 => named(format!("grp:{}", k + 1), format!("Mono group {}", k + 1)),
+        0x0a => format!("{} {}", named(format!("sgrp:{}", k / 2 + 1), format!("Stereo group {}", k / 2 + 1)), lr(k)),
+        0x0f => format!("{} {}", if k / 2 == 1 { "Main L+R".to_string() } else { format!("Stereo matrix {}", k / 2 + 1) }, lr(k)),
+        c => format!("source 0x{c:02x} · {}", k + 1),
+    }
+}
 
 fn data_path() -> PathBuf {
     crate::settings::config_dir().join("avantis-patch.json")
@@ -82,8 +109,9 @@ fn is_show(p: &Path) -> bool {
 }
 
 /// Unpack the current-state scene from an export and read its patch.
-pub fn read_show(p: &Path) -> Result<Value, String> {
-    let tmp = std::env::temp_dir().join(format!("prodeck-avshow-{}", std::process::id()));
+pub fn read_show(p: &Path, names: &dyn Fn(&str) -> String) -> Result<Value, String> {
+    static N: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+    let tmp = std::env::temp_dir().join(format!("prodeck-avshow-{}-{}", std::process::id(), N.fetch_add(1, std::sync::atomic::Ordering::Relaxed)));
     let _ = std::fs::remove_dir_all(&tmp);
     std::fs::create_dir_all(&tmp).map_err(|e| e.to_string())?;
     let list = run("/usr/bin/tar", &["-tzf", &p.to_string_lossy()])?;
@@ -110,9 +138,13 @@ pub fn read_show(p: &Path) -> Result<Value, String> {
             .collect()
     };
     let mtime = std::fs::metadata(p).and_then(|m| m.modified()).ok().and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok()).map(|d| d.as_secs()).unwrap_or(0);
+    let dante_out: Vec<Value> = (0..DANTE_OUTS)
+        .filter_map(|i| m.get(DANTE_OUT + i).map(|e| json!({ "out": i + 1, "code": e.port, "index": e.socket, "text": describe_source(e, names) })))
+        .collect();
     Ok(json!({
         "file": p,
         "exportedAt": mtime,
+        "danteOut": dante_out,
         "inputs": rows(0),
         "insertA": rows(INPUTS),
         "insertB": rows(INPUTS * 2),
@@ -133,10 +165,18 @@ pub fn diff(old: &Value, new: &Value, names: &dyn Fn(usize) -> String) -> Vec<St
             }
         }
     }
+    if let (Some(a), Some(b)) = (old["danteOut"].as_array(), new["danteOut"].as_array()) {
+        for (x, y) in a.iter().zip(b.iter()) {
+            if x["text"] != y["text"] {
+                out.push(format!("Dante out {}: {} → {}", y["out"], x["text"].as_str().unwrap_or("?"), y["text"].as_str().unwrap_or("?")));
+            }
+        }
+    }
     if let (Some(a), Some(b)) = (old["rest"].as_array(), new["rest"].as_array()) {
-        let n = a.iter().zip(b.iter()).filter(|(x, y)| x != y).count();
+        // Outside the decoded ranges (other output ports).
+        let n = a.iter().zip(b.iter()).enumerate().filter(|(i, (x, y))| x != y && !(DANTE_OUT - INPUTS * 3..DANTE_OUT - INPUTS * 3 + DANTE_OUTS).contains(i)).count();
         if n > 0 {
-            out.push(format!("{n} output-side patch entries changed (not decoded yet)"));
+            out.push(format!("{n} other patch entries changed (other output ports — not decoded yet)"));
         }
     }
     out
@@ -144,33 +184,63 @@ pub fn diff(old: &Value, new: &Value, names: &dyn Fn(usize) -> String) -> Vec<St
 
 fn candidates() -> Vec<PathBuf> {
     let home = PathBuf::from(std::env::var("HOME").unwrap_or_default());
-    let mut dirs = vec![home.join("Downloads"), home.join("Desktop"), home.join("Documents")];
+    // Home folders a few levels deep (Director saves into Downloads/
+    // AllenHeath-Avantis/Shows), USB sticks two levels deep.
+    let mut roots: Vec<(PathBuf, usize)> = vec![(home.join("Downloads"), 3), (home.join("Desktop"), 3), (home.join("Documents"), 3)];
     if let Ok(rd) = std::fs::read_dir("/Volumes") {
         for e in rd.flatten() {
-            let p = e.path();
-            dirs.push(p.clone());
-            // Consoles export into a folder on the stick.
-            if let Ok(sub) = std::fs::read_dir(&p) {
-                dirs.extend(sub.flatten().map(|s| s.path()).filter(|s| s.is_dir()).take(40));
-            }
+            roots.push((e.path(), 2));
         }
     }
     let mut out = vec![];
-    for d in dirs {
-        let Ok(rd) = std::fs::read_dir(&d) else { continue };
+    let mut budget = 4000usize; // directory entries looked at per scan, at most
+    fn walk(d: &Path, depth: usize, out: &mut Vec<PathBuf>, budget: &mut usize) {
+        let Ok(rd) = std::fs::read_dir(d) else { return };
         for e in rd.flatten() {
+            if *budget == 0 {
+                return;
+            }
+            *budget -= 1;
             let p = e.path();
-            let small = e.metadata().map(|m| m.len() < 40_000_000).unwrap_or(false);
-            if small && p.to_string_lossy().ends_with(".tar.gz") {
+            let name = e.file_name().to_string_lossy().to_string();
+            if name.starts_with('.') || name.ends_with(".app") || name == "Library" {
+                continue;
+            }
+            let Ok(md) = e.metadata() else { continue };
+            if md.is_dir() {
+                if depth > 1 {
+                    walk(&p, depth - 1, out, budget);
+                }
+            } else if name.ends_with(".tar.gz") && md.len() < 40_000_000 {
                 out.push(p);
             }
         }
+    }
+    for (r, depth) in roots {
+        walk(&r, depth, &mut out, &mut budget);
     }
     out
 }
 
 fn mtime(p: &Path) -> u64 {
     std::fs::metadata(p).and_then(|m| m.modified()).ok().and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok()).map(|d| d.as_secs()).unwrap_or(0)
+}
+
+/// Every name the desk reports, by ProDeck id ("input:10" → "Bass", "grp:1" → "Lead Voc").
+fn desk_names(app: &AppHandle) -> std::collections::HashMap<String, String> {
+    use tauri::Manager;
+    let mut m = std::collections::HashMap::new();
+    if let Some(st) = app.try_state::<crate::avantis::AvantisState>() {
+        let v = crate::avantis::snapshot(st.inner());
+        if let Some(names) = v["names"].as_object() {
+            for (id, n) in names {
+                if let Some(n) = n.as_str().filter(|n| !n.is_empty()) {
+                    m.insert(id.clone(), n.to_string());
+                }
+            }
+        }
+    }
+    m
 }
 
 fn channel_names(app: &AppHandle) -> std::collections::HashMap<usize, String> {
@@ -201,7 +271,9 @@ pub fn scan(app: &AppHandle) -> Option<Value> {
         }
     }
     let (_, path) = newest?;
-    let now = match read_show(&path) {
+    let desk = desk_names(app);
+    let lookup = |id: &str| desk.get(id).cloned().unwrap_or_default();
+    let now = match read_show(&path, &lookup) {
         Ok(v) => v,
         Err(e) => {
             eprintln!("[avshow] {}: {e}", path.display());
@@ -241,6 +313,12 @@ fn write_dossier(v: &Value, names: &std::collections::HashMap<usize, String>) {
             continue;
         }
         s += &format!("| {} | {} | {} | {} | {} |\n", i + 1, names.get(&(i + 1)).map(|x| x.as_str()).unwrap_or(""), t("inputs"), t("insertA"), t("insertB"));
+    }
+    s += "\n## Dante (I/O Port 1) outputs\n\n| out | source |\n|---|---|\n";
+    for o in v["danteOut"].as_array().into_iter().flatten() {
+        if o["text"] != "—" {
+            s += &format!("| {} | {} |\n", o["out"], o["text"].as_str().unwrap_or(""));
+        }
     }
     if let Some(ch) = v["changes"].as_array().filter(|c| !c.is_empty()) {
         s += "\n## Changed since the previous export\n\n";
@@ -290,7 +368,7 @@ mod tests {
         let a = json!({ "inputs": [{ "ch": 10, "text": "SLink 14" }], "insertA": [], "insertB": [], "rest": ["110000"] });
         let b = json!({ "inputs": [{ "ch": 10, "text": "SLink 15" }], "insertA": [], "insertB": [], "rest": ["010005"] });
         let c = diff(&a, &b, &|_| "Bass".into());
-        assert_eq!(c, vec!["Ch 10 Bass: input SLink 14 → SLink 15".to_string(), "1 output-side patch entries changed (not decoded yet)".to_string()]);
+        assert_eq!(c, vec!["Ch 10 Bass: input SLink 14 → SLink 15".to_string(), "1 other patch entries changed (other output ports — not decoded yet)".to_string()]);
     }
 
     #[test]
@@ -300,7 +378,7 @@ mod tests {
         if !p.exists() {
             return;
         }
-        let v = read_show(&p).unwrap();
+        let v = read_show(&p, &|_| String::new()).unwrap();
         let t = |k: &str, i: usize| v[k][i]["text"].as_str().unwrap().to_string();
         for i in [0, 1, 2, 9, 22, 23, 24, 31, 36] {
             println!("ch {} input {} | insA {} | insB {}", i + 1, t("inputs", i), t("insertA", i), t("insertB", i));
@@ -308,5 +386,32 @@ mod tests {
         assert_eq!(t("inputs", 0), "SLink 1");
         assert_eq!(t("inputs", 22), "I/O Port 1 (Dante) 15");
         assert_eq!(t("inputs", 31), "Local 10");
+    }
+
+    #[test]
+    fn names_the_output_sources() {
+        let names = |id: &str| match id { "input:10" => "Bass".to_string(), "grp:1" => "Lead Voc".to_string(), "sgrp:2" => "Room".to_string(), _ => String::new() };
+        let e = |port, socket| Entry { port, socket };
+        assert_eq!(describe_source(&e(0x04, 9), &names), "Ch 10 Bass direct out");
+        assert_eq!(describe_source(&e(0x05, 1), &names), "Ch 2 insert send");
+        assert_eq!(describe_source(&e(0x09, 0), &names), "Lead Voc");
+        assert_eq!(describe_source(&e(0x0a, 3), &names), "Room R");
+        assert_eq!(describe_source(&e(0x0f, 2), &names), "Main L+R L");
+        assert_eq!(describe_source(&e(0x11, 0), &names), "—");
+    }
+
+    #[test]
+    #[ignore] // cargo test --lib avshow::tests::booth_outputs -- --ignored --nocapture
+    fn booth_outputs() {
+        let p = PathBuf::from(std::env::var("HOME").unwrap()).join("Downloads/AllenHeath-Avantis/Shows/ztgfxfix.tar.gz");
+        if !p.exists() {
+            return;
+        }
+        let v = read_show(&p, &|_| String::new()).unwrap();
+        for o in v["danteOut"].as_array().unwrap() {
+            if o["text"] != "—" {
+                println!("OUT {} ← {}", o["out"], o["text"].as_str().unwrap());
+            }
+        }
     }
 }

@@ -718,6 +718,7 @@ export interface AvantisPatch {
   file: string;
   exportedAt: number;
   inputs: { ch: number; port: number; socket: number | null; text: string }[];
+  danteOut?: { out: number; code: number; index: number; text: string }[];
   changes: string[];
 }
 export const avantisPatchGet = () => invoke<AvantisPatch | null>("avantis_patch_get");

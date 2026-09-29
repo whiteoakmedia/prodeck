@@ -110,13 +110,13 @@ export function LiveRouting() {
 
       <section className="card">
         <div className="card-head">
-          <h3>Avantis — input patch</h3>
+          <h3>Avantis — patch</h3>
           <span className="muted small">{patch ? `from ${patch.file.split("/").pop()} · exported ${ago(patch.exportedAt)}` : "no show export found yet"}</span>
         </div>
         <p className="muted small">
           The desk's network control doesn't report its patch, so this comes from a show file: save the show to a USB stick on the
           Avantis (its Show Manager) and plug the stick into this Mac, or drop the file in Downloads —
-          ProDeck picks up a newer one within a minute and notes what changed. Inputs are decoded; the output patch isn't yet.
+          ProDeck picks up a newer one within a minute and notes what changed. Inputs and the Dante outputs are decoded.
         </p>
         {patch && (
           <>
@@ -126,6 +126,29 @@ export function LiveRouting() {
                   <li key={i}>{c}</li>
                 ))}
               </ul>
+            )}
+            <div className="lr-two">
+            {(patch.danteOut?.length ?? 0) > 0 && (
+              <div className="rec-table-wrap">
+                <table className="rec-table">
+                  <thead>
+                    <tr>
+                      <th>Dante out</th>
+                      <th>Sends</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {patch.danteOut!
+                      .filter((o) => o.text !== "—")
+                      .map((o) => (
+                        <tr key={o.out}>
+                          <td className="mono rec-in">{o.out}</td>
+                          <td>{o.text}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
             )}
             <div className="rec-table-wrap">
               <table className="rec-table">
@@ -146,6 +169,7 @@ export function LiveRouting() {
                     ))}
                 </tbody>
               </table>
+            </div>
             </div>
           </>
         )}
