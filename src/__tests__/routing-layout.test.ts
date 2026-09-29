@@ -71,11 +71,11 @@ describe("filters", () => {
 describe("paint", () => {
   it("reads mute, fader and desk name for a channel", () => {
     const map = boothMap();
-    const live: LiveView = { now: NOW, desk: { connected: true, mutes: { "input:39": true }, faders: { "input:53": -12 }, names: { "input:39": "Ruth" } } };
+    const live: LiveView = { now: NOW, desk: { connected: true, mutes: { "input:39": true }, faders: { "input:53": -12 }, names: { "input:39": "Anna" } } };
     const n39 = map.nodes.find((n) => n.id === chId("39"))!;
     const n53 = map.nodes.find((n) => n.id === chId("53"))!;
-    expect(paintFor(n39, live)).toMatchObject({ muted: true, deskName: "Ruth" });
-    expect(subFor(n39, paintFor(n39, live))).toBe("“Ruth” · muted");
+    expect(paintFor(n39, live)).toMatchObject({ muted: true, deskName: "Anna" });
+    expect(subFor(n39, paintFor(n39, live))).toBe("“Anna” · muted");
     expect(subFor(n53, paintFor(n53, live))).toBe("−12 dB");
   });
   it("shows signal on a captured node only while fresh", () => {

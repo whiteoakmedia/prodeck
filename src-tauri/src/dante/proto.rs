@@ -358,13 +358,13 @@ mod tests {
 
     #[test]
     fn parses_a_receive_page() {
-        // Two records: rx 1 "01" ← "Kick" @ "AllenHth", rx 2 "02" unsubscribed.
+        // Two records: rx 1 "01" ← "Kick" @ "FOH-Console", rx 2 "02" unsubscribed.
         let mut rep = vec![0x27, 0xFF, 0, 0, 0, 1, 0x30, 0x00, 0x00, 0x01, 2, 2];
         let strings_at = 12 + 40;
         let s1 = strings_at as u16; // "01"
         let s2 = s1 + 3; // "Kick"
-        let s3 = s2 + 5; // "AllenHth"
-        let s4 = s3 + 9; // "02"
+        let s3 = s2 + 5; // "FOH-Console"
+        let s4 = s3 + 12; // "02"
         let rec = |ch: u16, txc: u16, txd: u16, name: u16, rxs: u16, sub: u16| {
             let mut r = vec![];
             for v in [ch, 0, 0, txc, txd, name, rxs, sub, 0, 0] {
@@ -374,12 +374,12 @@ mod tests {
         };
         rep.extend(rec(1, s2, s3, s1, 0x0101, 0x0001));
         rep.extend(rec(2, 0, 0, s4, 0, 0));
-        rep.extend(b"01\0Kick\0AllenHth\002\0");
+        rep.extend(b"01\0Kick\0FOH-Console\002\0");
         let n = rep.len() as u16;
         rep[2..4].copy_from_slice(&n.to_be_bytes());
         let page = parse_rx_page(&rep, 1).unwrap();
         assert_eq!(page.len(), 2);
-        assert_eq!(page[0].tx_device.as_deref(), Some("AllenHth"));
+        assert_eq!(page[0].tx_device.as_deref(), Some("FOH-Console"));
         assert_eq!(page[0].tx_channel.as_deref(), Some("Kick"));
         assert!(page[0].ok());
         assert_eq!(page[0].status_text(), "Connected");

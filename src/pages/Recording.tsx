@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { danteSnapshot, getSettings, IS_WEB, multitrackOpen, type DanteSnapshot, multitrackSessions, multitrackVolumes, on, updateSettings, type RecSession, type RecVolume } from "../lib/tauri";
+import { danteSnapshot, getSettings, IS_WEB, listAudioInputs, multitrackOpen, type DanteSnapshot, multitrackSessions, multitrackVolumes, on, updateSettings, type RecSession, type RecVolume } from "../lib/tauri";
 import { useProDeck } from "../store";
 import { fmtClock, useRecorder } from "../recorder";
 
@@ -21,6 +21,7 @@ export function RecordingPage() {
   const { settings, refreshSettings } = useProDeck();
   const [levels, setLevels] = useState<number[]>([]);
   const [vols, setVols] = useState<RecVolume[]>([]);
+  const [inputs, setInputs] = useState<string[]>([]);
   const [sessions, setSessions] = useState<RecSession[]>([]);
   const [show, setShow] = useState<"all" | "signal" | "none">("all");
   const pending = useRef<number[] | null>(null);
@@ -48,6 +49,7 @@ export function RecordingPage() {
       }
     }, 160);
     multitrackVolumes().then(setVols).catch(() => {});
+    listAudioInputs().then(setInputs).catch(() => {});
     return () => {
       clearInterval(iv);
       u.then((f) => f());
@@ -72,18 +74,21 @@ export function RecordingPage() {
   const me = dante?.devices.find((d) => d.name === dante.localName);
   const subs = new Map((me?.rx ?? []).map((r) => [r.ch, r]));
   const sources = settings?.multitrack_sources ?? {};
-  const n = Math.max(levels.length, 64);
+  // While recording, the recorder's own levels (it may be a different device than the meters').
+  const shownLevels = rec.recording && rec.live?.levels?.length ? rec.live.levels : levels;
+  const n = Math.max(shownLevels.length, rec.recording && rec.live?.channels ? 0 : 64);
   const rows = Array.from({ length: n }, (_, i) => {
     const k = String(i + 1);
-    const db = levels[i];
+    const db = shownLevels[i];
     return { i: i + 1, name: names[k] || `In ${k.padStart(2, "0")}`, named: !!names[k], source: sources[k] ?? "", db, state: stateOf(db), sub: subs.get(i + 1) };
   });
   const counts = { signal: rows.filter((r) => r.state === "signal").length, idle: rows.filter((r) => r.state === "idle").length, none: rows.filter((r) => r.state === "none").length };
   const shown = rows.filter((r) => show === "all" || (show === "signal" ? r.state !== "none" : r.state === "none"));
 
-  async function save(field: "multitrack_names" | "multitrack_sources" | "multitrack_volume", key: string, value: string) {
+  async function save(field: "multitrack_names" | "multitrack_sources" | "multitrack_volume" | "multitrack_device", key: string, value: string) {
     const cur = await getSettings();
     if (field === "multitrack_volume") await updateSettings({ ...cur, multitrack_volume: value });
+    else if (field === "multitrack_device") await updateSettings({ ...cur, multitrack_device: value || null });
     else {
       const m = { ...(cur[field] ?? {}) };
       if (value.trim()) m[key] = value.trim();
@@ -134,6 +139,22 @@ export function RecordingPage() {
         </div>
         <div className="rec-hero-side">
           <label className="field">
+            <span>Record from</span>
+            <select className="input" id="rec-src" value={settings?.multitrack_device ?? ""} disabled={rec.recording} onChange={(e) => save("multitrack_device", "", e.target.value)}>
+              <option value="">ProDeck's audio input{settings?.audio_input ? ` (${settings.audio_input})` : ""}</option>
+              {inputs
+                .filter((d) => d !== settings?.audio_input)
+                .map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              {settings?.multitrack_device && !inputs.includes(settings.multitrack_device) && (
+                <option value={settings.multitrack_device}>{settings.multitrack_device} — not connected</option>
+              )}
+            </select>
+          </label>
+          <label className="field">
             <span>Record to</span>
             <select className="input" id="rec-dest" value={chosen} disabled={rec.recording} onChange={(e) => save("multitrack_volume", "", e.target.value)}>
               {vols.map((v) => (
@@ -171,7 +192,8 @@ export function RecordingPage() {
           </div>
         </div>
         <p className="muted small">
-          Every input is recorded; the ones with no audio all service are removed at the end. Click a name or a source to change
+          Every input of the chosen device is recorded — a Dante card, or a console's USB audio (X32/M32 X-USB, SQ,
+          Yamaha TF…) plugged into this Mac; the ones with no audio all service are removed at the end. Click a name or a source to change
           it. "No audio" is digital silence — nothing is subscribed in Dante or the console isn't sending that output.
         </p>
         <div className="rec-table-wrap">

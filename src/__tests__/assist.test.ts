@@ -10,13 +10,13 @@ function ctx(over: Partial<AssistCtx> = {}): AssistCtx {
 39\tvox 3\tI/O Port 1\t43\tULXD4Q-5-8 07
 53\tvox 3 (dup)\tI/O Port 1\t43\tULXD4Q-5-8 07`).rows) applyRow(map, r);
   map.panels = [{ id: "p", label: "Stage left back", port: "stage", from: 1, to: 10 }];
-  map.nodes.push({ id: "dest:waves", kind: "destination", label: "Waves LV1", steps: ["Is Axis_One on?"] });
+  map.nodes.push({ id: "dest:waves", kind: "destination", label: "Waves LV1", steps: ["Is Waves-PC on?"] });
   map.watchlist.push({ id: "w", severity: "know", symptom: "vocals quiet together", detail: "Waves is down", nodes: ["dest:waves"] });
-  const live: LiveView = { now: NOW, desk: { connected: true, mutes: { "input:53": true }, faders: { "input:39": -4 }, names: { "input:39": "Ruth" } } };
+  const live: LiveView = { now: NOW, desk: { connected: true, mutes: { "input:53": true }, faders: { "input:39": -4 }, names: { "input:39": "Anna" } } };
   return {
     map,
     live,
-    people: [{ name: "Ruth Adams", position: "Vocals", mic: "3", channelIds: [chId("39"), chId("53")] }],
+    people: [{ name: "Anna Brooks", position: "Vocals", mic: "3", channelIds: [chId("39"), chId("53")] }],
     status: { deskConnected: true, ppConnected: true, meterRunning: true, service: "Sunday 10am" },
     knowledge: [{ name: "SYSTEM.md", text: "Scene 19 Waves Off is safe to recall." }],
     asker: "phone",
@@ -27,9 +27,9 @@ function ctx(over: Partial<AssistCtx> = {}): AssistCtx {
 describe("the troubleshooter's tools", () => {
   it("find resolves a person to her channels and a socket to its node", () => {
     const c = ctx();
-    const r = runTool(c, "find", { query: "ruth" }) as any;
-    expect(r.people[0]).toMatchObject({ person: "Ruth Adams", mic: "3", channel_ids: [chId("39"), chId("53")] });
-    // Live desk name "Ruth" also matches channel 39.
+    const r = runTool(c, "find", { query: "anna" }) as any;
+    expect(r.people[0]).toMatchObject({ person: "Anna Brooks", mic: "3", channel_ids: [chId("39"), chId("53")] });
+    // Live desk name "Anna" also matches channel 39.
     expect(r.nodes.some((n: any) => n.node_id === chId("39"))).toBe(true);
     const s = runTool(c, "find", { query: "stage 1" }) as any;
     expect(s.nodes.some((n: any) => n.node_id === "src:stage:1")).toBe(true);
@@ -75,7 +75,7 @@ describe("the prompt", () => {
     expect(sys).toMatch(/Stage left back: stage 1–10/);
     expect(sys).toMatch(/### SYSTEM.md\nScene 19 Waves Off is safe/);
     expect(sys).toMatch(/Desk mirror: connected/);
-    expect(sys).toMatch(/Ruth Adams \(Vocals, mic 3 → 39\/53\)/);
+    expect(sys).toMatch(/Anna Brooks \(Vocals, mic 3 → 39\/53\)/);
     expect(sys).toMatch(/a volunteer on a phone/);
   });
 });
@@ -92,7 +92,7 @@ describe("citations", () => {
     // A raw id still links; a "bus X" prefix is tolerated.
     expect(resolveCite(map, "dest:waves")).toBe("dest:waves");
     expect(resolveCite(map, "place Waves LV1")).toBe("dest:waves");
-    map.nodes.find((n) => n.id === "dest:waves")!.label = "Waves LV1 (Axis_One)";
+    map.nodes.find((n) => n.id === "dest:waves")!.label = "Waves LV1 (Waves-PC)";
     expect(resolveCite(map, "Waves LV1")).toBe("dest:waves");
     const c = cites(ctx(), "Channel 39 is open [ch 39]. Check the pack [ULXD4Q-5-8 07]. If Waves is down [Waves LV1]… [ch 39] again.");
     expect(c.map((x) => x.nodeId)).toEqual([chId("39"), "src:ulxd4q-5-8:07", "dest:waves"]);
@@ -105,13 +105,13 @@ describe("the loop", () => {
     const complete = async (body: any) => {
       calls.push(body);
       if (calls.length === 1) {
-        return { stop_reason: "tool_use", content: [{ type: "text", text: "Let me look." }, { type: "tool_use", id: "t1", name: "find", input: { query: "ruth" } }] };
+        return { stop_reason: "tool_use", content: [{ type: "text", text: "Let me look." }, { type: "tool_use", id: "t1", name: "find", input: { query: "anna" } }] };
       }
       if (calls.length === 2) {
         const last = body.messages[body.messages.length - 1];
         expect(last.role).toBe("user");
         expect(last.content[0]).toMatchObject({ type: "tool_result", tool_use_id: "t1" });
-        expect(JSON.parse(last.content[0].content).people[0].person).toBe("Ruth Adams");
+        expect(JSON.parse(last.content[0].content).people[0].person).toBe("Anna Brooks");
         return { stop_reason: "tool_use", content: [{ type: "tool_use", id: "t2", name: "walk", input: { node_id: chId("39") } }] };
       }
       return { stop_reason: "end_turn", content: [{ type: "text", text: "Channel 39 is open [ch 39]. Check pack 7 first [ULXD4Q-5-8 07]." }] };

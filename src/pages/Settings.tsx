@@ -565,7 +565,7 @@ export function SettingsPage() {
           <HardwareStatus model={form.avantis_model || "avantis"} />
           <label className="field">
             <span>Console IP</span>
-            <input className="input" placeholder="172.16.0.16" value={form.avantis_host}
+            <input className="input" placeholder="192.168.1.60" value={form.avantis_host}
               onChange={(e) => set("avantis_host", e.target.value.trim())} />
           </label>
           <label className="field">
@@ -1139,7 +1139,7 @@ export function SettingsPage() {
             <span>OSC host — rig PC's IP (blank = off)</span>
             <input
               className="input"
-              placeholder="e.g. 172.16.0.50"
+              placeholder="e.g. 192.168.1.50"
               value={form.keysend_osc_host}
               onChange={(e) => set("keysend_osc_host", e.target.value)}
             />
@@ -1390,7 +1390,7 @@ export function SettingsPage() {
               <span>Host address (ws://IP:port)</span>
               <input
                 className="input"
-                placeholder="ws://172.16.0.50:51421"
+                placeholder="ws://192.168.1.50:51421"
                 value={relay.clientUrl}
                 onChange={(e) => relay.setClientUrl(e.target.value)}
               />
@@ -2303,7 +2303,7 @@ function CrewInviteLink({
       `<style>body{font-family:-apple-system,Helvetica,sans-serif;text-align:center;padding:48px;color:#111}` +
       `h1{font-size:40px;margin:0 0 6px}p{font-size:20px;color:#444;margin:6px 0}` +
       `img{width:340px;height:340px;margin:28px 0}ol{display:inline-block;text-align:left;font-size:22px;line-height:1.7}</style></head><body>` +
-      `<h1>Join the ProDeck Crew</h1><p>Cornerstone production &amp; worship team app</p>` +
+      `<h1>Join the ProDeck Crew</h1><p>Your production &amp; worship team app</p>` +
       `<img src="${qr}" alt="QR">` +
       `<ol><li>Scan the code with your phone camera</li>` +
       `<li>Add ProDeck to your Home Screen when asked</li>` +
@@ -3579,7 +3579,7 @@ function AutomixCard({ form, set }: { form: Settings; set: <K extends keyof Sett
       )}
       <label className="field">
         <span>FX to mute between songs (DCA name, empty = off)</span>
-        <input className="input" value={form.automix_fx_mute ?? "All FX"} onChange={(e) => set("automix_fx_mute", e.target.value)} />
+        <input className="input" value={form.automix_fx_mute ?? ""} placeholder="e.g. All FX (empty = off)" onChange={(e) => set("automix_fx_mute", e.target.value)} />
       </label>
       <label className="field wide">
         <span>Moves (one line per moment, dB from your positions — DCAs or groups by their desk names)</span>
@@ -3605,7 +3605,7 @@ function AutomixCard({ form, set }: { form: Settings; set: <K extends keyof Sett
       </label>
       <label className="field wide">
         <span>Instrument feeds (fader: Dante input channels on this Mac)</span>
-        <input className="input mono" value={form.automix_feeds || "EGs: 17, 18; KEYs: 20; AGs: 19, 21; Drums: 9, 10, 12, 13, 14, 15; ch 10: 16"} onChange={(e) => set("automix_feeds", e.target.value)} />
+        <input className="input mono" value={form.automix_feeds ?? ""} placeholder="EGs: 17, 18; KEYs: 20; AGs: 19; Drums: 9, 10; ch 10: 16" onChange={(e) => set("automix_feeds", e.target.value)} />
       </label>
       {am.log.length > 0 && (
         <ul className="ap-log small">

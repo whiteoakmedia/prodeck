@@ -29,7 +29,7 @@ itself says nothing about Ruth.
 CH    NAME       PORT         SOCKET   UPSTREAM
 1     Kick IN    SLink        1        stage 1
 39    vox 3      I/O Port 1   43       ULXD4Q-5-8 07
-11-12 Loop (st)  I/O Port 1   1+2      MacBook-Pro-2 01+02
+11-12 Loop (st)  I/O Port 1   1+2      Playback-Mac 01+02
 13    Synth L    —            —        not patched
 ```
 
@@ -39,7 +39,7 @@ Tabs (straight from a spreadsheet) or commas. A header row is fine.
   (Dante), Local (an XLR on the rack), ME, Analog.
 - **SOCKET** — the number on that door. `1+2` for a stereo pair.
 - **UPSTREAM** — what feeds the socket. `stage 41` is a stage panel socket;
-  `ULXD4Q-5-8 07` is slot 7 on that receiver; `MacBook-Pro-2 05` is output 5 on
+  `ULXD4Q-5-8 07` is slot 7 on that receiver; `Playback-Mac 05` is output 5 on
   that machine. ProDeck classifies it from the words (receiver, stage, laptop,
   Spotify…) and picks the right checklist.
 

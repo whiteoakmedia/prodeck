@@ -10,8 +10,8 @@
 //! controller), since Audinate doesn't publish the protocol.
 //!
 //! The snapshot is kept in memory and in `<config>/dante-live.json`; every
-//! subscription that changes between two reads is logged ("Command-Center 27
-//! now ← AllenHth 22") and written to the booth notes
+//! subscription that changes between two reads is logged ("Booth-Mac 27
+//! now ← FOH-Console 22") and written to the booth notes
 //! (~/.prodeck/system/DANTE_LIVE.md) when that folder exists.
 
 use serde_json::{json, Value};
@@ -96,7 +96,7 @@ async fn read_device(f: &Found) -> Value {
     }
 }
 
-/// "Command-Center 27: AllenHth-114454 · 22 → (none)" for everything that differs.
+/// "Booth-Mac 27: FOH-Console · 22 → (none)" for everything that differs.
 pub fn diff(old: &Value, new: &Value) -> Vec<String> {
     let key = |r: &Value| match (r["txDevice"].as_str(), r["txChannel"].as_str()) {
         (Some(d), Some(c)) => format!("{d} · {c}"),
@@ -267,16 +267,16 @@ mod tests {
 
     #[test]
     fn a_changed_subscription_is_one_line() {
-        let a = json!({ "devices": [{ "name": "Command-Center", "rx": [
+        let a = json!({ "devices": [{ "name": "Booth-Mac", "rx": [
             { "ch": 27, "txDevice": null, "txChannel": null },
-            { "ch": 30, "txDevice": "AllenHth-114454", "txChannel": "57" } ] }] });
-        let b = json!({ "devices": [{ "name": "Command-Center", "rx": [
-            { "ch": 27, "txDevice": "AllenHth-114454", "txChannel": "22" },
-            { "ch": 30, "txDevice": "AllenHth-114454", "txChannel": "57" } ] }] });
-        assert_eq!(diff(&a, &b), vec!["Command-Center 27: (nothing) → AllenHth-114454 · 22".to_string()]);
+            { "ch": 30, "txDevice": "FOH-Console", "txChannel": "57" } ] }] });
+        let b = json!({ "devices": [{ "name": "Booth-Mac", "rx": [
+            { "ch": 27, "txDevice": "FOH-Console", "txChannel": "22" },
+            { "ch": 30, "txDevice": "FOH-Console", "txChannel": "57" } ] }] });
+        assert_eq!(diff(&a, &b), vec!["Booth-Mac 27: (nothing) → FOH-Console · 22".to_string()]);
         assert!(diff(&b, &b).is_empty());
         // A device that couldn't be read this time isn't "everything unsubscribed".
-        let c = json!({ "devices": [{ "name": "Command-Center", "rx": [], "error": "timeout" }] });
+        let c = json!({ "devices": [{ "name": "Booth-Mac", "rx": [], "error": "timeout" }] });
         assert_eq!(diff(&b, &c), Vec::<String>::new());
     }
 
@@ -291,7 +291,7 @@ mod tests {
             let subs: Vec<String> = v["rx"].as_array().unwrap().iter().filter(|r| r["txDevice"].is_string())
                 .map(|r| format!("{}←{}·{} [{}]", r["ch"], r["txDevice"].as_str().unwrap(), r["txChannel"].as_str().unwrap_or("?"), r["status"].as_str().unwrap())).collect();
             println!("{} {} rx={} tx={} err={:?} subs={} first: {:?}", v["name"], v["ip"], v["rxCount"], v["txCount"], v["error"], subs.len(), subs.iter().take(6).collect::<Vec<_>>());
-            if v["name"] == "Command-Center" { println!("ALL: {}", subs.join(", ")); }
+            if v["name"] == "Booth-Mac" { println!("ALL: {}", subs.join(", ")); }
         }
     }
 }

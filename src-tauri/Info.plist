@@ -3,15 +3,34 @@
 <plist version="1.0">
 <dict>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>ProDeck uses an audio input for the SPL meter, RTA analyzer, and live captions.</string>
+	<string>ProDeck listens to your audio inputs (a Dante card, a console's USB audio, a microphone) for the SPL meter, the RTA, Auto-Follow, the stream report and multitrack recording.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>ProDeck connects to ProPresenter and discovers NDI and stage display devices on your local network.</string>
+	<string>ProDeck connects to ProPresenter, your sound console, Dante devices, NDI sources, Bitfocus Companion and the phones on your team over your local network.</string>
+	<!-- macOS only lets an app browse Bonjour service types it lists here:
+	     an unlisted type returns nothing, silently. -->
 	<key>NSBonjourServices</key>
 	<array>
+		<string>_pro7prolink._tcp</string>
+		<string>_pro7stagedsply._tcp</string>
 		<string>_pro-presenter._tcp</string>
 		<string>_pro-dj-link._tcp</string>
 		<string>_ndi._tcp</string>
 		<string>_http._tcp</string>
+		<string>_netaudio-arc._udp</string>
+		<string>_netaudio-cmc._udp</string>
+		<string>_netaudio-dbc._udp</string>
+		<string>_netaudio-chan._udp</string>
+		<string>_apple-midi._udp</string>
 	</array>
+	<key>NSDesktopFolderUsageDescription</key>
+	<string>ProDeck looks on your Desktop for sound-console show files and Dante presets you save there, to keep its routing map current.</string>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>ProDeck looks in Documents for sound-console show files you save there, to keep its routing map current.</string>
+	<key>NSDownloadsFolderUsageDescription</key>
+	<string>ProDeck looks in Downloads for sound-console show files (Avantis Director saves there), to keep its routing map current.</string>
+	<key>NSRemovableVolumesUsageDescription</key>
+	<string>ProDeck records multitrack audio to the drive you choose and reads console show files from USB sticks.</string>
+	<key>NSNetworkVolumesUsageDescription</key>
+	<string>ProDeck can record multitrack audio to a network drive you choose.</string>
 </dict>
 </plist>

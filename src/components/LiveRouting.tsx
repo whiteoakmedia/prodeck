@@ -110,14 +110,22 @@ export function LiveRouting() {
 
       <section className="card">
         <div className="card-head">
-          <h3>Avantis — patch</h3>
-          <span className="muted small">{patch ? `from ${patch.file.split("/").pop()} · exported ${ago(patch.exportedAt)}` : "no show export found yet"}</span>
+          <h3>Desk patch</h3>
+          <span className="muted small">{patch ? (patch.live ? "live from the desk" : `from ${patch.file.split("/").pop()} · exported ${ago(patch.exportedAt)}`) : "no patch read yet"}</span>
         </div>
-        <p className="muted small">
-          The desk's network control doesn't report its patch, so this comes from a show file: save the show to a USB stick on the
-          Avantis (its Show Manager) and plug the stick into this Mac, or drop the file in Downloads —
-          ProDeck picks up a newer one within a minute and notes what changed. Inputs and the Dante outputs are decoded.
-        </p>
+        {patch?.live ? (
+          <p className="muted small">
+            An X32 or M32 reports its patch over the network, so this is live. Channel sources and input blocks are read with
+            the console's documented messages{patch.unverified ? " — new in this version; if a line doesn't match your desk, tell us" : ""}.
+          </p>
+        ) : (
+          <p className="muted small">
+            An Allen &amp; Heath desk (Avantis, dLive, SQ) doesn't report its patch over the network, so this comes from a show
+            file: save the show to a USB stick on the desk (or from Avantis Director) and plug it into this Mac, or drop the file
+            in Downloads — ProDeck picks up a newer one within a minute and notes what changed. Avantis inputs and Dante outputs
+            are decoded; dLive and SQ show files aren't yet. Behringer X32 / Midas M32: read live, nothing to do.
+          </p>
+        )}
         {patch && (
           <>
             {patch.changes?.length > 0 && (

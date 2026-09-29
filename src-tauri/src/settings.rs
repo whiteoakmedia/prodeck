@@ -184,6 +184,10 @@ pub struct Settings {
     pub multitrack_auto: bool,
     /// Delete tracks that were digital silence the whole session.
     pub multitrack_drop_silent: bool,
+    /// Record from this input device instead of ProDeck's audio input — a
+    /// console's USB audio (X32 X-USB, SQ, TF…) or an interface. None/"" =
+    /// the audio input ProDeck already listens to.
+    pub multitrack_device: Option<String>,
     /// Multi-channel (Dante) routing — 1-based channel numbers on the audio input
     /// device. The measurement engine (SPL/RTA/LUFS) mixes these channels; empty
     /// means "all channels" (legacy behaviour).
@@ -343,8 +347,8 @@ impl Default for Settings {
             follow_guide_channel: 0,
             follow_midi_port: None,
             autopilot_speech: false,
-            autopilot_lapel: "input:44".into(),
-            autopilot_mc: "input:43".into(),
+            autopilot_lapel: String::new(),
+            autopilot_mc: String::new(),
             autopilot_lapel_audio: 0,
             autopilot_mc_audio: 0,
             autopilot_lapel_words: String::new(),
@@ -358,7 +362,7 @@ impl Default for Settings {
             autopilot_message_min: 65.0,
             autopilot_message_max: 70.0,
             automix_rules: String::new(),
-            automix_fx_mute: "All FX".into(),
+            automix_fx_mute: String::new(),
             automix_bgv_ride: true,
             automix_bgv_name: "BGVs".into(),
             automix_bgv_tuck: -6.0,
@@ -372,6 +376,7 @@ impl Default for Settings {
             multitrack_sources: std::collections::HashMap::new(),
             multitrack_auto: false,
             multitrack_drop_silent: true,
+            multitrack_device: None,
             audio_measure_channels: Vec::new(),
             audio_overflow_channels: Vec::new(),
             audio_mic_channels: std::collections::HashMap::new(),

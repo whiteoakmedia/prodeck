@@ -46,6 +46,6 @@ describe("isFreshInstall", () => {
   it("treats a host typed without connecting as still-fresh", () => {
     // Typing an address is not the same as having reached it, and the setup
     // flow should still offer itself.
-    expect(isFreshInstall(settings({ pp_host: "172.16.0.68" }))).toBe(true);
+    expect(isFreshInstall(settings({ pp_host: "192.168.1.68" }))).toBe(true);
   });
 });

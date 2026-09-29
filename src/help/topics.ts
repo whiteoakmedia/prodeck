@@ -94,6 +94,23 @@ To run it again: **Setup** (in the sidebar) → **Run the setup again**. Nothing
     related: ["setup-page", "demo-mode"],
   },
   {
+    id: "mac-permissions",
+    group: "Getting started",
+    title: "macOS asked for permission — what to allow",
+    aliases: ["local network", "allow access", "microphone permission", "removable volume", "desktop folder", "ProPresenter offline after update", "no route to host", "macOS 27", "tahoe", "sequoia"],
+    body: `ProDeck runs on macOS 10.15 and newer and is tested on the current release, macOS 27. The first time it needs something, macOS asks — **allow each one**:
+
+- **Local network** — ProPresenter, your sound console, Dante, NDI, Companion and your team's phones. Without it ProDeck can reach nothing but itself: every light goes grey and Dante devices say "no route to host".
+- **Microphone** — your audio input (a Dante card, a console's USB audio): SPL, RTA, Auto-Follow, the stream report and recording.
+- **Desktop, Documents, Downloads** — ProDeck looks there for console show files and Dante presets you save, to keep the routing map current.
+- **Removable volumes** — recording to an external drive, and show files on a USB stick.
+
+Said **Don't Allow** by mistake? **System Settings → Privacy & Security** → Local Network (or Microphone, or Files and Folders) → switch ProDeck on, then quit and reopen ProDeck.
+
+> After an update macOS may ask again, because each download is a new copy of the app. Allow again and it's remembered for that version.`,
+    related: ["setup-page", "first-run"],
+  },
+  {
     id: "setup-page",
     group: "Getting started",
     title: "The Setup page: is everything connected?",
@@ -719,7 +736,7 @@ The one rule: **channel names change every service; numbers don't.** The map is 
 To build yours:
 1. Open **Routing**, press **Edit**, then **Paste patch list**.
 2. Paste one line per channel: **CH · NAME · PORT · SOCKET · UPSTREAM** — straight from a spreadsheet (tabs) or with commas. A header row is fine.
-3. **PORT** is the door the signal comes in through: SLink (a stage box), I/O Port 1 (Dante), Local (an XLR on the rack). **SOCKET** is the number on that door. **UPSTREAM** is what feeds the socket: \`stage 41\`, \`ULXD4Q-5-8 07\`, \`MacBook-Pro-2 05\`.
+3. **PORT** is the door the signal comes in through: SLink (a stage box), I/O Port 1 (Dante), Local (an XLR on the rack). **SOCKET** is the number on that door. **UPSTREAM** is what feeds the socket: \`stage 41\`, \`ULXD4Q-5-8 07\`, \`Playback-Mac 05\`.
 4. Press **Apply**, look it over, **Save**.
 
 - Two channels on one socket (a vocal and its duplicate) show a **+** on the socket; they share one preamp and one gain.
@@ -765,7 +782,7 @@ You can see and steer this in three places:
 - Any phone with **Control** can press a key too; the booth does the sending.
 - On the **Stream Deck**, Production's **WAVES** key shows the key last sent (amber when the rig and the song disagree); press it for the **Keys** page — twelve keys and **Tune off**. The key the rig is on glows green, the live song's key glows amber. Companion calls \`/api/deck/key?text=G\` (or \`text=off\`).
 
-Press a key to send it now — a re-send of the same key is fine. **Tune off** when a speaker or a spoken piece shouldn't be tuned. **The rig reconnects itself.** When the output is a Network MIDI session, ProDeck watches it and remembers who was connected (the Waves PC). After either computer restarts, ProDeck asks that peer to connect again every 20 seconds until it answers — nobody has to open Audio MIDI Setup. The strip's second chip shows it: **→ Axis_One** when connected, **waiting for …** while it keeps asking. It learns the peer the first time it sees it connected, so connect once by hand on a new setup.
+Press a key to send it now — a re-send of the same key is fine. **Tune off** when a speaker or a spoken piece shouldn't be tuned. **The rig reconnects itself.** When the output is a Network MIDI session, ProDeck watches it and remembers who was connected (the Waves PC). After either computer restarts, ProDeck asks that peer to connect again every 20 seconds until it answers — nobody has to open Audio MIDI Setup. The strip's second chip shows it: **→ Waves-PC** (the peer's name) when connected, **waiting for …** while it keeps asking. It learns the peer the first time it sees it connected, so connect once by hand on a new setup.
 
 What still has to be true on the Waves PC: rtpMIDI starts when Windows starts, with its session enabled, and it must be running **before LV1 opens** — LV1 only sees MIDI ports that existed when it started. If keys stop after a restart and the chip says connected, restart LV1.
 

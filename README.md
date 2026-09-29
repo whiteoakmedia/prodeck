@@ -60,7 +60,7 @@ ProPresenter, and Planning Center, and add the rest when you want it.
    You only do this once. macOS asks because the app is free and not
    Apple-notarized — the code itself is open here for anyone to read.
 
-That's it — no toolchain, no terminal. Runs on Intel and Apple Silicon Macs, macOS 10.15 or newer.
+That's it — no toolchain, no terminal. Runs on Intel and Apple Silicon Macs, macOS 10.15 or newer — tested on the current release, macOS 27.
 
 ProDeck checks for updates when it launches and offers to install them in one
 click — you won't need to come back here for new versions.
@@ -125,7 +125,7 @@ been completed on real booth hardware, the supported release remains macOS.
 
 ## Requirements
 
-- A Mac for the booth app — Intel or Apple Silicon, macOS 10.15+ (clients can be anything with a browser)
+- A Mac for the booth app — Intel or Apple Silicon, macOS 10.15+, tested on macOS 27 (clients can be anything with a browser)
 - ProPresenter 7 with its network API enabled
 - Planning Center Services
 - Optional per feature: Cloudflare (free) + a domain, an audio input, an

@@ -212,9 +212,9 @@ BODY="${NOTES:-ProDeck $TAG}
 
 ## Install
 1. Download **ProDeck.dmg**, open it, drag **ProDeck** to Applications.
-2. First open only (macOS Sequoia/Tahoe): double-click → **System Settings → Privacy & Security** → **Open Anyway**.
+2. First open only (macOS 15 and later): double-click → **System Settings → Privacy & Security** → **Open Anyway**.
 
-Runs on Intel and Apple Silicon (macOS 10.15+). Installed copies update themselves from this release automatically.
+Runs on Intel and Apple Silicon (macOS 10.15+, tested on macOS 27). Installed copies update themselves from this release automatically.
 $WIN_BODY"
 if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
   gh release upload "$TAG" "${ASSETS[@]}" --repo "$REPO" --clobber

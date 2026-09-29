@@ -314,7 +314,7 @@ export function resolveCite(map: RoutingMap, label: string): string | undefined 
   if (byRef) return byRef.id;
   const loose = map.nodes.find((x) => x.label && l.includes(x.label.toLowerCase()) && x.label.length > 3);
   if (loose) return loose.id;
-  // "[Waves LV1]" for a node labelled "Waves LV1 (Axis_One)": the cite is a
+  // "[Waves LV1]" for a node labelled "Waves LV1 (Waves-PC)": the cite is a
   // prefix or a substring of the label. Only for cites long enough to be
   // unambiguous.
   if (l.length > 4) {

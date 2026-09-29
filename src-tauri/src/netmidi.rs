@@ -344,7 +344,7 @@ mod tests {
 
     /// Touches the real CoreMIDI network driver: reads "Lyrics", connects the
     /// spare "RTP Session 4" to the given address, then clears it again.
-    /// `NETMIDI_PEER=172.16.0.139:5004 cargo test --lib netmidi -- --ignored`
+    /// `NETMIDI_PEER=192.168.1.50:5004 cargo test --lib netmidi -- --ignored`
     #[test]
     #[ignore]
     fn live_round_trip() {
@@ -352,7 +352,7 @@ mod tests {
         let lyr = sys::read_session("Lyrics").expect("Lyrics session");
         println!("Lyrics peers: {:?}", sys::peers_of(&lyr));
         let mut s4 = sys::read_session("RTP Session 4").expect("spare session");
-        assert!(sys::set_peers("RTP Session 4", &mut s4, &[Peer { name: "Axis_One".into(), address: addr }]));
+        assert!(sys::set_peers("RTP Session 4", &mut s4, &[Peer { name: "Waves-PC".into(), address: addr }]));
         std::thread::sleep(Duration::from_secs(4));
         let after = sys::peers_of(&sys::read_session("RTP Session 4").unwrap());
         println!("RTP Session 4 after connect: {after:?}");

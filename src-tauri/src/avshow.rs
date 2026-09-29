@@ -5,14 +5,14 @@
 //! 51321 wants a login handshake that isn't documented). A show exported to
 //! USB does carry it: `Show/Scenes/StageBoxScene65535.tar.gz` (the current
 //! state) holds a "Channel Mapper" section — a run of 3-byte entries
-//! `[port, socket_hi, socket_lo]`, 0-based sockets. Verified against the
-//! booth's known patch (22 Sep 2026 export): entries 0–95 are input channels
-//! 1–96 (Kick IN ← SLink 1, Click ← Dante 15, AG WL ← Dante 44, FOH TB ←
-//! Local 10 …). 96–191 and 192–287 look like the insert A / B points (codes
+//! `[port, socket_hi, socket_lo]`, 0-based sockets. Verified against a
+//! console whose patch was known (a Sep 2026 export): entries 0–95 are input
+//! channels 1–96, each an SLink, I/O Port 1 (Dante) or Local socket, or
+//! unpatched. 96–191 and 192–287 look like the insert A / B points (codes
 //! 0x22 / 0x24, socket = the channel's own slot unless re-patched) — shown
 //! raw, not confirmed. Entries 1258–1321 are the 64 Dante (I/O Port 1)
-//! OUTPUTS, found by diffing the 22 Sep export against the 28 Sep one (the
-//! re-patch photographed on 25 Sep lines up output for output): the entry is
+//! OUTPUTS, found by diffing two exports either side of a documented re-patch
+//! (it lines up output for output): the entry is
 //! the source — 0x04 channel direct out, 0x05 channel insert send, 0x09 mono
 //! group, 0x0a stereo group L/R, 0x0f stereo matrix L/R (Main L+R = 2/3).
 //! Other output ports and source codes are kept raw for comparison.
@@ -339,8 +339,18 @@ pub fn spawn(app: AppHandle) {
         .ok();
 }
 
+/// The desk's patch for the Live tab: an X32/M32 reports it live; the A&H
+/// desks from the newest show export.
 #[tauri::command]
-pub fn avantis_patch_get() -> Value {
+pub fn avantis_patch_get(app: AppHandle) -> Value {
+    use tauri::Manager;
+    let osc = app.try_state::<crate::avantis::AvantisState>().map(|st| st.lock().unwrap_or_else(|p| p.into_inner()).model == crate::ahmap::DeskModel::X32).unwrap_or(false);
+    if osc {
+        let v = crate::x32::patch_value();
+        if !v.is_null() {
+            return v;
+        }
+    }
     std::fs::read_to_string(data_path()).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or(Value::Null)
 }
 
@@ -372,20 +382,15 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // needs the booth's export: cargo test --lib avshow -- --ignored --nocapture
-    fn reads_the_booth_export() {
-        let p = PathBuf::from(std::env::var("HOME").unwrap()).join("Downloads/ztg092226.tar.gz");
-        if !p.exists() {
-            return;
-        }
+    #[ignore] // PRODECK_SHOW=/path/to/show.tar.gz cargo test --lib avshow -- --ignored --nocapture
+    fn reads_a_real_export() {
+        let Ok(p) = std::env::var("PRODECK_SHOW").map(PathBuf::from) else { return };
         let v = read_show(&p, &|_| String::new()).unwrap();
         let t = |k: &str, i: usize| v[k][i]["text"].as_str().unwrap().to_string();
         for i in [0, 1, 2, 9, 22, 23, 24, 31, 36] {
             println!("ch {} input {} | insA {} | insB {}", i + 1, t("inputs", i), t("insertA", i), t("insertB", i));
         }
-        assert_eq!(t("inputs", 0), "SLink 1");
-        assert_eq!(t("inputs", 22), "I/O Port 1 (Dante) 15");
-        assert_eq!(t("inputs", 31), "Local 10");
+        assert!(v["inputs"].as_array().unwrap().len() == INPUTS);
     }
 
     #[test]
@@ -401,12 +406,9 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // cargo test --lib avshow::tests::booth_outputs -- --ignored --nocapture
-    fn booth_outputs() {
-        let p = PathBuf::from(std::env::var("HOME").unwrap()).join("Downloads/AllenHeath-Avantis/Shows/ztgfxfix.tar.gz");
-        if !p.exists() {
-            return;
-        }
+    #[ignore] // PRODECK_SHOW=/path/to/show.tar.gz cargo test --lib avshow::tests::print_outputs -- --ignored --nocapture
+    fn print_outputs() {
+        let Ok(p) = std::env::var("PRODECK_SHOW").map(PathBuf::from) else { return };
         let v = read_show(&p, &|_| String::new()).unwrap();
         for o in v["danteOut"].as_array().unwrap() {
             if o["text"] != "—" {

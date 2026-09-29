@@ -44,10 +44,12 @@ import { setMixArmed } from "./lib/mixArm";
 // Every section the operator adjusts is remembered per song, and repeated
 // corrections become suggestions to accept.
 
-/** What the automix may move: DCAs, groups (mono and stereo), and input
- *  channels — those by number ("ch 10"), since desk names repeat. */
-const MIXABLE = /^(dca|grp|sgrp|input):/;
-const DEFAULT_FEEDS = "EGs: 17, 18; KEYs: 20; AGs: 19, 21; Drums: 9, 10, 12, 13, 14, 15; ch 10: 16";
+/** What the automix may move: DCAs, groups (A&H mono/stereo groups; X32/M32
+ *  mix buses used as subgroups), and input channels — those by number
+ *  ("ch 10"), since desk names repeat. Never mains or matrices. */
+const MIXABLE = /^(dca|grp|sgrp|aux|input):/;
+/** No feeds until the church maps its own ("EGs: 17, 18; KEYs: 20"). */
+const DEFAULT_FEEDS = "";
 /** Only these get feed nudges: drums and bass are the rock. */
 const NUDGEABLE = ["EGs", "KEYs", "AGs"];
 
@@ -127,10 +129,10 @@ export function AutomixProvider({ children }: { children: ReactNode }) {
   const lastLine = useRef("");
   const cur = useRef<{ key: string; idx: number; startedAt: number; touched: Set<string> }>({ key: "", idx: 0, startedAt: 0, touched: new Set() });
 
-  const cfg = useRef({ rules: parseRules(DEFAULT_RULES), fx: "All FX", bgvOn: true, bgvName: "BGVs", bgvTuck: -6, feedsOn: true, feeds: parseFeeds(DEFAULT_FEEDS), micChannels: {} as Record<string, number> });
+  const cfg = useRef({ rules: parseRules(DEFAULT_RULES), fx: "", bgvOn: true, bgvName: "BGVs", bgvTuck: -6, feedsOn: true, feeds: parseFeeds(DEFAULT_FEEDS), micChannels: {} as Record<string, number> });
   cfg.current = {
     rules: parseRules(settings?.automix_rules?.trim() || DEFAULT_RULES),
-    fx: settings?.automix_fx_mute ?? "All FX",
+    fx: settings?.automix_fx_mute ?? "",
     bgvOn: settings?.automix_bgv_ride ?? true,
     bgvName: settings?.automix_bgv_name || "BGVs",
     bgvTuck: settings?.automix_bgv_tuck ?? -6,

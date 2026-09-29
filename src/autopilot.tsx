@@ -38,8 +38,8 @@ export function AutopilotProvider({ children }: { children: ReactNode }) {
   const speechOn = !IS_WEB && !!settings?.autopilot_speech;
   const roomOn = !IS_WEB && !!settings?.autopilot_room;
   const cfg = useRef({
-    lapel: "input:44",
-    mc: "input:43",
+    lapel: "",
+    mc: "",
     lapelAudio: 0,
     mcAudio: 0,
     lapelHome: -5,
@@ -50,8 +50,8 @@ export function AutopilotProvider({ children }: { children: ReactNode }) {
     cal: 100,
   });
   cfg.current = {
-    lapel: settings?.autopilot_lapel || "input:44",
-    mc: settings?.autopilot_mc || "input:43",
+    lapel: settings?.autopilot_lapel || "",
+    mc: settings?.autopilot_mc || "",
     lapelAudio: settings?.autopilot_lapel_audio ?? 0,
     mcAudio: settings?.autopilot_mc_audio ?? 0,
     lapelHome: settings?.autopilot_lapel_home_db ?? -5,
@@ -119,6 +119,7 @@ export function AutopilotProvider({ children }: { children: ReactNode }) {
         say(`${name} is still open — ${a.reason}.`);
         continue;
       }
+      if ((a.mic === "lapel" && !c.lapel) || (a.mic === "mc" && !c.mc)) continue; // not set up in Settings
       if (a.mic === "lapel") {
         // The lapel lives on its fader: parked down, preaching at home.
         const from = lastRaw.current.get(c.lapel) ?? 0;

@@ -337,6 +337,7 @@ export interface Settings {
   multitrack_sources: Record<string, string>;
   multitrack_auto: boolean;
   multitrack_drop_silent: boolean;
+  multitrack_device: string | null;
   audio_measure_channels: number[];
   audio_overflow_channels: number[];
   keysend_enabled: boolean;
@@ -720,6 +721,9 @@ export interface AvantisPatch {
   inputs: { ch: number; port: number; socket: number | null; text: string }[];
   danteOut?: { out: number; code: number; index: number; text: string }[];
   changes: string[];
+  /** Read live from the desk (X32/M32) rather than a show file. */
+  live?: boolean;
+  unverified?: boolean;
 }
 export const avantisPatchGet = () => invoke<AvantisPatch | null>("avantis_patch_get");
 export const streamReportsList = () => invoke<import("./streamReport").StreamReportMeta[]>("stream_reports_list");

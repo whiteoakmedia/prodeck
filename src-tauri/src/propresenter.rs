@@ -41,7 +41,7 @@ impl ProPresenterConnection {
 pub type ProPresenterState = Arc<Mutex<Option<ProPresenterConnection>>>;
 
 /// ProPresenter's IPv4 address, looked up once per connect. Reached by its
-/// Bonjour name (Cornerstones-Mac-Studio.local) every fresh connection cost
+/// Bonjour name (Pro-Mac.local) every fresh connection cost
 /// ~210 ms before anything was sent — the name resolves to an address that
 /// doesn't answer first and the system waits before falling back — and
 /// commands open a fresh connection each time (see pp_connect). Pinning the

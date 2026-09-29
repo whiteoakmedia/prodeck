@@ -27,7 +27,7 @@ import {
 const BOOTH = `CH\tNAME\tPORT\tSOCKET\tUPSTREAM
 1\tKick IN\tSLink\t1\tstage 1
 2\tKick Out\tSLink\t7\tstage 17
-11-12\tLoop (st)\tI/O Port 1\t1+2\tMacBook-Pro-2 01+02
+11-12\tLoop (st)\tI/O Port 1\t1+2\tPlayback-Mac 01+02
 13\tSynth L\t—\t—\tnot patched
 39\tvox 3\tI/O Port 1\t43\tULXD4Q-5-8 07
 53\tvox 3 (dup)\tI/O Port 1\t43\tULXD4Q-5-8 07
@@ -43,7 +43,7 @@ const NOW = Date.parse("September 27, 2026 08:40:00");
 const blind: LiveView = { now: NOW };
 const desk = (over: Partial<LiveView["desk"]> = {}): LiveView => ({
   now: NOW,
-  desk: { connected: true, mutes: {}, faders: { "input:39": -4, "input:53": -8 }, names: { "input:39": "Ruth" }, ...over },
+  desk: { connected: true, mutes: {}, faders: { "input:39": -4, "input:53": -8 }, names: { "input:39": "Anna" }, ...over },
 });
 
 describe("parsing the patch list", () => {
@@ -73,8 +73,8 @@ describe("parsing the patch list", () => {
   it("classifies the upstream cell by what it names", () => {
     expect(parseUpstream("ULXD4Q-5-8 07")).toMatchObject({ sourceKind: "wireless", port: "ULXD4Q-5-8", index: "07" });
     expect(parseUpstream("stage 41")).toMatchObject({ sourceKind: "socket", index: "41", label: "Stage socket 41" });
-    expect(parseUpstream("MacBook-Pro-2 01+02")).toMatchObject({ sourceKind: "playback", index: "01+02" });
-    expect(parseUpstream("Command-Center 01")).toMatchObject({ sourceKind: "consumer" });
+    expect(parseUpstream("Playback-Mac 01+02")).toMatchObject({ sourceKind: "playback", index: "01+02" });
+    expect(parseUpstream("iPad 01")).toMatchObject({ sourceKind: "consumer" });
     expect(parseUpstream("console rack XLR")).toMatchObject({ sourceKind: "rackxlr", index: "" });
     expect(parseUpstream("not patched")).toBeNull();
   });
@@ -135,7 +135,7 @@ describe("the walk", () => {
     const w = walk(boothMap(), chId("39"), desk({ mutes: { "input:53": true } }))!;
     expect(w.title).toBe("vox 3");
     expect(w.checks.map((c) => c.state)).toEqual(["ok", "ok", "ok"]);
-    expect(w.checks[0].text).toBe("Channel 39 is open, fader at −4 dB (“Ruth” on the desk).");
+    expect(w.checks[0].text).toBe("Channel 39 is open, fader at −4 dB (“Anna” on the desk).");
     expect(w.checks[1].text).toMatch(/twin, 53, is muted — normal/);
     expect(w.checks[2].text).toMatch(/Desk connected · I\/O Port 1 in 43 patched/);
     // Channel steps drop out: ProDeck already looked. Pack steps remain.
@@ -216,7 +216,7 @@ describe("the walk", () => {
     const map = boothMap();
     expect(searchNodes(map, "39").map((n) => n.id)).toEqual([chId("39")]);
     expect(searchNodes(map, "kick").map((n) => n.id)).toEqual([chId("1"), chId("2")]);
-    expect(searchNodes(map, "ruth", { "input:39": "Ruth" }).map((n) => n.id)).toEqual([chId("39")]);
+    expect(searchNodes(map, "anna", { "input:39": "Anna" }).map((n) => n.id)).toEqual([chId("39")]);
     expect(searchNodes(map, "ulxd").some((n) => n.kind === "source")).toBe(true);
   });
 });

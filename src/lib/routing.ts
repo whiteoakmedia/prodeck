@@ -347,7 +347,7 @@ export function ensureDoor(map: RoutingMap, t: Transport, label?: string): RNode
 
 export interface Upstream {
   sourceKind: SourceKind;
-  /** Numbering space: "stage", "ULXD4Q-5-8", "MacBook-Pro-2". */
+  /** Numbering space: "stage", "ULXD4Q-5-8", "Playback-Mac". */
   port: string;
   index: string;
   label: string;

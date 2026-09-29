@@ -161,7 +161,111 @@ fn query_addresses() -> Vec<String> {
     for n in 1..=6 {
         v.push(format!("/config/mute/{n}"));
     }
+    // The patch: each channel's source, and where the input blocks come from.
+    for n in 1..=32 {
+        v.push(format!("/ch/{n:02}/config/source"));
+    }
+    for b in ["1-8", "9-16", "17-24", "25-32"] {
+        v.push(format!("/config/routing/IN/{b}"));
+    }
     v
+}
+
+// ---- the patch, live ---------------------------------------------------------
+//
+// Unlike the A&H desks (patch only in a show file), an X32/M32 reports its
+// patch over OSC: `/ch/NN/config/source` picks what feeds each channel
+// (0 OFF · 1–32 local inputs In01–32 · 33–38 Aux 1–6 · 39/40 USB L/R ·
+// 41–48 FX 1L–4R · 49–64 Bus 1–16), and `/config/routing/IN/1-8` … `25-32`
+// picks which physical block feeds those inputs, eight at a time (AN1-8 …
+// AN25-32 · AES50-A 1-8 … 41-48 · AES50-B 1-8 … 41-48 · Card 1-8 … 25-32).
+// Enumerations per the unofficial X32 OSC reference; not yet checked on a
+// desk here — the Live tab says so.
+
+static PATCH: std::sync::Mutex<Option<X32Patch>> = std::sync::Mutex::new(None);
+
+#[derive(Default, Clone)]
+struct X32Patch {
+    sources: [Option<i32>; 32],
+    blocks: [Option<i32>; 4],
+}
+
+fn int_arg(args: &[OscType]) -> Option<i32> {
+    match args.first()? {
+        OscType::Int(i) => Some(*i),
+        OscType::Float(f) => Some(*f as i32),
+        _ => None,
+    }
+}
+
+fn patch_message(addr: &str, args: &[OscType]) {
+    let p: Vec<&str> = addr.trim_start_matches('/').split('/').collect();
+    let mut g = PATCH.lock().unwrap_or_else(|e| e.into_inner());
+    let patch = g.get_or_insert_with(X32Patch::default);
+    if p.len() == 4 && p[0] == "ch" && p[2] == "config" && p[3] == "source" {
+        if let (Ok(n), Some(v)) = (p[1].parse::<usize>(), int_arg(args)) {
+            if (1..=32).contains(&n) {
+                patch.sources[n - 1] = Some(v);
+            }
+        }
+    } else if p.len() == 4 && p[0] == "config" && p[1] == "routing" && p[2] == "IN" {
+        let i = ["1-8", "9-16", "17-24", "25-32"].iter().position(|b| *b == p[3]);
+        if let (Some(i), Some(v)) = (i, int_arg(args)) {
+            patch.blocks[i] = Some(v);
+        }
+    }
+}
+
+/// "AES50-A 9" for local input In09 given its block's routing value.
+pub fn block_port(block_value: i32, offset_in_block: usize) -> String {
+    let v = block_value.max(0) as usize;
+    let (name, first) = match v {
+        0..=3 => ("Local", v * 8 + 1),
+        4..=9 => ("AES50-A", (v - 4) * 8 + 1),
+        10..=15 => ("AES50-B", (v - 10) * 8 + 1),
+        16..=19 => ("Card", (v - 16) * 8 + 1),
+        _ => return format!("block {v}"),
+    };
+    format!("{name} {}", first + offset_in_block)
+}
+
+/// What feeds channel N, in words.
+pub fn describe_source(src: i32, blocks: &[Option<i32>; 4]) -> String {
+    match src {
+        0 => "—".into(),
+        1..=32 => {
+            let k = (src - 1) as usize;
+            match blocks[k / 8] {
+                Some(b) => format!("In {:02} ← {}", src, block_port(b, k % 8)),
+                None => format!("In {src:02}"),
+            }
+        }
+        33..=38 => format!("Aux in {}", src - 32),
+        39 => "USB L".into(),
+        40 => "USB R".into(),
+        41..=48 => {
+            let k = src - 41;
+            format!("FX {}{}", k / 2 + 1, if k % 2 == 0 { "L" } else { "R" })
+        }
+        49..=64 => format!("Bus {}", src - 48),
+        v => format!("source {v}"),
+    }
+}
+
+/// The X32/M32 input patch as the Live tab shows it (null until the desk answered).
+pub fn patch_value() -> serde_json::Value {
+    let g = PATCH.lock().unwrap_or_else(|e| e.into_inner());
+    let Some(p) = g.as_ref() else { return serde_json::Value::Null };
+    if p.sources.iter().all(|s| s.is_none()) {
+        return serde_json::Value::Null;
+    }
+    let inputs: Vec<_> = (0..32)
+        .map(|i| {
+            let text = p.sources[i].map(|s| describe_source(s, &p.blocks)).unwrap_or_else(|| "—".into());
+            json!({ "ch": i + 1, "port": 0, "socket": p.sources[i].filter(|s| *s != 0), "text": text })
+        })
+        .collect();
+    json!({ "file": "live from the desk (X32/M32)", "exportedAt": crate::avantis::now_ms() / 1000, "inputs": inputs, "danteOut": [], "changes": [], "live": true, "unverified": true })
 }
 
 fn msg(addr: &str, args: Vec<OscType>) -> Result<Vec<u8>, String> {
@@ -198,6 +302,14 @@ fn set_connected(app: &AppHandle, state: &AvantisState, up: bool) {
         s.connected = up;
         if up {
             s.model = DeskModel::X32;
+            // When this connection began: values the desk reports from now on
+            // are live, older ones only remembered (the automix and the
+            // mute-confidence display both key off this, as on the A&H desks).
+            if !was {
+                s.connected_at = Some(crate::avantis::now_ms());
+            }
+        } else {
+            s.connected_at = None;
         }
         was != up
     };
@@ -345,7 +457,10 @@ async fn session(
 
 fn apply_packet(s: &mut crate::avantis::AvantisInner, packet: OscPacket) -> bool {
     match packet {
-        OscPacket::Message(m) => apply_message(s, &m.addr, &m.args),
+        OscPacket::Message(m) => {
+            patch_message(&m.addr, &m.args);
+            apply_message(s, &m.addr, &m.args)
+        }
         OscPacket::Bundle(b) => b.content.into_iter().fold(false, |acc, p| apply_packet(s, p) | acc),
     }
 }
@@ -525,9 +640,25 @@ mod tests {
         assert!(q.contains(&"/dca/8/fader".to_string()));
         assert!(q.contains(&"/config/mute/6".to_string()));
         assert!(q.contains(&"/main/st/mix/fader".to_string()));
-        // Every queried address must be one we can actually interpret.
+        // Every queried address must be one we can actually interpret: the
+        // mirror's, or the patch reader's.
+        let patch = |a: &str| a.ends_with("/config/source") || a.starts_with("/config/routing/");
         for a in &q {
-            assert!(map_address(a).is_some(), "queried {a} but can't map it");
+            assert!(map_address(a).is_some() || patch(a), "queried {a} but can't map it");
         }
+    }
+
+    #[test]
+    fn reads_the_patch() {
+        let blocks = [Some(0), Some(4), None, Some(16)];
+        assert_eq!(describe_source(1, &blocks), "In 01 ← Local 1");
+        assert_eq!(describe_source(9, &blocks), "In 09 ← AES50-A 1");
+        assert_eq!(describe_source(26, &blocks), "In 26 ← Card 2");
+        assert_eq!(describe_source(17, &blocks), "In 17");
+        assert_eq!(describe_source(39, &blocks), "USB L");
+        assert_eq!(describe_source(44, &blocks), "FX 2R");
+        assert_eq!(describe_source(0, &blocks), "—");
+        assert_eq!(block_port(11, 3), "AES50-B 12");
+        assert!(query_addresses().contains(&"/ch/12/config/source".to_string()));
     }
 }

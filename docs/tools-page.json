@@ -3,7 +3,7 @@
   "tagline": "The production booth, in one app.",
   "description": "ProDeck runs on a Mac in your booth and ties the room together: ProPresenter, Planning Center, your consoles, crew phones, kiosk screens, lobby NFC discs and your livestream, all feeding drag-and-drop dashboards the whole team can see from anywhere. Every feature is independent: run the core with nothing but a Mac, ProPresenter and Planning Center, and add the rest when you want it.",
   "origin": "Built for Cornerstone Church, Cheshire CT, and run there every Sunday.",
-  "platform": "macOS 10.15 or later, Intel or Apple Silicon · phones, browsers and kiosks connect to it · Windows preview",
+  "platform": "macOS 10.15 or later (tested on macOS 27), Intel or Apple Silicon · phones, browsers and kiosks connect to it · Windows preview",
   "stack": "Tauri 2 (Rust) + React/TypeScript, plus two small Cloudflare Workers for the optional cloud features",
   "requirements": [
     "A Mac for the booth app, Intel or Apple Silicon, macOS 10.15 or newer. It is the server for everything; clients can be anything with a browser.",

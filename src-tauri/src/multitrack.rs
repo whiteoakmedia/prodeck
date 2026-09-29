@@ -377,6 +377,85 @@ fn finish(app: &AppHandle, a: Active, out: WriterOut, drop_silent: bool) -> Valu
     v
 }
 
+/// Record from a device other than ProDeck's audio input (a console's USB
+/// audio, an interface): open it on its own thread — never on the caller's,
+/// CoreAudio device calls have frozen this app from the main thread before —
+/// and hand its blocks to the same queue. Returns (sample rate, channels);
+/// the stream lives until `stop` is set.
+fn open_device_stream(name: String, tx: std::sync::mpsc::SyncSender<Vec<f32>>, stop: Arc<AtomicBool>, audio: AudioState) -> Result<(u32, usize), String> {
+    let (ready_tx, ready_rx) = std::sync::mpsc::channel::<Result<(u32, usize), String>>();
+    std::thread::Builder::new()
+        .name("multitrack-input".into())
+        .spawn(move || {
+            use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+            use cpal::Sample;
+            let host = cpal::default_host();
+            let Some(dev) = host.input_devices().ok().and_then(|mut it| it.find(|d| d.name().map(|n| n == name).unwrap_or(false))) else {
+                let _ = ready_tx.send(Err(format!("“{name}” isn't connected")));
+                return;
+            };
+            let cfg = match dev.default_input_config() {
+                Ok(c) => c,
+                Err(e) => {
+                    let _ = ready_tx.send(Err(format!("“{name}”: {e}")));
+                    return;
+                }
+            };
+            let (sr, ch) = (cfg.sample_rate().0, cfg.channels() as usize);
+            let sc: cpal::StreamConfig = cfg.clone().into();
+            macro_rules! build {
+                ($t:ty) => {{
+                    let tx = tx.clone();
+                    let audio = audio.clone();
+                    dev.build_input_stream(
+                        &sc,
+                        move |data: &[$t], _| {
+                            let block: Vec<f32> = data.iter().map(|&x| f32::from_sample(x)).collect();
+                            if let Err(std::sync::mpsc::TrySendError::Full(_)) = tx.try_send(block) {
+                                audio.rec_dropped.fetch_add(1, Ordering::Relaxed);
+                            }
+                        },
+                        |e| eprintln!("[multitrack] input error: {e}"),
+                        None,
+                    )
+                }};
+            }
+            let stream = match cfg.sample_format() {
+                cpal::SampleFormat::F32 => build!(f32),
+                cpal::SampleFormat::I16 => build!(i16),
+                cpal::SampleFormat::I32 => build!(i32),
+                cpal::SampleFormat::U16 => build!(u16),
+                f => {
+                    let _ = ready_tx.send(Err(format!("“{name}” uses {f:?} samples, which ProDeck can't record yet")));
+                    return;
+                }
+            };
+            let stream = match stream {
+                Ok(s) => s,
+                Err(e) => {
+                    let _ = ready_tx.send(Err(format!("couldn't open “{name}”: {e}")));
+                    return;
+                }
+            };
+            if let Err(e) = stream.play() {
+                let _ = ready_tx.send(Err(format!("couldn't start “{name}”: {e}")));
+                return;
+            }
+            let _ = ready_tx.send(Ok((sr, ch)));
+            drop(tx); // only the stream's clones keep the queue open
+            while !stop.load(Ordering::Relaxed) {
+                std::thread::sleep(std::time::Duration::from_millis(200));
+            }
+            // Pause first: on macOS dropping a cpal stream alone doesn't always
+            // stop the device (something inside keeps it alive), and a recorder
+            // that keeps feeding after Stop would never finish.
+            let _ = stream.pause();
+            drop(stream);
+        })
+        .map_err(|e| e.to_string())?;
+    ready_rx.recv_timeout(std::time::Duration::from_secs(8)).map_err(|_| "the audio device didn't answer in 8 s".to_string())?
+}
+
 pub fn start_core(app: &AppHandle, label: &str) -> Result<Value, String> {
     let st = app.state::<RecState>();
     let mut guard = st.active.lock().unwrap_or_else(|p| p.into_inner());
@@ -384,15 +463,27 @@ pub fn start_core(app: &AppHandle, label: &str) -> Result<Value, String> {
         return Err("already recording".into());
     }
     let audio = app.state::<AudioState>().inner().clone();
-    let sr = audio.sample_rate.load(Ordering::Relaxed);
-    let ch = audio.channels.load(Ordering::Relaxed) as usize;
-    if !audio.running.load(Ordering::Acquire) || sr == 0 || ch == 0 {
-        return Err("audio input isn't running — start it in Settings → Audio".into());
-    }
-    let (volume, names_map, drop_silent) = {
+    let (volume, names_map, drop_silent, device) = {
         let s = app.state::<SettingsState>();
         let s = s.lock().unwrap_or_else(|p| p.into_inner());
-        (s.multitrack_volume.clone(), s.multitrack_names.clone(), s.multitrack_drop_silent)
+        (s.multitrack_volume.clone(), s.multitrack_names.clone(), s.multitrack_drop_silent, s.multitrack_device.clone().filter(|d| !d.trim().is_empty()))
+    };
+    // A separate device (a console's USB audio) unless it's the one already open.
+    let current = audio.device_name.lock().unwrap_or_else(|p| p.into_inner()).clone();
+    let own_device = device.filter(|d| Some(d) != current.as_ref() || !audio.running.load(Ordering::Acquire));
+    let (tx, rx) = sync_channel::<Vec<f32>>(QUEUE_BLOCKS);
+    let stop = Arc::new(AtomicBool::new(false));
+    audio.rec_dropped.store(0, Ordering::Relaxed);
+    let (sr, ch) = match &own_device {
+        Some(name) => open_device_stream(name.clone(), tx.clone(), stop.clone(), audio.clone())?,
+        None => {
+            let sr = audio.sample_rate.load(Ordering::Relaxed);
+            let ch = audio.channels.load(Ordering::Relaxed) as usize;
+            if !audio.running.load(Ordering::Acquire) || sr == 0 || ch == 0 {
+                return Err("audio input isn't running — start it in Settings → Audio, or pick a device to record from".into());
+            }
+            (sr, ch)
+        }
     };
     let (root, fell_back) = root_for(&volume);
     let _ = std::fs::create_dir_all(&root);
@@ -405,12 +496,19 @@ pub fn start_core(app: &AppHandle, label: &str) -> Result<Value, String> {
     let label = if label.trim().is_empty() { "Recording".to_string() } else { clean(label) };
     let dir = session_dir(&root, start_epoch, &label);
     let names: Vec<String> = (1..=ch).map(|i| names_map.get(&i.to_string()).filter(|s| !s.trim().is_empty()).cloned().unwrap_or_else(|| format!("In {i:02}"))).collect();
-    let writers = open_writers(&dir, &names, sr).map_err(|e| format!("couldn't create files in {}: {e}", dir.display()))?;
-    let (tx, rx) = sync_channel::<Vec<f32>>(QUEUE_BLOCKS);
-    audio.rec_dropped.store(0, Ordering::Relaxed);
-    *audio.rec.lock().unwrap_or_else(|p| p.into_inner()) = Some(tx);
+    let writers = match open_writers(&dir, &names, sr) {
+        Ok(w) => w,
+        Err(e) => {
+            stop.store(true, Ordering::Relaxed);
+            return Err(format!("couldn't create files in {}: {e}", dir.display()));
+        }
+    };
+    if own_device.is_none() {
+        *audio.rec.lock().unwrap_or_else(|p| p.into_inner()) = Some(tx);
+    } else {
+        drop(tx); // the device thread holds the sender
+    }
     let frames = Arc::new(AtomicU64::new(0));
-    let stop = Arc::new(AtomicBool::new(false));
     let id = format!("r{start_epoch}");
     let a = Active {
         id: id.clone(),
@@ -639,5 +737,31 @@ mod tests {
         assert_eq!(root, internal_root());
         assert!(note.unwrap().contains("No Such Drive 123"));
         assert_eq!(root_for("").0, internal_root());
+    }
+
+    #[test]
+    #[ignore] // PRODECK_REC_DEVICE="NDI Audio" cargo test --lib multitrack::tests::device_stream -- --ignored --nocapture
+    fn device_stream() {
+        let Ok(name) = std::env::var("PRODECK_REC_DEVICE") else { return };
+        let (tx, rx) = sync_channel::<Vec<f32>>(QUEUE_BLOCKS);
+        let stop = Arc::new(AtomicBool::new(false));
+        let audio: AudioState = Arc::new(crate::audio::AudioInner::new());
+        let (sr, ch) = open_device_stream(name.clone(), tx, stop.clone(), audio).unwrap();
+        let t0 = std::time::Instant::now();
+        let mut samples = 0usize;
+        while t0.elapsed().as_secs() < 2 {
+            if let Ok(b) = rx.recv_timeout(std::time::Duration::from_millis(300)) {
+                samples += b.len();
+            }
+        }
+        stop.store(true, Ordering::Relaxed);
+        println!("{name}: {sr} Hz × {ch} ch, {} frames in 2 s", samples / ch.max(1));
+        assert!(samples / ch.max(1) > (sr as usize) / 2);
+        // After stop the stream goes quiet (the writer then finishes on its
+        // own: stop set + an empty queue).
+        std::thread::sleep(std::time::Duration::from_millis(600));
+        while rx.try_recv().is_ok() {}
+        std::thread::sleep(std::time::Duration::from_millis(800));
+        assert!(rx.try_recv().is_err(), "no audio should arrive after stop");
     }
 }
