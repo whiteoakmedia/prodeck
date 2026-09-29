@@ -5,7 +5,7 @@ What changed in each release of ProDeck, in plain language.
 **Where to get it:** <https://whiteoakmedia.io/tools>. That page always points at
 the current build. Download `ProDeck.dmg`, open it, drag ProDeck to Applications.
 
-**First open only** (macOS Sequoia/Tahoe): double-click ProDeck → it won't open
+**First open only** (macOS 15 and later): double-click ProDeck → it won't open
 yet → **System Settings → Privacy & Security** → scroll to the bottom → **Open
 Anyway** → confirm. Once only. (The old right-click → Open trick was removed by
 Apple in macOS Sequoia.)
@@ -44,7 +44,99 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
-## Unreleased
+## 0.9.96 — 29 September 2026
+
+### New — Automix: ProDeck can mix the band while you step away
+
+Arm it with your mix where you want it, and it moves your DCAs and groups at
+the right moments: the guide calls the section (Verse, Chorus, Bridge,
+Breakdown, Build, All in) and the playback clock finds the downbeat, so the
+fade lands **on** the beat. It never touches your main faders.
+
+- **Your mix is home.** Moves are offsets from your own positions; each song
+  remembers your chorus levels. Touch any fader and Automix lets go of it for
+  the rest of the song. **Hold** freezes everything.
+- **It learns from you.** Where you keep correcting a move in the same part of
+  the same song, Settings → Automix offers your number — Keep or Dismiss.
+- **Repeats climb.** A second and third Bridge or Chorus lift a little each time.
+- **BGVs follow the singers**, tucking when no backing singer is singing.
+- **It listens to the instruments** (map their direct outs): lifts whoever
+  carries an instrumental, trims one that digs in, skips silent ones. Drums and
+  bass are never nudged.
+- **The FX mute** between songs, and back on for the next.
+- **Stream Deck:** Arm / Hold / Home / Off keys and readouts (Companion).
+- **Nothing moves the desk unless Automix is armed** — the speech-mic
+  Autopilot (lapel, MC) included. Desk scenes by song leader and the song key
+  to Waves work on their own, armed or not.
+- Works on **Allen & Heath Avantis, dLive and SQ**, and **Behringer X32 /
+  Midas M32** (DCAs, groups or mix buses, input channels).
+
+### New — multitrack recording
+
+The **Recording** page records every input to its own 24-bit WAV — a Dante
+card, or **a console's USB audio plugged into this Mac** (X32/M32 X-USB, SQ,
+Yamaha TF, any interface): pick it under **Record from**. Record to this Mac or
+any external drive; if the drive is missing or drops out mid-service, it keeps
+recording on this Mac. Each service gets a folder named for the day's
+Planning Center service, with markers for every song, item and guide call, a
+Reaper project and a marker file for Logic. Silent inputs are removed at the
+end. You start it — it never records on its own.
+
+### New — routing that keeps itself current
+
+- **Dante, live.** Routing → **Live** reads every Dante device's subscriptions
+  straight off the network every 30 seconds — read-only, it never changes a
+  thing — and logs every change. The Recording page shows what each input is
+  really subscribed to.
+- **The desk's patch.** An **X32/M32** reports its input patch live. On an
+  **Avantis**, save the show to a USB stick (or from Avantis Director) and
+  ProDeck reads the input patch and every Dante output from it, and notes what
+  changed since the last one.
+
+### New — the weekly stream report
+
+Analytics → **Stream mix**: every service's stream mix measured — loudness
+against YouTube's −14 LUFS, worship vs message, tone against a professional
+worship mix — with plain fixes ("the message sits 5 LU under the worship").
+
+### New — checklists: Edit order
+
+Drag (or ↑/↓) to reorder checklists and their steps, on the Checklists page and
+the dashboard Checklist tile. Ticking is locked while you rearrange.
+
+### Fixed — Slide Preview showed the same thing for every screen
+
+Pick a screen and, when ProPresenter sends that screen out over **NDI**, the
+tile now plays it live. A screen without NDI says so — and how to turn it on.
+
+### Fixed — X32 / M32: faders were never trusted after connecting
+
+The mirror never recorded when the desk connected, so every fader read as
+"remembered, not confirmed". Fixed — which is also what lets Automix run on an X32.
+
+### Faster, steadier
+
+- **Slide presses reach ProPresenter faster** (no name lookup per press).
+- **The Waves key change survives a network-MIDI restart** — the port is
+  reopened for every send instead of silently sending nowhere.
+- **Desk scenes follow the song on screen** (ProPresenter first), like the key.
+
+### macOS
+
+Tested on **macOS 27**; runs on 10.15 and newer. ProDeck now explains each
+permission macOS asks for (Local network, Microphone, Desktop/Documents/
+Downloads, removable drives) — **allow each one**; Help → *macOS asked for
+permission* covers it. Dante discovery inside the app needed a network
+permission entry it didn't have; it's there now.
+
+### Also
+
+- The crew sign-up poster no longer names our church on yours.
+- Settings → Audio: new churches start with Autopilot mics, the FX mute and the
+  instrument feeds blank, instead of our channel numbers.
+- Browser demo: `?shots=1` draws the sample church exactly as the booth app.
+
+## Also in 0.9.96
 
 ### New — Auto-Follow, rebuilt: the slide changes as the line ends
 
