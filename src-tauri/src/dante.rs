@@ -138,7 +138,7 @@ pub fn diff(old: &Value, new: &Value) -> Vec<String> {
 }
 
 fn write_notes(snap: &Value) {
-    let dir = std::path::PathBuf::from(std::env::var("HOME").unwrap_or_default()).join(".prodeck/system");
+    let dir = dirs::home_dir().unwrap_or_default().join(".prodeck/system");
     if !dir.is_dir() {
         return;
     }
@@ -169,12 +169,8 @@ fn write_notes(snap: &Value) {
 }
 
 fn stamp(t: u64) -> String {
-    unsafe {
-        let tt = t as libc::time_t;
-        let mut tm: libc::tm = std::mem::zeroed();
-        libc::localtime_r(&tt, &mut tm);
-        format!("{:04}-{:02}-{:02} {:02}:{:02}", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min)
-    }
+    let (y, mo, d, h, mi) = crate::multitrack::local_tm(t);
+    format!("{y:04}-{mo:02}-{d:02} {h:02}:{mi:02}")
 }
 
 async fn poll_once(app: &AppHandle, prev: &Value) -> Value {
@@ -225,8 +221,19 @@ async fn poll_once(app: &AppHandle, prev: &Value) -> Value {
 /// This Mac's IPv4 addresses (the Dante device answering on one of them is
 /// this Mac's Virtual Soundcard — the Live tab and the Recording page use it).
 fn local_ips() -> Vec<String> {
-    let out = std::process::Command::new("/sbin/ifconfig").output().map(|o| String::from_utf8_lossy(&o.stdout).to_string()).unwrap_or_default();
-    out.lines().filter_map(|l| l.trim().strip_prefix("inet ")).filter_map(|r| r.split_whitespace().next()).filter(|ip| *ip != "127.0.0.1").map(String::from).collect()
+    #[cfg(unix)]
+    let (cmd, prefix) = ("/sbin/ifconfig", "inet ");
+    // "   IPv4 Address. . . . . . . . . . . : 192.168.1.20"
+    #[cfg(windows)]
+    let (cmd, prefix) = ("ipconfig", "IPv4 Address");
+    let out = std::process::Command::new(cmd).output().map(|o| String::from_utf8_lossy(&o.stdout).to_string()).unwrap_or_default();
+    out.lines()
+        .filter_map(|l| l.trim().strip_prefix(prefix))
+        .filter_map(|r| r.trim_start_matches(|c: char| c == '.' || c == ' ' || c == ':').split_whitespace().next())
+        .map(|ip| ip.trim_end_matches("(Preferred)"))
+        .filter(|ip| *ip != "127.0.0.1" && ip.parse::<std::net::Ipv4Addr>().is_ok())
+        .map(String::from)
+        .collect()
 }
 
 fn local_dvs_name(devices: &[Value]) -> Option<String> {

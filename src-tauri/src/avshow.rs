@@ -94,6 +94,12 @@ pub fn mapper(dat: &[u8]) -> Option<Vec<Entry>> {
     Some(body.get(1..)?.chunks_exact(3).map(|c| Entry { port: c[0], socket: u16::from_be_bytes([c[1], c[2]]) }).collect())
 }
 
+/// macOS's tar, or the bsdtar Windows 10+ ships in System32.
+#[cfg(unix)]
+const TAR: &str = "/usr/bin/tar";
+#[cfg(windows)]
+const TAR: &str = "tar";
+
 fn run(cmd: &str, args: &[&str]) -> Result<Vec<u8>, String> {
     let o = std::process::Command::new(cmd).args(args).output().map_err(|e| e.to_string())?;
     if !o.status.success() {
@@ -104,7 +110,7 @@ fn run(cmd: &str, args: &[&str]) -> Result<Vec<u8>, String> {
 
 /// Is this .tar.gz an Avantis show export?
 fn is_show(p: &Path) -> bool {
-    let Ok(list) = run("/usr/bin/tar", &["-tzf", &p.to_string_lossy()]) else { return false };
+    let Ok(list) = run(TAR, &["-tzf", &p.to_string_lossy()]) else { return false };
     String::from_utf8_lossy(&list).lines().any(|l| l.trim_start_matches("./").ends_with("Show/Scenes/StageBoxScene65535.tar.gz"))
 }
 
@@ -114,15 +120,15 @@ pub fn read_show(p: &Path, names: &dyn Fn(&str) -> String) -> Result<Value, Stri
     let tmp = std::env::temp_dir().join(format!("prodeck-avshow-{}-{}", std::process::id(), N.fetch_add(1, std::sync::atomic::Ordering::Relaxed)));
     let _ = std::fs::remove_dir_all(&tmp);
     std::fs::create_dir_all(&tmp).map_err(|e| e.to_string())?;
-    let list = run("/usr/bin/tar", &["-tzf", &p.to_string_lossy()])?;
+    let list = run(TAR, &["-tzf", &p.to_string_lossy()])?;
     let member = String::from_utf8_lossy(&list)
         .lines()
         .find(|l| l.ends_with("Show/Scenes/StageBoxScene65535.tar.gz"))
         .ok_or("not an Avantis show export")?
         .to_string();
-    run("/usr/bin/tar", &["-xzf", &p.to_string_lossy(), "-C", &tmp.to_string_lossy(), &member])?;
+    run(TAR, &["-xzf", &p.to_string_lossy(), "-C", &tmp.to_string_lossy(), &member])?;
     let inner = tmp.join(&member);
-    run("/usr/bin/tar", &["-xzf", &inner.to_string_lossy(), "-C", &tmp.to_string_lossy()])?;
+    run(TAR, &["-xzf", &inner.to_string_lossy(), "-C", &tmp.to_string_lossy()])?;
     let dat = std::fs::read(tmp.join("StageBoxScene65535.dat")).map_err(|e| format!("scene file: {e}"))?;
     let _ = std::fs::remove_dir_all(&tmp);
     let m = mapper(&dat).ok_or("no Channel Mapper in this show (a different console or firmware?)")?;
@@ -183,7 +189,7 @@ pub fn diff(old: &Value, new: &Value, names: &dyn Fn(usize) -> String) -> Vec<St
 }
 
 fn candidates() -> Vec<PathBuf> {
-    let home = PathBuf::from(std::env::var("HOME").unwrap_or_default());
+    let home = dirs::home_dir().unwrap_or_default();
     // Home folders a few levels deep (Director saves into Downloads/
     // AllenHeath-Avantis/Shows), USB sticks two levels deep.
     let mut roots: Vec<(PathBuf, usize)> = vec![(home.join("Downloads"), 3), (home.join("Desktop"), 3), (home.join("Documents"), 3)];
@@ -298,7 +304,7 @@ pub fn scan(app: &AppHandle) -> Option<Value> {
 
 /// The notes Claude reads about this booth, if they exist here.
 fn write_dossier(v: &Value, names: &std::collections::HashMap<usize, String>) {
-    let home = PathBuf::from(std::env::var("HOME").unwrap_or_default());
+    let home = dirs::home_dir().unwrap_or_default();
     let dir = home.join(".prodeck/system");
     if !dir.is_dir() {
         return;

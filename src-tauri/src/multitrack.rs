@@ -55,23 +55,27 @@ fn now_s() -> u64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
 }
 
-fn local_tm(t: u64) -> libc::tm {
+/// Local wall-clock time: (year, month, day, hour, minute).
+pub(crate) fn local_tm(t: u64) -> (i32, i32, i32, i32, i32) {
     unsafe {
         let tt = t as libc::time_t;
         let mut tm: libc::tm = std::mem::zeroed();
+        #[cfg(unix)]
         libc::localtime_r(&tt, &mut tm);
-        tm
+        #[cfg(windows)]
+        libc::localtime_s(&mut tm, &tt);
+        (tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min)
     }
 }
 /// "2026-09-27" in local time.
 fn local_date(t: u64) -> String {
-    let tm = local_tm(t);
-    format!("{:04}-{:02}-{:02}", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday)
+    let (y, mo, d, _, _) = local_tm(t);
+    format!("{y:04}-{mo:02}-{d:02}")
 }
 /// "0915" in local time.
 fn local_hm(t: u64) -> String {
-    let tm = local_tm(t);
-    format!("{:02}{:02}", tm.tm_hour, tm.tm_min)
+    let (_, _, _, h, mi) = local_tm(t);
+    format!("{h:02}{mi:02}")
 }
 
 /// A session's folder: "2026-09-25 Men's Conference"; a second recording
@@ -91,34 +95,55 @@ fn session_dir(root: &Path, t: u64, label: &str) -> PathBuf {
     dir
 }
 
+#[cfg(unix)]
+fn statvfs(p: &Path) -> Option<libc::statvfs> {
+    use std::os::unix::ffi::OsStrExt;
+    let c = std::ffi::CString::new(p.as_os_str().as_bytes()).ok()?;
+    unsafe {
+        let mut s: libc::statvfs = std::mem::zeroed();
+        (libc::statvfs(c.as_ptr(), &mut s) == 0).then_some(s)
+    }
+}
+#[cfg(unix)]
 fn free_gb(p: &Path) -> Option<f64> {
-    use std::os::unix::ffi::OsStrExt;
-    let c = std::ffi::CString::new(p.as_os_str().as_bytes()).ok()?;
-    unsafe {
-        let mut s: libc::statvfs = std::mem::zeroed();
-        if libc::statvfs(c.as_ptr(), &mut s) != 0 {
-            return None;
-        }
-        Some(s.f_bavail as f64 * s.f_frsize as f64 / 1e9)
-    }
+    statvfs(p).map(|s| s.f_bavail as f64 * s.f_frsize as f64 / 1e9)
 }
+#[cfg(unix)]
 fn total_gb(p: &Path) -> Option<f64> {
-    use std::os::unix::ffi::OsStrExt;
-    let c = std::ffi::CString::new(p.as_os_str().as_bytes()).ok()?;
-    unsafe {
-        let mut s: libc::statvfs = std::mem::zeroed();
-        if libc::statvfs(c.as_ptr(), &mut s) != 0 {
-            return None;
-        }
-        Some(s.f_blocks as f64 * s.f_frsize as f64 / 1e9)
-    }
+    statvfs(p).map(|s| s.f_blocks as f64 * s.f_frsize as f64 / 1e9)
 }
+/// (available to us, total) bytes on the volume holding `p`.
+#[cfg(windows)]
+fn disk_space(p: &Path) -> Option<(u64, u64)> {
+    use std::os::windows::ffi::OsStrExt;
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn GetDiskFreeSpaceExW(dir: *const u16, avail: *mut u64, total: *mut u64, free: *mut u64) -> i32;
+    }
+    let w: Vec<u16> = p.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
+    let (mut avail, mut total, mut free) = (0u64, 0u64, 0u64);
+    (unsafe { GetDiskFreeSpaceExW(w.as_ptr(), &mut avail, &mut total, &mut free) } != 0).then_some((avail, total))
+}
+#[cfg(windows)]
+fn free_gb(p: &Path) -> Option<f64> {
+    disk_space(p).map(|(a, _)| a as f64 / 1e9)
+}
+#[cfg(windows)]
+fn total_gb(p: &Path) -> Option<f64> {
+    disk_space(p).map(|(_, t)| t as f64 / 1e9)
+}
+#[cfg(unix)]
 fn writable(p: &Path) -> bool {
     use std::os::unix::ffi::OsStrExt;
     std::ffi::CString::new(p.as_os_str().as_bytes()).map(|c| unsafe { libc::access(c.as_ptr(), libc::W_OK) == 0 }).unwrap_or(false)
 }
+#[cfg(windows)]
+fn writable(p: &Path) -> bool {
+    std::fs::metadata(p).map(|m| !m.permissions().readonly()).unwrap_or(false)
+}
 
 /// 64 files plus the app's sockets can pass macOS's default 256 open files.
+#[cfg(unix)]
 fn raise_fd_limit() {
     unsafe {
         let mut r: libc::rlimit = std::mem::zeroed();
@@ -128,9 +153,11 @@ fn raise_fd_limit() {
         }
     }
 }
+#[cfg(windows)]
+fn raise_fd_limit() {}
 
 fn internal_root() -> PathBuf {
-    PathBuf::from(std::env::var("HOME").unwrap_or_else(|_| "/tmp".into())).join("Music").join("ProDeck Recordings")
+    dirs::home_dir().unwrap_or_else(std::env::temp_dir).join("Music").join("ProDeck Recordings")
 }
 
 /// Where recordings go: `<volume>/ProDeck Recordings`, or the internal
@@ -616,7 +643,21 @@ pub fn multitrack_volumes() -> Vec<Value> {
     let home = internal_root();
     let probe = home.parent().map(|p| p.to_path_buf()).unwrap_or(home.clone());
     out.push(json!({ "path": "", "name": "This Mac (internal)", "internal": true, "folder": home, "freeGb": free_gb(&probe), "totalGb": total_gb(&probe), "writable": true }));
-    let root_dev = std::fs::metadata("/").map(|m| std::os::unix::fs::MetadataExt::dev(&m)).ok();
+    for (p, name) in external_volumes() {
+        if !writable(&p) {
+            continue; // Time Machine backups, read-only images
+        }
+        out.push(json!({ "path": p, "name": name, "internal": false, "folder": p.join("ProDeck Recordings"), "freeGb": free_gb(&p), "totalGb": total_gb(&p), "writable": true }));
+    }
+    out
+}
+
+/// Mounted drives other than the system disk.
+#[cfg(unix)]
+fn external_volumes() -> Vec<(PathBuf, String)> {
+    use std::os::unix::fs::MetadataExt;
+    let mut out = vec![];
+    let root_dev = std::fs::metadata("/").map(|m| m.dev()).ok();
     if let Ok(rd) = std::fs::read_dir("/Volumes") {
         for e in rd.flatten() {
             let p = e.path();
@@ -625,16 +666,24 @@ pub fn multitrack_volumes() -> Vec<Value> {
                 continue;
             }
             let Ok(md) = std::fs::metadata(&p) else { continue };
-            if !md.is_dir() || Some(std::os::unix::fs::MetadataExt::dev(&md)) == root_dev {
+            if !md.is_dir() || Some(md.dev()) == root_dev {
                 continue; // "Macintosh HD" is the internal disk again
             }
-            if !writable(&p) {
-                continue; // Time Machine backups, read-only images
-            }
-            out.push(json!({ "path": p, "name": name, "internal": false, "folder": p.join("ProDeck Recordings"), "freeGb": free_gb(&p), "totalGb": total_gb(&p), "writable": true }));
+            out.push((p, name));
         }
     }
     out
+}
+/// Drive letters other than the system drive.
+#[cfg(windows)]
+fn external_volumes() -> Vec<(PathBuf, String)> {
+    let sys = std::env::var("SystemDrive").unwrap_or_else(|_| "C:".into()).to_ascii_uppercase();
+    (b'D'..=b'Z')
+        .map(|c| format!("{}:", c as char))
+        .filter(|d| *d != sys)
+        .map(|d| (PathBuf::from(format!("{d}\\")), d))
+        .filter(|(p, _)| p.is_dir())
+        .collect()
 }
 
 /// Recorded sessions on this Mac and the chosen drive, newest first.
