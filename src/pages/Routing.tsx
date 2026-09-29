@@ -1,3 +1,4 @@
+import { IS_SHOTS, SHOT_TAB } from "../lib/tauri";
 import { LiveRouting } from "../components/LiveRouting";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { IS_DEMO, IS_WEB } from "../lib/tauri";
@@ -60,7 +61,7 @@ const CAN_EDIT = !IS_WEB || IS_DEMO;
 export function RoutingPage() {
   const routing = useRouting();
   const live = useRoutingLive();
-  const [tab, setTab] = useState<Tab>("channels");
+  const [tab, setTab] = useState<Tab>((IS_SHOTS && (SHOT_TAB as Tab)) || "channels");
   const [draft, setDraft] = useState<RoutingMap | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [pasteOpen, setPasteOpen] = useState(false);
@@ -201,7 +202,7 @@ export function RoutingPage() {
           Converted from the old Routing chains. Every hop and its steps are here as nodes with guessed kinds — look it over, then <strong>Save</strong> to keep it.
         </div>
       )}
-      {map.example && (
+      {map.example && !IS_SHOTS && (
         <div className="banner rt-note">
           <strong>This is the example map</strong> that ships with ProDeck — a sixteen-channel church that isn't yours. Press Edit, then <strong>Paste patch list</strong> with your own channels, and it is replaced.
         </div>

@@ -10,7 +10,9 @@ import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { invoke } from "./lib/tauri";
 import { getVersion } from "@tauri-apps/api/app";
-import { IS_WEB } from "./lib/tauri";
+import { IS_DEMO, IS_WEB } from "./lib/tauri";
+
+declare const __APP_VERSION__: string;
 
 export type UpdateStatus =
   | "idle"
@@ -130,6 +132,10 @@ export function UpdaterProvider({ children }: { children: ReactNode }) {
     if (IS_WEB) {
       setVersion("web");
       return; // the desktop host owns updates
+    }
+    if (IS_DEMO) {
+      setVersion(__APP_VERSION__); // demo/screenshot mode in a browser: no updater, no Tauri
+      return;
     }
     getVersion().then(setVersion).catch(() => {});
     // Auto-check a few seconds after launch (silent if the server is unreachable).

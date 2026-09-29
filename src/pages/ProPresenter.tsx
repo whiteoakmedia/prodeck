@@ -1,3 +1,4 @@
+import { IS_SHOTS } from "../lib/tauri";
 import { useCallback, useEffect, useState } from "react";
 import { useProDeck } from "../store";
 import { ConnectCard } from "../components/ConnectCard";
@@ -56,7 +57,7 @@ export function ProPresenterPage() {
   const [stageMsg, setStageMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [playlistId, setPlaylistId] = useState<string | null>(
-    () => localStorage.getItem("prodeck.ppPlaylist"),
+    () => localStorage.getItem("prodeck.ppPlaylist") ?? (IS_SHOTS ? "pl-sun" : null),
   );
 
   const refresh = useCallback(async () => {

@@ -958,3 +958,17 @@ pub fn checklist_toggle(list_id: String, item_id: String) -> Result<bool, String
     write_json_atomic_backed_up(checklists_path(), json)?;
     Ok(now)
 }
+
+#[cfg(test)]
+mod dump_defaults {
+    /// Writes the default settings as JSON for the browser demo/screenshot
+    /// mode (src/lib/demoSettingsDefaults.json), which has no backend to ask:
+    /// cargo test --lib dump_defaults -- --ignored
+    #[test]
+    #[ignore]
+    fn dump_defaults() {
+        let v = serde_json::to_value(super::Settings::default()).unwrap();
+        let out = concat!(env!("CARGO_MANIFEST_DIR"), "/../src/lib/demoSettingsDefaults.json");
+        std::fs::write(out, serde_json::to_string_pretty(&v).unwrap()).unwrap();
+    }
+}

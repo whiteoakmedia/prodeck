@@ -1,8 +1,8 @@
 import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 import { listen as tauriListen, type UnlistenFn } from "@tauri-apps/api/event";
-import { IS_DEMO, demoInvoke, demoOn } from "./demo";
+import { IS_DEMO, IS_SHOTS, demoInvoke, demoOn } from "./demo";
 
-export { IS_DEMO, setDemo } from "./demo";
+export { IS_DEMO, IS_SHOTS, SHOT_PAGE, SHOT_DASH, SHOT_PHONE, SHOT_TAB, SHOT_CHAT, setDemo } from "./demo";
 
 // ---------------------------------------------------------------------------
 // Runtime mode: native Tauri (desktop) vs. plain browser (LAN web gateway).
@@ -11,7 +11,7 @@ export { IS_DEMO, setDemo } from "./demo";
 // unchanged.
 // ---------------------------------------------------------------------------
 export const IS_WEB =
-  typeof window !== "undefined" && !("__TAURI_INTERNALS__" in window);
+  typeof window !== "undefined" && !("__TAURI_INTERNALS__" in window) && !IS_SHOTS;
 
 // Base URL for the host's MJPEG (NDI) servers. In the desktop app the feeds are
 // on loopback; in a browser they live on the host this page was served from.

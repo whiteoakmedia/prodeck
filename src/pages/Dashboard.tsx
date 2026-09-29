@@ -9,7 +9,7 @@ import { Icon } from "../components/Icon";
 import { DashTopBar } from "../components/DashTopBar";
 import { WIDGETS, WIDGET_MAP, WIDGET_GROUP_ORDER } from "../widgets/registry";
 import { askConfirm, askText } from "../lib/dialogs";
-import { IS_WEB } from "../lib/tauri";
+import { IS_SHOTS, IS_WEB, SHOT_DASH } from "../lib/tauri";
 import {
   defaultDashboards,
   loadDashboards,
@@ -117,7 +117,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: any) => void }) {
       } catch {
         /* storage unavailable */
       }
-      setActiveId(data.find((d) => d.id === remembered)?.id ?? data[0].id);
+      setActiveId((IS_SHOTS && SHOT_DASH != null ? data[SHOT_DASH]?.id : null) ?? data.find((d) => d.id === remembered)?.id ?? data[0].id);
       lastSaved.current = JSON.stringify(data);
       loaded.current = true;
     })();

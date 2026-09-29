@@ -16,7 +16,20 @@
 
 const KEY = "prodeck.demo";
 
+// Screenshot mode (`?shots=1`): the demo's sample world, drawn exactly as the
+// booth app — no demo banner, booth-only pages on — for marketing shots.
+// `page=planning`, `dash=2` (the third dashboard) and `phone=1` pick the
+// surface. Nothing is written, same as demo mode.
+const QS = typeof location !== "undefined" ? new URLSearchParams(location.search) : null;
+export const IS_SHOTS: boolean = !!QS?.has("shots");
+export const SHOT_PAGE: string | null = QS?.get("page") ?? null;
+export const SHOT_DASH: number | null = QS?.get("dash") != null ? Number(QS.get("dash")) : null;
+export const SHOT_PHONE: boolean = !!QS?.has("phone");
+export const SHOT_TAB: string | null = QS?.get("tab") ?? null;
+export const SHOT_CHAT: boolean = !!QS?.has("chat");
+
 export const IS_DEMO: boolean = (() => {
+  if (IS_SHOTS) return true;
   try {
     return localStorage.getItem(KEY) === "1";
   } catch {
@@ -79,7 +92,9 @@ const DESK: [string, string][] = [
   ["input:9", "Keys R"], ["input:10", "Track L"], ["input:11", "Track R"],
   ["input:12", "Vox Ld"], ["input:13", "Vox 2"], ["input:14", "Vox 3"],
   ["input:15", "Pulpit"], ["input:16", "Lav 1"],
-  ["dca:1", "Drums"], ["dca:2", "Band"], ["dca:3", "Vocals"], ["dca:4", "Speech"],
+  ["dca:1", "Drums"], ["dca:2", "EGs"], ["dca:3", "KEYs"], ["dca:4", "Speech"],
+  ["dca:5", "AGs"], ["dca:6", "Pad"], ["dca:7", "TRX"], ["dca:8", "All FX"],
+  ["grp:1", "Lead Voc"], ["sgrp:5", "BGVs"],
   ["main:1", "L/R"], ["fxs:1", "Vocal Verb"], ["fxs:2", "Drum Room"], ["fxr:1", "Vocal Verb"],
 ];
 
@@ -267,12 +282,22 @@ function ppStatusPayloads(): { stream: string; data: unknown }[] {
   ];
 }
 
-/** A slide-shaped SVG so thumbnails aren't grey boxes. */
-function demoThumb(index: number): string {
-  const lines = ["Great are You, Lord", "You give life, You are love", "You bring light to the darkness"];
-  const text = lines[index % lines.length];
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="270"><rect width="480" height="270" fill="#10151f"/><text x="240" y="140" font-family="system-ui,sans-serif" font-size="26" fill="#eef3fa" text-anchor="middle">${text.replace(/[<>&]/g, "")}</text></svg>`;
-  return `data:image/svg+xml;base64,${btoa(svg)}`;
+/** A slide-shaped SVG so thumbnails aren't grey boxes. Public-domain hymn
+ *  lines only (see PP_SONGS) — never copyrighted lyrics in a screenshot. */
+const THUMB_LINES = [
+  "Holy, holy, holy! Lord God Almighty!\nEarly in the morning our song shall rise to Thee",
+  "Amazing grace! how sweet the sound\nThat saved a wretch like me!",
+  "When peace like a river attendeth my way,\nWhen sorrows like sea billows roll",
+  "It is well with my soul,\nIt is well, it is well with my soul.",
+  "Be Thou my Vision, O Lord of my heart;\nNaught be all else to me, save that Thou art",
+  "I once was lost, but now am found,\nWas blind, but now I see.",
+];
+function demoThumb(index: number, text = THUMB_LINES[index % THUMB_LINES.length]): string {
+  const rows = text.split("\n").map((l) => l.replace(/[<>&]/g, ""));
+  const y0 = 140 - (rows.length - 1) * 16;
+  const tspans = rows.map((l, i) => `<tspan x="240" y="${y0 + i * 32}">${l}</tspan>`).join("");
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="270"><rect width="480" height="270" fill="#10151f"/><text font-family="system-ui,sans-serif" font-size="19" fill="#eef3fa" text-anchor="middle">${tspans}</text></svg>`;
+  return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
 }
 
 // ------------------------------------------------------------------ console
@@ -290,11 +315,20 @@ function deskSnapshot() {
     mutes[id] = speaking ? !speech && id.startsWith("input:") : speech;
     faders[id] = id.startsWith("main") ? 108 : 96 + ((parseInt(id.split(":")[1], 10) * 7) % 12);
   }
+  const seenAt = NOW();
+  const faderSeen: Record<string, number> = {};
+  for (const id of Object.keys(faders)) faderSeen[id] = seenAt;
+  // Every mute reported by the desk this connection: confirmed, not "remembered".
+  const muteSeen: Record<string, number> = {};
+  for (const id of Object.keys(mutes)) muteSeen[id] = seenAt;
   return {
     model: "avantis",
     namesSupported: true,
     maxScene: 500,
     connected: true,
+    connectedAt: seenAt - 3_600_000,
+    faderSeen,
+    muteSeen,
     scene: speaking ? 4 : 2,
     mutes,
     faders,
@@ -302,6 +336,228 @@ function deskSnapshot() {
     colors: {},
     watchLog: [],
   };
+}
+
+
+// ------------------------------------------------ recording, routing, stream
+
+/** The booth's 32 recorded inputs: [name, what feeds it]. */
+const REC_INPUTS: [string, string][] = [
+  ["Room L", "FOH-Console 1 · Room group L"], ["Room R", "FOH-Console 2 · Room group R"],
+  ["Stream L", "FOH-Console 63 · Stream matrix L"], ["Stream R", "FOH-Console 64 · Stream matrix R"],
+  ["Click", "Playback-Mac 15"], ["Guide", "Playback-Mac 16"],
+  ["Lav 1", "FOH-Console 7 · Lav 1 direct out"], ["Pulpit", "FOH-Console 8 · Pulpit direct out"],
+  ["Kick", "FOH-Console 9 · Kick direct out"], ["Snare", "FOH-Console 10 · Snare direct out"],
+  ["OH L", "FOH-Console 11 · OH L direct out"], ["OH R", "FOH-Console 12 · OH R direct out"],
+  ["Bass", "FOH-Console 13 · Bass direct out"], ["El Gtr", "FOH-Console 14 · El Gtr direct out"],
+  ["Ac Gtr", "FOH-Console 15 · Ac Gtr direct out"], ["Keys L", "FOH-Console 16 · Keys L direct out"],
+  ["Keys R", "FOH-Console 17 · Keys R direct out"], ["Track L", "Playback-Mac 01"], ["Track R", "Playback-Mac 02"],
+  ["Vox Ld", "Wireless-1 · 01"], ["Vox 2", "Wireless-1 · 02"], ["Vox 3", "Wireless-1 · 03"],
+  ["House L", "FOH-Console 39 · House L direct out"], ["House R", "FOH-Console 40 · House R direct out"],
+  ["Main L", "FOH-Console 57 · Main L+R L"], ["Main R", "FOH-Console 58 · Main L+R R"],
+];
+
+function recNames() {
+  const names: Record<string, string> = {};
+  const sources: Record<string, string> = {};
+  REC_INPUTS.forEach(([n, src], i) => {
+    names[String(i + 1)] = n;
+    sources[String(i + 1)] = src.replace(/^(\S+) (\d+)/, "$1 ch $2");
+  });
+  return { names, sources };
+}
+
+/** Per-input levels (dBFS), moving with the service: band in songs, speech in the message. */
+function channelLevels(): number[] {
+  const speaking = SONGS[liveIndex()].type !== "song";
+  const out: number[] = [];
+  for (let i = 1; i <= 64; i++) {
+    const n = REC_INPUTS[i - 1]?.[0] ?? "";
+    let base = -120;
+    if (i <= 4) base = -30;
+    else if (/Lav|Pulpit/.test(n)) base = speaking ? -24 : -70;
+    else if (/Click|Guide|Track/.test(n)) base = speaking ? -120 : -18;
+    else if (/House|Main/.test(n)) base = -32;
+    else if (/Vox/.test(n)) base = speaking ? -48 : -22;
+    else if (n) base = speaking ? -68 : -26;
+    out.push(base <= -119 ? -120 : Math.round((base + (Math.random() * 8 - 4)) * 10) / 10);
+  }
+  return out;
+}
+
+function danteSnapshot() {
+  const t = Math.floor(NOW() / 1000);
+  const rx = (subs: [number, string, string][], count: number) => {
+    const m = new Map(subs.map(([ch, dev, txc]) => [ch, { dev, txc }]));
+    return Array.from({ length: count }, (_, i) => {
+      const s = m.get(i + 1);
+      return { ch: i + 1, name: String(i + 1).padStart(2, "0"), txDevice: s?.dev ?? null, txChannel: s?.txc ?? null, status: s ? "Connected" : "No subscription", ok: !!s };
+    });
+  };
+  const booth: [number, string, string][] = REC_INPUTS.map(([, src], i) => {
+    const m = src.match(/^(\S+)(?: ·)? (\d+)/);
+    return [i + 1, m?.[1] ?? "FOH-Console", (m?.[2] ?? "01").padStart(2, "0")];
+  });
+  const tx = (n: number) => Array.from({ length: n }, (_, i) => ({ ch: i + 1, name: String(i + 1).padStart(2, "0") }));
+  return {
+    at: t - 4,
+    localName: "Booth-Mac",
+    devices: [
+      { name: "Booth-Mac", ip: "10.0.80.54", port: 4440, model: "Dante Virtual Soundcard", rxCount: 64, txCount: 64, rx: rx(booth, 64), tx: tx(64), error: null },
+      { name: "FOH-Console", ip: "10.0.80.146", port: 4440, model: "Dante64", rxCount: 64, txCount: 64, rx: rx([[1, "Playback-Mac", "01"], [2, "Playback-Mac", "02"], [15, "Playback-Mac", "15"], [16, "Playback-Mac", "16"], [41, "Wireless-1", "01"], [42, "Wireless-1", "02"], [43, "Wireless-1", "03"], [44, "Wireless-2", "01"]], 64), tx: tx(64), error: null },
+      { name: "Playback-Mac", ip: "10.0.80.60", port: 4440, model: "Dante Virtual Soundcard", rxCount: 0, txCount: 24, rx: [], tx: tx(24), error: null },
+      { name: "Stream-Encoder", ip: "10.0.80.143", port: 4440, model: "AVIO", rxCount: 2, txCount: 0, rx: rx([[1, "FOH-Console", "63"], [2, "FOH-Console", "64"]], 2), tx: [], error: null },
+      { name: "Wireless-1", ip: "10.0.80.148", port: 4440, model: "ULXD4Q", rxCount: 0, txCount: 4, rx: [], tx: tx(4), error: null },
+      { name: "Wireless-2", ip: "10.0.80.149", port: 4440, model: "ULXD4Q", rxCount: 0, txCount: 4, rx: [], tx: tx(4), error: null },
+    ],
+    changes: [
+      { at: t - 3600 * 20, text: "Booth-Mac 24: (nothing) → FOH-Console · 40" },
+      { at: t - 3600 * 20, text: "Booth-Mac 23: (nothing) → FOH-Console · 39" },
+      { at: t - 3600 * 46, text: "FOH-Console 44: Wireless-2 · 02 → Wireless-2 · 01" },
+    ],
+  };
+}
+
+function avantisPatch() {
+  const inputs = DESK.filter(([id]) => id.startsWith("input:")).map(([id], i) => {
+    const ch = Number(id.slice(6));
+    const slink = ch <= 9;
+    return { ch, port: slink ? 3 : 1, socket: slink ? ch : 30 + i, text: slink ? `SLink ${ch}` : `I/O Port 1 (Dante) ${30 + i}` };
+  });
+  const outs: [number, string][] = [
+    [1, "Room L"], [2, "Room R"], [7, "Ch 16 Lav 1 direct out"], [8, "Ch 15 Pulpit direct out"], [9, "Ch 1 Kick direct out"],
+    [10, "Ch 2 Snare direct out"], [11, "Ch 3 OH L direct out"], [12, "Ch 4 OH R direct out"], [13, "Ch 5 Bass direct out"],
+    [14, "Ch 6 El Gtr direct out"], [15, "Ch 7 Ac Gtr direct out"], [16, "Ch 8 Keys L direct out"], [17, "Ch 9 Keys R direct out"],
+    [36, "Lead Voc"], [57, "Main L+R L"], [58, "Main L+R R"], [63, "Stream matrix L"], [64, "Stream matrix R"],
+  ];
+  return {
+    file: "~/Downloads/Avantis/Shows/sunday-0928.tar.gz",
+    exportedAt: Math.floor(NOW() / 1000) - 86_400,
+    inputs,
+    danteOut: outs.map(([out, text]) => ({ out, code: 4, index: 0, text })),
+    changes: ["Dante out 17: — → Ch 9 Keys R direct out", "Ch 12 Vox Ld: input I/O Port 1 (Dante) 40 → I/O Port 1 (Dante) 41"],
+  };
+}
+
+/** Three past Sundays of planned-vs-actual timing and SPL, for Analytics. */
+function trackingHistory() {
+  const data: Record<string, Record<string, unknown>> = {};
+  const rnd = (seed: number) => {
+    const x = Math.sin(seed * 999) * 10000;
+    return x - Math.floor(x);
+  };
+  [1, 2, 3].forEach((w) => {
+    const start = LAST_SUNDAY * 1000 - (w - 1) * 7 * 86_400_000 + 120_000;
+    const date = new Date(start).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+    const bucket: Record<string, unknown> = {};
+    let t = start;
+    SONGS.forEach((it, i) => {
+      const r = rnd(w * 31 + i);
+      const actual = Math.round(it.len * (0.86 + r * 0.32));
+      const song = it.type === "song";
+      const avg = song ? 90 + r * 3 : it.type === "header" ? 78 : 68 + r * 3;
+      const n = Math.max(1, Math.round(actual / 0.5));
+      bucket[`h-${i}`] = { title: it.title, type: it.type, planned: it.len, actual, splPeak: avg + 5 + r * 2, splSum: avg * n, splCount: n, splEnergy: n * Math.pow(10, avg / 10), startedAt: null };
+      t += actual * 1000;
+    });
+    bucket._meta = {
+      planId: `demo-past-${w}`, timeId: "demo-time-1", planTitle: "Sunday Morning", planDate: date, timeName: "10:00 AM",
+      rehearsal: false, savedAt: t, heartbeatAt: t, startedAt: start, endedAt: t,
+      plan: SONGS.map((it, i) => ({ id: `h-${i}`, title: it.title, type: it.type, length: it.len })),
+    };
+    data[`demo-past-${w}::demo-time-1`] = bucket;
+  });
+  return data;
+}
+
+/** A believable stream-mix report: a 90-minute service, one row a second. */
+function streamReport(start: number) {
+  const rows: number[][] = [];
+  const tilt = [4, 3.5, 1, 0, 0, -3.5, -4, -4.5, -5];
+  const ref = [-10.3, -7.5, -6.7, -6.0, -6.5, -7.8, -10.3, -13.2, -15.2];
+  const plan: [number, "music" | "talk"][] = [[1500, "music"], [420, "talk"], [360, "music"], [2100, "talk"], [540, "music"], [300, "talk"]];
+  let t = start;
+  for (const [secs, kind] of plan) {
+    for (let i = 0; i < secs; i++, t++) {
+      const music = kind === "music";
+      const lufs = music ? -21.5 + Math.sin(i / 40) * 2.5 + (Math.random() - 0.5) * 2 : -26.5 + (Math.random() - 0.5) * 3;
+      const bands = music ? ref.map((b, k) => b + tilt[k] + (Math.random() - 0.5)) : [-30, -20, -9, -6, -5, -7, -10, -16, -22].map((b) => b + (Math.random() - 0.5));
+      rows.push([t, Math.round(lufs * 10) / 10, Math.round((lufs + 12) * 10) / 10, music ? 0.78 : 0.99, ...bands.map((b) => Math.round(b * 10) / 10)]);
+    }
+  }
+  return rows;
+}
+const LAST_SUNDAY = (() => {
+  const d = new Date();
+  d.setDate(d.getDate() - ((d.getDay() + 7) % 7 || 7));
+  d.setHours(9, 58, 0, 0);
+  return Math.floor(d.getTime() / 1000);
+})();
+
+
+// ------------------------------------------------------- ProPresenter library
+// Public-domain hymn texts only (Heber 1826, Newton 1779, Spafford 1873,
+// Byrne/Hull 1912) — screenshots must never carry copyrighted lyrics.
+
+const PP_SONGS: { name: string; groups: [string, [number, number, number], string[]][] }[] = [
+  { name: "Holy, Holy, Holy", groups: [
+    ["Verse 1", [0.25, 0.5, 1], ["Holy, holy, holy! Lord God Almighty!\nEarly in the morning our song shall rise to Thee", "Holy, holy, holy, merciful and mighty!\nGod in three Persons, blessed Trinity!"]],
+    ["Verse 2", [0.3, 0.8, 0.5], ["Holy, holy, holy! All the saints adore Thee,\nCasting down their golden crowns around the glassy sea"]],
+  ] },
+  { name: "Amazing Grace", groups: [
+    ["Verse 1", [0.25, 0.5, 1], ["Amazing grace! how sweet the sound\nThat saved a wretch like me!", "I once was lost, but now am found,\nWas blind, but now I see."]],
+    ["Verse 2", [0.3, 0.8, 0.5], ["’Twas grace that taught my heart to fear,\nAnd grace my fears relieved;", "How precious did that grace appear\nThe hour I first believed!"]],
+  ] },
+  { name: "It Is Well", groups: [
+    ["Verse 1", [0.25, 0.5, 1], ["When peace like a river attendeth my way,\nWhen sorrows like sea billows roll;", "Whatever my lot, Thou hast taught me to say,\nIt is well, it is well with my soul."]],
+    ["Chorus", [0.95, 0.35, 0.35], ["It is well with my soul,\nIt is well, it is well with my soul."]],
+  ] },
+  { name: "Be Thou My Vision", groups: [
+    ["Verse 1", [0.25, 0.5, 1], ["Be Thou my Vision, O Lord of my heart;\nNaught be all else to me, save that Thou art", "Thou my best Thought, by day or by night,\nWaking or sleeping, Thy presence my light."]],
+  ] },
+];
+
+function ppLibrary(path: string): unknown {
+  const named = (names: string[], prefix: string) => names.map((name, index) => ({ id: { uuid: `${prefix}-${index}`, name, index } }));
+  if (path === "looks") return named(["Default", "Worship", "Sermon", "Announcements"], "look");
+  if (path === "look/current") return { id: { uuid: "look-1", name: "Worship", index: 1 } };
+  if (path === "macros") return named(["Walk-in", "Worship Start", "Sermon", "Response", "Dismissal", "Clear to Logo"], "macro");
+  if (path === "props") return named(["Lower Third", "Logo Bug", "Countdown Frame"], "prop");
+  if (path === "messages") return named(["Parent Pickup", "Car Lights On", "Welcome Guests"], "msg");
+  if (path === "timers") return named(["Service Countdown", "Sermon Clock", "Walk-in"], "timer");
+  if (path === "status/screens")
+    return [
+      { id: { uuid: "scr-0", name: "Main Screens", index: 0 }, screen_type: "audience" },
+      { id: { uuid: "scr-1", name: "Lobby TVs", index: 1 }, screen_type: "audience" },
+      { id: { uuid: "scr-2", name: "Stage Display", index: 0 }, screen_type: "stage" },
+    ];
+  if (path === "playlists")
+    return [
+      { id: { uuid: "pl-sun", name: "Sunday Morning", index: 0 }, field_type: "playlist" },
+      { id: { uuid: "pl-night", name: "Worship Night", index: 1 }, field_type: "playlist" },
+      { id: { uuid: "pl-loop", name: "Announcements Loop", index: 2 }, field_type: "playlist" },
+    ];
+  if (path.startsWith("playlist/"))
+    return {
+      id: { uuid: path.slice(9), name: "Sunday Morning" },
+      items: PP_SONGS.map((sg, i) => ({
+        id: { uuid: `pli-${i}`, name: sg.name, index: i },
+        type: "presentation",
+        presentation_info: { presentation_uuid: `pp-song-${i}`, arrangement_uuid: "", arrangement_name: "" },
+      })),
+    };
+  const m = path.match(/^presentation\/pp-song-(\d+)/);
+  if (m) {
+    const sg = PP_SONGS[Number(m[1])] ?? PP_SONGS[0];
+    return {
+      presentation: {
+        id: { uuid: `pp-song-${m[1]}`, name: sg.name },
+        groups: sg.groups.map(([name, [r, g, b], slides]) => ({ name, color: { red: r, green: g, blue: b, alpha: 1 }, slides: slides.map((text) => ({ text, enabled: true })) })),
+        arrangements: [],
+      },
+    };
+  }
+  return null;
 }
 
 // -------------------------------------------------------------- the handler
@@ -315,7 +571,7 @@ const SETTINGS_OVERLAY: Record<string, unknown> = {
   pco_app_id: "demo",
   pco_secret: "demo",
   pco_client_id: null,
-  audio_mic_channels: { "1": 5, "2": 6, "3": 7 },
+  audio_mic_channels: { "1": 20, "2": 21, "3": 22 }, // Vox Ld, Vox 2, Vox 3 on the recorded inputs
   spl_time_weighting: "slow",
   spl_freq_weighting: "a",
   web_enabled: true,
@@ -340,6 +596,16 @@ const SETTINGS_OVERLAY: Record<string, unknown> = {
   keep_awake: true,
   alert_config: {},
   position_guides: {},
+  multitrack_names: recNames().names,
+  multitrack_sources: recNames().sources,
+  multitrack_volume: "/Volumes/Recording SSD",
+  multitrack_auto: false,
+  multitrack_drop_silent: true,
+  stream_report_on: true,
+  stream_report_channels: [3, 4],
+  stream_report_offset_db: 0,
+  automix_bgv_ride: true,
+  automix_feeds_on: true,
 };
 
 /**
@@ -370,6 +636,10 @@ const OBJECT_CMDS: Record<string, unknown> = {
   assist_status: { configured: false, model: "claude-sonnet-5", members: true, usedThisMonth: 0, monthlyCap: 500, knowledgeFiles: [], knowledgeDir: "" },
   audio_input_channels: 2,
   default_audio_input: "Demo Input (2ch)",
+  web_status: { running: true, port: 8088 },
+  follow_status: { modelReady: true, model: "large-v3-turbo", usedThisMonth: 14, monthlyCap: 500 },
+  pco_oauth_status: { connected: true, who: "Renee Alvarez", scope: "services people", configured: true, own_app: false },
+  automix_store_load: { maps: {}, homes: {}, obs: {}, songRules: {}, dismissed: [], names: {} },
 };
 
 // The real settings are fetched once, only to keep the full struct shape.
@@ -385,17 +655,18 @@ export async function demoInvoke<T>(cmd: string, args?: Record<string, unknown>)
       // Merge over the REAL settings so every field keeps a valid shape and
       // nothing here has to know the full struct.
       if (settingsBase === null) {
-        settingsBase = {};
-        // On the desktop the backend is in-process, so borrowing the real
-        // struct keeps every field shape valid. In a browser there may be no
-        // booth at all — and asking would 401 and bounce us to the sign-in
-        // screen — so the overlay stands on its own there.
-        const { realInvoke, IS_WEB } = await import("./tauri");
-        if (!IS_WEB) {
+        // Start from the app's own defaults (every field, right shape — see
+        // settings.rs dump_defaults), so a browser with no booth still gets
+        // a complete struct. On the desktop the real struct goes on top.
+        const { default: defaults } = await import("./demoSettingsDefaults.json");
+        settingsBase = { ...(defaults as Record<string, unknown>) };
+        const native = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+        if (native) {
+          const { realInvoke } = await import("./tauri");
           try {
-            settingsBase = (await realInvoke<Record<string, unknown>>("get_settings")) ?? {};
+            settingsBase = { ...settingsBase, ...((await realInvoke<Record<string, unknown>>("get_settings")) ?? {}) };
           } catch {
-            settingsBase = {};
+            /* keep the defaults */
           }
         }
       }
@@ -478,7 +749,15 @@ export async function demoInvoke<T>(cmd: string, args?: Record<string, unknown>)
         matchesCurrent: true, underLaunchd: true, inApplications: true,
         exe: "/Applications/ProDeck.app/Contents/MacOS/prodeck", keepAwake: true,
       });
-    case "pp_thumbnail":
+    case "pp_thumbnail": {
+      const m = String(args?.uuid ?? args?.presentationUuid ?? "").match(/^pp-song-(\d+)/);
+      const idx = Number(args?.index ?? args?.cueIndex ?? 0);
+      if (m) {
+        const slides = (PP_SONGS[Number(m[1])] ?? PP_SONGS[0]).groups.flatMap((g) => g[2]);
+        return out(demoThumb(idx, slides[idx % slides.length]));
+      }
+      return out(demoThumb(idx));
+    }
     case "pp_playlist_thumbnail":
       return out(demoThumb(Number(args?.index ?? args?.cueIndex ?? 0)));
     case "tap_edge_state":
@@ -492,13 +771,61 @@ export async function demoInvoke<T>(cmd: string, args?: Record<string, unknown>)
       return out([{ kind: "propresenter", name: "Sanctuary Pro", host: "10.0.1.42", port: 51417, addresses: ["10.0.1.42"] }]);
     case "chat_history":
       return out([
-        { id: 1, from: "Renee Alvarez", target: "team", body: "Doors open in 10.", ts: NOW() - 900_000 },
-        { id: 2, from: "Sam Porter", target: "team", body: "Pulpit mic swapped, battery was low.", ts: NOW() - 480_000 },
+        { id: 1, from: "Renee Alvarez", target: "team", channel: "team", text: "Doors open in 10.", ts: NOW() - 900_000 },
+        { id: 2, from: "Sam Porter", target: "team", channel: "team", text: "Pulpit mic swapped, battery was low.", ts: NOW() - 480_000 },
+        { id: 3, from: "Kayla Nguyen", target: "team", channel: "team", text: "Lyrics for the new song are in — slides 1–14.", ts: NOW() - 300_000 },
+        { id: 4, from: "Booth", target: "team", channel: "team", text: "Walk-in music down at 9:58, countdown at 9:59.", ts: NOW() - 120_000 },
       ]);
     case "page_list":
       return out([]);
     case "diag_recent_log":
       return out(["(demo mode — the real log is hidden while sample data is on)"]);
+    case "pp_get": {
+      const v = ppLibrary(String(args?.path ?? "").replace(/^\/?(v1\/)?/, ""));
+      if (v != null) return out(v);
+      break;
+    }
+    case "checkin_wan_ip":
+      return out(["203.0.113.24"]);
+    case "load_tracking":
+      return out(trackingHistory());
+    case "multitrack_status":
+      return out({
+        recording: demoRec != null,
+        live: demoRec != null ? recLive() : null,
+        last: { recording: false, id: "r1", label: "Sunday Morning", dir: "/Volumes/Recording SSD/ProDeck Recordings/" + new Date(LAST_SUNDAY * 1000).toISOString().slice(0, 10) + " Sunday Morning", folders: [], secs: 5580, tracks: 26, silentRemoved: 38, markers: 41, dropped: 0, note: null },
+      });
+    case "multitrack_volumes":
+      return out([
+        { path: "", name: "This Mac (internal)", internal: true, folder: "~/Music/ProDeck Recordings", freeGb: 612, totalGb: 994 },
+        { path: "/Volumes/Recording SSD", name: "Recording SSD", internal: false, folder: "/Volumes/Recording SSD/ProDeck Recordings", freeGb: 1718, totalGb: 2000 },
+      ]);
+    case "multitrack_sessions": {
+      const day = (ago: number, label: string, secs: number, tracks: number, markers: number) => {
+        const t = LAST_SUNDAY - ago * 86_400;
+        const date = new Date(t * 1000).toISOString().slice(0, 10);
+        return { dir: `/Volumes/Recording SSD/ProDeck Recordings/${date} ${label}`, folder: `${date} ${label}`, label, start: t, seconds: secs, tracks, markers, note: null };
+      };
+      return out([day(0, "Sunday Morning", 5580, 26, 41), day(2, "Worship Night (rehearsal)", 3120, 24, 18), day(7, "Sunday Morning", 5460, 25, 39), day(14, "Sunday Morning", 5700, 26, 44)]);
+    }
+    case "multitrack_start":
+      demoRec = NOW();
+      setTimeout(() => emit("multitrack:status", recLive()), 100);
+      return out({ dir: "/Volumes/Recording SSD/ProDeck Recordings/demo", channels: 64, note: null });
+    case "multitrack_stop":
+      demoRec = null;
+      setTimeout(() => emit("multitrack:status", { recording: false, id: "r2", label: "Sunday Morning", dir: "", folders: [], secs: 0, tracks: 26, silentRemoved: 38, markers: 0, dropped: 0, note: null }), 100);
+      return out(null);
+    case "dante_snapshot":
+      return out(danteSnapshot());
+    case "avantis_patch_get":
+      return out(avantisPatch());
+    case "stream_reports_list":
+      return out([0, 7, 14, 21].map((w) => ({ id: `s${LAST_SUNDAY - w * 604_800}`, start: LAST_SUNDAY - w * 604_800, end: LAST_SUNDAY - w * 604_800 + 5220, soundSecs: 5220 })));
+    case "stream_report_get": {
+      const start = Number(String(args?.id ?? "").slice(1)) || LAST_SUNDAY;
+      return out({ id: String(args?.id ?? ""), start, offsetDb: 0, rows: streamReport(start) });
+    }
   }
 
   // Anything that changes state: succeed, change nothing.
@@ -543,6 +870,13 @@ export async function demoInvoke<T>(cmd: string, args?: Record<string, unknown>)
 
 // -------------------------------------------------------------- live events
 
+let demoRec: number | null = null;
+function recLive() {
+  const secs = demoRec != null ? (NOW() - demoRec) / 1000 + 1834 : 0;
+  const levels = channelLevels();
+  return { recording: true, id: "demo", dir: "/Volumes/Recording SSD/ProDeck Recordings/Sunday Morning", secs, channels: 64, withSignal: levels.filter((l) => l > -60).length, freeGb: 1716.4, hoursLeft: 51.8, dropped: 0, levels, error: null };
+}
+
 type Handler = (payload: unknown) => void;
 const handlers = new Map<string, Set<Handler>>();
 let ticking = false;
@@ -584,6 +918,27 @@ function startTicker() {
     emit("pco:sync_started", {});
     emit("pco:live", pcoLive());
   }, 60);
+
+  // An RTA that looks like a band in songs and a voice in the message.
+  setInterval(() => {
+    const speaking = SONGS[liveIndex()].type !== "song";
+    const n = 28; // the backend's band count
+    const bands = Array.from({ length: n }, (_, i) => {
+      const x = i / (n - 1);
+      const shape = speaking ? -62 - 120 * Math.pow(x - 0.42, 2) : -44 - 20 * x + (x < 0.15 ? 4 : 0);
+      return Math.round((shape + (Math.random() * 4 - 2)) * 10) / 10;
+    });
+    emit("audio:rta", bands);
+  }, 200);
+
+  // Per-input levels for the Recording page and the automix's ears.
+  setInterval(() => {
+    const lv = channelLevels();
+    emit("audio:channels_rms", lv);
+    // Peaks (0..1) — the mic-check and routing meters listen to these.
+    emit("audio:channels", lv.map((db) => (db <= -119 ? 0 : Math.min(1, Math.pow(10, (db + 9) / 20)))));
+    if (demoRec != null) emit("multitrack:status", recLive());
+  }, 250);
 
   // Slides, layers and the desk move with the service clock.
   setInterval(() => {

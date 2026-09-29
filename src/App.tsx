@@ -10,6 +10,10 @@ import {
   identitySetRole,
   on,
   IS_DEMO,
+  IS_SHOTS,
+  SHOT_CHAT,
+  SHOT_PAGE,
+  SHOT_PHONE,
   setDemo,
   pcoOauthStatus,
 } from "./lib/tauri";
@@ -42,7 +46,7 @@ import "./mobile/mobile.css";
 // desktop app and full-size browsers keep the sidebar UI. Evaluated once —
 // a phone doesn't become a desktop mid-session.
 const IS_PHONE =
-  IS_WEB && typeof window !== "undefined" && window.matchMedia("(max-width: 760px)").matches;
+  (IS_WEB || SHOT_PHONE) && typeof window !== "undefined" && window.matchMedia("(max-width: 760px)").matches;
 import { ProDeckProvider, useProDeck } from "./store";
 import { PcoProvider } from "./pcoStore";
 import { TrackingProvider } from "./trackingStore";
@@ -114,7 +118,7 @@ const NAV: { id: Page; label: string; icon: string }[] = [
 const WIZARD_DAY_KEY = "prodeck.wizardDay";
 
 function Shell() {
-  const [page, setPage] = useState<Page>("dashboard");
+  const [page, setPage] = useState<Page>((IS_SHOTS && (SHOT_PAGE as Page)) || "dashboard");
   // Which help topic to open; set by the `?` on a Settings card, or anywhere
   // else that calls openHelp().
   const [helpTopic, setHelpTopic] = useState<string | undefined>(undefined);
@@ -165,6 +169,11 @@ function Shell() {
 
   const checklists = useChecklists();
   const chat = useChat();
+  // Screenshot mode: `chat=1` opens the Messages drawer.
+  useEffect(() => {
+    if (IS_SHOTS && SHOT_CHAT) chat.setOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const overdueCount = checklists.overdue().length;
   useProFollow();
   useKeySend();
@@ -197,7 +206,7 @@ function Shell() {
   // Open the startup wizard once PCO has loaded enough to be useful (service
   // types present). Never on web clients — the booth runs the service.
   useEffect(() => {
-    if (IS_WEB || pcoSync.serviceTypes.length === 0) return;
+    if (IS_WEB || IS_SHOTS || pcoSync.serviceTypes.length === 0) return;
     const today = new Date().toDateString();
     if (localStorage.getItem(WIZARD_DAY_KEY) !== today) {
       localStorage.setItem(WIZARD_DAY_KEY, today);
@@ -425,7 +434,7 @@ function ControlToast() {
 // Demo mode is loud on purpose: sample data on a real booth machine must
 // never be mistaken for the real thing.
 function DemoBanner() {
-  if (!IS_DEMO) return null;
+  if (!IS_DEMO || IS_SHOTS) return null;
   return (
     <div className="demo-banner" role="status">
       <span className="demo-dot" />
