@@ -25,6 +25,7 @@ import { startOutbox } from "./lib/outbox";
 import { CrewPageTakeover } from "./mobile/CrewPages";
 import { ServiceWizard } from "./components/ServiceWizard";
 import { FirstRunSetup } from "./components/FirstRunSetup";
+import { GiftCredit } from "./components/GiftCredit";
 import { SetupWizards } from "./components/wizard/SetupWizards";
 import { isFreshInstall } from "./lib/onboarding";
 import { NAVIGATE_EVENT } from "./lib/navigate";
@@ -330,6 +331,7 @@ function Shell() {
           {/* Traffic lights + click-for-what-to-do; replaces the old
               PP-only pill (PP is the first light). */}
           <HealthStrip />
+          <GiftCredit />
         </div>
       </aside>
 

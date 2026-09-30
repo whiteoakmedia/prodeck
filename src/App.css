@@ -10070,3 +10070,24 @@ select.input {
   .wz-review { grid-template-columns: 1fr; }
 }
 .wz-resume { position: fixed; right: 20px; bottom: 20px; z-index: 1100; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); }
+
+/* ===================== Sidebar credit: a gift from White Oak Media ===== */
+.gift {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 12px 10px 4px;
+  border-top: 1px solid var(--border-soft);
+  color: var(--muted);
+  text-decoration: none;
+  border-radius: 0 0 var(--r-sm) var(--r-sm);
+}
+.gift-line { font-size: 11px; letter-spacing: 0.02em; }
+.gift-logo { display: block; width: 150px; max-width: 100%; height: auto; opacity: 0.85; transition: opacity 0.15s ease; }
+.gift:hover .gift-logo, .gift:focus-visible .gift-logo { opacity: 1; }
+.gift:hover .gift-line { color: var(--text); }
+.gift:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.gift-logo-dark { display: none; }
+:root[data-theme="light"] .gift-logo-light { display: none; }
+:root[data-theme="light"] .gift-logo-dark { display: block; }
