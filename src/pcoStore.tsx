@@ -841,8 +841,10 @@ export function PcoProvider({ children }: { children: ReactNode }) {
     await reconnect();
   }
 
-  async function loadPlans(stId: string) {
-    setStatus("Loading plans…");
+  /** Fetch a service type's plans into the picker. `quiet` is the booth's
+   *  background re-check: no status line, and a failure keeps the list. */
+  async function loadPlans(stId: string, quiet = false): Promise<Plan[] | null> {
+    if (!quiet) setStatus("Loading plans…");
     try {
       // `filter=future` drops today's plan as soon as Planning Center decides
       // its service time has passed, so a second query has to supply the
@@ -871,10 +873,15 @@ export function PcoProvider({ children }: { children: ReactNode }) {
         );
         parsed = parsePlans(fallback).reverse();
       }
-      setPlans(parsed);
-      setStatus("");
+      // A background re-check that changed nothing leaves the list alone, so
+      // the auto-target effect doesn't re-run every half hour for no reason.
+      if (quiet && stRef.current !== stId) return null; // the operator moved on meanwhile
+      setPlans((prev) => (JSON.stringify(prev) === JSON.stringify(parsed) ? prev : parsed));
+      if (!quiet) setStatus("");
+      return parsed;
     } catch (e) {
-      setStatus(String(e));
+      if (!quiet) setStatus(String(e));
+      return null;
     }
   }
 
@@ -1146,11 +1153,16 @@ export function PcoProvider({ children }: { children: ReactNode }) {
       // evidence the selection is finished with, and treats "that plan isn't
       // in the list I loaded" as unknown rather than expired — which is what
       // used to throw the booth months forward on a service-type change.
-      const next = autoTargetPlan(plans, selectedPlanId, Date.now());
-      if (!next) return;
+      if (!autoTargetPlan(plans, selectedPlanId, Date.now())) return;
       autoTargetBusy.current = true;
       try {
-        await selectPlan(next);
+        // Decide again on a list fetched just now. The booth runs for weeks,
+        // and the list it loaded at launch is missing any plan made, moved or
+        // given its service time since; switching on that list skipped
+        // straight past the missing week.
+        const fresh = await loadPlans(stRef.current, true);
+        const next = fresh && autoTargetPlan(fresh, planRef.current, Date.now());
+        if (next) await selectPlan(next);
       } finally {
         autoTargetBusy.current = false;
       }
@@ -1160,6 +1172,17 @@ export function PcoProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(iv);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plans, selectedPlanId]);
+
+  // Keep the booth's plan list current on its own: a plan added or re-dated
+  // in Planning Center shows up within half an hour, without a restart.
+  useEffect(() => {
+    if (IS_WEB || IS_DEMO) return;
+    const iv = setInterval(() => {
+      if (loaded.current && stRef.current) loadPlans(stRef.current, true);
+    }, 30 * 60_000);
+    return () => clearInterval(iv);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function setMic(personId: string, mic: string) {
     setMicAssignments((prev) => {

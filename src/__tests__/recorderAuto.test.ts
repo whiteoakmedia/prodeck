@@ -52,5 +52,8 @@ describe("folder names", () => {
     const now = new Date(2026, 8, 25, 18, 0).getTime();
     expect(sameLocalDay(new Date(2026, 8, 25, 9, 0).toISOString(), now)).toBe(true);
     expect(sameLocalDay(new Date(2026, 8, 27, 9, 0).toISOString(), now)).toBe(false);
+    // Planning Center's sort_date is wall-clock time marked "Z": a 1:00 AM
+    // start on the 25th is the 25th, not the evening of the 24th in New York.
+    expect(sameLocalDay("2026-09-25T01:00:00Z", now)).toBe(true);
   });
 });

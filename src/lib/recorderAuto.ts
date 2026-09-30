@@ -1,3 +1,4 @@
+import { pcoWallTime } from "./planPick";
 // When the multitrack recorder starts and stops by itself (booth, with
 // "Record every service" on). Pure, clock-injected; tested.
 //
@@ -32,7 +33,7 @@ export function decide(s: AutoState, busy: boolean, now: number): { action: "sta
 /** Same calendar day, here. */
 export function sameLocalDay(iso: string | undefined, now: number): boolean {
   if (!iso) return false;
-  const a = new Date(iso);
+  const a = new Date(pcoWallTime(iso));
   const b = new Date(now);
   return !isNaN(+a) && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }

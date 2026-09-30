@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { autoTargetPlan, freshness, mergePlanPages } from "../lib/planPick";
+import { autoTargetPlan, freshness, mergePlanPages, pcoWallTime } from "../lib/planPick";
 
 // 20 Sep 2026, 08:00 — a Sunday morning mid-service, which is when this
 // misbehaved in the room.
@@ -119,5 +119,40 @@ describe("autoTargetPlan", () => {
 
   it("does nothing when there is no current plan to move to", () => {
     expect(autoTargetPlan([SUNDAYS[0]], "s0913", NOW)).toBeNull();
+  });
+
+  /**
+   * "PCO skips weeks occasionally." The booth's list is only as current as its
+   * last load, and Planning Center leaves a plan with no service time out of
+   * both the future and past lists. With the 4 October plan missing, last
+   * week going stale used to send the booth straight to 11 October.
+   */
+  it("won't skip a week that's missing from the list", () => {
+    const tuesday = Date.parse("September 29, 2026 10:00:00");
+    const gap = [SUNDAYS[2], p("s1011", "October 11, 2026")];
+    expect(autoTargetPlan(gap, "s0927", tuesday)).toBeNull();
+    // Once the missing week is in the list, it moves there.
+    expect(autoTargetPlan([...gap, SUNDAYS[3]].sort((a, b) => Date.parse(a.date) - Date.parse(b.date)), "s0927", tuesday)).toBe("s1004");
+  });
+
+  it("still moves to a plan inside the next week", () => {
+    const monthly = [p("sep", "September 6, 2026"), p("oct", "October 4, 2026")];
+    // A month out: waits.
+    expect(autoTargetPlan(monthly, "sep", Date.parse("September 8, 2026 10:00:00"))).toBeNull();
+    // Five days out: moves.
+    expect(autoTargetPlan(monthly, "sep", Date.parse("September 29, 2026 10:00:00"))).toBe("oct");
+  });
+});
+
+describe("pcoWallTime", () => {
+  /**
+   * From a live account in New York: the plan's sort_date says 08:00Z while
+   * its first service plan_time says 12:00Z. sort_date is the wall clock.
+   */
+  it("reads sort_date as the church's local time", () => {
+    expect(pcoWallTime("2026-10-04T08:00:00Z")).toBe(new Date(2026, 9, 4, 8, 0).getTime());
+    expect(pcoWallTime("2026-09-30T19:00:00.000Z")).toBe(new Date(2026, 8, 30, 19, 0).getTime());
+    expect(pcoWallTime("")).toBeNaN();
+    expect(pcoWallTime(undefined)).toBeNaN();
   });
 });

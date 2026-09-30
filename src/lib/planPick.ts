@@ -46,8 +46,20 @@ const FRESH_GRACE_MS = 36 * 3600_000;
  * away from the moment an operator selected it.
  */
 function planTime(plan: PlanLike): number {
-  const iso = Date.parse(plan.sortDate ?? "");
+  const iso = pcoWallTime(plan.sortDate);
   return Number.isFinite(iso) ? iso : Date.parse(plan.date);
+}
+
+/**
+ * Planning Center's `sort_date` is the church's local wall-clock time wearing
+ * a UTC "Z": a 9:00 service in New York comes back as `…T09:00:00Z`, while
+ * the same plan's plan_times say `…T13:00:00Z`. Read it as local time (the
+ * booth is in the church's time zone) or every plan is off by the UTC offset,
+ * and a Sydney evening service lands on the next day.
+ */
+export function pcoWallTime(iso: string | undefined): number {
+  if (!iso) return NaN;
+  return Date.parse(iso.replace(/(?:\.\d+)?Z$/, ""));
 }
 
 /**
@@ -87,6 +99,17 @@ export function mergePlanPages<T extends PlanLike>(pages: (T[] | null | undefine
 }
 
 /**
+ * How far ahead the booth will jump on its own when it moves off a finished
+ * plan. A week plus a day: next Sunday is always inside it. A target further
+ * out usually means a week is missing from the list (its plan was made late,
+ * moved, or has no service time yet, and Planning Center leaves undated plans
+ * out of both the future and past lists), and jumping would skip that week.
+ * Reported as "PCO skips weeks occasionally". Waiting costs nothing: the list
+ * reloads, the missing week appears, and the booth moves to it.
+ */
+export const AUTO_SWITCH_HORIZON_MS = 8 * 24 * 3600_000;
+
+/**
  * The plan to switch to, or `null` to leave the current selection alone.
  *
  * Switch only when there is positive evidence the current selection is done
@@ -107,5 +130,6 @@ export function autoTargetPlan(
   if (selectedPlanId === target.id) return null;
 
   const current = plans.find((p) => p.id === selectedPlanId);
-  return freshness(current, now) === "stale" ? target.id : null;
+  if (freshness(current, now) !== "stale") return null;
+  return planTime(target) - now <= AUTO_SWITCH_HORIZON_MS ? target.id : null;
 }

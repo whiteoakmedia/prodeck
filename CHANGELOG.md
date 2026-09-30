@@ -138,6 +138,16 @@ permission entry it didn't have; it's there now.
 
 ## Also in 0.9.96
 
+### Fixed — Planning Center no longer skips a week
+
+The booth only knew the plans that existed when it last opened, so a week whose
+plan was made late, moved, or given its service time afterwards was missing, and
+when last week ended the booth jumped past it. The plan list now refreshes every
+half hour and again right before any automatic switch, and the booth won't
+move itself more than a week ahead. Planning Center's plan dates are also now
+read as your local time (it sends them that way), so evening services outside
+the Americas file under the right day.
+
 ### New — Release notes by email, if you want them
 
 One optional line at the end of first-run setup and in Settings → Software
