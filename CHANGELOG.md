@@ -44,6 +44,45 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.97 — 30 September 2026
+
+### Thank you
+
+Thank you to every church running ProDeck, and to everyone who sent in a bug,
+an idea or a kind word. Your support is what keeps this going.
+
+### New — step by step setup for recording and Automix
+
+Open either from **Setup**, the **Set up** button on the Recording page or the
+Automix tile, or **Run setup** in Settings.
+
+- **Recording:** pick where the audio comes from (Dante Virtual Soundcard, or
+  a console plugged in over USB), check which channels have signal (ProDeck
+  can listen to a USB console without recording), name the tracks (filled in
+  from Dante and what ProDeck already knows), and choose the drive.
+- **Automix:** connect the console, say which of your faders plays each part,
+  click the channels your guitars and keys come in on, set up backing vocals,
+  pick where the song timing comes from (guide track, click or MIDI clock) and
+  the speech mics. Nothing is saved until the last step, and Automix still
+  only moves faders after someone presses Arm.
+
+### New — Automix works with your own fader names
+
+Its moves used to name one church's faders ("EGs", "KEYs"). Now the setup
+remembers which of your faders plays each part and rewrites the moves for
+them, so a desk that says "Elec Gtr" or "Piano" works the same.
+
+### A gift from White Oak Media
+
+The bottom of the sidebar now says who gives ProDeck away. The logo opens
+whiteoakmedia.io.
+
+### Fixed — Settings no longer undoes changes made elsewhere
+
+Settings kept the copy it loaded when it opened, so pressing Save there could
+put back old values for things changed on another page, like track names on
+the Recording page. It now follows those changes and keeps your own edits.
+
 ## 0.9.96 — 29 September 2026
 
 ### New — Automix: ProDeck can mix the band while you step away
