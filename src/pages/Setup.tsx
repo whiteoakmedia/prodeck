@@ -1,4 +1,5 @@
 import { useAlerts } from "../alertsStore";
+import { requestWizard } from "../lib/wizards";
 import { useProDeck } from "../store";
 import { EXPLAIN } from "../components/HealthStrip";
 import { Icon } from "../components/Icon";
@@ -101,6 +102,20 @@ export function Setup({ onNavigate }: { onNavigate: (p: string) => void }) {
             <span className="setup-card-t">Live viewers &amp; reports</span>
             <span className="setup-card-d">
               GA4 watch-page count and per-service timing / SPL reports.
+            </span>
+          </button>
+          <button className="setup-card" onClick={() => requestWizard("recording")}>
+            <Icon name="mic" size={18} />
+            <span className="setup-card-t">Multitrack recording</span>
+            <span className="setup-card-d">
+              Record every channel to its own track: pick the source, check levels, name tracks, choose a drive.
+            </span>
+          </button>
+          <button className="setup-card" onClick={() => requestWizard("automix")}>
+            <Icon name="settings" size={18} />
+            <span className="setup-card-t">Automix</span>
+            <span className="setup-card-d">
+              Let ProDeck ride your faders through each song: your console, which fader is which, and song timing.
             </span>
           </button>
           <button className="setup-card" onClick={rerun}>

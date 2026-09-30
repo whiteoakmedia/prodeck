@@ -766,7 +766,10 @@ export async function demoInvoke<T>(cmd: string, args?: Record<string, unknown>)
     case "tap_stats_range":
       return out({ counts: { give: 132, connect: 41, groups: 18 }, days: 7 });
     case "list_audio_inputs":
-      return out(["Demo Input (2ch)", "Dante Virtual Soundcard"]);
+      return out(["Demo Input (2ch)", "Dante Virtual Soundcard", "Avantis USB Audio"]);
+    case "multitrack_probe":
+      // A console's USB audio: the first 32 inputs live, the rest unpatched.
+      return out({ sampleRate: 48000, channels: 64, peaks: Array.from({ length: 64 }, (_, i) => (i < 32 ? -38 + Math.round(Math.random() * 24) : -120)) });
     case "discover_services":
       return out([{ kind: "propresenter", name: "Sanctuary Pro", host: "10.0.1.42", port: 51417, addresses: ["10.0.1.42"] }]);
     case "chat_history":

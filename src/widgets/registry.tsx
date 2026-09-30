@@ -1,4 +1,5 @@
 import { ndiForScreen } from "../lib/ndiMatch";
+import { requestWizard } from "../lib/wizards";
 import { useDragReorder } from "../lib/useDragReorder";
 import { moveTo } from "../lib/reorder";
 import {
@@ -3237,6 +3238,11 @@ function AutomixWidget() {
         ) : (
           <button className="btn primary w-automix-arm" onClick={am.arm}>
             Arm automix
+          </button>
+        )}
+        {!am.armed && !IS_WEB && (
+          <button className="btn" onClick={() => requestWizard("automix")}>
+            Set up
           </button>
         )}
         {am.armed && (

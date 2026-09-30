@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { rebase } from "../lib/formRebase";
+import { requestWizard } from "../lib/wizards";
 import { ReleaseNotesOptIn } from "../components/ReleaseNotesOptIn";
 import { ANCHOR_TOPIC, openHelp } from "../help/nav";
 import { consumeSettingsJump } from "../lib/settingsJump";
@@ -215,9 +217,17 @@ export function SettingsPage() {
     if (!IS_WEB) webStatus().then(setWebInfo).catch(() => {});
   }, []);
 
+  // Follow settings saved elsewhere (a setup wizard, the Recording page)
+  // without losing what's being edited here: see lib/formRebase.
+  const formBase = useRef<Settings | null>(null);
   useEffect(() => {
-    if (settings && !form) setForm(settings);
-  }, [settings, form]);
+    if (!settings) return;
+    setForm((f) => {
+      const r = f && formBase.current ? rebase(f, formBase.current, settings) : settings;
+      formBase.current = settings;
+      return r;
+    });
+  }, [settings]);
 
   if (!form) return <div className="page"><header className="page-head"><h1>Settings</h1></header></div>;
 
@@ -3408,6 +3418,11 @@ function RecorderCard({ form, set }: { form: Settings; set: <K extends keyof Set
       <div className="card-head">
         <h3 id="set-recorder">Multitrack recording</h3>
         <span className={`chip ${rec.recording ? "bad" : ""}`}>{rec.recording ? `REC ${fmtClock(rec.live?.secs ?? 0)}` : "stopped"}</span>
+        {!IS_WEB && (
+          <button className="btn small" style={{ marginLeft: "auto" }} disabled={rec.recording} onClick={() => requestWizard("recording")}>
+            Run setup
+          </button>
+        )}
       </div>
       <p className="muted small">
         Every input of the audio device (the Dante Virtual Soundcard: 64 channels) to its own 24-bit/48 kHz WAV, lined up
@@ -3520,6 +3535,11 @@ function AutomixCard({ form, set }: { form: Settings; set: <K extends keyof Sett
         <h3 id="set-automix">Automix</h3>
         <span className={`chip ${am.armed ? "online" : ""}`}>{am.armed ? "armed" : "off"}</span>
         <span className="chip">{am.bpm ? `MIDI clock ${Math.round(am.bpm)} BPM` : "no clock"}</span>
+        {!IS_WEB && (
+          <button className="btn small" style={{ marginLeft: "auto" }} onClick={() => requestWizard("automix")}>
+            Run setup
+          </button>
+        )}
       </div>
       <p className="muted small">
         Instrument moves at the right moments — never the main faders, never because it's loud. The guide calls the

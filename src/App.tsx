@@ -25,6 +25,7 @@ import { startOutbox } from "./lib/outbox";
 import { CrewPageTakeover } from "./mobile/CrewPages";
 import { ServiceWizard } from "./components/ServiceWizard";
 import { FirstRunSetup } from "./components/FirstRunSetup";
+import { SetupWizards } from "./components/wizard/SetupWizards";
 import { isFreshInstall } from "./lib/onboarding";
 import { NAVIGATE_EVENT } from "./lib/navigate";
 import { requestSettingsJump } from "./lib/settingsJump";
@@ -288,6 +289,7 @@ function Shell() {
     <div className={`app ${navHidden ? "nav-hidden" : ""}`}>
       {startupWizard && <ServiceWizard locked onClose={() => setStartupWizard(false)} />}
       <FirstRunSetup onNavigate={(p) => setPage(p as Page)} />
+      <SetupWizards />
       {/* Always rendered so the mobile bottom-nav (CSS) shows even when the
           desktop sidebar is collapsed; desktop collapse hides it via CSS. */}
       <aside className="sidebar">

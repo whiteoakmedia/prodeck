@@ -650,6 +650,19 @@ The **OBS** widget then shows the current scene, whether you're **streaming** an
 
   // -------------------------------------------------------------------- audio
   {
+    id: "setup-recording-automix",
+    group: "Audio",
+    title: "Setting up recording and Automix",
+    aliases: ["multitrack", "record every channel", "usb audio", "console usb", "automix setup", "which fader", "setup wizard", "stems"],
+    body: `Both have a step by step setup. Open it from **Setup** (the cards near the bottom), the **Set up** button on the Recording page or the Automix tile, or **Run setup** on their cards in Settings.
+
+**Recording** asks where the audio comes from (ProDeck's own input, usually Dante Virtual Soundcard, or a console plugged in over USB), checks which channels have signal, names the tracks (it can fill names in from Dante and from what ProDeck already knows), and picks the drive. Each Next saves that step. Recording never starts on its own: someone presses Record.
+
+**Automix** connects the console, then asks which of your faders plays each part: guitars, keys, drums, bass, backing vocals, effects and so on. Use the faders you already mix from, usually DCAs, or type ch and a number for a single channel. It rewrites its moves for your fader names, so a desk that says "Elec Gtr" instead of "EGs" works the same. Then the instrument feeds, backing vocals, where the song timing comes from (a guide track, a click, or MIDI clock; at least one), and the speech mics. Nothing is saved until **Save** on the last step, and Automix only moves faders after someone presses **Arm**.
+
+Running either one again starts from your current answers.`,
+  },
+  {
     id: "audio-spl",
     group: "Audio",
     title: "SPL meter and calibration",

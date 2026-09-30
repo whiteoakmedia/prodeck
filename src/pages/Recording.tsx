@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { danteSnapshot, getSettings, IS_WEB, listAudioInputs, multitrackOpen, type DanteSnapshot, multitrackSessions, multitrackVolumes, on, updateSettings, type RecSession, type RecVolume } from "../lib/tauri";
 import { useProDeck } from "../store";
 import { fmtClock, useRecorder } from "../recorder";
+import { requestWizard } from "../lib/wizards";
 
 // The multitrack recorder: what every input is and where it comes from, live,
 // and the services recorded so far. The recording itself is Rust
@@ -105,6 +106,9 @@ export function RecordingPage() {
       <header className="page-head">
         <h1>Recording</h1>
         <div className="grow" style={{ flex: 1 }} />
+        <button className="btn ghost small" disabled={rec.recording} onClick={() => requestWizard("recording")}>
+          Set up
+        </button>
         <button className="btn ghost small" onClick={rec.reveal}>
           Show in Finder
         </button>

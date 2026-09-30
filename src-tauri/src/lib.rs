@@ -422,6 +422,7 @@ pub fn run() {
             multitrack::multitrack_reveal,
             multitrack::multitrack_sessions,
             multitrack::multitrack_open,
+            multitrack::multitrack_probe,
             streamrep::stream_report_get,
             follow::automix_store_load,
             follow::automix_store_save,

@@ -26,6 +26,7 @@ import {
   type SongRules,
   type Suggestion,
 } from "./lib/automix";
+import { nudgeNames, roleNames } from "./lib/automixSetup";
 import { dbToRaw, rawToDb } from "./lib/autopilotMix";
 import { setMixArmed } from "./lib/mixArm";
 
@@ -50,8 +51,8 @@ import { setMixArmed } from "./lib/mixArm";
 const MIXABLE = /^(dca|grp|sgrp|aux|input):/;
 /** No feeds until the church maps its own ("EGs: 17, 18; KEYs: 20"). */
 const DEFAULT_FEEDS = "";
-/** Only these get feed nudges: drums and bass are the rock. */
-const NUDGEABLE = ["EGs", "KEYs", "AGs"];
+// Only guitars, keys and acoustics get feed nudges (drums and bass are the
+// rock), by whatever this desk calls them: see lib/automixSetup.
 
 export interface DcaInfo {
   name: string;
@@ -129,15 +130,16 @@ export function AutomixProvider({ children }: { children: ReactNode }) {
   const lastLine = useRef("");
   const cur = useRef<{ key: string; idx: number; startedAt: number; touched: Set<string> }>({ key: "", idx: 0, startedAt: 0, touched: new Set() });
 
-  const cfg = useRef({ rules: parseRules(DEFAULT_RULES), fx: "", bgvOn: true, bgvName: "BGVs", bgvTuck: -6, feedsOn: true, feeds: parseFeeds(DEFAULT_FEEDS), micChannels: {} as Record<string, number> });
+  const cfg = useRef({ rules: parseRules(DEFAULT_RULES), fx: "", bgvOn: true, bgvName: "BGVs", bgvTuck: -6, feedsOn: true, feeds: parseFeeds(DEFAULT_FEEDS), nudge: nudgeNames(undefined), micChannels: {} as Record<string, number> });
   cfg.current = {
     rules: parseRules(settings?.automix_rules?.trim() || DEFAULT_RULES),
     fx: settings?.automix_fx_mute ?? "",
     bgvOn: settings?.automix_bgv_ride ?? true,
-    bgvName: settings?.automix_bgv_name || "BGVs",
+    bgvName: settings?.automix_bgv_name || roleNames(settings?.automix_roles).bgv,
     bgvTuck: settings?.automix_bgv_tuck ?? -6,
     feedsOn: settings?.automix_feeds_on ?? true,
     feeds: parseFeeds(settings?.automix_feeds?.trim() || DEFAULT_FEEDS),
+    nudge: nudgeNames(settings?.automix_roles),
     micChannels: settings?.audio_mic_channels ?? {},
   };
   const micScenes = useRef<Record<string, string>>({});
@@ -181,7 +183,7 @@ export function AutomixProvider({ children }: { children: ReactNode }) {
     const set = new Set<string>();
     for (const m of Object.values(rulesNow())) for (const n of Object.keys(m)) set.add(n);
     if (cfg.current.bgvOn) set.add(cfg.current.bgvName);
-    if (cfg.current.feedsOn) for (const n of Object.keys(cfg.current.feeds)) if (NUDGEABLE.includes(n)) set.add(n);
+    if (cfg.current.feedsOn) for (const n of Object.keys(cfg.current.feeds)) if (cfg.current.nudge.includes(n)) set.add(n);
     return [...set].filter((n) => names.current[n]);
   };
   const posDb = (name: string) => {
@@ -513,7 +515,7 @@ export function AutomixProvider({ children }: { children: ReactNode }) {
       if (heldRef.current) return;
       // Feed nudges.
       if (c.feedsOn) {
-        const nudgeable = NUDGEABLE.filter((n) => c.feeds[n] && names.current[n] && !letGo.current.has(n));
+        const nudgeable = c.nudge.filter((n) => c.feeds[n] && names.current[n] && !letGo.current.has(n));
         if (cur.current.key === "instrumental" && !liftDone.current && now - cur.current.startedAt > 2000) {
           liftDone.current = true;
           const k = feed.current.leading(nudgeable);

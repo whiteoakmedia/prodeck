@@ -329,6 +329,8 @@ export interface Settings {
   automix_bgv_tuck: number;
   automix_feeds_on: boolean;
   automix_feeds: string;
+  /** Part → this desk's fader name, from the Automix setup wizard ("-" = not on this desk). */
+  automix_roles: Record<string, string>;
   stream_report_on: boolean;
   stream_report_channels: number[];
   stream_report_offset_db: number;
@@ -690,6 +692,9 @@ export interface RecSession {
 }
 export const multitrackSessions = () => invoke<RecSession[]>("multitrack_sessions");
 export const multitrackOpen = (dir: string) => invoke<void>("multitrack_open", { dir });
+/** Listen to a device for a moment: each channel's peak in dBFS (−120 = nothing). Records nothing. */
+export const multitrackProbe = (device: string, ms?: number) =>
+  invoke<{ sampleRate: number; channels: number; peaks: number[] }>("multitrack_probe", { device, ms: ms ?? null });
 export interface DanteRx {
   ch: number;
   name: string;

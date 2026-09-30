@@ -613,6 +613,48 @@ pub fn deck_state(app: &AppHandle) -> Value {
     json!({ "on": true, "secs": secs, "clock": format!("{}:{:02}:{:02}", secs / 3600, (secs / 60) % 60, secs % 60), "withSignal": v["withSignal"], "freeGb": v["freeGb"], "error": v["error"] })
 }
 
+/// Each channel's peak in dBFS over interleaved blocks (−120 for silence).
+fn peaks_db(blocks: &[Vec<f32>], ch: usize) -> Vec<f32> {
+    let mut peak = vec![0f32; ch];
+    for b in blocks {
+        for (i, x) in b.iter().enumerate() {
+            let a = x.abs();
+            if a > peak[i % ch] {
+                peak[i % ch] = a;
+            }
+        }
+    }
+    peak.iter().map(|&p| if p > 1e-6 { ((20.0 * p.log10()) * 10.0).round() / 10.0 } else { -120.0 }).collect()
+}
+
+/// Listen to a device for a moment and report each channel's peak, without
+/// recording anything: the setup wizard's signal check for a device that
+/// isn't ProDeck's own audio input (a console's USB audio).
+#[tauri::command]
+pub async fn multitrack_probe(app: AppHandle, device: String, ms: Option<u64>) -> Result<Value, String> {
+    if app.state::<RecState>().active.lock().unwrap_or_else(|p| p.into_inner()).is_some() {
+        return Err("A recording is running. Its meters are on the Recording page.".into());
+    }
+    let audio = app.state::<AudioState>().inner().clone();
+    let ms = ms.unwrap_or(1500).clamp(300, 4000);
+    tauri::async_runtime::spawn_blocking(move || {
+        let (tx, rx) = sync_channel::<Vec<f32>>(QUEUE_BLOCKS);
+        let stop = Arc::new(AtomicBool::new(false));
+        let (sr, ch) = open_device_stream(device, tx, stop.clone(), audio)?;
+        let t0 = std::time::Instant::now();
+        let mut blocks = vec![];
+        while t0.elapsed().as_millis() < ms as u128 {
+            if let Ok(b) = rx.recv_timeout(std::time::Duration::from_millis(200)) {
+                blocks.push(b);
+            }
+        }
+        stop.store(true, Ordering::Relaxed);
+        Ok(json!({ "sampleRate": sr, "channels": ch, "peaks": peaks_db(&blocks, ch.max(1)) }))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 pub fn multitrack_start(app: AppHandle, label: String) -> Result<Value, String> {
     start_core(&app, &label)
@@ -786,6 +828,15 @@ mod tests {
         assert_eq!(root, internal_root());
         assert!(note.unwrap().contains("No Such Drive 123"));
         assert_eq!(root_for("").0, internal_root());
+    }
+
+    #[test]
+    fn peaks_per_channel() {
+        let blocks = vec![vec![0.5, 0.0, -1.0, 0.0], vec![0.1, 0.0, 0.25, 0.0]];
+        let p = peaks_db(&blocks, 2);
+        assert_eq!(p, vec![0.0, -120.0]);
+        let q = peaks_db(&[vec![0.5, 0.1]], 2);
+        assert!((q[0] - -6.0).abs() < 0.1 && (q[1] - -20.0).abs() < 0.1);
     }
 
     #[test]

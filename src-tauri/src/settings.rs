@@ -163,6 +163,10 @@ pub struct Settings {
     /// Lifts the one carrying an instrumental, trims one that dug in.
     pub automix_feeds_on: bool,
     pub automix_feeds: String,
+    /// Which of this desk's faders plays each part the automix knows
+    /// ("eg" → "Guitars", "bass" → "ch 12"), set by the Automix setup wizard.
+    /// Empty = the names in the rules as written (EGs, KEYs, AGs…).
+    pub automix_roles: std::collections::HashMap<String, String>,
     /// The weekly stream report: records the stream mix's loudness, tone and
     /// width from these input channels (L, R) whenever it carries sound.
     pub stream_report_on: bool,
@@ -368,6 +372,7 @@ impl Default for Settings {
             automix_bgv_tuck: -6.0,
             automix_feeds_on: true,
             automix_feeds: String::new(),
+            automix_roles: std::collections::HashMap::new(),
             stream_report_on: true,
             stream_report_channels: Vec::new(),
             stream_report_offset_db: 0.0,
