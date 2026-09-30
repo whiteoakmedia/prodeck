@@ -11,6 +11,7 @@ import { relaunch } from "@tauri-apps/plugin-process";
 import { invoke } from "./lib/tauri";
 import { getVersion } from "@tauri-apps/api/app";
 import { IS_DEMO, IS_WEB } from "./lib/tauri";
+import { SHOT_UPDATE } from "./lib/demo";
 
 declare const __APP_VERSION__: string;
 
@@ -135,6 +136,17 @@ export function UpdaterProvider({ children }: { children: ReactNode }) {
     }
     if (IS_DEMO) {
       setVersion(__APP_VERSION__); // demo/screenshot mode in a browser: no updater, no Tauri
+      if (SHOT_UPDATE) {
+        // The announcement as churches will see it: the next patch version
+        // and its notes file (release-notes/<version>.md, published as-is).
+        const [a, b, c] = __APP_VERSION__.split(".").map(Number);
+        const next = `${a}.${b}.${c + 1}`;
+        const files = import.meta.glob("../release-notes/*.md", { query: "?raw", import: "default" });
+        const load = files[`../release-notes/${next}.md`];
+        setNewVersion(next);
+        setStatus("available");
+        if (load) load().then((t) => setNotes(String(t))).catch(() => {});
+      }
       return;
     }
     getVersion().then(setVersion).catch(() => {});

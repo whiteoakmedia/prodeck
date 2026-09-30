@@ -27,6 +27,8 @@ export const SHOT_DASH: number | null = QS?.get("dash") != null ? Number(QS.get(
 export const SHOT_PHONE: boolean = !!QS?.has("phone");
 export const SHOT_TAB: string | null = QS?.get("tab") ?? null;
 export const SHOT_CHAT: boolean = !!QS?.has("chat");
+/** ?shots=1&update=1: the update announcement, with the next release's notes. */
+export const SHOT_UPDATE: boolean = !!QS?.has("update");
 
 export const IS_DEMO: boolean = (() => {
   if (IS_SHOTS) return true;
