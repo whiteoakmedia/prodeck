@@ -26,6 +26,7 @@ import { CrewPageTakeover } from "./mobile/CrewPages";
 import { ServiceWizard } from "./components/ServiceWizard";
 import { FirstRunSetup } from "./components/FirstRunSetup";
 import { GiftCredit } from "./components/GiftCredit";
+import { SoundcheckWatch } from "./components/SoundcheckWatch";
 import { SetupWizards } from "./components/wizard/SetupWizards";
 import { isFreshInstall } from "./lib/onboarding";
 import { NAVIGATE_EVENT } from "./lib/navigate";
@@ -342,6 +343,7 @@ function Shell() {
           </button>
         )}
         <DemoBanner />
+        <SoundcheckWatch />
         <UpdateBanner />
         {pendingCrew.length > 0 && page !== "settings" && (
           <div className="banner">

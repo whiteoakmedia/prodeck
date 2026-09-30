@@ -40,6 +40,10 @@ struct Active {
     markers: Arc<Mutex<Vec<(f64, String)>>>,
     stop: Arc<AtomicBool>,
     fell_back: Option<String>,
+    /// Where each input came from when recording started (this Mac's Dante
+    /// receive subscriptions, and the typed sources), for the soundcheck
+    /// patch sheet: routing changes, and the sheet must match the tracks.
+    routing: Value,
 }
 
 #[derive(Default)]
@@ -390,6 +394,7 @@ fn finish(app: &AppHandle, a: Active, out: WriterOut, drop_silent: bool) -> Valu
             "tracks": kept.iter().map(|(i, n)| json!({ "input": i + 1, "name": n, "file": track_file(*i, n), "peakDb": 20.0 * out.peaks[*i].max(1e-9).log10() })).collect::<Vec<_>>(),
             "silentRemoved": removed, "markers": markers.iter().map(|(t, m)| json!({ "t": t, "text": m })).collect::<Vec<_>>(),
             "droppedBlocks": dropped, "folders": out.dirs, "note": out.error.clone().or(a.fell_back.clone()),
+            "routing": a.routing,
         });
         let _ = std::fs::write(d.join("session.json"), serde_json::to_string_pretty(&session).unwrap_or_default());
     }
@@ -490,10 +495,10 @@ pub fn start_core(app: &AppHandle, label: &str) -> Result<Value, String> {
         return Err("already recording".into());
     }
     let audio = app.state::<AudioState>().inner().clone();
-    let (volume, names_map, drop_silent, device) = {
+    let (volume, names_map, drop_silent, device, typed_sources) = {
         let s = app.state::<SettingsState>();
         let s = s.lock().unwrap_or_else(|p| p.into_inner());
-        (s.multitrack_volume.clone(), s.multitrack_names.clone(), s.multitrack_drop_silent, s.multitrack_device.clone().filter(|d| !d.trim().is_empty()))
+        (s.multitrack_volume.clone(), s.multitrack_names.clone(), s.multitrack_drop_silent, s.multitrack_device.clone().filter(|d| !d.trim().is_empty()), s.multitrack_sources.clone())
     };
     // A separate device (a console's USB audio) unless it's the one already open.
     let current = audio.device_name.lock().unwrap_or_else(|p| p.into_inner()).clone();
@@ -549,6 +554,18 @@ pub fn start_core(app: &AppHandle, label: &str) -> Result<Value, String> {
         markers: Arc::new(Mutex::new(Vec::new())),
         stop: stop.clone(),
         fell_back: fell_back.clone(),
+        routing: {
+            // Dante only describes ProDeck's own input (the Virtual Soundcard);
+            // a console over USB has no subscriptions to record.
+            let dante = app.state::<crate::dante::DanteState>().0.lock().unwrap_or_else(|p| p.into_inner()).clone();
+            let local = dante["localName"].as_str().unwrap_or("").to_string();
+            let rx = if own_device.is_none() {
+                dante["devices"].as_array().and_then(|ds| ds.iter().find(|d| d["name"].as_str() == Some(local.as_str()))).map(|d| d["rx"].clone()).unwrap_or(Value::Null)
+            } else {
+                Value::Null
+            };
+            json!({ "device": own_device.clone(), "localName": local, "danteRx": rx, "sources": typed_sources })
+        },
     };
     let app2 = app.clone();
     let (dir2, names2, frames2, stop2, id2) = (dir.clone(), names.clone(), frames, stop, id.clone());

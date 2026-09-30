@@ -3,6 +3,7 @@ import { danteSnapshot, getSettings, IS_WEB, listAudioInputs, multitrackOpen, ty
 import { useProDeck } from "../store";
 import { fmtClock, useRecorder } from "../recorder";
 import { requestWizard } from "../lib/wizards";
+import { SoundcheckPanel } from "../components/SoundcheckPanel";
 
 // The multitrack recorder: what every input is and where it comes from, live,
 // and the services recorded so far. The recording itself is Rust
@@ -25,6 +26,8 @@ export function RecordingPage() {
   const [inputs, setInputs] = useState<string[]>([]);
   const [sessions, setSessions] = useState<RecSession[]>([]);
   const [show, setShow] = useState<"all" | "signal" | "none">("all");
+  // The recorded service open for soundcheck playback ("" = none).
+  const [scDir, setScDir] = useState("");
   const pending = useRef<number[] | null>(null);
   // What each input is actually subscribed to, read live from Dante.
   const [dante, setDante] = useState<DanteSnapshot | null>(null);
@@ -256,6 +259,8 @@ export function RecordingPage() {
         </div>
       </section>
 
+      {scDir && <SoundcheckPanel sessions={sessions} dir={scDir} onDir={setScDir} />}
+
       <section className="card">
         <div className="card-head">
           <h3>Recorded services</h3>
@@ -274,6 +279,15 @@ export function RecordingPage() {
                 </span>
                 <button className="btn small ghost" onClick={() => multitrackOpen(s.dir).catch(() => {})}>
                   Open
+                </button>
+                <button
+                  className={`btn small ${scDir === s.dir ? "primary" : ""}`}
+                  onClick={() => {
+                    setScDir(s.dir);
+                    requestAnimationFrame(() => document.getElementById("sc-session")?.scrollIntoView({ behavior: "smooth", block: "center" }));
+                  }}
+                >
+                  Soundcheck
                 </button>
               </li>
             ))}

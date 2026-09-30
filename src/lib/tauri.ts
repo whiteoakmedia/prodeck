@@ -731,6 +731,35 @@ export interface AvantisPatch {
   unverified?: boolean;
 }
 export const avantisPatchGet = () => invoke<AvantisPatch | null>("avantis_patch_get");
+
+// Soundcheck playback (playback.rs): a recorded service played back out of
+// an audio device, each track on its own output channel.
+export interface PlaybackSession {
+  dir: string;
+  label: string;
+  sampleRate: number;
+  seconds: number;
+  tracks: { n: number; name: string }[];
+  markers: { t: number; text: string }[];
+  /** What this Mac's Dante inputs were subscribed to when it was recorded (null before 0.9.98). */
+  routing: { device: string | null; localName: string; danteRx: DanteRx[] | null; sources: Record<string, string> } | null;
+}
+export interface PlaybackStatus {
+  playing: boolean;
+  secs?: number | null;
+  dir?: string;
+  device?: string;
+  /** Peak per output channel since the last update, dBFS. */
+  levels?: number[];
+  error?: string | null;
+}
+export const playbackSession = (dir: string) => invoke<PlaybackSession>("playback_session", { dir });
+export const playbackOutputs = () => invoke<{ name: string; channels: number }[]>("playback_outputs");
+/** routes: track number → output channel (1-based). */
+export const playbackStart = (dir: string, device: string, routes: Record<string, number>, from: number) =>
+  invoke<{ playing: boolean; outputs: number }>("playback_start", { dir, device, routes, from });
+export const playbackStop = () => invoke<PlaybackStatus>("playback_stop");
+export const playbackStatus = () => invoke<PlaybackStatus>("playback_status");
 export const streamReportsList = () => invoke<import("./streamReport").StreamReportMeta[]>("stream_reports_list");
 export const streamReportGet = (id: string) => invoke<import("./streamReport").StreamReportData>("stream_report_get", { id });
 export const followDebugLog = (line: Record<string, unknown>) => invoke<void>("follow_debug_log", { line });

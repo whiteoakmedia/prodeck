@@ -436,7 +436,11 @@ function avantisPatch() {
     file: "~/Downloads/Avantis/Shows/sunday-0928.tar.gz",
     exportedAt: Math.floor(NOW() / 1000) - 86_400,
     inputs,
-    danteOut: outs.map(([out, text]) => ({ out, code: 4, index: 0, text })),
+    // A direct out names its channel ("Ch 6 El Gtr direct out"); the rest are groups and mixes.
+    danteOut: outs.map(([out, text]) => {
+      const m = text.match(/^Ch (\d+) .* direct out$/);
+      return { out, code: m ? 4 : 0x0a, index: m ? Number(m[1]) - 1 : 0, text };
+    }),
     changes: ["Dante out 17: — → Ch 9 Keys R direct out", "Ch 12 Vox Ld: input I/O Port 1 (Dante) 40 → I/O Port 1 (Dante) 41"],
   };
 }
@@ -769,6 +773,41 @@ export async function demoInvoke<T>(cmd: string, args?: Record<string, unknown>)
       return out({ counts: { give: 132, connect: 41, groups: 18 }, days: 7 });
     case "list_audio_inputs":
       return out(["Demo Input (2ch)", "Dante Virtual Soundcard", "Avantis USB Audio"]);
+    case "playback_session":
+      return out({
+        dir: String((args as any)?.dir ?? ""),
+        label: "Sunday Morning",
+        sampleRate: 48000,
+        seconds: 5580,
+        tracks: REC_INPUTS.map(([name], i) => ({ n: i + 1, name })),
+        markers: [
+          { t: 312, text: "King of Kings" },
+          { t: 655, text: "Goodness of God" },
+          { t: 1004, text: "Welcome" },
+          { t: 1480, text: "Great Are You Lord" },
+          { t: 2250, text: "Message" },
+          { t: 4410, text: "Response: Build My Life" },
+        ],
+        routing: { device: null, localName: "Booth-Mac", danteRx: danteSnapshot().devices[0].rx, sources: {} },
+      });
+    case "playback_outputs":
+      return out([
+        { name: "Dante Virtual Soundcard", channels: 64 },
+        { name: "Mac mini Speakers", channels: 2 },
+      ]);
+    case "playback_start": {
+      const a = args as any;
+      demoPlay = { at: NOW(), from: Number(a?.from ?? 0), outs: Object.values(a?.routes ?? {}).map(Number), device: String(a?.device ?? ""), dir: String(a?.dir ?? "") };
+      return out({ playing: true, outputs: 64 });
+    }
+    case "playback_stop": {
+      const secs = demoPlay ? demoPlayPos() : null;
+      demoPlay = null;
+      emit("playback:status", { playing: false, secs });
+      return out({ playing: false, secs });
+    }
+    case "playback_status":
+      return out(demoPlay ? demoPlayStatus() : { playing: false });
     case "multitrack_probe":
       // A console's USB audio: the first 32 inputs live, the rest unpatched.
       return out({ sampleRate: 48000, channels: 64, peaks: Array.from({ length: 64 }, (_, i) => (i < 32 ? -38 + Math.round(Math.random() * 24) : -120)) });
@@ -897,6 +936,21 @@ export function demoOn(event: string, cb: Handler): () => void {
   return () => set!.delete(cb);
 }
 
+/** Soundcheck playback in the demo: a clock and some lively outputs. */
+let demoPlay: { at: number; from: number; outs: number[]; device: string; dir: string } | null = null;
+const demoPlayPos = () => (demoPlay ? demoPlay.from + (NOW() - demoPlay.at) / 1000 : 0);
+function demoPlayStatus() {
+  const outs = new Set(demoPlay?.outs ?? []);
+  return {
+    playing: true,
+    secs: demoPlayPos(),
+    device: demoPlay?.device,
+    dir: demoPlay?.dir,
+    levels: Array.from({ length: 64 }, (_, i) => (outs.has(i + 1) ? -30 + Math.round(Math.random() * 18) : -120)),
+    error: null,
+  };
+}
+
 function emit(event: string, payload: unknown) {
   const set = handlers.get(event);
   if (!set) return;
@@ -943,6 +997,7 @@ function startTicker() {
     // Peaks (0..1) — the mic-check and routing meters listen to these.
     emit("audio:channels", lv.map((db) => (db <= -119 ? 0 : Math.min(1, Math.pow(10, (db + 9) / 20)))));
     if (demoRec != null) emit("multitrack:status", recLive());
+    if (demoPlay) emit("playback:status", demoPlayStatus());
   }, 250);
 
   // Slides, layers and the desk move with the service clock.

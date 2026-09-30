@@ -6,6 +6,7 @@ mod rig;
 mod speech;
 mod streamrep;
 mod multitrack;
+mod playback;
 mod avshow;
 mod dante;
 mod backup;
@@ -278,6 +279,7 @@ pub fn run() {
         .manage(midi::KeySendState(std::sync::Mutex::new(serde_json::Value::Null)))
         .manage(follow::AutomixDeck(std::sync::Mutex::new(serde_json::Value::Null)))
         .manage(multitrack::RecState::default())
+        .manage(playback::PlayState::default())
         .manage(dante::DanteState::default())
         .manage(Arc::new(osc::OscInner::new()) as osc::OscState)
         .manage(Arc::new(pco::PcoInner::new()) as pco::PcoState)
@@ -423,6 +425,11 @@ pub fn run() {
             multitrack::multitrack_sessions,
             multitrack::multitrack_open,
             multitrack::multitrack_probe,
+            playback::playback_session,
+            playback::playback_outputs,
+            playback::playback_start,
+            playback::playback_stop,
+            playback::playback_status,
             streamrep::stream_report_get,
             follow::automix_store_load,
             follow::automix_store_save,

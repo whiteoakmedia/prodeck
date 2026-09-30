@@ -663,6 +663,32 @@ The **OBS** widget then shows the current scene, whether you're **streaming** an
 Running either one again starts from your current answers.`,
   },
   {
+    id: "soundcheck-playback",
+    group: "Audio",
+    title: "Mixing a recorded service on the console (Virtual SoundCheck)",
+    aliases: ["virtual soundcheck", "virtual sound check", "vsc", "mix the multitrack", "playback", "practice mixing", "patch sheet"],
+    body: `On the **Recording** page, press **Soundcheck** next to a recorded service. ProDeck plays it back out of Dante Virtual Soundcard, each track on its own Dante output, and writes the **patch sheet** that makes the console hear it.
+
+**The patch sheet** lists, for every console channel it can play back:
+
+- **Virtual SoundCheck:** the I/O Port 1 channel to set for that channel in the desk's Virtual SoundCheck matrix.
+- **Dante subscription:** which console Dante input to point at which of this Mac's outputs, in Dante Controller.
+
+It works this out from the recording (where each track came from), the console's show file and the live Dante network. It never changes anything itself.
+
+**Do it when no service is on:**
+
+1. In Dante Controller, **save a preset of your Sunday routing first**. That's your way back.
+2. Make the subscriptions on the sheet, and save them as a Soundcheck preset for next time.
+3. On the Avantis: **I/O, Virtual SoundCheck**. Pick I/O Port 1, set the matrix from the sheet, every other channel off, and switch it on.
+4. Press **Play**. Jump to any song with its marker.
+5. **After:** Virtual SoundCheck to Inactive on the desk, then apply your Sunday preset in Dante Controller.
+
+Until the console stops listening to the soundcheck outputs, ProDeck shows a reminder on every page. Playing is silent until the subscriptions are made, so pressing Play by mistake during a service does nothing. The Waves loop and this Mac's outputs 1 and 2 are never used. Channels whose Dante input gets borrowed are listed, since they go quiet until Sunday is back.
+
+Recordings made with ProDeck 0.9.98 or later save their own routing. For older ones the sheet uses today's routing and says so.`,
+  },
+  {
     id: "audio-spl",
     group: "Audio",
     title: "SPL meter and calibration",
