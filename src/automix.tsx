@@ -29,6 +29,8 @@ import {
 import { nudgeNames, roleNames } from "./lib/automixSetup";
 import { dbToRaw, rawToDb } from "./lib/autopilotMix";
 import { setMixArmed } from "./lib/mixArm";
+import { askConfirm } from "./lib/dialogs";
+import { automixAcknowledged, setAutomixAcknowledged } from "./lib/automixAck";
 
 // The automix, live (lib/automix.ts has the logic, with tests). Armed by
 // hand, never at launch. Booth only.
@@ -457,8 +459,8 @@ export function AutomixProvider({ children }: { children: ReactNode }) {
     if (IS_WEB) return;
     const u = on<{ cmd: string }>("automix:command", (c) => {
       const cmd = c?.cmd;
-      if (cmd === "toggle") (armedRef.current ? doDisarm : doArm)();
-      else if (cmd === "arm" && !armedRef.current) doArm();
+      if (cmd === "toggle") (armedRef.current ? doDisarm : armChecked)();
+      else if (cmd === "arm" && !armedRef.current) armChecked();
       else if (cmd === "disarm" && armedRef.current) doDisarm();
       else if (cmd === "hold" && armedRef.current) doHold();
       else if (cmd === "home" && armedRef.current) doHome();
@@ -582,6 +584,23 @@ export function AutomixProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [armed]);
 
+  // The first time on this computer, someone confirms on screen (even when the
+  // Stream Deck asked) that Automix moves live faders and has no warranty.
+  const confirming = useRef(false);
+  async function armChecked() {
+    if (!automixAcknowledged()) {
+      if (confirming.current) return;
+      confirming.current = true;
+      const ok = await askConfirm(
+        "Automix moves your console's faders live, and the speech mics open and close with the plan, while it's armed. It comes with no warranty, so try it at a rehearsal before a service. Touch any fader to take it back, or disarm to stop everything. Arm it now?",
+        "Arm automix",
+      ).finally(() => (confirming.current = false));
+      if (!ok) return;
+      setAutomixAcknowledged();
+    }
+    doArm();
+  }
+
   function doArm() {
     home.current = {};
     letGo.current.clear();
@@ -638,7 +657,7 @@ export function AutomixProvider({ children }: { children: ReactNode }) {
   const value: Ctx = {
     armed,
     held,
-    arm: doArm,
+    arm: armChecked,
     disarm: doDisarm,
     toggleHold: doHold,
     goHome: doHome,

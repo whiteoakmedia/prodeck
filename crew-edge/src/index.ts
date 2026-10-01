@@ -197,10 +197,11 @@ export class CrewState {
    *  allows one extra buzz. */
   private lastPushMs = 0;
   /** Web-push VAPID contact claim (push services require one). Set
-   *  VAPID_CONTACT in your worker vars; defaults to the maintainer. */
+   *  VAPID_CONTACT in your worker vars to your own mailto: or https: address;
+   *  without it, the project page stands in (never a person's email). */
   private contact: string;
   constructor(state: DurableObjectState, env: Env) {
-    this.contact = (env as any)?.VAPID_CONTACT || "mailto:zach@whiteoakmedia.io";
+    this.contact = (env as any)?.VAPID_CONTACT || "https://github.com/whiteoakmedia/prodeck";
     this.state = state;
     this.sql = (state.storage as any).sql;
     this.sql.exec(`CREATE TABLE IF NOT EXISTS messages (

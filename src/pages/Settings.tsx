@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { rebase } from "../lib/formRebase";
+import { NdiNotice } from "../components/NdiNotice";
+import { openExternal } from "../lib/openExternal";
+import { LegalDialog, type LegalKind } from "../components/LegalDialog";
 import { requestWizard } from "../lib/wizards";
 import { ReleaseNotesOptIn } from "../components/ReleaseNotesOptIn";
 import { ANCHOR_TOPIC, openHelp } from "../help/nav";
@@ -109,6 +112,7 @@ export function SettingsPage() {
   const relay = useRelay();
   const upd = useUpdater();
   const [form, setForm] = useState<Settings | null>(null);
+  const [legal, setLegal] = useState<LegalKind | null>(null);
   // Raw text of the scene-labels box while it's being edited (parsed map
   // lives in form.avantis_scene_labels).
   const [sceneLabelsText, setSceneLabelsText] = useState<string | null>(null);
@@ -441,10 +445,21 @@ export function SettingsPage() {
         <ReleaseNotesOptIn compact />
         <p className="hint made-by">
           Made by White Oak Media, church websites and Google Ad Grants.{" "}
-          <a href="https://whiteoakmedia.io" onClick={(e) => { e.preventDefault(); window.open("https://whiteoakmedia.io/?utm_source=prodeck&utm_medium=app&utm_campaign=about", "_blank", "noopener"); }}>
+          <a href="https://whiteoakmedia.io" onClick={(e) => { e.preventDefault(); openExternal("https://whiteoakmedia.io/?utm_source=prodeck&utm_medium=app&utm_campaign=about"); }}>
             whiteoakmedia.io
           </a>
         </p>
+        <p className="hint">
+          ProDeck is free and MIT licensed, with no warranty. It can change ProPresenter and your console, so rehearse
+          with it before you rely on it in a service. It's an independent project, not affiliated with or endorsed by
+          Renewed Vision, Planning Center, Audinate, Allen &amp; Heath, Elgato or the other products it works with.
+        </p>
+        <p className="hint made-by-links">
+          <a href="#privacy" onClick={(e) => { e.preventDefault(); setLegal("privacy"); }}>Privacy</a>
+          <a href="#licences" onClick={(e) => { e.preventDefault(); setLegal("licences"); }}>Licences and trademarks</a>
+          <a href="https://github.com/whiteoakmedia/prodeck" onClick={(e) => { e.preventDefault(); openExternal("https://github.com/whiteoakmedia/prodeck"); }}>Source code</a>
+        </p>
+        {legal && <LegalDialog kind={legal} onClose={() => setLegal(null)} />}
       </section>
 
       <section className="card">
@@ -990,7 +1005,8 @@ export function SettingsPage() {
           A volunteer types what is wrong in their own words — on a phone under <strong>No sound?</strong> or here under
           Routing — and gets what ProDeck already checked plus the next thing to walk to. It answers only from the routing
           map, the knowledge files below and live state, cites every fact, and never touches the desk. The key stays on
-          this machine; phones ask through it.
+          this machine; phones ask through it. Each question is sent to Anthropic with the routing map and live status
+          it needs, on your church's own key.
         </p>
         <div className="settings-grid">
           <label className="field wide">
@@ -3212,7 +3228,7 @@ function HelpCard() {
       </label>
       <div className="rel-actions" style={{ justifyContent: "flex-start", gap: 8 }}>
         <button className="btn small primary" disabled={busy || !summary.trim()} onClick={report}>Report on GitHub</button>
-        <span className="muted small">Opens a pre-filled issue; your diagnostics (passwords and keys removed) go on the clipboard to paste in.</span>
+        <span className="muted small">Opens a pre-filled issue on GitHub, which anyone can read. Your diagnostics (passwords and keys removed) go on the clipboard to paste in, so check them first.</span>
       </div>
       {msg && <p className="hint">{msg}</p>}
       {log && (
@@ -3264,6 +3280,7 @@ function NdiCard() {
         network — a ProPresenter stage screen, an ATEM, an NDI camera — shows up here
         once it's running.
       </p>
+      <NdiNotice />
       {err && <p className="error small">{err}</p>}
       {sources && sources.length > 0 ? (
         <ul className="ndi-list">

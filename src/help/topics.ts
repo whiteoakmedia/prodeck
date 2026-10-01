@@ -633,7 +633,9 @@ Once connected, the **Sound Desk** widget mirrors mutes, faders and names, and t
 
 - Nothing listed? The NDI runtime must be installed on the booth computer, and the camera or software must be on the same network and actually sending.
 - Feeds are shared: several widgets and kiosks can watch one camera and the booth encodes it once.
-- Cameras work on kiosks and phones since 0.9.75.`,
+- Cameras work on kiosks and phones since 0.9.75.
+
+The NDI runtime comes from NDI Tools or the NDI SDK at ndi.video; ProDeck uses the copy installed on the computer and doesn't include one. NDI® is a registered trademark of Vizrt NDI AB.`,
     settings: "set-ndi",
     related: ["kiosk"],
   },

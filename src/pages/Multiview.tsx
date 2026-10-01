@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { NdiNotice } from "../components/NdiNotice";
 import { Icon } from "../components/Icon";
 import { mjpegUrl, ndiDiscover, ndiStart, ndiStop, type NdiSource } from "../lib/tauri";
 
@@ -142,6 +143,7 @@ export function Multiview() {
         low-bandwidth proxies, so they may look softer than the real output.
         Click sources on the left to build your multiview.
       </p>
+      <NdiNotice />
     </div>
   );
 }

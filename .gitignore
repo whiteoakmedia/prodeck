@@ -48,3 +48,6 @@ update-server/
 
 # scripts/release-public.sh outputs
 release/
+
+# Design-tool viewer runtime (third-party, not ours to publish): kept locally only.
+design/mobile/support.js

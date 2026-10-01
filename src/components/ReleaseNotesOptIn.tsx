@@ -29,7 +29,8 @@ export function ReleaseNotesOptIn({ compact = false }: { compact?: boolean }) {
     <div className="release-optin">
       {!compact && <strong>Get release notes by email</strong>}
       <span className="muted small">
-        {compact ? "Get release notes by email: " : ""}About once a month, only when there's something worth telling you.
+        {compact ? "Get release notes by email: " : ""}About once a month, only when there's something worth telling you. Your
+        address goes to White Oak Media for these emails and nothing else; ask to be removed any time.
       </span>
       <form
         className="release-optin-row"

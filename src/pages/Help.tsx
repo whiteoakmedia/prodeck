@@ -168,7 +168,9 @@ export function HelpPage({
                   {asking ? "Thinking…" : "Ask the assistant"}
                 </button>
               )}
-              <button className="btn small" onClick={askOnGithub}>Ask on GitHub</button>
+              <button className="btn small" title="Opens a public GitHub issue: anyone can read it" onClick={askOnGithub}>
+                Ask on GitHub (public)
+              </button>
               <button
                 className="btn small ghost"
                 onClick={() => (IS_WEB ? window.open(DOCS_URL, "_blank", "noopener") : helpOpen().catch(() => window.open(DOCS_URL, "_blank", "noopener")))}

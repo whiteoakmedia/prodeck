@@ -1,20 +1,11 @@
 import lightInk from "../assets/wom/wom-logo-light-ink.png";
 import darkInk from "../assets/wom/wom-logo-dark-ink.png";
-import { IS_WEB } from "../lib/tauri";
+import { openExternal } from "../lib/openExternal";
 
 // Bottom of the sidebar: who gives ProDeck away. The logo opens
 // whiteoakmedia.io in the browser (the app's own window never navigates).
 
 const SITE = "https://whiteoakmedia.io/?utm_source=prodeck&utm_medium=app&utm_campaign=sidebar";
-
-async function openSite() {
-  if (IS_WEB) {
-    window.open(SITE, "_blank", "noopener");
-    return;
-  }
-  const { openUrl } = await import("@tauri-apps/plugin-opener");
-  await openUrl(SITE).catch(() => window.open(SITE, "_blank", "noopener"));
-}
 
 export function GiftCredit() {
   return (
@@ -23,7 +14,7 @@ export function GiftCredit() {
       href={SITE}
       onClick={(e) => {
         e.preventDefault();
-        openSite();
+        openExternal(SITE);
       }}
       title="whiteoakmedia.io"
     >

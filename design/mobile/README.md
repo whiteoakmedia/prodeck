@@ -15,7 +15,7 @@ Priority order for implementation (client's stated critical path): **chat → pa
 
 The files in this bundle are **design references authored in HTML** — prototypes that show intended look, copy, and behaviour. They are **not production code to copy**. The task is to recreate them in the target codebase's existing environment (React/Vue/native/etc.) using its established components, tokens, and patterns. If no environment exists yet, pick the framework that best fits a PWA with web push and offline caching, and implement there.
 
-Each `.dc.html` file is a self-contained page: open it in a browser to view the screens. `support.js` is only the viewer runtime for those files — do not port it.
+Each `.dc.html` file is a self-contained page: open it in a browser to view the screens. `support.js` is the design tool's viewer runtime for those files; it isn't published in this repository (it's the tool's code, not ours), so the pages open only where the design tool's export is available. Don't port it.
 
 ## Fidelity
 
@@ -222,7 +222,7 @@ Icon PNGs are full-bleed squares on `#161d28` — let the OS apply the squircle 
 | `CrewNav.dc.html` | bottom-nav reference (props: `active`, `badge`) |
 | `ProDeckMark.dc.html` | the mark; `variant="f"` is final, `variant="a5"` is the ≤24px pixel-tuned drawing |
 | `ProDeck Logo Concepts.dc.html` | brand rationale, usage sheet, clearspace and minimum sizes |
-| `support.js` | viewer runtime for the files above — **not** for porting |
+| `support.js` | the design tool's viewer runtime (not published here; **not** for porting) |
 | `brand/` | SVG masters + PNG exports |
 | `screens/` | 2× PNG of every screen frame, named by screen ID |
 

@@ -43,12 +43,14 @@ const DEFAULT_CONFIG: TapConfig = {
   // Point this at YOUR default page — connect card, church site, anything.
   default: "https://example.com/REPLACE-WITH-YOUR-DEFAULT-LINK",
   ttl_minutes: 180,
+  // Placeholders, like mappings.json: a fresh deploy must point these at the
+  // church's OWN pages (giving especially) before any disc goes out.
   keywords: {
-    go: { url: "https://pushpay.com/g/cornerstonecheshire?src=hpp", ttl_minutes: 15 },
-    connect: "https://cornerstonecheshire.churchcenter.com/people/forms/566700",
-    notes: "https://faithnotes.cloud/cornerstonechurchcheshire",
-    prayer: "https://cornerstonecheshire.churchcenter.com/people/forms/963472",
-    groups: "https://cornerstonecheshire.churchcenter.com/groups/small-groups?enrollment=open_signup,request_to_join&filter=enrollment",
+    go: { url: "https://example.com/REPLACE-WITH-YOUR-GIVING-LINK", ttl_minutes: 15 },
+    connect: "https://example.com/REPLACE-WITH-YOUR-CONNECT-CARD",
+    notes: "https://example.com/REPLACE-WITH-YOUR-NOTES-PAGE",
+    prayer: "https://example.com/REPLACE-WITH-YOUR-PRAYER-FORM",
+    groups: "https://example.com/REPLACE-WITH-YOUR-GROUPS-PAGE",
   },
 };
 

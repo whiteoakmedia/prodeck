@@ -129,15 +129,16 @@ been completed on real booth hardware, the supported release remains macOS.
 - ProPresenter 7 with its network API enabled
 - Planning Center Services
 - Optional per feature: Cloudflare (free) + a domain, an audio input, an
-  an Allen & Heath console (Avantis / dLive / SQ), NDI, a Stream Deck + Bitfocus Companion, NFC tags, GA4
+  an Allen & Heath console (Avantis / dLive / SQ), NDI®, a Stream Deck + Bitfocus Companion, NFC tags, GA4
 
 ## Honest posture
 
 This is one church's production tool, shared as-is: no support contract, no
-warranty, and a single maintainer whose priority is his own Sunday. It fails
-soft by design — nothing here can take down ProPresenter, your consoles, or
-your stream — but read the guide's limitations section before betting a
-service on it.
+warranty, and a single maintainer whose priority is his own Sunday. ProDeck
+can change things in ProPresenter and on your console (Automix moves faders,
+the speech mics open and close, desk scenes recall), so rehearse with every
+feature you turn on before you rely on it in a service, and read the guide's
+limitations section first. Nothing that moves the desk starts on its own.
 
 ## Contact
 
@@ -156,6 +157,27 @@ Zach Green — zach@whiteoakmedia.io
 
 MIT — see [LICENSE](LICENSE). Use it, change it, run it at your church. No
 attribution required beyond keeping the notice; no warranty of any kind.
+
+ProDeck includes open-source components under their own licences, listed in
+[THIRD_PARTY_NOTICES.txt](public/THIRD_PARTY_NOTICES.txt) and in the app under
+Settings → About → Licences. One of them, the LAME MP3 encoder, is LGPL; the
+complete source of every release is this repository at its version tag.
+
+## Privacy
+
+ProDeck has no analytics or tracking and sends nothing to White Oak Media
+unless you ask for release notes by email. What it does send, and where, is
+in [docs/PRIVACY.md](docs/PRIVACY.md).
+
+## Trademarks
+
+ProDeck is an independent project, not affiliated with or endorsed by the
+makers of the products it works with. ProPresenter is a trademark of Renewed
+Vision; Planning Center of Ministry Centered Technologies; Dante of Audinate;
+Avantis, dLive and SQ of Allen & Heath; Stream Deck of Corsair (Elgato).
+NDI® is a registered trademark of Vizrt NDI AB ([ndi.video](https://ndi.video)).
+The ProDeck and White Oak Media names and logos aren't covered by the MIT
+licence.
 
 ## Contributing & security
 

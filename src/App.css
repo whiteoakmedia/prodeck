@@ -10123,3 +10123,23 @@ select.input {
 }
 .sc-watch > span:nth-child(2) { flex: 1 1 320px; }
 .sc-watch-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--warn); flex-shrink: 0; }
+
+/* ===================== Privacy and licence notices ===================== */
+.legal {
+  width: min(860px, 100%);
+  height: min(760px, calc(100vh - 32px));
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.legal-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.legal-head h3 { margin: 0; }
+.legal-body { flex: 1; overflow: auto; padding: 16px 20px; }
+.legal-md { max-width: 72ch; line-height: 1.55; font-size: 14px; }
+.legal-pre { margin: 0; white-space: pre-wrap; font-family: var(--mono); font-size: 11.5px; line-height: 1.5; color: var(--muted); }
+.made-by-links { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 4px; }
+.made-by-links a { color: inherit; text-decoration: underline; cursor: pointer; }
+.ndi-notice a { color: inherit; text-decoration: underline; }

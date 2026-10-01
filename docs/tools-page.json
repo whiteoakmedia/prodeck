@@ -56,7 +56,7 @@
       ]
     }
   ],
-  "caveat": "This is one church's production tool, shared as-is: no support contract, no warranty, and a single maintainer whose priority is his own Sunday. It fails soft by design, since nothing here can take down ProPresenter, your consoles or your stream, but read the Adopter's Guide's limitations section before betting a service on it.",
+  "caveat": "This is one church's production tool, shared as-is: no support contract, no warranty, and a single maintainer whose priority is his own Sunday. ProDeck can change things in ProPresenter and on your console, so rehearse with each feature before you rely on it in a service, and read the Adopter's Guide's limitations section first.",
   "installers": {
     "mac": "ProDeck.dmg"
   },

@@ -62,78 +62,6 @@ fn open_print_html(html: String, app: tauri::AppHandle) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
-/// One-time migration from the legacy data-folder name. The app was renamed;
-/// existing installs keep their data (and the settings paths pointing into it)
-/// without anyone noticing. This is deliberately the only place in the
-/// codebase where the old name appears.
-fn migrate_legacy_data_dir() {
-    let Some(base) = dirs::config_dir() else { return };
-    let old = base.join("ProdLink");
-    let new = base.join("ProDeck");
-    if !old.is_dir() {
-        return;
-    }
-    // Already migrated (or a genuine new install that happens to sit next to
-    // a stale legacy folder): never touch a ProDeck folder that has settings.
-    if new.join("settings.json").exists() {
-        return;
-    }
-    if !new.exists() {
-        if let Err(e) = std::fs::rename(&old, &new) {
-            crate::diag::log(format!("[migrate] could not rename {} -> {}: {e}", old.display(), new.display()));
-            return;
-        }
-    } else {
-        // ProDeck exists but holds no settings yet — e.g. only an ndi-lib/ or
-        // models/ folder placed by hand. Move the legacy entries across one by
-        // one, never overwriting, so nothing is stranded.
-        let rd = match std::fs::read_dir(&old) {
-            Ok(rd) => rd,
-            Err(e) => {
-                crate::diag::log(format!("[migrate] could not read {}: {e}", old.display()));
-                return;
-            }
-        };
-        for ent in rd.flatten() {
-            let dst = new.join(ent.file_name());
-            if dst.exists() {
-                continue;
-            }
-            if let Err(e) = std::fs::rename(ent.path(), &dst) {
-                crate::diag::log(format!("[migrate] could not move {}: {e}", ent.path().display()));
-            }
-        }
-    }
-    // Path-valued settings (e.g. the GA4 key path) point into the old folder.
-    // Rewrite only string fields that are filesystem paths, and write
-    // atomically — a torn settings.json is read back as defaults, which would
-    // silently wipe passwords and tokens.
-    let sp = new.join("settings.json");
-    let Ok(txt) = std::fs::read_to_string(&sp) else { return };
-    let Ok(mut v) = serde_json::from_str::<serde_json::Value>(&txt) else { return };
-    let mut changed = false;
-    if let Some(obj) = v.as_object_mut() {
-        for val in obj.values_mut() {
-            if let Some(sv) = val.as_str() {
-                if sv.starts_with('/') && sv.contains("/ProdLink/") {
-                    *val = serde_json::Value::String(sv.replace("/ProdLink/", "/ProDeck/"));
-                    changed = true;
-                }
-            }
-        }
-    }
-    if !changed {
-        return;
-    }
-    let Ok(out) = serde_json::to_string_pretty(&v) else { return };
-    let tmp = sp.with_extension("json.tmp");
-    let res = std::fs::write(&tmp, out).and_then(|_| std::fs::rename(&tmp, &sp));
-    if let Err(e) = res {
-        crate::diag::log(format!("[migrate] could not rewrite settings.json: {e}"));
-        let _ = std::fs::remove_file(&tmp);
-    }
-}
-
 /// Bring the freshly installed bundle up after an in-app update, then exit.
 ///
 /// Tauri's stock restart() exec()s the new binary as a child of the old
@@ -205,7 +133,6 @@ fn release_single_instance(app: tauri::AppHandle) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    migrate_legacy_data_dir();
     let loaded_settings = settings::load();
     // Capture web-gateway autostart config before the settings value is moved.
     let web_autostart = if loaded_settings.web_enabled && !loaded_settings.web_password.is_empty() {
