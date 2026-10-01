@@ -1,76 +1,11 @@
 import { useEffect, useRef } from "react";
 import { useProDeck } from "../store";
-import { usePco, type PlanItem } from "../pcoStore";
+import { usePco } from "../pcoStore";
 import { IS_WEB } from "./tauri";
 
-// Normalize a title for matching: drop (parentheticals) and [brackets] — which
-// usually hold keys/arrangements — strip "feat./ft." credits, and reduce to
-// lowercase words.
-const norm = (s: string) =>
-  s
-    .toLowerCase()
-    // Fold accents ("Días" → "dias") — the strip below would delete them.
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/\([^)]*\)/g, " ")
-    .replace(/\[[^\]]*\]/g, " ")
-    .replace(/\b(feat|ft|featuring)\b.*$/g, " ")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-const normJoin = (s: string) => norm(s).replace(/\s+/g, "");
-const tokens = (s: string) => norm(s).split(" ").filter(Boolean);
+import { matchPresentationToItem } from "./presMatch";
 
-// Token-overlap score in 0..1 (intersection over the larger set).
-function score(a: string, b: string): number {
-  const ta = new Set(tokens(a));
-  const tb = new Set(tokens(b));
-  if (!ta.size || !tb.size) return 0;
-  let inter = 0;
-  for (const t of ta) if (tb.has(t)) inter++;
-  return inter / Math.max(ta.size, tb.size);
-}
-
-/**
- * Resolve which plan item a live ProPresenter presentation corresponds to:
- *   1. an item whose (saved or auto-detected) link points at this UUID,
- *   2. else the best fuzzy title match above a confidence floor,
- *   3. else a containment match for short file names.
- * Pure + synchronous (no network), so callers can use it for instant decisions:
- * the key-send resolves the live song with this the moment Pro goes live,
- * without waiting for the settle that protects the PCO time-tracker.
- */
-export function matchPresentationToItem(
-  items: PlanItem[],
-  effectiveLink: (i: PlanItem) => { uuid: string } | null,
-  presUuid: string | null,
-  presName: string | null,
-): string | null {
-  const list = items.filter((i) => i.type !== "header" && i.title);
-  // 1) An item whose link points at this presentation.
-  if (presUuid) {
-    const linked = list.find((i) => effectiveLink(i)?.uuid === presUuid);
-    if (linked) return linked.id;
-  }
-  if (presName) {
-    // 2) Fuzzy title match with a confidence floor (don't jump on a weak guess).
-    let best: { id: string; s: number } | null = null;
-    for (const it of list) {
-      const s = score(presName, it.title);
-      if (!best || s > best.s) best = { id: it.id, s };
-    }
-    if (best && best.s >= 0.5) return best.id;
-    // 3) Containment fallback for short file names ("Oceans" ⊂ full title).
-    const npj = normJoin(presName);
-    if (npj.length >= 5) {
-      const c = list.find((i) => {
-        const ij = normJoin(i.title);
-        return ij.length >= 5 && (ij.includes(npj) || npj.includes(ij));
-      });
-      if (c) return c.id;
-    }
-  }
-  return null;
-}
+export { matchPresentationToItem };
 
 /**
  * "Follow ProPresenter" — when the live ProPresenter presentation changes,
@@ -146,6 +81,7 @@ export function useProFollow() {
         pco.effectiveLink,
         presUuid,
         presName,
+        pco.liveItemId,
       );
       pco.setFollowStatus({ presName: presName ?? "", matched: !!targetId });
       if (targetId) pco.goToItem(targetId);

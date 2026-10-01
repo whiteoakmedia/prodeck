@@ -19,9 +19,9 @@ export function useLiveSong(): { item: PlanItem | null; via: "pro" | "pco" | nul
   // Memoized: the provider re-renders ~12×/s while audio meters run, and the
   // matcher is O(plan items × PP library).
   const followedId = useMemo(
-    () => (followPro ? matchPresentationToItem(items, effectiveLink, presUuid, presName) : null),
+    () => (followPro ? matchPresentationToItem(items, effectiveLink, presUuid, presName, liveItemId) : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [followPro, items, library, presUuid, presName],
+    [followPro, items, library, presUuid, presName, liveItemId],
   );
   const id = followedId ?? liveItemId;
   const item = items.find((i) => i.id === id) ?? null;

@@ -1510,9 +1510,36 @@ export function PcoProvider({ children }: { children: ReactNode }) {
     suppressItem.current = itemId; // mark this as a Follow-driven change
     let prevCur: string | null | undefined = undefined;
     let stuck = 0;
-    let tookControl = false;
     let curId: string | null = null;
     try {
+      // Control first, read strictly, by the same rules as the Next/Previous
+      // buttons (liveAction). This used to step blind and, when the live item
+      // didn't move, send toggle_control. That is a TOGGLE: when the booth
+      // already held control (or LIVE simply hadn't started yet) it RELEASED
+      // control, and every step after it was silently ignored. Symptom:
+      // ProPresenter moves on and Planning Center LIVE stays behind.
+      let c: PcoController;
+      try {
+        c = await pcoLiveController(st, plan);
+      } catch {
+        setLiveError("Couldn't check who controls Planning Center Live, so Follow didn't move it.");
+        return;
+      }
+      setController(c);
+      if (c.controllerId && !c.meId) {
+        setLiveError("Couldn't confirm who is controlling Planning Center Live, so Follow didn't move it.");
+        return;
+      }
+      if (c.controllerId && c.controllerId !== c.meId) {
+        setLiveError(
+          `${c.controllerName ?? "Someone else"} is controlling Planning Center Live, so Follow can't move it. Press "Take control" to drive it from here.`,
+        );
+        return;
+      }
+      if (!c.controllerId) {
+        await pcoLiveAction(st, plan, "toggle_control");
+        await refreshController();
+      }
       for (let i = 0; i < 30; i++) {
         try {
           const j = await pcoGet(
@@ -1523,13 +1550,12 @@ export function PcoProvider({ children }: { children: ReactNode }) {
           curId = null;
         }
         if (curId === itemId) break;
-        // Our previous step didn't move the live item → we likely lack control.
+        // Two steps in a row that didn't move the live item: stop and say so,
+        // rather than keep pressing (or touch control, see above).
         if (prevCur !== undefined && curId === prevCur) {
-          if (++stuck >= 2 && !tookControl) {
-            tookControl = true;
-            stuck = 0;
-            await pcoLiveAction(st, plan, "toggle_control").catch(() => {});
-            await loadLive();
+          if (++stuck >= 2) {
+            setLiveError("Planning Center Live didn't move, so Follow stopped. Check it's running for this plan, or press Next once.");
+            break;
           }
         } else {
           stuck = 0;
