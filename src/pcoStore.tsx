@@ -47,6 +47,8 @@ export interface Plan {
   date: string;
   /** ISO timestamp from `sort_date`. Everything that compares dates uses this. */
   sortDate: string;
+  /** ISO timestamp from `last_time_at`: the plan's last time, for plans that span days. */
+  lastTime?: string;
 }
 export interface PlanItem {
   id: string;
@@ -117,6 +119,7 @@ function parsePlans(j: Json | null): Plan[] {
       title: a.title || a.series_title || a.dates || "Untitled plan",
       date: a.dates || a.sort_date || "",
       sortDate: a.sort_date || "",
+      lastTime: a.last_time_at || undefined,
     };
   });
 }

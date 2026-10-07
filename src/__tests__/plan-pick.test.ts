@@ -156,3 +156,48 @@ describe("pcoWallTime", () => {
     expect(pcoWallTime(undefined)).toBeNaN();
   });
 });
+
+/**
+ * A church that files Wednesday night and the following Sunday under one plan
+ * ("September 30 & October 4, 2026"). `sort_date` is the Wednesday; only
+ * `last_time_at` says the plan runs to Sunday. Reported from a booth on Sunday
+ * 4 October at 10:17: choosing that plan snapped back to "October 7 & 11"
+ * within seconds, every time.
+ */
+describe("plans that span Wednesday and Sunday", () => {
+  const SUN = Date.parse("October 4, 2026 10:17:00");
+  const wedSun = (id: string, date: string, wed: string, sunLast: string) => ({
+    id,
+    date,
+    sortDate: `${wed}T18:30:00Z`,
+    lastTime: `${sunLast}T15:00:00Z`,
+  });
+  const PLANS = [
+    wedSun("p0923", "September 23 & 27, 2026", "2026-09-23", "2026-09-27"),
+    wedSun("p0930", "September 30 & October 4, 2026", "2026-09-30", "2026-10-04"),
+    wedSun("p1007", "October 7 & 11, 2026", "2026-10-07", "2026-10-11"),
+  ];
+
+  it("counts the plan as current until after its Sunday", () => {
+    expect(freshness(PLANS[1], SUN)).toBe("fresh");
+    expect(freshness(PLANS[1], Date.parse("October 5, 2026 09:00:00"))).toBe("fresh");
+    expect(freshness(PLANS[1], Date.parse("October 7, 2026 09:00:00"))).toBe("stale");
+  });
+
+  it("keeps Sunday's plan selected on Sunday", () => {
+    expect(autoTargetPlan(PLANS, "p0930", SUN)).toBeNull();
+  });
+
+  it("lands on Sunday's plan, not next week's, when nothing is selected", () => {
+    expect(autoTargetPlan(PLANS, null, SUN)).toBe("p0930");
+  });
+
+  it("still rolls forward once the Sunday is done", () => {
+    expect(autoTargetPlan(PLANS, "p0930", Date.parse("October 7, 2026 09:00:00"))).toBe("p1007");
+  });
+
+  it("without last_time_at behaves as before", () => {
+    const { lastTime: _, ...noLast } = PLANS[1];
+    expect(freshness(noLast, SUN)).toBe("stale");
+  });
+});

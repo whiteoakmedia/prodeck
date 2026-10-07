@@ -21,6 +21,12 @@ export interface PlanLike {
   date: string;
   /** Planning Center's `sort_date` — an ISO timestamp. The one to compute with. */
   sortDate?: string;
+  /**
+   * Planning Center's `last_time_at`: when the plan's LAST time happens. A plan
+   * can span days (a church filing Wednesday night and Sunday morning under
+   * one "September 30 & October 4" plan), and `sort_date` is only its first.
+   */
+  lastTime?: string;
 }
 
 /**
@@ -51,6 +57,26 @@ function planTime(plan: PlanLike): number {
 }
 
 /**
+ * When a plan is over: its last time, or its first when that's all we have.
+ *
+ * Freshness used to be measured from `sort_date` alone, which is the plan's
+ * FIRST time. For a plan covering Wednesday and Sunday that made the plan
+ * "finished" by Friday morning, so on Sunday every attempt to select it was
+ * undone by the auto-switch, which moved the booth on to next week's plan.
+ * Reported as "I select a service plan and it jumps to the next week".
+ *
+ * `last_time_at` is read as a plain timestamp. Whether Planning Center means
+ * it as UTC or, like `sort_date`, as wall clock, the difference is the UTC
+ * offset, which the 36 hour grace swallows.
+ */
+function planEnd(plan: PlanLike): number {
+  const first = planTime(plan);
+  const last = plan.lastTime ? Date.parse(plan.lastTime) : NaN;
+  if (!Number.isFinite(last)) return first;
+  return Number.isFinite(first) ? Math.max(first, last) : last;
+}
+
+/**
  * Planning Center's `sort_date` is the church's local wall-clock time wearing
  * a UTC "Z": a 9:00 service in New York comes back as `…T09:00:00Z`, while
  * the same plan's plan_times say `…T13:00:00Z`. Read it as local time (the
@@ -71,7 +97,7 @@ export type Freshness = "fresh" | "stale" | "unknown";
 
 export function freshness(plan: PlanLike | undefined, now: number): Freshness {
   if (!plan) return "unknown";
-  const t = planTime(plan);
+  const t = planEnd(plan);
   if (!Number.isFinite(t)) return "unknown";
   return t >= now - FRESH_GRACE_MS ? "fresh" : "stale";
 }
