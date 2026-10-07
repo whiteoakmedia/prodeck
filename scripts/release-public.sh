@@ -74,6 +74,17 @@ fi
 
 echo "▸ Releasing ProDeck $TAG to github.com/$REPO"
 
+# Readable stack traces in Sentry: vite.config.ts uploads the source maps when
+# this token is set, then deletes them so they never ship in the app.
+SENTRY_TOKEN_FILE="$HOME/.prodeck/sentry-auth.token"
+if [ -s "$SENTRY_TOKEN_FILE" ]; then
+  SENTRY_AUTH_TOKEN="$(tr -d '\n' < "$SENTRY_TOKEN_FILE")"
+  export SENTRY_AUTH_TOKEN
+  echo "▸ Sentry: source maps for prodeck@$VERSION will be uploaded"
+else
+  echo "▸ Sentry: no $SENTRY_TOKEN_FILE, so crash reports from the screens stay minified"
+fi
+
 echo "▸ Building universal app"
 rustup target add aarch64-apple-darwin x86_64-apple-darwin >/dev/null
 rm -rf "$APP"
@@ -82,6 +93,9 @@ rm -rf "$APP"
 npm run tauri -- build --target universal-apple-darwin --bundles app \
   --config '{"bundle":{"createUpdaterArtifacts":false,"macOS":{"signingIdentity":null}}}'
 [ -d "$APP" ] || { echo "✗ build produced no app — scroll up"; exit 1; }
+if find dist -name '*.map' | grep -q .; then
+  echo "✗ source maps were left in dist and are now inside the app. Check the Sentry upload above."; exit 1
+fi
 
 BIN="$APP/Contents/MacOS/prodeck"
 echo "▸ Verifying universal + self-contained"

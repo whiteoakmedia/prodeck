@@ -29,6 +29,7 @@
     "react-grid-layout": "^1.5.3"
   },
   "devDependencies": {
+    "@sentry/vite-plugin": "^5.4.1",
     "@tauri-apps/cli": "^2",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
