@@ -18,6 +18,8 @@ pub enum DeskModel {
     Sq,
     /// Behringer X32 / Midas M32 — OSC over UDP, not MIDI over TCP.
     X32,
+    /// Yamaha CL / QL / TF — RCP, plain text over TCP (yamaha.rs). Read only.
+    Yamaha,
 }
 
 impl DeskModel {
@@ -26,6 +28,7 @@ impl DeskModel {
             "dlive" => DeskModel::DLive,
             "sq" | "sq5" | "sq6" | "sq7" | "sq-5" | "sq-6" | "sq-7" => DeskModel::Sq,
             "x32" | "m32" | "x32/m32" => DeskModel::X32,
+            "yamaha" | "cl" | "ql" | "tf" | "cl/ql/tf" => DeskModel::Yamaha,
             _ => DeskModel::Avantis,
         }
     }
@@ -35,6 +38,7 @@ impl DeskModel {
             DeskModel::DLive => "dlive",
             DeskModel::Sq => "sq",
             DeskModel::X32 => "x32",
+            DeskModel::Yamaha => "yamaha",
         }
     }
     pub fn label(self) -> &'static str {
@@ -43,6 +47,7 @@ impl DeskModel {
             DeskModel::DLive => "dLive",
             DeskModel::Sq => "SQ",
             DeskModel::X32 => "X32 / M32",
+            DeskModel::Yamaha => "Yamaha",
         }
     }
     /// Highest base MIDI channel the desk lets you pick (1-based).
@@ -56,6 +61,7 @@ impl DeskModel {
         match self {
             DeskModel::Sq => 300,
             DeskModel::X32 => 100,
+            DeskModel::Yamaha => 300,
             _ => 500,
         }
     }
@@ -65,13 +71,25 @@ impl DeskModel {
     pub fn is_osc(self) -> bool {
         self == DeskModel::X32
     }
+    /// True for Yamaha desks, spoken to over RCP by yamaha.rs.
+    pub fn is_rcp(self) -> bool {
+        self == DeskModel::Yamaha
+    }
+    /// True for the A&H desks the MIDI-over-TCP mirror in avantis.rs drives.
+    pub fn uses_midi(self) -> bool {
+        matches!(self, DeskModel::Avantis | DeskModel::DLive | DeskModel::Sq)
+    }
+    /// False where ProDeck only mirrors the desk and never writes to it.
+    pub fn has_control(self) -> bool {
+        self != DeskModel::Yamaha
+    }
     /// SQ has no name/colour messages in its MIDI protocol.
     pub fn has_names(self) -> bool {
         self != DeskModel::Sq
     }
     /// Note On = mute on Avantis/dLive; on SQ a Note On can only be a softkey.
     pub fn note_mutes(self) -> bool {
-        self != DeskModel::Sq && !self.is_osc()
+        self != DeskModel::Sq && self.uses_midi()
     }
 }
 
@@ -136,7 +154,8 @@ pub fn note_map(model: DeskModel) -> &'static [NoteRange] {
         DeskModel::DLive => DLIVE,
         // Neither speaks the Note dialect: SQ is all-NRPN, and the X32 isn't
         // MIDI at all (OSC over UDP — see x32.rs).
-        DeskModel::Sq | DeskModel::X32 => &[],
+        // Yamaha speaks RCP (yamaha.rs).
+        DeskModel::Sq | DeskModel::X32 | DeskModel::Yamaha => &[],
     }
 }
 

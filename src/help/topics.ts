@@ -70,7 +70,7 @@ export const HELP_TOPICS: HelpTopic[] = [
 
 - **ProPresenter** — live slide, timers, layers, stage message. Read and control.
 - **Planning Center Services** — the plan, the team, call times, chord charts, LIVE control.
-- **Sound console** — Allen & Heath Avantis, dLive and SQ; Behringer X32 / Midas M32. Mutes, faders, names, scenes.
+- **Sound console** — Allen & Heath Avantis, dLive and SQ; Behringer X32 / Midas M32; Yamaha CL, QL and TF (view only for now). Mutes, faders, names, scenes.
 - **OBS Studio** — are we streaming, are we recording, dropped frames.
 - **NDI cameras** — a stage feed on any dashboard or kiosk.
 - **Crew phones** — a web app your volunteers add to their home screen: check-in, chat, pages that buzz, chord charts, checklists.
@@ -611,13 +611,18 @@ This is the most involved optional setup. The Adopter's Guide covers it end to e
     id: "console",
     group: "Sound console",
     title: "Connecting a sound console",
-    aliases: ["avantis", "dlive", "sq5", "x32", "m32", "console shows disconnected", "midi over tcp", "osc port 10023"],
+    aliases: ["avantis", "dlive", "sq5", "x32", "m32", "yamaha", "ql5", "ql1", "cl5", "cl3", "cl1", "tf5", "tf3", "tf1", "rcp", "port 49280", "digico", "presonus", "soundcraft", "my console isn't listed", "console shows disconnected", "midi over tcp", "osc port 10023"],
     body: `**Settings → Sound Console**: pick the model, type the console's IP, and watch it connect.
 
 - **Allen & Heath Avantis / dLive / SQ** — MIDI over TCP. Avantis and dLive use port 51325 (dLive Surface: 51328). Match the **MIDI base channel** to the console's *Utility → Control → MIDI* setting.
 - **Behringer X32 / Midas M32** — OSC, port 10023. Nothing to configure on the console.
+- **Yamaha CL, QL and TF**: Yamaha's remote control protocol, port 49280. Nothing to configure on the console and no MIDI channel to match: pick **Yamaha CL, QL or TF**, type the desk's IP, and ProDeck reads which model it is by itself.
 
-Once connected, the **Sound Desk** widget mirrors mutes, faders and names, and the desk watchdog can page one person when something changes during a service. Control (mute, fader, scene recall) needs the admin password.
+**Yamaha desks, step by step.** Find the console's IP address on its network setup screen, make sure the Mac and the desk are on the same network, then enter that IP in Settings or on the setup step. Leave the port at 49280. ProDeck mirrors channel names, mutes and fader levels for every input, stereo input, mix bus, matrix (CL and QL), DCA and mute group, plus the stereo and mono masters and the current scene with its name. On a TF the scene shows with its bank, like A05. For now ProDeck only **watches** a Yamaha desk: mute, fader, rename and scene recall buttons stay off, and Automix can't move its faders. RIVAGE PM and DM series desks use a different scene format and aren't supported yet.
+
+**Desk not listed?** DiGiCo, PreSonus, Soundcraft, Midas Pro or an analog desk can't be mirrored yet. Pick **Something else** on the setup step (or just skip it): everything else in ProDeck works without a console.
+
+Once connected, the **Sound Desk** widget mirrors mutes, faders and names, and the desk watchdog can page one person when something changes during a service. Control (mute, fader, scene recall) needs the admin password, and isn't available on Yamaha desks yet.
 
 > Only the Avantis has been run against real hardware. The others are built from the manufacturers' published protocols and covered by tests — the console picker says which is which. If yours is one of those, a report either way is genuinely useful.`,
     settings: "set-avantis",

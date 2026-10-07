@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { deskControlSupported } from "../../lib/consoles";
 import {
   avantisReconnect,
   avantisState,
@@ -270,6 +271,9 @@ export function AutomixWizard({ onClose, onAway }: { onClose: () => void; onAway
         <>
           <h2>Connect the console</h2>
           <p className="wz-lead">Automix moves your faders at the right moments in each song, so ProDeck needs to reach the console on the network.</p>
+          {!deskControlSupported(desk?.model || s?.avantis_model) && (
+            <p className="wz-warn">ProDeck can only watch a Yamaha desk for now, so Automix can't move its faders yet. Everything else still mirrors live.</p>
+          )}
           {connected ? (
             <p className="wz-ok">
               Connected to the {CONSOLES.find((c) => c.id === (desk?.model || model))?.name ?? "console"} at {s?.avantis_host}. {deskFaders.length} faders found.

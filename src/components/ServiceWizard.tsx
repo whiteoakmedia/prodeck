@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { deskControlSupported } from "../lib/consoles";
 import { usePco , isDeclined } from "../pcoStore";
 import { avantisSetName, avantisState, on, type AvantisSnapshot } from "../lib/tauri";
 import { MicSelect } from "./PcoBits";
@@ -311,7 +312,8 @@ export function ServiceWizard({
             <button
               className="btn primary"
               style={{ marginTop: 10 }}
-              disabled={writing || !desk || namePlan.length === 0}
+              disabled={writing || !desk || namePlan.length === 0 || !deskControlSupported(desk.model)}
+              title={desk && !deskControlSupported(desk.model) ? "ProDeck can only watch a Yamaha desk for now, so it can't rename channels on it." : undefined}
               onClick={writeBoard}
             >
               {writing ? "Writing…" : "Write names to the board"}

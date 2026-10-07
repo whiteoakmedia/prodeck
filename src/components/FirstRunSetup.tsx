@@ -30,6 +30,7 @@ import { openHelp } from "../help/nav";
 import { isFreshInstall, readSetupDone, writeSetupDone, ONBOARDING_EVENT } from "../lib/onboarding";
 import { ConnectCard } from "./ConnectCard";
 import { Icon } from "./Icon";
+import { CONSOLES, OTHER_CONSOLE, consoleInfo, consoleLabel, setupChoiceFromSettings, setupFields, type SetupChoice } from "../lib/consoles";
 
 /**
  * First-run onboarding — a full-screen, staged setup for a fresh install.
@@ -88,7 +89,7 @@ const TOOLS: {
     group: "Audio & console",
     items: [
       { name: "Audio input", need: "opt", what: "Calibrated SPL + RTA metering from any input, including Dante." },
-      { name: "Sound console", need: "opt", what: "Allen & Heath Avantis, dLive or SQ, and Behringer X32 / Midas M32 — mutes, faders, scenes and names mirrored live; a watchdog that pages one person about setup changes." },
+      { name: "Sound console", need: "opt", what: "Allen & Heath Avantis, dLive or SQ, Behringer X32 / Midas M32, and Yamaha CL, QL or TF. Mutes, faders, scenes and names mirrored live, plus a watchdog that pages one person about setup changes." },
       { name: "Song-key MIDI send", need: "opt", what: "Push the live song's key to Waves / plugin scenes over MIDI." },
     ],
   },
@@ -119,13 +120,6 @@ const ADDONS: { name: string; what: string; page: string; anchor: string }[] = [
   { name: "TapLink discs", what: "Point NFC discs at links that follow the service.", page: "settings", anchor: "set-taplink" },
   { name: "Your own domain", what: "Public URL, crew phones anywhere, booth-off fallback.", page: "settings", anchor: "set-web" },
   { name: "Desk watchdog", what: "Page one person when the console's setup changes.", page: "settings", anchor: "set-avantis" },
-];
-
-const CONSOLES = [
-  { id: "avantis", name: "Avantis", hint: "Base MIDI channel 1–12 · Utility → Control → MIDI", port: 51325, maxBase: 12 },
-  { id: "dlive", name: "dLive", hint: "MixRack port 51325, Surface 51328 · base channel 1–12", port: 51325, maxBase: 12 },
-  { id: "sq", name: "SQ-5 / SQ-6 / SQ-7", hint: "MIDI channel 1–16 · Utility → General → MIDI · names not available", port: 51325, maxBase: 16 },
-  { id: "x32", name: "X32 / M32", hint: "Behringer X32 or Midas M32 · OSC on port 10023 · nothing to set on the desk", port: 10023, maxBase: 1 },
 ];
 
 function readStage(): Stage {
@@ -176,7 +170,8 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
   const [webBusy, setWebBusy] = useState(false);
 
   // Console
-  const [deskModel, setDeskModel] = useState("avantis");
+  // Nothing preselected: a Yamaha owner shouldn't land on Avantis fields.
+  const [deskModel, setDeskModel] = useState<SetupChoice>("");
   const [deskHost, setDeskHost] = useState("");
   const [deskPort, setDeskPort] = useState(51325);
   const [deskBase, setDeskBase] = useState(1);
@@ -239,7 +234,9 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
     if (settings) {
       const s = settings as any;
       if (s.avantis_host) setDeskHost(s.avantis_host);
-      if (s.avantis_model) setDeskModel(s.avantis_model);
+      // Only a desk that was really set up; the default model is not a choice.
+      const was = setupChoiceFromSettings(s);
+      if (was) setDeskModel(was);
       if (s.avantis_port) setDeskPort(s.avantis_port);
       if (s.avantis_midi_base) setDeskBase(s.avantis_midi_base);
       if (s.avantis_enabled && s.avantis_host) setDeskSaved(true);
@@ -457,18 +454,20 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
     setDeskMsg("");
     try {
       const cur = (await getSettings()) as Settings;
-      const model = CONSOLES.find((c) => c.id === deskModel) ?? CONSOLES[0];
+      const model = consoleInfo(deskModel);
+      if (!model) return; // nothing picked, or a desk ProDeck can't mirror
       await updateSettings({
         ...cur,
         avantis_enabled: true,
-        avantis_model: deskModel,
+        avantis_model: model.id,
         avantis_host: deskHost.trim(),
         avantis_port: deskPort || model.port,
-        avantis_midi_base: Math.min(model.maxBase, Math.max(1, deskBase)),
+        // Desks without a MIDI channel keep whatever was saved before.
+        avantis_midi_base: model.midi ? Math.min(model.maxBase, Math.max(1, deskBase)) : ((cur as any).avantis_midi_base ?? 1),
       } as unknown as Settings);
       await refreshSettings();
       setDeskSaved(true);
-      setDeskMsg("Saved — ProDeck is connecting to the desk…");
+      setDeskMsg("Saved. ProDeck is connecting to the desk…");
     } catch (e) {
       setDeskMsg(String(e));
     } finally {
@@ -535,7 +534,8 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
     }
   };
 
-  const consoleMeta = CONSOLES.find((c) => c.id === deskModel) ?? CONSOLES[0];
+  const consoleMeta = consoleInfo(deskModel);
+  const deskFields = setupFields(deskModel);
   const templatesToShow = DASHBOARD_TEMPLATES;
 
   return (
@@ -761,45 +761,75 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
                   <span>{c.hint}</span>
                 </button>
               ))}
+              <button
+                className={`ob-console ${deskModel === OTHER_CONSOLE.id ? "on" : ""}`}
+                onClick={() => setDeskModel(OTHER_CONSOLE.id)}
+              >
+                <strong>{OTHER_CONSOLE.name}</strong>
+                <span>{OTHER_CONSOLE.hint}</span>
+              </button>
             </div>
-            <div className="ob-form ob-form-row">
-              <label className="field">
-                <span>Console IP address</span>
-                <input className="input" placeholder="192.168.1.20" value={deskHost} onChange={(e) => setDeskHost(e.target.value)} />
-              </label>
-              <label className="field narrow">
-                <span>Port</span>
-                <input className="input" type="number" value={deskPort} onChange={(e) => setDeskPort(parseInt(e.target.value) || consoleMeta.port)} />
-              </label>
-              {deskModel !== "x32" && (
-              <label className="field narrow">
-                <span>{deskModel === "sq" ? "MIDI channel" : "Base MIDI ch."}</span>
-                <input className="input" type="number" min={1} max={consoleMeta.maxBase} value={deskBase}
-                  onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n)) setDeskBase(Math.min(consoleMeta.maxBase, Math.max(1, n))); }} />
-              </label>
-              )}
-            </div>
-            <p className="muted small ob-note">
-              {deskModel === "x32"
-                ? "Nothing to set on the console itself — ProDeck subscribes over OSC. "
-                : `Set the desk's MIDI channel under ${deskModel === "sq" ? "Utility → General → MIDI" : "Utility → Control → MIDI"} and enter the same number here. `}
-              Give the desk a fixed IP (or a DHCP reservation) so this keeps working after a router restart.
-            </p>
+            {deskModel === "" && (
+              <p className="muted small ob-note">Pick your desk to see what ProDeck needs. No console, or not now? Skip this step.</p>
+            )}
+            {deskFields.unsupported && <p className="ob-note">{OTHER_CONSOLE.explain}</p>}
+            {deskFields.form && consoleMeta && (
+              <>
+                <div className="ob-form ob-form-row">
+                  <label className="field">
+                    <span>Console IP address</span>
+                    <input className="input" placeholder="192.168.1.20" value={deskHost} onChange={(e) => setDeskHost(e.target.value)} />
+                  </label>
+                  {deskFields.midi && (
+                    <label className="field narrow">
+                      <span>{deskModel === "sq" ? "MIDI channel" : "Base MIDI ch."}</span>
+                      <input className="input" type="number" min={1} max={consoleMeta.maxBase} value={deskBase}
+                        onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n)) setDeskBase(Math.min(consoleMeta.maxBase, Math.max(1, n))); }} />
+                    </label>
+                  )}
+                </div>
+                {/* The port is the desk's own default and almost never changes,
+                    so it sits folded away instead of asking a question. */}
+                <details className="ob-note">
+                  <summary className="muted small">Port {deskPort || consoleMeta.port} (rarely needs a change)</summary>
+                  <label className="field narrow">
+                    <span>Port</span>
+                    <input className="input" type="number" value={deskPort} onChange={(e) => setDeskPort(parseInt(e.target.value) || consoleMeta.port)} />
+                  </label>
+                </details>
+                <p className="muted small ob-note">
+                  {deskModel === "x32"
+                    ? "Nothing to set on the console itself. ProDeck subscribes over OSC. "
+                    : deskModel === "yamaha"
+                      ? "Nothing to set on the console itself. ProDeck reads it over Yamaha's remote control protocol and only watches for now: it can't change anything on a Yamaha desk yet. "
+                      : `Set the desk's MIDI channel under ${deskModel === "sq" ? "Utility → General → MIDI" : "Utility → Control → MIDI"} and enter the same number here. `}
+                  Give the desk a fixed IP (or a DHCP reservation) so this keeps working after a router restart.
+                </p>
+              </>
+            )}
             {deskMsg && <p className={deskMsg.startsWith("Saved") ? "ob-ok" : "error small"}>{deskMsg}</p>}
-            {deskSaved && (
+            {deskSaved && consoleMeta && (
               <StatusLine
                 ok={deskUp}
-                okText={`Connected to the ${consoleMeta.name} — the mirror is live.`}
-                waitText="Reaching the desk… (a few seconds). Not connecting? Check the IP, that the desk is on the same network, and that MIDI over TCP is enabled on it."
+                okText={`Connected to the ${consoleMeta.label}. The mirror is live.`}
+                waitText={`Reaching the desk (a few seconds). Not connecting? Check the IP and that the desk is on the same network${consoleMeta.midi ? ", and that MIDI over TCP is enabled on it" : ""}.`}
               />
             )}
             <div className="ob-actions">
               <button className="btn ghost" onClick={back}>← Back</button>
               <div className="ob-actions-r">
-                <button className="btn ghost" onClick={next}>{deskSaved ? "Next →" : "No console / later"}</button>
-                <button className="btn primary lg" disabled={deskBusy || !deskHost.trim()} onClick={saveConsole}>
-                  {deskBusy ? "Saving…" : deskSaved ? "Save again" : "Connect the desk"}
-                </button>
+                {deskFields.unsupported ? (
+                  <button className="btn primary lg" onClick={next}>Continue →</button>
+                ) : (
+                  <>
+                    <button className="btn ghost" onClick={next}>{deskSaved ? "Next →" : "No console / later"}</button>
+                    {deskFields.form && (
+                      <button className="btn primary lg" disabled={deskBusy || !deskHost.trim()} onClick={saveConsole}>
+                        {deskBusy ? "Saving…" : deskSaved ? "Save again" : "Connect the desk"}
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -984,7 +1014,7 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
               <SummaryRow ok={state.pro} label="ProPresenter" okText="connected" offText="not connected — ProPresenter page" />
               <SummaryRow ok={state.pco} label="Planning Center" okText="connected" offText="not connected — open the Planning Center page" />
               <SummaryRow ok={state.web} label="Phones & kiosks" okText="serving" offText="off — Settings → Browser Access" />
-              <SummaryRow ok={state.console} label="Sound console" okText={`${consoleMeta.name} mirrored`} offText={s.avantis_enabled ? "configured, not reachable yet" : "none — Settings → Allen & Heath Console"} />
+              <SummaryRow ok={state.console} label="Sound console" okText={`${consoleLabel(s.avantis_model)} mirrored`} offText={s.avantis_enabled ? "configured, not reachable yet" : "none yet, Settings → Sound Console"} />
               <SummaryRow ok={state.team} label="Team join code" okText="ready to scan" offText="needs Phones & kiosks on" />
               <SummaryRow ok={state.dashboards} label="Dashboards" okText={`${existing?.length ?? "your"} ready — Dashboard → Edit`} offText="use Dashboard → New" />
             </ul>

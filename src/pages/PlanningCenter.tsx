@@ -1,4 +1,5 @@
 import { useAutoSceneStatus } from "../lib/autoScene";
+import { deskControlSupported } from "../lib/consoles";
 import { useEffect, useState } from "react";
 import { usePco, fmtLen, type TeamMember , isDeclined } from "../pcoStore";
 import { Icon } from "../components/Icon";
@@ -680,8 +681,8 @@ function MicDeskMapEditor({ desk }: { desk: AvantisSnapshot }) {
         <h3>Desk channels</h3>
         <button
           className="btn small primary"
-          disabled={pushing || weeklyNames().length === 0}
-          title="Rename each mic's desk channels (primary + mirror) to this week's vocalist"
+          disabled={pushing || weeklyNames().length === 0 || !deskControlSupported(desk.model)}
+          title={deskControlSupported(desk.model) ? "Rename each mic's desk channels (primary + mirror) to this week's vocalist" : "ProDeck can only watch a Yamaha desk for now, so it can't rename channels on it."}
           onClick={pushNames}
         >
           {pushing ? "Renaming…" : "Push names to desk"}
