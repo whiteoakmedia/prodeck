@@ -16,7 +16,8 @@ use std::sync::Arc;
 /// White Oak Media's ProDeck project. A DSN only allows sending reports in,
 /// so it is safe in public source. A build can point elsewhere (or nowhere,
 /// with an empty value) through PRODECK_SENTRY_DSN at compile time.
-const OFFICIAL_DSN: &str = "";
+const OFFICIAL_DSN: &str =
+    "https://79aebd1fda6a14652e119fabfa555f91@o4511745054998528.ingest.us.sentry.io/4512215209869312";
 
 static ENABLED: AtomicBool = AtomicBool::new(false);
 
