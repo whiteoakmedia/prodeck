@@ -1,4 +1,5 @@
 import { ndiForScreen } from "../lib/ndiMatch";
+import { deskControlSupported } from "../lib/consoles";
 import { requestWizard } from "../lib/wizards";
 import { useDragReorder } from "../lib/useDragReorder";
 import { moveTo } from "../lib/reorder";
@@ -2075,7 +2076,7 @@ function ReadinessWidget() {
             {busy ? "Getting ready…" : "Get ready"}
           </button>
         )}
-        {staleNames.length > 0 && !IS_WEB && (
+        {staleNames.length > 0 && !IS_WEB && deskControlSupported(deskSnap?.model) && (
           <button className="btn small" disabled={pushingNames} onClick={pushWeeklyNames}>
             {pushingNames ? "Renaming…" : `Write ${staleNames.length} mic name${staleNames.length === 1 ? "" : "s"} to console`}
           </button>
@@ -2128,7 +2129,10 @@ function AvantisWidget({ widget, editing, update }: WidgetProps) {
   useEffect(() => {
     if (IS_WEB) webWhoami().then((w) => setIsAdmin(w.tier === "admin")).catch(() => {});
   }, []);
-  const canControl = allowControl && isAdmin;
+  // A desk ProDeck only watches (Yamaha, for now) never shows controls,
+  // whatever the tile says; the backend refuses the writes as well.
+  const deskWritable = deskControlSupported(snap?.model) && snap?.controlSupported !== false;
+  const canControl = allowControl && isAdmin && deskWritable;
 
   useEffect(() => {
     avantisState().then(setSnap).catch(() => {});
@@ -2229,13 +2233,17 @@ function AvantisWidget({ widget, editing, update }: WidgetProps) {
   return (
     <div className="w-avantis">
       <div className="w-avantis-head">
-        <span className="chip online">{canControl ? "control" : "mirroring"}</span>
+        <span className="chip online" title={allowControl && !deskWritable ? "ProDeck can only watch this desk for now" : undefined}>
+          {canControl ? "control" : allowControl && !deskWritable ? "view only" : "mirroring"}
+        </span>
         {snap.scene != null && (
           <span className="muted small">
             Scene {snap.scene}
             {settings?.avantis_scene_labels?.[String(snap.scene)]
               ? ` — ${settings.avantis_scene_labels[String(snap.scene)]}`
-              : ""}
+              : snap.sceneName
+                ? ` · ${snap.sceneName}`
+                : ""}
             {snap.sceneAt ? ` · ${fmtSince(snap.sceneAt, Date.now())}` : ""}
           </span>
         )}

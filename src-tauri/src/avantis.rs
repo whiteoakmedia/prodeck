@@ -28,8 +28,12 @@ pub struct AvantisInner {
     /// Which Allen & Heath console (and therefore which dialect + address map)
     /// the current connection speaks.
     pub model: DeskModel,
-    /// 1-based scene number (bank*128 + program + 1).
+    /// 1-based scene number (bank*128 + program + 1). Yamaha desks report
+    /// their own scene number as the desk shows it.
     pub scene: Option<u32>,
+    /// The scene's name, from desks that report one (Yamaha). None on the
+    /// A&H desks, whose protocol only carries numbers. Not persisted.
+    pub scene_name: Option<String>,
     pub mutes: HashMap<String, bool>,
     /// When the DESK last reported each mute (epoch ms). The Avantis protocol
     /// has no "get mute", so a value that predates `connected_at` is only
@@ -98,7 +102,7 @@ fn is_setup_key(key: &str) -> bool {
 /// the connect-time baseline sweep (None → value) must never read as
 /// tampering. Consecutive moves of the same control coalesce in place so a
 /// fader drag is one record, not forty.
-fn watch_record(s: &mut AvantisInner, kind: WatchKind, key: &str, old: String, new: String) {
+pub(crate) fn watch_record(s: &mut AvantisInner, kind: WatchKind, key: &str, old: String, new: String) {
     if let Some(last) = s.watch.last_mut() {
         if last.kind == kind && last.key == key {
             last.new = new;
@@ -118,6 +122,7 @@ pub fn snapshot(state: &AvantisState) -> Value {
     json!({
         "connected": s.connected,
         "scene": s.scene,
+        "sceneName": s.scene_name,
         "mutes": s.mutes,
         "muteSeen": s.mute_seen,
         "faderSeen": s.fader_seen,
@@ -130,6 +135,7 @@ pub fn snapshot(state: &AvantisState) -> Value {
         "model": s.model.id(),
         "namesSupported": s.model.has_names(),
         "maxScene": s.model.max_scene(),
+        "controlSupported": s.model.has_control(),
     })
 }
 
@@ -171,6 +177,9 @@ pub async fn avantis_set_mute(
 ) -> Result<(), String> {
     let st = state.inner().clone();
     let (base, model) = desk_cfg(&st);
+    if let Some(e) = read_only(&app, model) {
+        return Err(e);
+    }
     // OSC consoles speak a different transport entirely.
     if model.is_osc() {
         crate::x32::set_mute(&app, &id, muted).await?;
@@ -201,6 +210,9 @@ pub async fn avantis_recall_scene(
 ) -> Result<(), String> {
     let st = state.inner().clone();
     let (base, model) = desk_cfg(&st);
+    if let Some(e) = read_only(&app, model) {
+        return Err(e);
+    }
     if !(1..=model.max_scene()).contains(&scene) {
         return Err(format!("scene must be 1-{} on the {}", model.max_scene(), model.label()));
     }
@@ -238,6 +250,9 @@ pub async fn avantis_set_name(
         .collect();
     let st = state.inner().clone();
     let (base, model) = desk_cfg(&st);
+    if let Some(e) = read_only(&app, model) {
+        return Err(e);
+    }
     if model.is_osc() {
         crate::x32::set_name(&app, &id, &clean).await?;
         let mut s = st.lock().unwrap_or_else(|p| p.into_inner());
@@ -272,6 +287,9 @@ pub async fn avantis_set_fader(
     let v = value.min(0x7F);
     let st = state.inner().clone();
     let (base, model) = desk_cfg(&st);
+    if let Some(e) = read_only(&app, model) {
+        return Err(e);
+    }
     if model.is_osc() {
         crate::x32::set_fader(&app, &id, v).await?;
         let mut s = st.lock().unwrap_or_else(|p| p.into_inner());
@@ -294,6 +312,18 @@ pub async fn avantis_set_fader(
 
 fn key(kind: &str, idx: u8) -> String {
     format!("{kind}:{idx}")
+}
+
+/// Some(reason) when the desk is mirrored but never written to (Yamaha).
+/// Checks the configured desk as well as the connected one, so a write can't
+/// slip through to a stale A&H socket while a Yamaha is still connecting.
+fn read_only(app: &AppHandle, connected: DeskModel) -> Option<String> {
+    let configured = {
+        let st = app.state::<crate::settings::SettingsState>();
+        let s = st.lock().unwrap_or_else(|p| p.into_inner());
+        DeskModel::parse(&s.avantis_model)
+    };
+    (!connected.has_control() || !configured.has_control()).then(|| crate::yamaha::READ_ONLY.to_string())
 }
 
 /// (base nibble, model) of the current connection.
@@ -728,6 +758,12 @@ pub fn avantis_reconnect() {
     RECONNECT.store(true, std::sync::atomic::Ordering::Release);
 }
 
+/// For the mirrors that run outside this loop (yamaha.rs): take a pending
+/// reconnect request, if there is one.
+pub(crate) fn take_reconnect() -> bool {
+    RECONNECT.swap(false, std::sync::atomic::Ordering::AcqRel)
+}
+
 pub fn spawn_mirror(app: AppHandle) {
     std::thread::spawn(move || {
         let state: AvantisState = app.state::<AvantisState>().inner().clone();
@@ -736,13 +772,14 @@ pub fn spawn_mirror(app: AppHandle) {
         let mut last_save = Instant::now();
         loop {
             let (enabled, host, base, model, port) = settings_tuple(&app);
-            // OSC consoles (X32/M32) are driven by x32.rs — this MIDI mirror
-            // must not also connect, or two clients fight over the state.
-            if !enabled || host.is_empty() || model.is_osc() {
-                // Only clear the flag this transport owns. When the desk is an
-                // OSC console the x32 task is the one holding it up, and this
-                // loop stomping it every 3 s read as "disconnected" all service.
-                if !model.is_osc() {
+            // OSC consoles (X32/M32) are driven by x32.rs and Yamaha desks by
+            // yamaha.rs — this MIDI mirror must not also connect, or two
+            // clients fight over the state.
+            if !enabled || host.is_empty() || !model.uses_midi() {
+                // Only clear the flag this transport owns. When the desk is
+                // another transport's, that task is the one holding it up, and
+                // this loop stomping it every 3 s read as "disconnected" all service.
+                if model.uses_midi() {
                     set_connected(&app, &state, false);
                 }
                 std::thread::sleep(Duration::from_secs(3));

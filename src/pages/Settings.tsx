@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CONSOLES, consoleLabel, consoleNeedsMidi, midiBaseForSwitch, portForSwitch } from "../lib/consoles";
 import { rebase } from "../lib/formRebase";
 import { NdiNotice } from "../components/NdiNotice";
 import { openExternal } from "../lib/openExternal";
@@ -558,13 +559,15 @@ export function SettingsPage() {
       <section className="card">
         <div className="card-head">
           <h3 id="set-avantis">Sound Console</h3><HelpLink section="features" />
-          <span className="chip">{{ avantis: "Avantis", dlive: "dLive", sq: "SQ", x32: "X32 / M32" }[form.avantis_model || "avantis"] ?? "Avantis"} · mirror</span>
+          <span className="chip">{consoleLabel(form.avantis_model)} · mirror</span>
         </div>
         <p className="muted small">
           Watches the sound desk over the network: mutes, faders, scenes and
           channel names show up live in ProDeck. Allen &amp; Heath desks use MIDI
-          over TCP; Behringer X32 / Midas M32 use OSC. Control (mutes, faders,
-          names, scene recall) is admin-only and off by default in the dashboards.
+          over TCP, Behringer X32 / Midas M32 use OSC, and Yamaha CL, QL and TF
+          use Yamaha's remote control protocol. Control (mutes, faders, names,
+          scene recall) is admin only and off by default in the dashboards, and
+          not available on Yamaha desks yet.
         </p>
         <div className="settings-grid">
           <label className="field check">
@@ -580,19 +583,16 @@ export function SettingsPage() {
               onChange={(e) => {
                 const m = e.target.value;
                 set("avantis_model", m);
-                // Each desk's own default port and channel limit.
-                if (m === "x32") set("avantis_port", 10023);
-                else if (form.avantis_port === 10023) set("avantis_port", 51325);
-                if (m === "dlive" && (form.avantis_port === 51325 || !form.avantis_port)) set("avantis_port", 51325);
-                if (m !== "dlive" && form.avantis_port === 51328) set("avantis_port", 51325);
-                const maxBase = m === "sq" ? 16 : 12;
-                if ((form.avantis_midi_base ?? 1) > maxBase) set("avantis_midi_base", maxBase);
+                // Each desk's own default port and channel limit. A port that
+                // is just another desk's default follows the desk; one typed
+                // on purpose stays.
+                set("avantis_port", portForSwitch(m, form.avantis_port));
+                set("avantis_midi_base", midiBaseForSwitch(m, form.avantis_midi_base));
               }}
             >
-              <option value="avantis">Avantis</option>
-              <option value="dlive">dLive (MixRack or Surface)</option>
-              <option value="sq">SQ-5 / SQ-6 / SQ-7</option>
-              <option value="x32">Behringer X32 / Midas M32</option>
+              {CONSOLES.map((c) => (
+                <option key={c.id} value={c.id}>{c.option}</option>
+              ))}
             </select>
           </label>
           <HardwareStatus model={form.avantis_model || "avantis"} />
@@ -609,7 +609,9 @@ export function SettingsPage() {
                   ? "(MixRack 51325 · Surface 51328)"
                   : (form.avantis_model || "avantis") === "x32"
                     ? "(10023)"
-                    : "(51325)"}
+                    : (form.avantis_model || "avantis") === "yamaha"
+                      ? "(49280, rarely needs a change)"
+                      : "(51325)"}
               </span>
             </span>
             <input className="input" type="number" min={1} max={65535} value={form.avantis_port || 51325}
@@ -618,7 +620,7 @@ export function SettingsPage() {
           {/* The X32 speaks OSC — it has no MIDI channel to match. Rendered
               conditionally, not `hidden`: .field sets display:flex, and an
               author rule beats the browser's [hidden] style. */}
-          {(form.avantis_model || "avantis") !== "x32" && (
+          {consoleNeedsMidi(form.avantis_model) && (
           <label className="field">
             <span>
               {(form.avantis_model || "avantis") === "sq"
@@ -642,6 +644,17 @@ export function SettingsPage() {
               10023 and reads every channel, DCA, bus, matrix and mute group on
               connect. Give the desk a fixed IP so this keeps working after a router
               restart. Scenes 1–100.
+            </p>
+          )}
+          {(form.avantis_model || "avantis") === "yamaha" && (
+            <p className="hint wide">
+              Nothing to set on the console. ProDeck connects on port 49280 and reads
+              channel names, mutes, faders, mix buses, matrices, DCAs, mute groups and
+              the current scene with its name. Works with CL, QL and TF series desks;
+              RIVAGE PM and DM series aren't supported yet. ProDeck only watches a
+              Yamaha desk for now: mutes, faders, names and scene recall can't be
+              changed from ProDeck. Give the desk a fixed IP so this keeps working
+              after a router restart.
             </p>
           )}
           {(form.avantis_model || "avantis") === "dlive" && (
@@ -2471,15 +2484,18 @@ function JoinWindow() {
  */
 function HardwareStatus({ model }: { model: string }) {
   const tested = model === "avantis";
+  const yamaha = model === "yamaha";
   return (
     <div className="field wide">
       <span className={`chip ${tested ? "online" : "warn"}`}>
-        {tested ? "tested on real hardware" : "built from the published protocol"}
+        {tested ? "tested on real hardware" : yamaha ? "view only · not yet run on a real desk" : "built from the published protocol"}
       </span>
       <span className="hint">
         {tested
           ? "This is the desk ProDeck was developed against, in weekly use."
-          : "Written from the manufacturer's protocol document and covered by tests, but never run against a real one. It should work; if it doesn't, that's a bug worth reporting — and if it does, saying so is just as useful."}
+          : yamaha
+            ? "Built from Yamaha's remote control protocol as other tools use it, and covered by tests, but never run against a real CL, QL or TF. It should work. If it doesn't, that's a bug worth reporting, and if it does, saying so is just as useful."
+            : "Written from the manufacturer's protocol document and covered by tests, but never run against a real one. It should work. If it doesn't, that's a bug worth reporting, and if it does, saying so is just as useful."}
       </span>
     </div>
   );

@@ -392,8 +392,12 @@ export interface AvantisSoftkey {
 
 // Avantis console mirror (read-only). Keys are "kind:index", e.g. "input:5".
 export interface AvantisSnapshot {
-  /** "avantis" | "dlive" | "sq" — which protocol the mirror is speaking. */
+  /** "avantis" | "dlive" | "sq" | "x32" | "yamaha": which protocol the mirror is speaking. */
   model?: string;
+  /** False on desks ProDeck only watches (Yamaha, for now). */
+  controlSupported?: boolean;
+  /** The current scene's name, from desks that report one (Yamaha). */
+  sceneName?: string | null;
   /** False on SQ: its MIDI protocol has no channel-name messages. */
   namesSupported?: boolean;
   maxScene?: number;
