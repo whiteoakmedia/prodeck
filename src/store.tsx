@@ -23,6 +23,7 @@ import {
   setPublicUrl,
 } from "./lib/tauri";
 import { DB_FLOOR, ballisticsDt, toDbfs } from "./lib/audioMeter";
+import { setCrashReportsEnabled } from "./lib/crashReports";
 
 export interface PpStatus {
   layers: Json | null;
@@ -125,6 +126,9 @@ export function ProDeckProvider({ children }: { children: ReactNode }) {
   const [midiLog, setMidiLog] = useState<LogLine[]>([]);
   const [oscLog, setOscLog] = useState<LogLine[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
+  // Crash reports follow Settings → Help & support. Until settings arrive
+  // (or on a browser that can't read them) nothing is sent.
+  useEffect(() => setCrashReportsEnabled(settings?.crash_reports !== false && settings != null), [settings]);
   // Keep the module-level PUBLIC_URL in sync with the configured public
   // origin, so QR/join links and the edge fallback use the operator's domain.
   useEffect(() => {

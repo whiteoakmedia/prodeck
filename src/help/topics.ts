@@ -755,11 +755,17 @@ Reload the phone or kiosk after updating the booth.`,
   {
     id: "report-problem",
     group: "Troubleshooting",
-    title: "Reporting a problem",
-    aliases: ["found a bug", "how do I report", "diagnostics", "send logs", "contact"],
-    body: `**Settings → Help & support**: describe what happened and press **Report on GitHub**. ProDeck opens a pre-filled issue and puts a diagnostics bundle on your clipboard to paste in — every password, key and token is removed first, and so is your Planning Center ID and public address.
+    title: "Reporting a bug or asking for a feature",
+    aliases: ["found a bug", "how do I report", "diagnostics", "send logs", "contact", "feature request", "suggestion", "idea", "feedback", "crash reports", "sentry"],
+    body: `Press **Report a bug** or **Request a feature** at the bottom of the sidebar (also on the Help page and in **Settings → Help & support**). Fill in what happened, how much it matters, and an email if you'd like a reply. It goes privately to Zach at White Oak Media, who reads every one.
 
-The more specific the better: what you pressed, what you expected, what happened, and roughly when. **Show recent log** on the same card often has the line that explains it.`,
+Tick **Include diagnostics** and the report carries ProDeck's version, the computer's system, which connections are up, and the recent log, with every password, key and token removed first, along with your Planning Center ID and public address. **See exactly what's sent** shows it before you send. You can attach a screenshot too.
+
+The more specific the better: what you pressed, what you expected, what happened, and roughly when.
+
+**Crash reports.** When something breaks, ProDeck also sends White Oak Media an automatic report of what failed and where in the code: no names, plans, passwords or addresses. Turn it off in **Settings → Help & support → Send crash reports**.
+
+Rather post publicly? **Settings → Help & support → Rather post it publicly on GitHub?** opens a pre-filled GitHub issue, which anyone can read.`,
     settings: "set-help",
     guide: "honest",
   },

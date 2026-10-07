@@ -28,6 +28,8 @@ futures-util = "0.3"
 anyhow = "1"
 url = "2"
 mdns-sd = "0.11"
+# Crash reports (crashreport.rs). native-tls to match reqwest below.
+sentry = { version = "0.49", default-features = false, features = ["backtrace", "contexts", "panic", "reqwest", "native-tls"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "native-tls", "multipart"] }
 urlencoding = "2"
 cpal = "0.15"

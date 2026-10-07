@@ -380,6 +380,8 @@ export interface Settings {
   church_lng: string;
   checkin_radius_m: number;
   checkin_nudge: boolean;
+  /** Send crash and error reports to White Oak Media. Default on. */
+  crash_reports: boolean;
 }
 
 // A desk softkey (custom MIDI note) mapped to a crew page.

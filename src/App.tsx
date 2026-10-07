@@ -82,6 +82,8 @@ import { SettingsPage } from "./pages/Settings";
 import { HelpPage } from "./pages/Help";
 import { HELP_EVENT } from "./help/nav";
 import { RoutingPage } from "./pages/Routing";
+import { FeedbackHost } from "./components/FeedbackDialog";
+import { openFeedback } from "./lib/feedback";
 import "./App.css";
 
 type Page =
@@ -333,9 +335,15 @@ function Shell() {
           {/* Traffic lights + click-for-what-to-do; replaces the old
               PP-only pill (PP is the first light). */}
           <HealthStrip />
+          <div className="fb-links">
+            <button className="link-btn" onClick={() => openFeedback({ kind: "bug" })}>Report a bug</button>
+            <span aria-hidden="true">·</span>
+            <button className="link-btn" onClick={() => openFeedback({ kind: "feature" })}>Request a feature</button>
+          </div>
           <GiftCredit />
         </div>
       </aside>
+      <FeedbackHost page={page} console={settings?.avantis_enabled ? settings.avantis_model || "avantis" : ""} />
 
       <main className="main">
         {navHidden && (

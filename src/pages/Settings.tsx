@@ -8,6 +8,8 @@ import { ReleaseNotesOptIn } from "../components/ReleaseNotesOptIn";
 import { ANCHOR_TOPIC, openHelp } from "../help/nav";
 import { consumeSettingsJump } from "../lib/settingsJump";
 import { useProDeck } from "../store";
+import { openFeedback } from "../lib/feedback";
+import { setCrashReportsEnabled } from "../lib/crashReports";
 import { useAutopilot } from "../autopilot";
 import { useAutomix } from "../automix";
 import { fmtClock, useRecorder } from "../recorder";
@@ -48,6 +50,7 @@ import {
   startOsc,
   stopOsc,
   updateSettings,
+  getSettings,
   webStart,
   webStatus,
   webStop,
@@ -3174,9 +3177,24 @@ function BackupCard() {
   );
 }
 
-/** Help & support: the guide, a redacted diagnostics bundle, and a one-click GitHub report. */
+/** Help & support: the guide, the private bug/feature form, diagnostics, crash reports. */
 function HelpCard() {
   const { subsystems } = useAlerts();
+  const { settings, refreshSettings } = useProDeck();
+  const [crashBusy, setCrashBusy] = useState(false);
+  const setCrash = async (on: boolean) => {
+    setCrashBusy(true);
+    try {
+      const s = await getSettings();
+      await updateSettings({ ...s, crash_reports: on });
+      setCrashReportsEnabled(on);
+      await refreshSettings();
+    } catch (e) {
+      setMsg(String(e));
+    } finally {
+      setCrashBusy(false);
+    }
+  };
   const [summary, setSummary] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
@@ -3222,14 +3240,37 @@ function HelpCard() {
         <button className="btn small" disabled={busy} onClick={copyBundle}>Copy diagnostics</button>
         <button className="btn small ghost" onClick={() => (log ? setLog(null) : diagRecentLog(200).then(setLog).catch(() => setLog([])))}>{log ? "Hide log" : "Show recent log"}</button>
       </div>
-      <label className="field wide">
-        <span>Report a problem — what happened?</span>
-        <textarea className="input" rows={3} value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="e.g. Live viewers shows 0 during the stream even though GA4 shows 40" />
-      </label>
       <div className="rel-actions" style={{ justifyContent: "flex-start", gap: 8 }}>
-        <button className="btn small primary" disabled={busy || !summary.trim()} onClick={report}>Report on GitHub</button>
-        <span className="muted small">Opens a pre-filled issue on GitHub, which anyone can read. Your diagnostics (passwords and keys removed) go on the clipboard to paste in, so check them first.</span>
+        <button className="btn small primary" onClick={() => openFeedback({ kind: "bug" })}>Report a bug</button>
+        <button className="btn small primary" onClick={() => openFeedback({ kind: "feature" })}>Request a feature</button>
+        <span className="muted small">Goes privately to White Oak Media, with diagnostics if you want (passwords and keys removed).</span>
       </div>
+      {!IS_WEB && (
+        <label className="field check" style={{ marginTop: 12 }}>
+          <input
+            type="checkbox"
+            id="set-crash-reports"
+            disabled={crashBusy || !settings}
+            checked={settings?.crash_reports !== false}
+            onChange={(e) => setCrash(e.target.checked)}
+          />
+          <span>
+            Send crash reports. When something breaks, ProDeck tells White Oak Media what failed and where in the code,
+            so it gets fixed. No names, plans, passwords or addresses are included.
+          </span>
+        </label>
+      )}
+      <details className="muted small" style={{ marginTop: 10 }}>
+        <summary>Rather post it publicly on GitHub?</summary>
+        <label className="field wide" style={{ marginTop: 8 }}>
+          <span>What happened?</span>
+          <textarea className="input" rows={3} value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Live viewers shows 0 during the stream even though GA4 shows 40" />
+        </label>
+        <div className="rel-actions" style={{ justifyContent: "flex-start", gap: 8 }}>
+          <button className="btn small" disabled={busy || !summary.trim()} onClick={report}>Report on GitHub</button>
+          <span>Opens a pre-filled issue on GitHub, which anyone can read. Your diagnostics (passwords and keys removed) go on the clipboard to paste in, so check them first.</span>
+        </div>
+      </details>
       {msg && <p className="hint">{msg}</p>}
       {log && (
         <pre className="log-view">{log.length ? log.join("\n") : "(nothing logged yet this session)"}</pre>

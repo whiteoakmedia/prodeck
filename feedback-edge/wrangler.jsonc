@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Receives "Report a bug" and "Request a feature" from every ProDeck install
+  // and emails them to White Oak Media. Secrets (never in this file):
+  //   npx wrangler secret put RESEND_API_KEY
+  "name": "prodeck-feedback",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-01",
+  "vars": {
+    "FEEDBACK_TO": "zach@whiteoakmedia.io",
+    // Resend's shared sender can only mail the Resend account's own address,
+    // which is exactly FEEDBACK_TO. Verify a domain in Resend to change it.
+    "FEEDBACK_FROM": "ProDeck Feedback <onboarding@resend.dev>"
+  },
+  "kv_namespaces": [{ "binding": "SUBMISSIONS", "id": "78831e92ff0d47dfbb013b1736479f9f" }],
+  // Per-IP: a few reports a minute is plenty for a person, too few for a script.
+  "ratelimits": [{ "name": "PER_IP", "namespace_id": "4101", "simple": { "limit": 5, "period": 60 } }],
+  "observability": { "enabled": true }
+}

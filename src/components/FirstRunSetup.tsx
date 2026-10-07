@@ -989,6 +989,10 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
               <SummaryRow ok={state.dashboards} label="Dashboards" okText={`${existing?.length ?? "your"} ready — Dashboard → Edit`} offText="use Dashboard → New" />
             </ul>
             <ReleaseNotesOptIn />
+            <p className="muted small">
+              When something breaks, ProDeck sends White Oak Media a crash report so it gets fixed. It never includes
+              names, plans or passwords. Turn it off in Settings → Help &amp; support.
+            </p>
             <h3 className="ob-h3">Also available — set up anytime</h3>
             <div className="ob-addons">
               {ADDONS.map((a) => (

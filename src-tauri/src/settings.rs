@@ -274,6 +274,9 @@ pub struct Settings {
     /// Page crew who haven't checked in when their per-position call time
     /// (PCO Setup → "Check-in times") arrives on a service day.
     pub checkin_nudge: bool,
+    /// Send crash and error reports to White Oak Media (Sentry). On unless
+    /// the church turns it off; read once at launch by `crashreport::init`.
+    pub crash_reports: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -415,6 +418,7 @@ impl Default for Settings {
             church_lng: String::new(),
             checkin_radius_m: 150,
             checkin_nudge: false,
+            crash_reports: true,
         }
     }
 }
@@ -845,6 +849,7 @@ pub fn update_settings(
         *s = settings;
         s.clone()
     };
+    crate::crashreport::set_enabled(to_save.crash_reports);
     save(&to_save)
 }
 

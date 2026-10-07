@@ -15,6 +15,7 @@ mod keepalive;
 mod lan;
 mod chat;
 mod checkin;
+mod crashreport;
 mod discovery;
 mod edge;
 mod identity;
@@ -134,6 +135,9 @@ fn release_single_instance(app: tauri::AppHandle) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let loaded_settings = settings::load();
+    // Crash reports first, so a panic anywhere after this is reported. Held
+    // for the life of the app; dropping it flushes the queue on a clean exit.
+    let _crash_reports = crashreport::init(loaded_settings.crash_reports);
     // Capture web-gateway autostart config before the settings value is moved.
     let web_autostart = if loaded_settings.web_enabled && !loaded_settings.web_password.is_empty() {
         Some(loaded_settings.web_port)

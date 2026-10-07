@@ -1,4 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { reportRenderCrash } from "../lib/crashReports";
+import { FeedbackDialog } from "./FeedbackDialog";
 
 /**
  * Last line of defence. An uncaught render error used to leave a black
@@ -14,10 +16,11 @@ interface State {
   error: Error | null;
   info: ErrorInfo | null;
   copied: boolean;
+  telling: boolean;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
-  state: State = { error: null, info: null, copied: false };
+  state: State = { error: null, info: null, copied: false, telling: false };
 
   static getDerivedStateFromError(error: Error): Partial<State> {
     return { error };
@@ -27,6 +30,7 @@ export class ErrorBoundary extends Component<Props, State> {
     this.setState({ info });
     // Also to the console, so `Show recent log` and browser devtools have it.
     console.error("[prodeck] render crash:", error, info.componentStack);
+    reportRenderCrash(error, info.componentStack);
   }
 
   private details(): string {
@@ -92,12 +96,25 @@ export class ErrorBoundary extends Component<Props, State> {
             >
               {this.state.copied ? "Copied ✓" : "Copy error details"}
             </button>
+            <button className="btn ghost" onClick={() => this.setState({ telling: true })}>
+              Tell White Oak what happened
+            </button>
           </div>
           <p className="crash-foot">
-            If it keeps happening, paste the copied details into a report at{" "}
-            <code>github.com/whiteoakmedia/prodeck/issues</code> — they contain no
-            passwords.
+            If it keeps happening, tell White Oak Media what you were doing when it broke.
+            The error details go along with it, and they contain no passwords.
           </p>
+          {this.state.telling && (
+            <FeedbackDialog
+              initial={{
+                kind: "bug",
+                title: `ProDeck stopped drawing: ${error.message}`.slice(0, 140),
+                details: `What I was doing when it happened:\n\n\n---\n${this.details()}`.slice(0, 8000),
+              }}
+              page="crash screen"
+              onClose={() => this.setState({ telling: false })}
+            />
+          )}
           <details className="crash-more">
             <summary>Technical details</summary>
             <pre>{this.details()}</pre>

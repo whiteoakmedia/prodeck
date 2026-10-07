@@ -1,13 +1,15 @@
 # ProDeck privacy notice
 
-Effective 1 October 2026. ProDeck is a free app from White Oak Media (Zach Green), contact zach@whiteoakmedia.io.
+Effective 7 October 2026. ProDeck is a free app from White Oak Media (Zach Green), contact zach@whiteoakmedia.io.
 
-**The short version:** ProDeck runs on your church's own computer. It has no accounts with us, no analytics, no tracking and no crash reporting. Almost everything it handles stays on that computer and your church network. The few things that leave it are listed below, and most go only to services your church chose and signed in to itself.
+**The short version:** ProDeck runs on your church's own computer. It has no accounts with us, no analytics and no tracking. It does send us crash reports when something breaks, with nothing that identifies your church or anyone in it, and you can turn that off. Almost everything it handles stays on that computer and your church network. The few things that leave it are listed below, and most go only to services your church chose and signed in to itself.
 
 ## What White Oak Media receives
 
 - **Release notes by email, only if you ask for them.** If you type an email address into "Get release notes by email" (first-run setup or Settings), that address is sent to White Oak Media so we can email you when a new version comes out. We use it for nothing else, never sell or share it, and you can ask us to delete it any time by emailing zach@whiteoakmedia.io or replying to any release email.
-- **Nothing else.** ProDeck doesn't send us usage data, settings, plans, names or recordings.
+- **Crash reports, unless you turn them off.** When something in ProDeck breaks, it sends a report to White Oak Media through Sentry (sentry.io), the service we use to collect them: what failed, where in ProDeck's code, the ProDeck version and the computer's operating system. Before it leaves, ProDeck removes the computer's name, your login name, user details and anything in web addresses that could hold a password or token, and it leaves out console log lines. We've asked Sentry not to store IP addresses. Turn reports off any time in **Settings → Help & support → Send crash reports**.
+- **Bug reports and feature requests you send.** When you press "Report a bug" or "Request a feature", what you type goes to White Oak Media by email, along with the name, church and email you give (all optional), ProDeck's version and operating system, and, only if you tick it, a diagnostics bundle and a screenshot. The diagnostics have every password, key and token removed, and you can read them before sending. A copy is kept for 180 days on Cloudflare, which carries the message, and it's emailed through Resend. We use it only to fix and improve ProDeck, never sell or share it, and will delete it if you ask.
+- **Nothing else.** ProDeck doesn't send us usage data, settings, plans, names or recordings except as described above.
 
 ## What goes to services your church sets up
 

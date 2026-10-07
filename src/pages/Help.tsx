@@ -3,6 +3,7 @@ import { HELP_BY_ID, HELP_GROUP_ORDER, HELP_TOPICS, type HelpTopic } from "../he
 import { contextFor, searchHelp } from "../help/search";
 import { getSettings, helpAsk, IS_WEB, diagOpenIssue, REPORT_REPO, DOCS_URL, helpOpen } from "../lib/tauri";
 import { Icon } from "../components/Icon";
+import { openFeedback } from "../lib/feedback";
 
 /**
  * Help: ask a question, get an answer, inside the app.
@@ -168,7 +169,13 @@ export function HelpPage({
                   {asking ? "Thinking…" : "Ask the assistant"}
                 </button>
               )}
-              <button className="btn small" title="Opens a public GitHub issue: anyone can read it" onClick={askOnGithub}>
+              <button className="btn small" onClick={() => openFeedback({ kind: "bug", title: q.trim().slice(0, 140) })}>
+                Report a bug
+              </button>
+              <button className="btn small" onClick={() => openFeedback({ kind: "feature", title: q.trim().slice(0, 140) })}>
+                Request a feature
+              </button>
+              <button className="btn small ghost" title="Opens a public GitHub issue: anyone can read it" onClick={askOnGithub}>
                 Ask on GitHub (public)
               </button>
               <button
