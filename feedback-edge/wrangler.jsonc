@@ -10,7 +10,10 @@
     "FEEDBACK_TO": "zach@whiteoakmedia.io",
     // Resend's shared sender can only mail the Resend account's own address,
     // which is exactly FEEDBACK_TO. Verify a domain in Resend to change it.
-    "FEEDBACK_FROM": "ProDeck Feedback <onboarding@resend.dev>"
+    "FEEDBACK_FROM": "ProDeck Feedback <onboarding@resend.dev>",
+    // Crash reports pass through /api/<project>/envelope/ to Sentry.
+    "SENTRY_PROJECT_ID": "4512215209869312",
+    "SENTRY_INGEST_HOST": "o4511745054998528.ingest.us.sentry.io"
   },
   "kv_namespaces": [{ "binding": "SUBMISSIONS", "id": "78831e92ff0d47dfbb013b1736479f9f" }],
   // Per-IP: a few reports a minute is plenty for a person, too few for a script.

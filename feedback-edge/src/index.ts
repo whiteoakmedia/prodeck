@@ -14,12 +14,39 @@ interface Env {
   RESEND_API_KEY?: string;
   FEEDBACK_TO: string;
   FEEDBACK_FROM: string;
+  SENTRY_PROJECT_ID: string;
+  SENTRY_INGEST_HOST: string;
+}
+
+/**
+ * Crash reports, passed through to Sentry. ProDeck's DSN names this Worker as
+ * its host, so both the window's SDK and the Rust core post envelopes here.
+ * Church content filters (Cisco Umbrella, firewalls with a "tracking"
+ * category) block sentry.io outright; this address gets through, and Sentry
+ * sees the Worker's address instead of the church's. Only ProDeck's own
+ * project is forwarded.
+ */
+async function tunnel(req: Request, env: Env, url: URL, projectId: string): Promise<Response> {
+  if (projectId !== env.SENTRY_PROJECT_ID) return json({ ok: false, error: "Unknown project." }, 404);
+  const headers = new Headers();
+  for (const h of ["content-type", "content-encoding", "x-sentry-auth", "user-agent"]) {
+    const v = req.headers.get(h);
+    if (v) headers.set(h, v);
+  }
+  const upstream = await fetch(`https://${env.SENTRY_INGEST_HOST}/api/${projectId}/envelope/${url.search}`, {
+    method: "POST",
+    headers,
+    body: req.body,
+  });
+  const out = new Response(upstream.body, upstream);
+  for (const [k, v] of Object.entries(CORS)) out.headers.set(k, v);
+  return out;
 }
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Headers": "Content-Type, X-Sentry-Auth, Content-Encoding",
   "Access-Control-Max-Age": "86400",
 };
 
@@ -62,6 +89,8 @@ export default {
     const url = new URL(req.url);
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
     if (url.pathname === "/" && req.method === "GET") return json({ ok: true, service: "prodeck-feedback" });
+    const envelope = url.pathname.match(/^\/api\/(\d+)\/envelope\/?$/);
+    if (envelope && req.method === "POST") return tunnel(req, env, url, envelope[1]);
     if (url.pathname !== "/submit" || req.method !== "POST") return json({ ok: false, error: "Not found." }, 404);
 
     const ip = req.headers.get("CF-Connecting-IP") ?? "unknown";

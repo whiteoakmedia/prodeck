@@ -10,8 +10,8 @@ import { IS_WEB } from "./tauri";
 
 declare const __APP_VERSION__: string;
 
-/** Same project as the Rust side. Safe in public source: it only accepts reports. */
-const OFFICIAL_DSN = "https://79aebd1fda6a14652e119fabfa555f91@o4511745054998528.ingest.us.sentry.io/4512215209869312";
+/** Same project as the Rust side, through the same Worker (see crashreport.rs for why). */
+const OFFICIAL_DSN = "https://79aebd1fda6a14652e119fabfa555f91@prodeck-feedback.taplink-edge.workers.dev/4512215209869312";
 
 let enabled = false;
 let started = false;
