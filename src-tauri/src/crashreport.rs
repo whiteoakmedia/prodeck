@@ -16,7 +16,7 @@ use std::sync::Arc;
 /// White Oak Media's ProDeck project. A DSN only allows sending reports in,
 /// so it is safe in public source. Its host is White Oak's feedback Worker,
 /// which passes reports on to Sentry: church content filters block sentry.io
-/// itself (Cornerstone's does), and would otherwise swallow every report. A build can point elsewhere (or nowhere,
+/// itself (some do), and would otherwise swallow every report. A build can point elsewhere (or nowhere,
 /// with an empty value) through PRODECK_SENTRY_DSN at compile time.
 const OFFICIAL_DSN: &str =
     "https://79aebd1fda6a14652e119fabfa555f91@prodeck-feedback.taplink-edge.workers.dev/4512215209869312";
@@ -107,8 +107,8 @@ mod tests {
     #[test]
     fn scrub_follows_the_switch_and_strips_identity() {
         let mut e = sentry::protocol::Event::new();
-        e.server_name = Some("Cornerstone-Booth".into());
-        e.user = Some(sentry::User { username: Some("zach".into()), ..Default::default() });
+        e.server_name = Some("Church-Booth".into());
+        e.user = Some(sentry::User { username: Some("booth".into()), ..Default::default() });
         let home = dirs_home().unwrap_or_default();
         e.message = Some(format!("could not open {home}/Music/x.wav"));
         set_enabled(false);

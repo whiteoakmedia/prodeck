@@ -44,6 +44,71 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.98 — 7 October 2026
+
+### New: report a bug or request a feature inside ProDeck
+
+**Report a bug** and **Request a feature** are at the bottom of the sidebar, on
+the Help page and in **Settings → Help & support**. Say what happened and how
+much it matters, add a screenshot if it helps, and leave an email if you'd like
+a reply. It goes privately to White Oak Media, not to a public page. Tick
+**Include diagnostics** to send ProDeck's version, the system, which connections
+are up and the recent log, with every password and key removed; **See exactly
+what's sent** shows it first. If ProDeck ever stops drawing, the error screen
+has a button to send it too.
+
+### New: crash reports
+
+When something breaks, ProDeck now sends White Oak Media a report of what
+failed and where in the code, so it gets fixed sooner. Reports never include
+names, plans, passwords, the computer's name or its address. They travel
+through White Oak's own service, so church content filters don't block them.
+Turn them off any time in **Settings → Help & support → Send crash reports**.
+The privacy notice (Settings → About) explains both.
+
+### New: Yamaha CL, QL and TF consoles
+
+Pick **Yamaha** in setup or Settings and enter the desk's IP address; there's
+nothing to set on the desk. ProDeck shows channel names, mutes, fader levels,
+DCAs, mute groups and the current scene, sized to the model it finds. It is
+view only for now, and brand new: it was built from Yamaha's published
+protocol and hasn't met every desk yet, so if anything looks wrong on yours,
+please report it.
+
+### New: clearer console setup
+
+Setup no longer starts with Avantis picked. Choose your desk and ProDeck asks
+only for what that desk needs: no MIDI channel for an X32 or a Yamaha, and the
+port tucked away. Desk not listed? **Something else** says so plainly and moves
+on; everything else in ProDeck works without a console.
+
+### New: soundcheck playback
+
+Play a recorded service back out through Dante Virtual Soundcard so the band's
+tracks feed the console for a virtual soundcheck (Recording → Soundcheck). On an
+Avantis, the patch sheet shows which channel listens to which track, worked out
+from the show file and the Dante network. A reminder stays on screen while it
+plays, so Sunday's inputs aren't forgotten.
+
+### New: privacy and licences
+
+**Settings → About** now has the privacy notice and the licences for everything
+ProDeck is built with. Automix asks you to confirm the first time you arm it.
+
+### Fixed: plans that cover two days
+
+A plan holding Wednesday night and Sunday morning ("September 30 & October 4")
+counted as over once Wednesday passed, so on Sunday ProDeck kept jumping to next
+week's plan. A plan now stays current until its last service.
+
+### Fixed: Follow ProPresenter
+
+- When the same presentation is in the plan twice, like pre service slides at
+  the start and the end, Follow picks the one nearest where Live is, instead of
+  dragging Live back to the top.
+- Follow no longer takes Planning Center Live control from anyone. If someone
+  else is driving Live, it says who and stops.
+
 ## 0.9.97 — 30 September 2026
 
 ### Thank you

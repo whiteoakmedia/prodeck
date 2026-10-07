@@ -76,8 +76,11 @@ echo "▸ Releasing ProDeck $TAG to github.com/$REPO"
 
 # Readable stack traces in Sentry: vite.config.ts uploads the source maps when
 # this token is set, then deletes them so they never ship in the app.
+# SENTRY_UPLOAD=0 skips it (a network that blocks sentry.io, for one).
 SENTRY_TOKEN_FILE="$HOME/.prodeck/sentry-auth.token"
-if [ -s "$SENTRY_TOKEN_FILE" ]; then
+if [ "${SENTRY_UPLOAD:-1}" = "0" ]; then
+  echo "▸ Sentry: SENTRY_UPLOAD=0, so source maps are not uploaded this time"
+elif [ -s "$SENTRY_TOKEN_FILE" ]; then
   SENTRY_AUTH_TOKEN="$(tr -d '\n' < "$SENTRY_TOKEN_FILE")"
   export SENTRY_AUTH_TOKEN
   echo "▸ Sentry: source maps for prodeck@$VERSION will be uploaded"

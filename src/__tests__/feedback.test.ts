@@ -9,7 +9,7 @@ const draft = (over: Partial<Draft> = {}): Draft => ({
   details: "On the second song the slides stopped moving.",
   expected: "",
   urgency: "service",
-  contact: { name: "Maya", church: "Grace", email: "maya@example.com" },
+  contact: { name: "Sam", church: "Grace", email: "sam@example.com" },
   app: { version: "0.9.98", os: "macOS 27", arch: "aarch64", console: "yamaha", web: false, page: "dashboard" },
   diagnostics: "",
   screenshot: null,
@@ -28,7 +28,7 @@ describe("feedback submission checks (shared with the Worker)", () => {
 
   it("lets the email be blank but not wrong", () => {
     expect(problemWith(draft({ contact: { name: "", church: "", email: "" } }))).toBeNull();
-    expect(problemWith(draft({ contact: { name: "", church: "", email: "maya@" } }))).toMatch(/email/);
+    expect(problemWith(draft({ contact: { name: "", church: "", email: "sam@" } }))).toMatch(/email/);
   });
 
   it("falls back to the mildest urgency when the value doesn't fit the kind", () => {
@@ -53,7 +53,7 @@ describe("feedback submission checks (shared with the Worker)", () => {
     if (!c.ok) throw new Error(c.error);
     const { subject, text } = emailText(c.value, "2026-10-07-abc");
     expect(subject).toBe("[ProDeck bug] Lyrics stopped following");
-    expect(text).toContain("Reply to: maya@example.com");
+    expect(text).toContain("Reply to: sam@example.com");
     expect(text).toContain("Console: yamaha");
     expect(text).toContain("Stopped or could stop a service");
   });
@@ -86,8 +86,8 @@ describe("remembered contact", () => {
   it("round trips and survives junk", () => {
     const m = new Map<string, string>();
     const store = { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
-    saveContact({ name: "Maya", church: "Grace", email: "m@x.org" }, store);
-    expect(loadContact(store)).toEqual({ name: "Maya", church: "Grace", email: "m@x.org" });
+    saveContact({ name: "Sam", church: "Grace", email: "m@x.org" }, store);
+    expect(loadContact(store)).toEqual({ name: "Sam", church: "Grace", email: "m@x.org" });
     m.set("prodeck.feedbackContact", "{nope");
     expect(loadContact(store)).toEqual({ name: "", church: "", email: "" });
   });
@@ -104,7 +104,7 @@ describe("crash report scrubbing", () => {
     const out = scrubEvent({
       type: undefined,
       user: { id: "1", ip_address: "1.2.3.4" },
-      server_name: "Cornerstone-Booth",
+      server_name: "Church-Booth",
       request: { url: "http://booth.local:8088/?kiosk=lobby&token=hunter2", headers: { cookie: "a" } },
       breadcrumbs: [{ data: { url: "https://api.example.com/x?access_token=abc", from: "/a?t=1", to: "/b#frag" } }],
     });
