@@ -663,9 +663,16 @@ pub async fn start_audio_capture(
     // thread below, which was never on the main thread.
     let (dev, config) = coreaudio("start_audio_capture", move || {
         let dev = find_device(&device).ok_or_else(|| "No matching input device".to_string())?;
+        // Name the device and say what to do: the raw coreaudio-rs text
+        // ("An unknown error unknown to the coreaudio-rs API occurred") is what
+        // an output-only default input or an interface mid-restart produces,
+        // and it meant nothing at the booth.
         let config = dev
             .default_input_config()
-            .map_err(|e| format!("input config: {e}"))?;
+            .map_err(|e| format!(
+                "{}: can't read its input format ({e}). Pick a different input in Settings → Audio, or reconnect the interface.",
+                dev.name().unwrap_or_else(|_| "The input device".to_string())
+            ))?;
         Ok::<_, String>((dev, config))
     })
     .await??;
