@@ -534,6 +534,23 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
       /* clipboard blocked — the link is visible to copy by hand */
     }
   };
+  // Same poster as Settings → Crew Members, printed the same way: a standalone
+  // document in a real browser (Report.tsx doPrint does likewise). Printing the
+  // WebView page itself is routed by Tauri through a plugin command the app
+  // doesn't grant, so the old "Print this page" button failed silently.
+  function printJoinPoster() {
+    if (!joinQr) return;
+    const html = joinPosterHtml(joinQr);
+    if (IS_WEB) {
+      const w = window.open("", "_blank");
+      if (w) {
+        w.document.write(html);
+        w.document.close();
+      }
+    } else {
+      openPrintHtml(html).catch(() => {});
+    }
+  }
 
   const consoleMeta = consoleInfo(deskModel);
   const deskFields = setupFields(deskModel);
@@ -864,11 +881,9 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
                   <code className="ob-join-url">{joinUrl}</code>
                   <div className="ob-join-actions">
                     <button className="btn small" onClick={copyJoin}>{copied ? "Copied ✓" : "Copy link"}</button>
-                    {joinQr && (
-                      <button className="btn small ghost" onClick={() => openPrintHtml(joinPosterHtml(joinQr)).catch(() => {})}>
-                        Print a poster
-                      </button>
-                    )}
+                    <button className="btn small ghost" onClick={printJoinPoster} disabled={!joinQr}>
+                      Print poster…
+                    </button>
                   </div>
                   <p className="muted small">
                     Works on the church Wi-Fi now. Add your own domain later (Settings → Browser Access → Public URL) and the same code works from anywhere.
