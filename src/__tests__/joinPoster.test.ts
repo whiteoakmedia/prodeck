@@ -9,6 +9,20 @@ describe("join poster", () => {
     expect(html).toContain("window.print()");
   });
 
+  // Both print buttons (first-run Step 5 and Settings → Crew Members) share
+  // this one document, so its content is pinned here.
+  it("renders the title, the three steps and a print-on-load script", () => {
+    const html = joinPosterHtml("data:image/png;base64,abc");
+    expect(html).toContain('src="data:image/png;base64,abc"');
+    expect(html).toContain("<h1>Join the ProDeck Crew</h1>");
+    expect(html).toContain("<li>Scan the code with your phone camera</li>");
+    expect(html).toContain("<li>Add ProDeck to your Home Screen when asked</li>");
+    expect(html).toContain("<li>Tap your name, pick a 4-digit PIN, and you're in</li>");
+    expect(html).toContain(
+      "<script>window.onload=function(){setTimeout(function(){window.print();},300);};</script>",
+    );
+  });
+
   it("can't be broken out of the img tag", () => {
     expect(joinPosterHtml('x" onerror="alert(1)')).not.toContain('" onerror');
   });
