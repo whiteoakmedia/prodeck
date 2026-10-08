@@ -369,8 +369,11 @@ export function ProDeckProvider({ children }: { children: ReactNode }) {
       // Auto-start audio capture so metering + the overflow "Listen" stream are
       // always live, without anyone clicking Start on the booth Mac. Only the
       // desktop host grabs the device — web/phone clients would just thrash it.
+      // Every start (launch, the 30 s retry, the SPL widget's buttons) goes
+      // through startAudio, so a refused device lands in audioError and the
+      // Health card instead of an unhandled rejection nobody at the booth sees.
       if (!IS_WEB) {
-        startAudioCapture(s.audio_input ?? null).catch((e) => setAudioError(audioStartMessage(String(e), s.audio_input)));
+        startAudio(s.audio_input ?? null);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -388,11 +391,7 @@ export function ProDeckProvider({ children }: { children: ReactNode }) {
     const iv = setInterval(() => {
       if (audioRunningRef.current) return;
       getSettings()
-        .then((s) =>
-          startAudioCapture(s.audio_input ?? null)
-            .then(() => setAudioError(null))
-            .catch((e) => setAudioError(audioStartMessage(String(e), s.audio_input))),
-        )
+        .then((s) => startAudio(s.audio_input ?? null))
         .catch(() => {});
     }, 30_000);
     return () => clearInterval(iv);
