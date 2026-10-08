@@ -94,6 +94,7 @@ import { RtaGraph } from "../components/RtaGraph";
 import { type Slide } from "../components/PlaylistControl";
 import { parseSlides, slidesForActivePresentation } from "../lib/slideOrder";
 import { activePlaylistId, resolveLiveItem, type LiveItem } from "../lib/livePlaylistItem";
+import { useFollowLive } from "../lib/followLive";
 import { ppTriggerActiveCue } from "../lib/tauri";
 
 export interface WidgetProps {
@@ -352,6 +353,9 @@ function SlideGridWidget() {
   cuesRef.current = liveCues;
   // Started from a playlist: the item names its arrangement, so no guessing.
   const live = useLiveItem(connected, uuid, liveCues);
+  // Keep the live card on screen as the song moves (and when a song loads).
+  const gridRef = useRef<HTMLDivElement>(null);
+  useFollowLive(gridRef, ".sg-card.live", `${uuid}:${liveIdx}:${slides?.length ?? 0}`);
 
   useEffect(() => {
     if (!connected || !uuid) {
@@ -398,7 +402,7 @@ function SlideGridWidget() {
   }
 
   return (
-    <div className="w-slidegrid">
+    <div className="w-slidegrid" ref={gridRef}>
       {sections.map((sec, i) => (
         <div className="sg-section" key={`${sec.name}-${i}`}>
           <div className="rule-cap sg-cap">
