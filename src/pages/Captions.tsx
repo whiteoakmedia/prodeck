@@ -1,3 +1,4 @@
+import { audioStartMessage } from "../lib/audioError";
 import { useEffect, useRef, useState } from "react";
 import { useProDeck } from "../store";
 import { useLyricFollow } from "../lyricFollow";
@@ -40,7 +41,7 @@ export function Captions() {
       await startAudioCapture(device || null);
       await startTranscription();
     } catch (e) {
-      setError(String(e));
+      setError(audioStartMessage(String(e), device || null));
     }
   }
 

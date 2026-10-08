@@ -24,6 +24,7 @@ import {
 } from "./lib/tauri";
 import { DB_FLOOR, ballisticsDt, toDbfs } from "./lib/audioMeter";
 import { setCrashReportsEnabled } from "./lib/crashReports";
+import { audioStartMessage } from "./lib/audioError";
 
 export interface PpStatus {
   layers: Json | null;
@@ -79,6 +80,8 @@ interface Store {
   lufs: { m: number; s: number; i: number; peak: number } | null;
   splCalibration: number;
   setSplCalibration: (n: number) => void;
+  /** Start the audio input. Never throws: a refusal lands in `audioError`, worded for the booth. */
+  startAudio: (device: string | null) => Promise<void>;
   midiLog: LogLine[];
   oscLog: LogLine[];
   settings: Settings | null;
@@ -192,6 +195,16 @@ export function ProDeckProvider({ children }: { children: ReactNode }) {
     const s = await getSettings();
     setSettings(s);
     setSplCal(s.spl_calibration ?? 100);
+  }
+
+  // A button press that fails used to reject into nothing (PRODECK-4).
+  async function startAudio(device: string | null) {
+    try {
+      await startAudioCapture(device);
+      setAudioError(null);
+    } catch (e) {
+      setAudioError(audioStartMessage(String(e), device));
+    }
   }
 
   // Global SPL calibration (dB SPL at 0 dBFS) — shared by SPL meter + tracking.
@@ -357,7 +370,7 @@ export function ProDeckProvider({ children }: { children: ReactNode }) {
       // always live, without anyone clicking Start on the booth Mac. Only the
       // desktop host grabs the device — web/phone clients would just thrash it.
       if (!IS_WEB) {
-        startAudioCapture(s.audio_input ?? null).catch((e) => setAudioError(String(e)));
+        startAudioCapture(s.audio_input ?? null).catch((e) => setAudioError(audioStartMessage(String(e), s.audio_input)));
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -375,9 +388,12 @@ export function ProDeckProvider({ children }: { children: ReactNode }) {
     const iv = setInterval(() => {
       if (audioRunningRef.current) return;
       getSettings()
-        .then((s) => startAudioCapture(s.audio_input ?? null))
-        .then(() => setAudioError(null))
-        .catch((e) => setAudioError(String(e)));
+        .then((s) =>
+          startAudioCapture(s.audio_input ?? null)
+            .then(() => setAudioError(null))
+            .catch((e) => setAudioError(audioStartMessage(String(e), s.audio_input))),
+        )
+        .catch(() => {});
     }, 30_000);
     return () => clearInterval(iv);
   }, []);
@@ -467,6 +483,7 @@ export function ProDeckProvider({ children }: { children: ReactNode }) {
     lufs,
     splCalibration,
     setSplCalibration,
+    startAudio,
     midiLog,
     oscLog,
     settings,

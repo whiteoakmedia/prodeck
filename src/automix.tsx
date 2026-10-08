@@ -474,10 +474,15 @@ export function AutomixProvider({ children }: { children: ReactNode }) {
   // Publish the state for the Stream Deck's readout keys.
   useEffect(() => {
     if (IS_WEB) return;
+    // Sent only when it changes (and every 10 s regardless, in case the
+    // backend restarted). Twice a second unconditionally was 7,200 calls an
+    // hour, and they crowded everything useful out of crash-report trails.
+    let lastSent = "";
+    let lastAt = 0;
     const iv = setInterval(() => {
       const p = sec.current;
       const now = Date.now();
-      automixSetState({
+      const state = {
         armed: armedRef.current,
         held: heldRef.current,
         song: songName(),
@@ -485,7 +490,13 @@ export function AutomixProvider({ children }: { children: ReactNode }) {
         next: p && p.at + p.fadeMs > now ? { key: cur.current.key, inMs: p.at + p.fadeMs - now } : null,
         bgvTucked: bgvNow.current < -0.5,
         last: lastLine.current,
-      }).catch(() => {});
+      };
+      // The countdown changes every tick; compare it to the second, as shown.
+      const key = JSON.stringify({ ...state, next: state.next && { key: state.next.key, s: Math.ceil(state.next.inMs / 1000) } });
+      if (key === lastSent && now - lastAt < 10_000) return;
+      lastSent = key;
+      lastAt = now;
+      automixSetState(state).catch(() => {});
     }, 500);
     return () => clearInterval(iv);
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -1723,8 +1723,8 @@ function splZoneColor(spl: number, greenMax: number, yellowMax: number): string 
 
 function AudioMeterWidget({ widget, editing, update }: WidgetProps) {
   const {
-    audioDb, audioDbA, audioDbC, audioPeakDb, audioRunning,
-    splCalibration, setSplCalibration, settings,
+    audioDb, audioDbA, audioDbC, audioPeakDb, audioRunning, audioError,
+    splCalibration, setSplCalibration, settings, startAudio,
   } = useProDeck();
   const [inputs, setInputs] = useState<string[]>([]);
   const [bands, setBands] = useState<number[]>([]);
@@ -1820,7 +1820,7 @@ function AudioMeterWidget({ widget, editing, update }: WidgetProps) {
     return IS_WEB ? (
       <NeedsAudio hint="Audio monitoring is off — start it on the booth computer" action={null} />
     ) : (
-      <NeedsAudio action="Start monitoring" onAction={() => startAudioCapture(device)} />
+      <NeedsAudio hint={audioError ?? undefined} action="Start monitoring" onAction={() => startAudio(device)} />
     );
 
   const fill = Math.max(0, Math.min(100, ((dbfs + 60) / 60) * 100));
@@ -1892,7 +1892,7 @@ function AudioMeterWidget({ widget, editing, update }: WidgetProps) {
               Stop
             </button>
           ) : (
-            <button className="btn small primary" onClick={() => startAudioCapture(device)}>
+            <button className="btn small primary" onClick={() => startAudio(device)}>
               Monitor
             </button>
           )}

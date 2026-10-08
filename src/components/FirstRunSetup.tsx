@@ -25,7 +25,8 @@ import {
 } from "../lib/dashboards";
 import { requestSettingsJump } from "../lib/settingsJump";
 import { STARTER_CHECKLISTS, addStarterChecklists } from "../lib/checklistTemplates";
-import { keepaliveStatus, keepaliveInstall, setDemo, crewJoinOpen, crewJoinState, type KeepaliveStatus } from "../lib/tauri";
+import { keepaliveStatus, keepaliveInstall, setDemo, crewJoinOpen, crewJoinState, openPrintHtml, type KeepaliveStatus } from "../lib/tauri";
+import { joinPosterHtml } from "../lib/joinPoster";
 import { openHelp } from "../help/nav";
 import { isFreshInstall, readSetupDone, writeSetupDone, ONBOARDING_EVENT } from "../lib/onboarding";
 import { ConnectCard } from "./ConnectCard";
@@ -863,7 +864,11 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
                   <code className="ob-join-url">{joinUrl}</code>
                   <div className="ob-join-actions">
                     <button className="btn small" onClick={copyJoin}>{copied ? "Copied ✓" : "Copy link"}</button>
-                    <button className="btn small ghost" onClick={() => window.print()}>Print this page</button>
+                    {joinQr && (
+                      <button className="btn small ghost" onClick={() => openPrintHtml(joinPosterHtml(joinQr)).catch(() => {})}>
+                        Print a poster
+                      </button>
+                    )}
                   </div>
                   <p className="muted small">
                     Works on the church Wi-Fi now. Add your own domain later (Settings → Browser Access → Public URL) and the same code works from anywhere.

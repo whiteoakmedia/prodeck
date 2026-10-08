@@ -10,6 +10,7 @@ import { ANCHOR_TOPIC, openHelp } from "../help/nav";
 import { consumeSettingsJump } from "../lib/settingsJump";
 import { useProDeck } from "../store";
 import { openFeedback } from "../lib/feedback";
+import { joinPosterHtml } from "../lib/joinPoster";
 import { setCrashReportsEnabled } from "../lib/crashReports";
 import { useAutopilot } from "../autopilot";
 import { useAutomix } from "../automix";
@@ -2362,18 +2363,7 @@ function CrewInviteLink({
 
   async function printPoster() {
     if (!qr) return;
-    const html =
-      `<!doctype html><html><head><meta charset="utf-8"><title>Join ProDeck Crew</title>` +
-      `<style>body{font-family:-apple-system,Helvetica,sans-serif;text-align:center;padding:48px;color:#111}` +
-      `h1{font-size:40px;margin:0 0 6px}p{font-size:20px;color:#444;margin:6px 0}` +
-      `img{width:340px;height:340px;margin:28px 0}ol{display:inline-block;text-align:left;font-size:22px;line-height:1.7}</style></head><body>` +
-      `<h1>Join the ProDeck Crew</h1><p>Your production &amp; worship team app</p>` +
-      `<img src="${qr}" alt="QR">` +
-      `<ol><li>Scan the code with your phone camera</li>` +
-      `<li>Add ProDeck to your Home Screen when asked</li>` +
-      `<li>Tap your name, pick a 4-digit PIN — done</li></ol>` +
-      `<script>window.onload=function(){setTimeout(function(){window.print();},300);};</script>` +
-      `</body></html>`;
+    const html = joinPosterHtml(qr);
     openPrintHtml(html).catch(() => {});
   }
 
