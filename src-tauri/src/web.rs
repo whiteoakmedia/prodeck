@@ -10,7 +10,7 @@ use base64::Engine;
 use include_dir::{include_dir, Dir};
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, AtomicU16, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU16, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{AppHandle, Listener, Manager, Emitter};
@@ -69,6 +69,16 @@ const FORWARD_EVENTS: &[&str] = &[
 pub struct WebInner {
     pub running: AtomicBool,
     pub port: AtomicU16,
+    /// Which start() owns the port. Every start and stop moves it on, and a
+    /// server loop keeps going only while it still matches its own. `running`
+    /// alone could not say WHICH server should run: stop-then-start flipped it
+    /// false and straight back to true, the old loop never noticed, kept the
+    /// port, the new one failed to bind and, giving up, switched the flag off
+    /// and took the old one down with it. Every Settings save did that, so
+    /// phones and kiosks quietly lost the booth ("could not bind port 8088").
+    generation: AtomicU64,
+    /// Why the gateway isn't serving, for Settings. Empty when it is.
+    last_error: Mutex<String>,
     pub tx: broadcast::Sender<String>,
     // Last frame per event (pp:status keyed by stream) so a browser that connects
     // after the host is already live receives the current state immediately.
@@ -82,6 +92,8 @@ impl WebInner {
         Self {
             running: AtomicBool::new(false),
             port: AtomicU16::new(0),
+            generation: AtomicU64::new(0),
+            last_error: Mutex::new(String::new()),
             tx,
             snapshot: Mutex::new(HashMap::new()),
             listeners_ready: AtomicBool::new(false),
@@ -276,11 +288,19 @@ pub fn start(app: AppHandle, web: WebState, port: u16) {
     }
     ensure_listeners(&app, &web);
     web.port.store(port, Ordering::Release);
+    let gen = web.generation.fetch_add(1, Ordering::AcqRel) + 1;
+    set_error(&web, "");
 
     tauri::async_runtime::spawn(async move {
-        // The previous server (after a port change) may hold the socket briefly.
+        let mine = |web: &WebState| web.generation.load(Ordering::Acquire) == gen;
+        // The previous server lets go within a second of being superseded;
+        // a ProDeck that is still quitting (an update, a watchdog restart) can
+        // take a few more. Ten seconds covers both.
         let mut listener = None;
-        for _ in 0..6 {
+        for _ in 0..20 {
+            if !mine(&web) {
+                return; // stopped or restarted while waiting
+            }
             match TcpListener::bind(("0.0.0.0", port)).await {
                 Ok(l) => {
                     listener = Some(l);
@@ -292,13 +312,26 @@ pub fn start(app: AppHandle, web: WebState, port: u16) {
         let listener = match listener {
             Some(l) => l,
             None => {
-                web.running.store(false, Ordering::Release);
-                crate::diag::log(format!("web gateway: could not bind port {port}"));
+                let holder = port_holder(port);
+                crate::diag::log(format!(
+                    "web gateway: could not bind port {port}{}",
+                    holder.as_deref().map(|h| format!(" (in use by {h})")).unwrap_or_default()
+                ));
+                if mine(&web) {
+                    web.running.store(false, Ordering::Release);
+                    set_error(
+                        &web,
+                        &match holder {
+                            Some(h) => format!("Port {port} is already in use by {h}. Close it, or choose another port here and save."),
+                            None => format!("Port {port} is already in use by another app. Choose another port here and save."),
+                        },
+                    );
+                }
                 return;
             }
         };
 
-        while web.running.load(Ordering::Acquire) {
+        while web.running.load(Ordering::Acquire) && mine(&web) {
             // Time-boxed accept so toggling off releases the port within ~1s.
             match tokio::time::timeout(Duration::from_secs(1), listener.accept()).await {
                 Ok(Ok((stream, _addr))) => {
@@ -316,6 +349,33 @@ pub fn start(app: AppHandle, web: WebState, port: u16) {
 
 pub fn stop(web: &WebState) {
     web.running.store(false, Ordering::Release);
+    web.generation.fetch_add(1, Ordering::AcqRel);
+    set_error(web, "");
+}
+
+fn set_error(web: &WebState, msg: &str) {
+    *web.last_error.lock().unwrap_or_else(|p| p.into_inner()) = msg.to_string();
+}
+
+/// The app listening on `port`, when the system will say. macOS only; on
+/// Windows the message just says "another app".
+fn port_holder(port: u16) -> Option<String> {
+    #[cfg(target_os = "macos")]
+    {
+        let out = crate::diag::command("/usr/sbin/lsof")
+            .args(["-nP", &format!("-iTCP:{port}"), "-sTCP:LISTEN", "-Fc"])
+            .output()
+            .ok()?;
+        String::from_utf8_lossy(&out.stdout)
+            .lines()
+            .find_map(|l| l.strip_prefix('c').map(|c| c.trim().to_string()))
+            .filter(|c| !c.is_empty())
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = port;
+        None
+    }
 }
 
 fn find(haystack: &[u8], needle: &[u8]) -> Option<usize> {
@@ -2239,11 +2299,17 @@ pub fn web_status(state: tauri::State<'_, WebState>) -> Value {
     json!({
         "running": state.running.load(Ordering::Acquire),
         "port": state.port.load(Ordering::Acquire),
+        "error": state.last_error.lock().unwrap_or_else(|p| p.into_inner()).clone(),
     })
 }
 
 #[tauri::command]
 pub fn web_start(port: u16, app: AppHandle, state: tauri::State<'_, WebState>) {
+    // Already serving on this port: leave it alone. Settings calls this on
+    // every save, and a restart drops every phone and kiosk for nothing.
+    if state.running.load(Ordering::Acquire) && state.port.load(Ordering::Acquire) == port {
+        return;
+    }
     if state.running.load(Ordering::Acquire) {
         stop(&state);
     }
@@ -2376,5 +2442,18 @@ mod member_pp_tests {
         ] {
             assert!(!member_pp_read_ok(bad), "should refuse control: {bad}");
         }
+    }
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod port_holder_tests {
+    #[test]
+    fn names_the_process_holding_a_port() {
+        let l = std::net::TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let port = l.local_addr().unwrap().port();
+        let who = super::port_holder(port).expect("lsof should name the holder");
+        assert!(!who.is_empty());
+        drop(l);
+        assert_eq!(super::port_holder(port), None);
     }
 }

@@ -162,7 +162,7 @@ export function SettingsPage() {
   const [audioInputs, setAudioInputs] = useState<string[]>([]);
   const [oscOn, setOscOn] = useState(false);
   const [status, setStatus] = useState("");
-  const [webInfo, setWebInfo] = useState<{ running: boolean; port: number }>({
+  const [webInfo, setWebInfo] = useState<{ running: boolean; port: number; error?: string }>({
     running: false,
     port: 0,
   });
@@ -223,6 +223,13 @@ export function SettingsPage() {
     listMidiOutputs().then(setMidiOutPorts).catch(() => {});
     listAudioInputs().then(setAudioInputs).catch(() => {});
     if (!IS_WEB) webStatus().then(setWebInfo).catch(() => {});
+  }, []);
+  // The gateway can fail to open its port a few seconds after a save, so keep
+  // the chip honest while this page is open.
+  useEffect(() => {
+    if (IS_WEB) return;
+    const iv = setInterval(() => webStatus().then(setWebInfo).catch(() => {}), 3000);
+    return () => clearInterval(iv);
   }, []);
 
   // Follow settings saved elsewhere (a setup wizard, the Recording page)
@@ -1536,10 +1543,17 @@ export function SettingsPage() {
             <h3 id="set-web">Browser Access (LAN)</h3><HelpLink section="phase1" />
             {webInfo.running ? (
               <span className="chip online">serving · :{webInfo.port}</span>
+            ) : webInfo.error ? (
+              <span className="chip bad">not serving</span>
             ) : (
               <span className="chip">off</span>
             )}
           </div>
+          {webInfo.error && (
+            <p className="error small">
+              Phones and kiosks can't reach this Mac. {webInfo.error}
+            </p>
+          )}
           <p className="muted small">
             Serve the dashboards to phones, tablets, and laptops on the church network.
             They open this Mac's address in a browser and sign in with the password below.

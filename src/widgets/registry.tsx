@@ -92,7 +92,8 @@ import {
 } from "../components/NeedsConnection";
 import { RtaGraph } from "../components/RtaGraph";
 import { type Slide } from "../components/PlaylistControl";
-import { slidesForActivePresentation } from "../lib/slideOrder";
+import { parseSlides, slidesForActivePresentation } from "../lib/slideOrder";
+import { activePlaylistId, resolveLiveItem, type LiveItem } from "../lib/livePlaylistItem";
 import { ppTriggerActiveCue } from "../lib/tauri";
 
 export interface WidgetProps {
@@ -304,6 +305,37 @@ function LiveViewersWidget() {
   );
 }
 
+/**
+ * The live playlist item (see lib/livePlaylistItem), looked up again whenever
+ * the live presentation or its cue count changes. `undefined` while looking,
+ * `null` when the live song wasn't started from a playlist.
+ */
+function useLiveItem(connected: boolean, presUuid: string, cues: number | null): LiveItem | null | undefined {
+  const [live, setLive] = useState<LiveItem | null | undefined>(undefined);
+  useEffect(() => {
+    if (!connected || !presUuid) {
+      setLive(null);
+      return;
+    }
+    let stale = false;
+    setLive(undefined);
+    (async () => {
+      try {
+        const active = await ppGet("playlist/active");
+        const id = activePlaylistId(active);
+        const pl = id ? await ppGet(`playlist/${encodeURIComponent(id)}`) : null;
+        if (!stale) setLive(pl ? resolveLiveItem(active, pl, presUuid) : null);
+      } catch {
+        if (!stale) setLive(null);
+      }
+    })();
+    return () => {
+      stale = true;
+    };
+  }, [connected, presUuid, cues]);
+  return live;
+}
+
 function SlideGridWidget() {
   const { connected, status } = useProDeck();
   const [slides, setSlides] = useState<Slide[] | null>(null);
@@ -318,12 +350,15 @@ function SlideGridWidget() {
   const liveCues = currentTotalCues(status);
   const cuesRef = useRef<number | null>(liveCues);
   cuesRef.current = liveCues;
+  // Started from a playlist: the item names its arrangement, so no guessing.
+  const live = useLiveItem(connected, uuid, liveCues);
 
   useEffect(() => {
     if (!connected || !uuid) {
       setSlides(null);
       return;
     }
+    if (live === undefined) return;
     let stale = false;
     setSlides(null);
     // Fetch the live presentation and lay its slides out in the order
@@ -335,7 +370,8 @@ function SlideGridWidget() {
     // the stored list, no card at all.
     ppGet(`presentation/${encodeURIComponent(uuid)}`)
       .then((j) => {
-        if (!stale) setSlides(slidesForActivePresentation(j, cuesRef.current));
+        if (stale) return;
+        setSlides(live ? parseSlides(j, live.arrangementUuid) : slidesForActivePresentation(j, cuesRef.current));
       })
       .catch(() => {
         if (!stale) setSlides([]);
@@ -343,7 +379,7 @@ function SlideGridWidget() {
     return () => {
       stale = true;
     };
-  }, [connected, uuid]);
+  }, [connected, uuid, live]);
 
   if (!connected) return <Disconnected />;
   if (!uuid) return <div className="widget-empty">Nothing live in ProPresenter</div>;
@@ -482,6 +518,11 @@ function SlidePreviewWidget({ widget, update }: WidgetProps) {
   // ProPresenter's API only has the slide, not what each screen displays.
   const ndiSource = screen ? ndiForScreen(ndiList, screen.name) : null;
   const streamUrl = useNdiStream(connected ? ndiSource : null);
+  // The picture is fetched through the live playlist item when there is one,
+  // because only that endpoint counts slides the way the live slide number
+  // does (lib/livePlaylistItem). Held back while it's being looked up, so the
+  // wrong slide's picture never flashes up first.
+  const live = useLiveItem(connected, activePresentation(status).uuid ?? "", currentTotalCues(status));
 
   if (!connected) return <Disconnected />;
 
@@ -529,7 +570,13 @@ function SlidePreviewWidget({ widget, update }: WidgetProps) {
         </div>
       ) : (
         <div className={`slide-thumb-wrap ${slideOff ? "dim" : ""}`}>
-          <SlideThumb uuid={pres.uuid} index={idx} label="Live slide" />
+          <SlideThumb
+            uuid={pres.uuid}
+            index={live === undefined ? null : idx}
+            playlistId={live?.playlistId ?? null}
+            itemIndex={live?.itemIndex ?? null}
+            label="Live slide"
+          />
           {slideOff && (
             <div className="slide-off-overlay">Slide layer off on {screen?.name}</div>
           )}

@@ -939,7 +939,7 @@ export const pcoSetLiveInterval = (ms: number) =>
 export const webStart = (port: number) => invoke<void>("web_start", { port });
 export const webStop = () => invoke<void>("web_stop");
 export const webStatus = () =>
-  invoke<{ running: boolean; port: number }>("web_status");
+  invoke<{ running: boolean; port: number; error?: string }>("web_status");
 
 /** The window during which /join will hand out the crew token. */
 export const crewJoinState = () =>
