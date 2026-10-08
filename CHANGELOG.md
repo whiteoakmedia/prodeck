@@ -44,6 +44,36 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.99 — 8 October 2026
+
+### Thank you
+
+Thank you to everyone who has sent a report with the new **Report a bug**
+button. Every fix below came from one.
+
+### Fixed: Slide Preview showed the wrong slide's picture
+
+The slide number was right, but on a song whose arrangement reorders or repeats
+sections, the picture belonged to a different slide. When the song was started
+from a playlist, Slide Preview and Slide Grid now follow that playlist item,
+which says exactly which arrangement is playing.
+
+### Fixed: saving Settings disconnected phones and kiosks
+
+Every press of Save in Settings restarted the phone gateway in a way that
+stopped it altogether, so phones and kiosks lost the booth until ProDeck was
+restarted. Saving now leaves it running unless you change its port. If phones
+and kiosks really can't connect, **Settings → Browser Access** says why, and on
+a Mac names the app that is already using the port.
+
+### Fixed: setup's print button and the SPL meter's start button
+
+- **Print a poster** on the crew step of setup now prints the join poster. Before,
+  the button did nothing.
+- When the computer won't open the audio input, the SPL meter says what to
+  check (microphone permission for ProDeck, the input plugged in) instead of
+  doing nothing.
+
 ## 0.9.98 — 7 October 2026
 
 ### New: report a bug or request a feature inside ProDeck
