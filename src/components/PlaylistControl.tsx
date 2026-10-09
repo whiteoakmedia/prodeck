@@ -1,6 +1,8 @@
-import { useEffect, useState, type ReactNode, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type ReactNode, type CSSProperties } from "react";
 import { useProDeck } from "../store";
-import { activePresentation, currentSlideIndex } from "../lib/status";
+import { activePresentation, currentSlideIndex, currentTotalCues } from "../lib/status";
+import { useLiveItem } from "../lib/useLiveItem";
+import { useFollowLive } from "../lib/followLive";
 import { ppGet, ppPlaylistTrigger } from "../lib/tauri";
 import { SlideThumb } from "./SlideThumb";
 import { Icon } from "./Icon";
@@ -95,6 +97,21 @@ export function PlaylistControl({
 
   const live = activePresentation(status);
   const liveIdx = currentSlideIndex(status);
+  // Which playlist item is playing. Matching on the presentation alone lit up
+  // every copy of a song that appears twice; the live item names the one.
+  const liveItem = useLiveItem(connected, live.uuid ?? "", currentTotalCues(status));
+  const isLiveItem = (it: PlItem) =>
+    !!live.uuid &&
+    live.uuid === it.presUuid &&
+    (liveItem ? liveItem.playlistId === sel && liveItem.itemIndex === it.plIndex : true);
+  // Keep the live slide on screen as the song moves, the same way the Slide
+  // Grid does (lib/followLive): it backs off while someone is using the list.
+  const listRef = useRef<HTMLDivElement>(null);
+  useFollowLive(
+    listRef,
+    ".pl-item.live .pl-slide.active",
+    `${live.uuid}:${liveIdx}:${liveItem?.itemIndex ?? ""}:${items.length}:${Object.keys(slides).length}:${open.size}`,
+  );
 
   // Playlist list — refreshed on (re)connect.
   useEffect(() => {
@@ -298,9 +315,9 @@ export function PlaylistControl({
       ) : items.length === 0 ? (
         <div className="widget-empty">Empty playlist</div>
       ) : (
-        <div className="pl-items" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="pl-items" ref={listRef} onMouseDown={(e) => e.stopPropagation()}>
           {items.map((it) => {
-            const isLive = !!live.uuid && live.uuid === it.presUuid;
+            const isLive = isLiveItem(it);
             const isExpanded = open.has(it.itemUuid);
             const sl = slides[slideKey(it)];
             return (

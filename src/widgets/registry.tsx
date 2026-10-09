@@ -93,7 +93,7 @@ import {
 import { RtaGraph } from "../components/RtaGraph";
 import { type Slide } from "../components/PlaylistControl";
 import { parseSlides, slidesForActivePresentation } from "../lib/slideOrder";
-import { activePlaylistId, resolveLiveItem, type LiveItem } from "../lib/livePlaylistItem";
+import { useLiveItem } from "../lib/useLiveItem";
 import { useFollowLive } from "../lib/followLive";
 import { ppTriggerActiveCue } from "../lib/tauri";
 
@@ -304,37 +304,6 @@ function LiveViewersWidget() {
       {snap.error && <div className="lv-err small">{snap.error}</div>}
     </div>
   );
-}
-
-/**
- * The live playlist item (see lib/livePlaylistItem), looked up again whenever
- * the live presentation or its cue count changes. `undefined` while looking,
- * `null` when the live song wasn't started from a playlist.
- */
-function useLiveItem(connected: boolean, presUuid: string, cues: number | null): LiveItem | null | undefined {
-  const [live, setLive] = useState<LiveItem | null | undefined>(undefined);
-  useEffect(() => {
-    if (!connected || !presUuid) {
-      setLive(null);
-      return;
-    }
-    let stale = false;
-    setLive(undefined);
-    (async () => {
-      try {
-        const active = await ppGet("playlist/active");
-        const id = activePlaylistId(active);
-        const pl = id ? await ppGet(`playlist/${encodeURIComponent(id)}`) : null;
-        if (!stale) setLive(pl ? resolveLiveItem(active, pl, presUuid) : null);
-      } catch {
-        if (!stale) setLive(null);
-      }
-    })();
-    return () => {
-      stale = true;
-    };
-  }, [connected, presUuid, cues]);
-  return live;
 }
 
 function SlideGridWidget() {
