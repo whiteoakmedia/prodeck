@@ -1,5 +1,5 @@
 PRODECK — THIRD-PARTY NOTICES
-Generated for ProDeck 0.9.99 by scripts/gen-notices.mjs. ProDeck itself is MIT licensed (see LICENSE).
+Generated for ProDeck 0.9.100 by scripts/gen-notices.mjs. ProDeck itself is MIT licensed (see LICENSE).
 
 ==============================================================================
 COMPONENTS WITH THEIR OWN TERMS
@@ -10,7 +10,7 @@ LAME MP3 encoder 3.100 (via the mp3lame-sys and mp3lame-encoder crates)
   mp3lame-encoder wrapper crates are GNU LGPL version 3.
   ProDeck links LAME statically to make the Listen audio stream. Under the
   LGPL you may replace it with a modified LAME: the complete source for every
-  ProDeck release is at https://github.com/whiteoakmedia/prodeck (tag v0.9.99 for
+  ProDeck release is at https://github.com/whiteoakmedia/prodeck (tag v0.9.100 for
   this one), so you can rebuild ProDeck against your own LAME. LAME's source:
   https://lame.sourceforge.io and https://github.com/DoumanAsh/mp3lame-sys .
   LGPL texts: https://www.gnu.org/licenses/old-licenses/lgpl-2.0.html and

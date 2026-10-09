@@ -44,6 +44,21 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.100 — 8 October 2026
+
+### New: the slides follow the song
+
+The **Slide Grid** and the playlist on the **ProPresenter** page now keep the
+live slide in view as ProPresenter moves through a song, about a third of the
+way down so the next few slides show below it. They move only when the live
+slide drifts out of view, and if you scroll, click or type in them they wait a
+few seconds before following again, so nobody loses their place.
+
+### Fixed: a song in the playlist twice
+
+A song that appears twice in a playlist, like a reprise at the end, showed both
+copies as live. Now only the copy that is playing is marked.
+
 ## 0.9.99 — 8 October 2026
 
 ### Thank you
