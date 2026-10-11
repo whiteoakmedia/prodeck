@@ -100,7 +100,7 @@ import { useFollowLive } from "../lib/followLive";
 import { ppTriggerActiveCue } from "../lib/tauri";
 import { useChop } from "../chopStore";
 import { useMusic } from "../musicStore";
-import { isBoothScreen, resiEmbedId, resiPlayerUrl } from "../lib/resi";
+import { isBoothScreen, isResiMedia, pickVariant, playlistEnded, resiEmbedId, resiLatestEvent, resiPlayerUrl, videoVariants } from "../lib/resi";
 import { phaseOf } from "../lib/chop";
 
 export interface WidgetProps {
@@ -358,9 +358,98 @@ function WalkInMusicWidget() {
 }
 
 /**
- * Stream Monitor: the church's Resi web player, as viewers at home see it, on
- * phones and kiosks (starting muted). Never on the booth computer: its sound
- * can feed the house, so the player isn't loaded there at all (lib/resi).
+ * The stream on the booth: picture only, played by ProDeck itself. Resi sends
+ * sound as a separate stream, and this plays one of the video streams
+ * directly, so no audio is ever downloaded to this computer (lib/resi). The
+ * element is held muted at volume zero anyway, with no controls to change it.
+ */
+function BoothStream({ id }: { id: string }) {
+  const [st, setSt] = useState<{ name: string; url: string | null; error: string } | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [canHls] = useState(() => document.createElement("video").canPlayType("application/vnd.apple.mpegurl") !== "");
+
+  useEffect(() => {
+    if (!canHls) return;
+    let alive = true;
+    const tick = async () => {
+      try {
+        const ev = await resiLatestEvent(id);
+        if (!ev) {
+          if (alive) setSt({ name: "", url: null, error: "" });
+          return;
+        }
+        const master = await (await fetch(ev.hlsUrl)).text();
+        const v = pickVariant(videoVariants(master, ev.hlsUrl));
+        if (!v || !isResiMedia(v.url)) throw new Error("Resi's stream had no picture to show.");
+        const media = await (await fetch(v.url)).text();
+        if (alive) setSt({ name: ev.name, url: playlistEnded(media) ? null : v.url, error: "" });
+      } catch (e) {
+        if (alive) setSt((s) => ({ name: s?.name ?? "", url: s?.url ?? null, error: e instanceof Error ? e.message : String(e) }));
+      }
+    };
+    tick();
+    const iv = setInterval(tick, 60_000);
+    return () => {
+      alive = false;
+      clearInterval(iv);
+    };
+  }, [id, canHls]);
+
+  // Belt and braces: there is no sound in this stream, and the player is held
+  // muted at zero volume with every audio track off, whatever tries to change it.
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    const hush = () => {
+      if (!v.muted) v.muted = true;
+      if (v.volume !== 0) v.volume = 0;
+      const tracks = (v as HTMLVideoElement & { audioTracks?: { length: number; [i: number]: { enabled: boolean } } }).audioTracks;
+      if (tracks) for (let i = 0; i < tracks.length; i++) tracks[i].enabled = false;
+    };
+    hush();
+    const evs = ["volumechange", "loadedmetadata", "play", "playing"];
+    evs.forEach((e) => v.addEventListener(e, hush));
+    return () => evs.forEach((e) => v.removeEventListener(e, hush));
+  }, [st?.url]);
+
+  const note = (text: string) => (
+    <div className="widget-empty needs-conn">
+      <div className="needs-conn-inner">
+        <p className="needs-conn-hint">{text}</p>
+      </div>
+    </div>
+  );
+  if (!canHls) return note("This computer can't play the stream silently yet. It shows on phones and kiosks.");
+  if (!st) return <div className="widget-empty">Loading…</div>;
+  if (!st.url) return note(st.error || (st.name ? `Not live right now. Last stream: ${st.name}.` : "Not live right now."));
+  return (
+    <div className="w-stream">
+      <div className="stream-frame">
+        <video
+          ref={videoRef}
+          src={st.url}
+          muted
+          autoPlay
+          playsInline
+          disablePictureInPicture
+          disableRemotePlayback
+          controls={false}
+          style={{ pointerEvents: "none" }}
+        />
+      </div>
+      <span className="muted small">
+        {st.name ? `${st.name}. ` : ""}Picture only: on this computer ProDeck plays the stream without its sound. As
+        viewers see it, about 20 to 40 seconds behind the room.
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Stream Monitor: the church's Resi stream, as viewers at home see it. Phones
+ * and kiosks get Resi's own player, starting muted. The booth computer never
+ * loads Resi's player (its sound can feed the house); it gets BoothStream,
+ * picture only.
  * Configured by pasting Resi's embed code into the tile.
  */
 function StreamMonitorWidget({ widget, editing, update }: WidgetProps) {
@@ -399,16 +488,7 @@ function StreamMonitorWidget({ widget, editing, update }: WidgetProps) {
         </div>
       </div>
     );
-  if (isBoothScreen(IS_WEB, location.hostname))
-    return (
-      <div className="widget-empty needs-conn">
-        <div className="needs-conn-inner">
-          <p className="needs-conn-hint">
-            The stream plays on phones and kiosks, never on this computer, so its sound can't reach the house.
-          </p>
-        </div>
-      </div>
-    );
+  if (isBoothScreen(IS_WEB, location.hostname)) return <BoothStream id={id} />;
   return (
     <div className="w-stream">
       <div className="stream-frame">

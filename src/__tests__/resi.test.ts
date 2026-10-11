@@ -44,3 +44,54 @@ describe("isBoothScreen", () => {
     expect(isBoothScreen(true, "booth.local")).toBe(false);
   });
 });
+
+import { isResiMedia, pickVariant, playlistEnded, resiLatestEvent, videoVariants } from "../lib/resi";
+
+const MASTER_URL = "https://resi.media/cc-test/evt/Manifest.m3u8";
+const MASTER = `#EXTM3U
+#EXT-X-VERSION:7
+#EXT-X-STREAM-INF:AVERAGE-BANDWIDTH=323000,BANDWIDTH=646000,CODECS="avc1.64000d,mp4a.40.2",RESOLUTION=256x144,FRAME-RATE=29.97,AUDIO="aud1"
+Manifest_0_3.m3u8
+#EXT-X-STREAM-INF:AVERAGE-BANDWIDTH=1088000,BANDWIDTH=2176000,CODECS="avc1.64001f,mp4a.40.2",RESOLUTION=864x486,FRAME-RATE=29.97,AUDIO="aud1"
+Manifest_0_2.m3u8
+#EXT-X-STREAM-INF:AVERAGE-BANDWIDTH=6000000,BANDWIDTH=12000000,CODECS="avc1.640828,mp4a.40.2",RESOLUTION=1920x1080,FRAME-RATE=29.97,AUDIO="aud1"
+Manifest_0_0.m3u8
+#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="aud1",LANGUAGE="en",NAME="English",AUTOSELECT=YES,DEFAULT=YES,CHANNELS="2",URI="Manifest_1_1.m3u8"`;
+
+describe("booth video", () => {
+  it("lists the video playlists and never the audio one", () => {
+    const vs = videoVariants(MASTER, MASTER_URL);
+    expect(vs.map((v) => v.url)).toEqual([
+      "https://resi.media/cc-test/evt/Manifest_0_3.m3u8",
+      "https://resi.media/cc-test/evt/Manifest_0_2.m3u8",
+      "https://resi.media/cc-test/evt/Manifest_0_0.m3u8",
+    ]);
+    expect(vs.some((v) => v.url.includes("Manifest_1_1"))).toBe(false);
+    expect(vs.map((v) => v.height)).toEqual([144, 486, 1080]);
+    expect(vs[0].bandwidth).toBe(646000);
+  });
+
+  it("picks the biggest picture up to 540p", () => {
+    expect(pickVariant(videoVariants(MASTER, MASTER_URL))?.height).toBe(486);
+    expect(pickVariant([])).toBeNull();
+  });
+
+  it("tells a live event from a finished one", () => {
+    expect(playlistEnded("#EXTM3U\n#EXT-X-PLAYLIST-TYPE:EVENT\nchunk-1.m4s")).toBe(false);
+    expect(playlistEnded("#EXTM3U\nchunk-1.m4s\n#EXT-X-ENDLIST")).toBe(true);
+  });
+
+  it("only ever plays Resi's own media host", () => {
+    expect(isResiMedia("https://resi.media/a/Manifest.m3u8")).toBe(true);
+    expect(isResiMedia("https://cdn.resi.media/a/Manifest.m3u8")).toBe(true);
+    expect(isResiMedia("https://evil.example/resi.media/Manifest.m3u8")).toBe(false);
+    expect(isResiMedia("http://resi.media/a.m3u8")).toBe(false);
+  });
+
+  it("reads the channel's latest event", async () => {
+    const f = async () => new Response(JSON.stringify({ name: "Sunday Service 11am", cloud: { hlsUrl: MASTER_URL } }));
+    expect(await resiLatestEvent(ID, f as unknown as typeof fetch)).toEqual({ name: "Sunday Service 11am", hlsUrl: MASTER_URL });
+    const none = async () => new Response("{}", { status: 404 });
+    expect(await resiLatestEvent(ID, none as unknown as typeof fetch)).toBeNull();
+  });
+});

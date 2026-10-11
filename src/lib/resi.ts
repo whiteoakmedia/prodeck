@@ -43,3 +43,70 @@ export function isBoothScreen(isWeb: boolean, hostname: string): boolean {
   const h = hostname.toLowerCase().replace(/^\[|\]$/g, "");
   return h === "localhost" || h === "127.0.0.1" || h === "::1" || h.endsWith(".localhost");
 }
+
+// ---------------------------------------------------------------- booth video
+//
+// On the booth the stream is played by ProDeck itself, picture only. Resi's
+// channel API (webevents.resi.io, as its own player uses) gives the live
+// event's HLS address; Resi carries sound as a separate rendition, so the
+// video playlists hold no audio track at all. Playing one of those directly
+// means no sound is ever downloaded to the booth, let alone played.
+
+export interface ResiEvent {
+  name: string;
+  /** The master playlist (has the separate audio rendition; never played on the booth). */
+  hlsUrl: string;
+}
+
+/** The web channel's current or latest event. */
+export async function resiLatestEvent(id: string, fetchImpl: typeof fetch = fetch): Promise<ResiEvent | null> {
+  const res = await fetchImpl(`https://webevents.resi.io/api/v1/eventprofiles/latest/${id}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Resi didn't answer (error ${res.status}).`);
+  const j = (await res.json()) as any;
+  const hls = String(j?.cloud?.hlsUrl ?? "");
+  if (!isResiMedia(hls)) return null;
+  return { name: String(j?.name ?? "Live stream"), hlsUrl: hls };
+}
+
+/** Only Resi's own media host is ever played. */
+export function isResiMedia(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.protocol === "https:" && (u.hostname === "resi.media" || u.hostname.endsWith(".resi.media"));
+  } catch {
+    return false;
+  }
+}
+
+export interface Variant {
+  url: string;
+  height: number;
+  bandwidth: number;
+}
+
+/** The video playlists in a master playlist, resolved against its address. */
+export function videoVariants(master: string, masterUrl: string): Variant[] {
+  const lines = master.split(/\r?\n/);
+  const out: Variant[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    if (!l.startsWith("#EXT-X-STREAM-INF:")) continue;
+    const next = (lines[i + 1] ?? "").trim();
+    if (!next || next.startsWith("#")) continue;
+    const res = l.match(/RESOLUTION=\d+x(\d+)/);
+    const bw = l.match(/[^-]BANDWIDTH=(\d+)/);
+    out.push({ url: new URL(next, masterUrl).toString(), height: res ? Number(res[1]) : 0, bandwidth: bw ? Number(bw[1]) : 0 });
+  }
+  return out;
+}
+
+/** Big enough to read a lower third, light on the booth's network: up to 540p. */
+export function pickVariant(vs: Variant[], maxHeight = 540): Variant | null {
+  if (!vs.length) return null;
+  const fit = vs.filter((v) => v.height > 0 && v.height <= maxHeight).sort((a, b) => b.height - a.height);
+  return fit[0] ?? [...vs].sort((a, b) => a.bandwidth - b.bandwidth)[0];
+}
+
+/** A finished event's playlist ends with ENDLIST; a live one doesn't. */
+export const playlistEnded = (media: string) => /#EXT-X-ENDLIST/.test(media);
