@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { isBoothScreen, resiEmbedId, resiPlayerUrl } from "../lib/resi";
 
-const ID = "d4797dd3-2766-4b6e-9866-4e21e4ac9382";
+const ID = "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d";
 const EMBED = `<div style="position:relative;overflow:hidden;padding-top:56.25%;">
   <iframe allow="autoplay; fullscreen" allowfullscreen="true" class="resi-video-frame"
     src="https://control.resi.io/webplayer/video.html?id=${ID}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;">
