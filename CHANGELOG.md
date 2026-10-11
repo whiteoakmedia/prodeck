@@ -44,6 +44,18 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.103 — 11 October 2026
+
+### New: Stream Monitor (Resi)
+
+Add **Stream Monitor (Resi)** to a dashboard and paste your Resi embed code
+(Resi Studio → Web Channels → your channel → Embed). Phones and kiosks then show
+your stream as people at home see it, usually 20 to 40 seconds behind the room,
+muted to start. It never plays on the booth computer, not even muted, so its
+sound can't reach the house. It doesn't count as a viewer in Resi's analytics.
+
+Everything from 0.9.102 is in this release too.
+
 ## 0.9.102 — 11 October 2026
 
 ### New: Church Online Platform
