@@ -44,6 +44,17 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.105 — 11 October 2026
+
+### Fixed: the booth stream monitor started from the beginning
+
+On the booth, the Stream Monitor played the service from its first minute,
+because Resi's live streams keep every moment since the start and the Mac's
+player opens them at the beginning. It now jumps to the live point when it
+loads and catches up by itself if it falls behind.
+
+Everything from 0.9.102, 0.9.103 and 0.9.104 is in this release too.
+
 ## 0.9.104 — 11 October 2026
 
 ### New: the stream on the booth, picture only
