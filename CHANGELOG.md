@@ -44,6 +44,39 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.102 — 11 October 2026
+
+### New: Church Online Platform
+
+**Settings → Church Online**: type your Church Online address and press
+**Check**. The new **Church Online** tile counts down to your online service
+and shows when it's live.
+
+Press **Set up webhooks** and follow the four steps on the card, and the tile
+also counts who **watched** and **chatted**, and lists **prayer requests** and
+**salvation responses** with names as they happen, on the booth and on crew
+phones. Tick who should be paged, and their phones buzz with the person's name
+so someone can go and pray with them in Church Online. Church Online doesn't
+share what people type, so chat and prayer text stay there. The activity passes
+through White Oak Media's relay, which keeps first names and last initials,
+never email addresses, for three days.
+
+### New: walk-in music
+
+**Settings → Walk-in music**: choose the Spotify app or Apple's Music app on the
+booth computer, paste the playlist to play, and add the **Walk-in Music** tile.
+It shows what's playing, with play and pause, skip, volume, **Start walk-in**
+(plays the playlist and fades it up) and **Fade out**, on the booth and on crew
+phones with control permission. With **Fade out by itself** on, the music is
+silent as each Planning Center service time starts. There's no Spotify account
+to connect. Mac only for now. Spotify's and Apple's own terms are for personal
+listening, so check your church's music licensing first.
+
+### Fixed: audio monitoring that wouldn't start
+
+When the audio input refuses to start, ProDeck names the input and says what to
+try, on the meter and in the Health card.
+
 ## 0.9.101 — 11 October 2026
 
 ### New: the Slide Grid shows the whole playlist
