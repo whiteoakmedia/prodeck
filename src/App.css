@@ -10219,3 +10219,38 @@ select.input {
 .fb-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .fb-done h3 { margin: 4px 0 0; }
 .fb-done p { margin: 0; max-width: 60ch; line-height: 1.5; }
+
+/* Church Online tile (ChurchOnlineWidget). */
+.w-chop { display: flex; flex-direction: column; gap: 10px; }
+.chop-head { display: flex; flex-direction: column; gap: 4px; }
+.chop-phase {
+  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.chop-phase.live { color: var(--live); border-color: var(--live); }
+.chop-phase.upcoming { color: var(--accent-hi); border-color: var(--accent-line); }
+.chop-title { font-weight: 600; }
+.chop-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.chop-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 4px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+}
+.chop-stat b { font-size: 22px; font-variant-numeric: tabular-nums; }
+.chop-stat span { font-size: 11px; color: var(--muted); }
+.chop-recent { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.chop-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; background: var(--accent); }
+.chop-dot.salvation { background: var(--good); }
+.chop-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 4px 12px; margin: 6px 0; }
+.card-sub { margin: 16px 0 6px; font-size: 13px; font-weight: 700; }

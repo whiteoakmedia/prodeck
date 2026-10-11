@@ -382,7 +382,19 @@ export interface Settings {
   checkin_nudge: boolean;
   /** Send crash and error reports to White Oak Media. Default on. */
   crash_reports: boolean;
+  /** Church Online Platform address ("yourchurch.online.church"); "" = off. */
+  chop_domain: string;
+  /** Webhook inbox on White Oak's relay, and its token. */
+  chop_inbox: string;
+  chop_inbox_token: string;
+  /** Crew to page about online prayer requests and salvation responses. */
+  chop_page_to: string[];
+  chop_page_prayer: boolean;
+  chop_page_salvation: boolean;
 }
+
+export const chopSetState = (state: unknown) => invoke<void>("chop_set_state", { state });
+export const chopGetState = () => invoke<unknown>("chop_get_state");
 
 // A desk softkey (custom MIDI note) mapped to a crew page.
 export interface AvantisSoftkey {

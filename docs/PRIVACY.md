@@ -1,6 +1,6 @@
 # ProDeck privacy notice
 
-Effective 7 October 2026. ProDeck is a free app from White Oak Media (Zach Green), contact zach@whiteoakmedia.io.
+Effective 11 October 2026. ProDeck is a free app from White Oak Media (Zach Green), contact zach@whiteoakmedia.io.
 
 **The short version:** ProDeck runs on your church's own computer. It has no accounts with us, no analytics and no tracking. It does send us crash reports when something breaks, with nothing that identifies your church or anyone in it, and you can turn that off. Almost everything it handles stays on that computer and your church network. The few things that leave it are listed below, and most go only to services your church chose and signed in to itself.
 
@@ -18,6 +18,7 @@ These run only when your church turns them on and connects its own account. Each
 - **Planning Center.** ProDeck signs in to your church's Planning Center account and reads plans, songs and the people scheduled (names, positions, times), so it can show the service and assign mics. It stays on the booth computer.
 - **ProPresenter, your sound console, Dante, NDI, Stream Deck and Companion** are reached over your own network only.
 - **Ask ProDeck and Auto-Follow (Anthropic).** If you add an Anthropic API key, the questions volunteers type into Ask ProDeck, with the routing map and live status ProDeck uses to answer, are sent to Anthropic's API to write the answer. Auto-Follow may send a lyric line it heard to work out where the song is. This uses your church's own key and account. Without a key, nothing goes to Anthropic.
+- **Church Online Platform.** If you add your Church Online address, ProDeck asks Church Online which service is live or next. If you also set up its webhooks, Church Online sends activity (who attended, chatted, asked for prayer or responded to a moment) to your church's private inbox on White Oak Media's relay, which ProDeck reads. The relay drops email addresses, keeps first names and last initials with each activity for three days, and then deletes it. Chat and prayer text are never sent by Church Online. Disconnecting in ProDeck deletes the inbox.
 - **Live viewer counts (Google Analytics 4).** If you add your own GA4 service account, ProDeck reads your watch page's viewer count from Google. It sends no data about the people using ProDeck.
 - **Phones and kiosks, your own domain and push notifications.** If you turn on browser access, crew phones connect to the booth. If you also set up your own domain, that runs through your own Cloudflare account, which carries crew chat, names and sign-in tokens to phones away from the building. Phones that allow notifications get them through Apple's or Google's push services.
 - **Check-in.** When a crew member checks in, their phone may share its location with the booth, which only compares it with the building's location and doesn't keep it. To recognise the building's network, the booth looks up its own public IP address at ipify.org.

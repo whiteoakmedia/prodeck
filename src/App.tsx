@@ -83,6 +83,7 @@ import { HelpPage } from "./pages/Help";
 import { HELP_EVENT } from "./help/nav";
 import { RoutingPage } from "./pages/Routing";
 import { FeedbackHost } from "./components/FeedbackDialog";
+import { ChopRunner } from "./chopStore";
 import { openFeedback } from "./lib/feedback";
 import "./App.css";
 
@@ -344,6 +345,7 @@ function Shell() {
         </div>
       </aside>
       <FeedbackHost page={page} console={settings?.avantis_enabled ? settings.avantis_model || "avantis" : ""} />
+      <ChopRunner />
 
       <main className="main">
         {navHidden && (

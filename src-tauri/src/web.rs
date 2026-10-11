@@ -43,6 +43,7 @@ const FORWARD_EVENTS: &[&str] = &[
     "pco:times",
     "pco:attachments",
     "pco:live",
+    "chop:state",
     "pco:sync_started",
     "pco:sync_stopped",
     "ndi:stream_started",

@@ -15,6 +15,9 @@
     "SENTRY_PROJECT_ID": "4512215209869312",
     "SENTRY_INGEST_HOST": "o4511745054998528.ingest.us.sentry.io"
   },
+  // Church Online Platform webhook inboxes, one per church (src/chop.ts).
+  "durable_objects": { "bindings": [{ "name": "CHOP_INBOX", "class_name": "ChopInbox" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ChopInbox"] }],
   "kv_namespaces": [{ "binding": "SUBMISSIONS", "id": "78831e92ff0d47dfbb013b1736479f9f" }],
   // Per-IP: a few reports a minute is plenty for a person, too few for a script.
   "ratelimits": [{ "name": "PER_IP", "namespace_id": "4101", "simple": { "limit": 5, "period": 60 } }],

@@ -15,6 +15,7 @@ mod keepalive;
 mod lan;
 mod chat;
 mod checkin;
+mod chop;
 mod crashreport;
 mod discovery;
 mod edge;
@@ -210,6 +211,7 @@ pub fn run() {
         .manage(midi::MidiOutState::new())
         .manage(midi::KeySendState(std::sync::Mutex::new(serde_json::Value::Null)))
         .manage(follow::AutomixDeck(std::sync::Mutex::new(serde_json::Value::Null)))
+        .manage(chop::ChopState(std::sync::Mutex::new(serde_json::Value::Null)))
         .manage(multitrack::RecState::default())
         .manage(playback::PlayState::default())
         .manage(dante::DanteState::default())
@@ -367,6 +369,8 @@ pub fn run() {
             follow::automix_store_load,
             follow::automix_store_save,
             follow::automix_set_state,
+            chop::chop_set_state,
+            chop::chop_get_state,
             transcription::stop_transcription,
             // Gemini smart matching
             gemini::gemini_pick_slide,

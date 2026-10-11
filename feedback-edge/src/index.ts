@@ -7,6 +7,8 @@
  * only thing that does, as the RESEND_API_KEY secret.
  */
 import { checkSubmission, emailText, type Submission } from "./validate";
+import { chopRoute } from "./chop";
+export { ChopInbox } from "./chop";
 
 interface Env {
   SUBMISSIONS: KVNamespace;
@@ -16,6 +18,7 @@ interface Env {
   FEEDBACK_FROM: string;
   SENTRY_PROJECT_ID: string;
   SENTRY_INGEST_HOST: string;
+  CHOP_INBOX: DurableObjectNamespace;
 }
 
 /**
@@ -45,8 +48,8 @@ async function tunnel(req: Request, env: Env, url: URL, projectId: string): Prom
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, X-Sentry-Auth, Content-Encoding",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Sentry-Auth, Content-Encoding",
   "Access-Control-Max-Age": "86400",
 };
 
@@ -91,6 +94,8 @@ export default {
     if (url.pathname === "/" && req.method === "GET") return json({ ok: true, service: "prodeck-feedback" });
     const envelope = url.pathname.match(/^\/api\/(\d+)\/envelope\/?$/);
     if (envelope && req.method === "POST") return tunnel(req, env, url, envelope[1]);
+    const chop = await chopRoute(req, env, url, CORS);
+    if (chop) return chop;
     if (url.pathname !== "/submit" || req.method !== "POST") return json({ ok: false, error: "Not found." }, 404);
 
     const ip = req.headers.get("CF-Connecting-IP") ?? "unknown";

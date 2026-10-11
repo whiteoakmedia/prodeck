@@ -96,6 +96,8 @@ import { parseSlides, slidesForActivePresentation } from "../lib/slideOrder";
 import { useLiveItem } from "../lib/useLiveItem";
 import { useFollowLive } from "../lib/followLive";
 import { ppTriggerActiveCue } from "../lib/tauri";
+import { useChop } from "../chopStore";
+import { phaseOf } from "../lib/chop";
 
 export interface WidgetProps {
   widget: Widget;
@@ -238,6 +240,101 @@ function ObsWidget() {
               : `${Math.round(snap.congestion * 100)}% congestion`}
           </span>
         </div>
+      )}
+    </div>
+  );
+}
+
+/** "4:05", "1:02:30", or "3 days" for a service further off. */
+function untilText(ms: number): string {
+  const s = Math.max(0, Math.round(ms / 1000));
+  if (s >= 2 * 86400) return `${Math.round(s / 86400)} days`;
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const two = (n: number) => String(n).padStart(2, "0");
+  return h ? `${h}:${two(m)}:${two(sec)}` : `${m}:${two(sec)}`;
+}
+
+/**
+ * Church Online: the online service's countdown or live state, and (with
+ * webhooks connected) who's watching, chatting, asking for prayer and
+ * responding. Fed by chopStore; ChOP sends no chat or prayer text.
+ */
+function ChurchOnlineWidget() {
+  const { settings } = useProDeck();
+  const chop = useChop();
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const iv = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(iv);
+  }, []);
+
+  if (settings && !(settings.chop_domain ?? "").trim() && !chop?.domain)
+    return (
+      <NeedsConnection
+        what="Church Online"
+        hint="Connect Church Online Platform to see your online service here"
+        page="settings"
+        anchor="set-chop"
+        icon="captions"
+      />
+    );
+  if (!chop) return <div className="widget-empty">Loading…</div>;
+
+  const svc = chop.service;
+  const phase = phaseOf(svc, now);
+  const t = chop.tally;
+  const sameService = !!t && !!svc && t.serviceId === svc.id;
+  const at = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+
+  return (
+    <div className="w-chop">
+      <div className="chop-head">
+        <span className={`chop-phase ${phase}`}>
+          {phase === "live" ? "Live online" : phase === "upcoming" ? `Starts in ${untilText(svc!.start - now)}` : phase === "ended" ? "Ended" : "Nothing scheduled"}
+        </span>
+        {svc && (
+          <span className="chop-title">
+            {svc.title}
+            <span className="muted small">
+              {" "}
+              {phase === "live" ? `until ${at(svc.end)}` : new Date(svc.start).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })}
+            </span>
+          </span>
+        )}
+      </div>
+      {chop.serviceError && <p className="error small">{chop.serviceError}</p>}
+
+      {t ? (
+        <>
+          {!sameService && <span className="muted small">From the last service with activity</span>}
+          <div className="chop-stats">
+            <div className="chop-stat"><b>{t.attendees}</b><span>watched</span></div>
+            <div className="chop-stat" title={`${t.messages} messages`}><b>{t.chatters}</b><span>chatted</span></div>
+            <div className="chop-stat"><b>{t.prayers}</b><span>prayer</span></div>
+            <div className="chop-stat"><b>{t.salvations}</b><span>salvations</span></div>
+          </div>
+          {t.recent.length > 0 && (
+            <ul className="chop-recent">
+              {t.recent.slice(0, 6).map((m, i) => (
+                <li key={`${m.at}-${i}`}>
+                  <span className={`chop-dot ${m.kind}`} />
+                  {m.kind === "prayer" ? "Prayer request" : "Salvation response"}
+                  {m.who ? ` from ${m.who}` : ""}
+                  <span className="muted small"> {at(m.at)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      ) : chop.webhooks.connected ? (
+        <p className="muted small">Waiting for the first activity from Church Online.</p>
+      ) : (
+        <p className="muted small">
+          {chop.webhooks.error ||
+            "Connect webhooks in Settings, Church Online, to see who's watching, chatting, asking for prayer and responding."}
+        </p>
       )}
     </div>
   );
@@ -3471,6 +3568,7 @@ export const WIDGETS: WidgetDef[] = [
   // Video & Switcher
   { type: "obs", label: "OBS — Live & Scene", group: "Video", w: 4, h: 3, component: ObsWidget },
   { type: "video_input", label: "Stage Feed (NDI)", group: "Video", w: 4, h: 4, component: VideoInputWidget },
+  { type: "church_online", label: "Church Online", group: "Video", w: 4, h: 4, component: ChurchOnlineWidget },
   { type: "live_viewers", label: "Live Viewers (Online)", group: "ProPresenter", w: 3, h: 4, component: LiveViewersWidget },
   { type: "switcher_cues", label: "Switcher Cues (What's Next)", group: "Video", w: 5, h: 5, component: SwitcherCuesWidget },
   { type: "crew_qr", label: "Join QR (Crew Signup)", group: "General", w: 3, h: 3, component: CrewQrWidget },

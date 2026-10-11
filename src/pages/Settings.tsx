@@ -10,6 +10,8 @@ import { ANCHOR_TOPIC, openHelp } from "../help/nav";
 import { consumeSettingsJump } from "../lib/settingsJump";
 import { useProDeck } from "../store";
 import { openFeedback } from "../lib/feedback";
+import { useChop } from "../chopStore";
+import { chopHost, createInbox, deleteInbox, fetchCurrentService, setInboxSecret, webhookUrl } from "../lib/chop";
 import { joinPosterHtml } from "../lib/joinPoster";
 import { setCrashReportsEnabled } from "../lib/crashReports";
 import { useAutopilot } from "../autopilot";
@@ -967,6 +969,8 @@ export function SettingsPage() {
           </label>
         </div>
       </section>
+
+      {!IS_WEB && <ChopCard form={form} set={set} crew={crew} />}
 
       <section className="card">
         <div className="card-head">
@@ -3193,6 +3197,228 @@ function BackupCard() {
       </div>
       {msg && <p className="hint">{msg}</p>}
       <p className="hint"><strong>The backup contains your passwords and API keys</strong> (that's what makes it a full restore). Keep it like a password: a drive in a safe, or an encrypted cloud folder — not email.</p>
+    </section>
+  );
+}
+
+/**
+ * Church Online Platform: the church's ChOP address (for the live/next service)
+ * and, optionally, webhooks through White Oak's relay for attendance, chat
+ * activity, prayer requests and salvation responses (see lib/chop).
+ */
+function ChopCard({
+  form,
+  set,
+  crew,
+}: {
+  form: Settings;
+  set: <K extends keyof Settings>(k: K, v: Settings[K]) => void;
+  crew: CrewUser[] | null;
+}) {
+  const chop = useChop();
+  const [test, setTest] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [secret, setSecret] = useState("");
+  const [copied, setCopied] = useState(false);
+  const host = chopHost(form.chop_domain ?? "");
+  const connected = !!form.chop_inbox && !!form.chop_inbox_token;
+
+  // Saved straight away: the relay has made the inbox, so the booth must keep
+  // its token even if nobody presses Save.
+  const persist = async (patch: Partial<Settings>) => {
+    const s = await getSettings();
+    await updateSettings({ ...s, ...patch });
+    for (const [k, v] of Object.entries(patch)) set(k as keyof Settings, v as never);
+  };
+
+  const check = async () => {
+    setTest("Checking…");
+    try {
+      const svc = await fetchCurrentService(host);
+      setTest(
+        svc
+          ? `Found it. ${svc.title}, ${new Date(svc.start).toLocaleString([], { weekday: "long", hour: "numeric", minute: "2-digit" })}.`
+          : "Found it, but nothing is scheduled yet.",
+      );
+    } catch (e) {
+      setTest(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const connect = async () => {
+    setBusy(true);
+    setMsg("");
+    try {
+      const { inbox, token } = await createInbox();
+      await persist({ chop_inbox: inbox, chop_inbox_token: token, chop_domain: host });
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const saveSecret = async () => {
+    setBusy(true);
+    setMsg("");
+    try {
+      await setInboxSecret(form.chop_inbox, form.chop_inbox_token, secret);
+      setSecret("");
+      setMsg("Saved. New activity will show within a few seconds of Church Online sending it.");
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const disconnect = async () => {
+    if (!(await askConfirm("Disconnect Church Online webhooks? Delete the webhook in Church Online's admin too."))) return;
+    setBusy(true);
+    try {
+      await deleteInbox(form.chop_inbox, form.chop_inbox_token).catch(() => {});
+      await persist({ chop_inbox: "", chop_inbox_token: "" });
+      setMsg("Disconnected.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const hooks = chop?.webhooks;
+  const ago = (ms: number) => {
+    const m = Math.round((Date.now() - ms) / 60000);
+    return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`;
+  };
+  const people = (crew ?? []).filter((u) => u.approved);
+  const pageTo = form.chop_page_to ?? [];
+
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h3 id="set-chop">Church Online</h3>
+        <span className={`chip ${host ? "online" : ""}`}>{host ? (connected ? "service + webhooks" : "service") : "off"}</span>
+      </div>
+      <p className="muted small">
+        Show your Church Online Platform service on the dashboards: when it starts, and whether it's live. Add the
+        Church Online tile to a dashboard to see it.
+      </p>
+      <div className="settings-grid">
+        <label className="field wide">
+          <span>Your Church Online address</span>
+          <div className="field-row">
+            <input
+              className="input"
+              id="set-chop-domain"
+              placeholder="yourchurch.online.church"
+              value={form.chop_domain ?? ""}
+              onChange={(e) => set("chop_domain", e.target.value)}
+              onBlur={(e) => set("chop_domain", chopHost(e.target.value))}
+            />
+            <button className="btn small" disabled={!host} onClick={check}>Check</button>
+          </div>
+        </label>
+      </div>
+      {test && <p className="hint">{test}</p>}
+
+      <h4 className="card-sub">Activity from Church Online (optional)</h4>
+      <p className="muted small">
+        With webhooks, the tile also counts who watched and chatted, and lists prayer requests and salvation responses
+        as they happen, with names. Church Online doesn't share what people type, so chat and prayer text stay in
+        Church Online. The activity passes through White Oak Media's relay, which keeps names (never email addresses)
+        for three days.
+      </p>
+      {!connected ? (
+        <button className="btn small primary" disabled={!host || busy} onClick={connect}>
+          {busy ? "Setting up…" : "Set up webhooks"}
+        </button>
+      ) : (
+        <>
+          <ol className="guide-steps small">
+            <li>
+              In Church Online, open <strong>Admin, Integrations, Webhooks</strong> and press <strong>Add Webhook</strong>.
+            </li>
+            <li>
+              Paste this as the URL:{" "}
+              <code className="ob-join-url">{webhookUrl(form.chop_inbox)}</code>{" "}
+              <button
+                className="btn small"
+                onClick={() => {
+                  navigator.clipboard?.writeText(webhookUrl(form.chop_inbox)).catch(() => {});
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1500);
+                }}
+              >
+                {copied ? "Copied ✓" : "Copy"}
+              </button>
+            </li>
+            <li>
+              Tick <strong>attended</strong>, <strong>chatted</strong>, <strong>prayer requested</strong> and{" "}
+              <strong>moment interacted</strong>, then save.
+            </li>
+            <li>
+              Church Online shows the webhook's secret key. Paste it here so ProDeck can tell real activity from
+              anything else:
+              <div className="field-row" style={{ marginTop: 6 }}>
+                <input
+                  className="input"
+                  id="set-chop-secret"
+                  type="password"
+                  autoComplete="off"
+                  placeholder={hooks?.hasSecret ? "Saved. Paste a new one to replace it" : "Secret key"}
+                  value={secret}
+                  onChange={(e) => setSecret(e.target.value)}
+                />
+                <button className="btn small primary" disabled={!secret.trim() || busy} onClick={saveSecret}>Save key</button>
+              </div>
+            </li>
+          </ol>
+          <p className="small">
+            {hooks?.error ? (
+              <span className="error">{hooks.error}</span>
+            ) : hooks?.lastBadSignatureAt && hooks.lastBadSignatureAt > (hooks.lastEventAt || 0) ? (
+              <span className="error">
+                Church Online sent activity {ago(hooks.lastBadSignatureAt)}, but the secret key doesn't match. Paste the
+                key again.
+              </span>
+            ) : hooks?.lastEventAt ? (
+              <span>Last activity from Church Online {ago(hooks.lastEventAt)}.</span>
+            ) : (
+              <span className="muted">Waiting for the first activity from Church Online.</span>
+            )}{" "}
+            <button className="link-btn" disabled={busy} onClick={disconnect}>Disconnect</button>
+          </p>
+
+          <h4 className="card-sub">Page the prayer team</h4>
+          <div className="settings-grid">
+            <label className="field check">
+              <input type="checkbox" id="set-chop-page-prayer" checked={form.chop_page_prayer !== false} onChange={(e) => set("chop_page_prayer", e.target.checked)} />
+              <span>When someone asks for prayer</span>
+            </label>
+            <label className="field check">
+              <input type="checkbox" id="set-chop-page-salvation" checked={form.chop_page_salvation !== false} onChange={(e) => set("chop_page_salvation", e.target.checked)} />
+              <span>When someone responds to a salvation moment</span>
+            </label>
+          </div>
+          {people.length === 0 ? (
+            <p className="muted small">Pages go to crew phones. Approve some crew in Crew Members first.</p>
+          ) : (
+            <div className="chop-pick">
+              {people.map((u) => (
+                <label key={u.id} className="field check">
+                  <input
+                    type="checkbox"
+                    id={`set-chop-to-${u.id}`}
+                    checked={pageTo.includes(u.id)}
+                    onChange={(e) => set("chop_page_to", e.target.checked ? [...pageTo, u.id] : pageTo.filter((x) => x !== u.id))}
+                  />
+                  <span>{u.nickname || u.name}{u.role ? <span className="muted"> · {u.role}</span> : null}</span>
+                </label>
+              ))}
+            </div>
+          )}
+          <p className="muted small">Nobody ticked means no pages. Press Save to keep these.</p>
+        </>
+      )}
+      {msg && <p className="hint">{msg}</p>}
     </section>
   );
 }

@@ -277,6 +277,16 @@ pub struct Settings {
     /// Send crash and error reports to White Oak Media (Sentry). On unless
     /// the church turns it off; read once at launch by `crashreport::init`.
     pub crash_reports: bool,
+    /// Church Online Platform: the church's ChOP address, e.g.
+    /// "yourchurch.online.church" or its own domain. Empty = off.
+    pub chop_domain: String,
+    /// The church's webhook inbox on White Oak's relay, and its token.
+    pub chop_inbox: String,
+    pub chop_inbox_token: String,
+    /// Crew to page about online prayer requests / salvation responses.
+    pub chop_page_to: Vec<String>,
+    pub chop_page_prayer: bool,
+    pub chop_page_salvation: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -419,6 +429,12 @@ impl Default for Settings {
             checkin_radius_m: 150,
             checkin_nudge: false,
             crash_reports: true,
+            chop_domain: String::new(),
+            chop_inbox: String::new(),
+            chop_inbox_token: String::new(),
+            chop_page_to: Vec::new(),
+            chop_page_prayer: true,
+            chop_page_salvation: true,
         }
     }
 }

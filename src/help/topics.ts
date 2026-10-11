@@ -73,6 +73,7 @@ export const HELP_TOPICS: HelpTopic[] = [
 - **Sound console** — Allen & Heath Avantis, dLive and SQ; Behringer X32 / Midas M32; Yamaha CL, QL and TF (view only for now). Mutes, faders, names, scenes.
 - **OBS Studio** — are we streaming, are we recording, dropped frames.
 - **NDI cameras** — a stage feed on any dashboard or kiosk.
+- **Church Online Platform** — your online service's countdown, who watched and chatted, prayer requests and salvation responses, with pages to the prayer team.
 - **Crew phones** — a web app your volunteers add to their home screen: check-in, chat, pages that buzz, chord charts, checklists.
 - **TapLink** — NFC discs in the lobby that always open the right link for the moment in the service.
 - **Reports** — what actually happened each Sunday: timing, SPL, tap counts.
@@ -756,6 +757,28 @@ Move ProDeck to the Applications folder first — the watchdog needs a path that
 
 Reload the phone or kiosk after updating the booth.`,
     related: ["updates", "gateway-passwords", "report-problem"],
+  },
+  {
+    id: "church-online",
+    group: "Video",
+    title: "Church Online Platform",
+    aliases: ["chop", "church online", "online service", "online church", "prayer requests online", "salvation responses", "online chat", "online attendance", "webhooks"],
+    body: `ProDeck shows your Church Online Platform service on any dashboard: add the **Church Online** tile.
+
+**Step 1: the service.** **Settings → Church Online**, type your Church Online address (like \`yourchurch.online.church\`, or your own domain if you use one) and press **Check**. The tile now counts down to the next online service and shows when it's live. Nothing else to set up.
+
+**Step 2: activity (optional).** Press **Set up webhooks** and follow the four steps on the card. In Church Online's **Admin → Integrations → Webhooks**, add a webhook with the address ProDeck gives you, tick attended, chatted, prayer requested and moment interacted, then paste the secret key Church Online shows back into ProDeck. From then on the tile shows:
+
+- how many people **watched** and **chatted** (and how many messages),
+- **prayer requests** and **salvation responses**, with the person's name, as they happen.
+
+**Paging the prayer team.** On the same card, tick who should be paged. When someone asks for prayer or responds to a salvation moment, their phones buzz with the name, so someone can go and pray with them in Church Online.
+
+**What it can't do.** Church Online doesn't share what people type, so chat messages and prayer requests themselves stay in Church Online, and ProDeck can't post into the chat. Some numbers (who watched, how long) may only arrive when Church Online sends them, which can be after the service.
+
+**Privacy.** Church Online sends the activity to White Oak Media's relay, because a booth computer has no public address to receive it. The relay keeps the person's first name and last initial (never email addresses) for three days, checks every message is really from Church Online, and only your booth can read your inbox. **Disconnect** on the card deletes the inbox.`,
+    settings: "set-chop",
+    related: ["report-problem"],
   },
   {
     id: "report-problem",
