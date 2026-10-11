@@ -100,6 +100,7 @@ import { useFollowLive } from "../lib/followLive";
 import { ppTriggerActiveCue } from "../lib/tauri";
 import { useChop } from "../chopStore";
 import { useMusic } from "../musicStore";
+import { resiEmbedId, resiPlayerUrl } from "../lib/resi";
 import { phaseOf } from "../lib/chop";
 
 export interface WidgetProps {
@@ -352,6 +353,68 @@ function WalkInMusicWidget() {
       )}
       {fadeLine && <span className="muted small">{fadeLine}</span>}
       {err && <span className="error small">{err}</span>}
+    </div>
+  );
+}
+
+/**
+ * Stream Monitor: the church's Resi web player, as viewers at home see it.
+ * Muted with no controls on the booth (its sound can feed the house); phones
+ * can unmute. Configured by pasting Resi's embed code into the tile.
+ */
+function StreamMonitorWidget({ widget, editing, update }: WidgetProps) {
+  const [draft, setDraft] = useState("");
+  const id: string = widget.config.resiId ?? "";
+  if (editing) {
+    const parsed = draft.trim() ? resiEmbedId(draft) : null;
+    return (
+      <div className="w-config" onMouseDown={(e) => e.stopPropagation()}>
+        <span className="muted small">
+          Paste your Resi embed code (Resi Studio, Web Channels, your channel, Embed) or the player link.
+        </span>
+        <textarea
+          className="input"
+          id={`stream-embed-${widget.id}`}
+          rows={4}
+          placeholder={id ? `Showing Resi player ${id.slice(0, 8)}…. Paste new code to change it.` : '<div …><iframe … src="https://control.resi.io/webplayer/video.html?id=…">'}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+        />
+        {draft.trim() && !parsed && <span className="error small">That isn't a Resi player. Copy the embed code from Resi Studio.</span>}
+        <div className="field-row">
+          <button className="btn small primary" disabled={!parsed} onClick={() => { update({ resiId: parsed }); setDraft(""); }}>
+            Use this stream
+          </button>
+          {id && <button className="btn small ghost" onClick={() => update({ resiId: "" })}>Remove</button>}
+        </div>
+      </div>
+    );
+  }
+  if (!id)
+    return (
+      <div className="widget-empty needs-conn">
+        <div className="needs-conn-inner">
+          <p className="needs-conn-hint">Edit this tile and paste your Resi embed code to watch the stream here.</p>
+        </div>
+      </div>
+    );
+  return (
+    <div className="w-stream">
+      <div className="stream-frame">
+        <iframe
+          key={`${id}-${IS_WEB ? "web" : "booth"}`}
+          src={resiPlayerUrl(id, { booth: !IS_WEB })}
+          title="Live stream"
+          allow="autoplay; fullscreen"
+          allowFullScreen
+          sandbox="allow-scripts allow-same-origin allow-presentation"
+          referrerPolicy="no-referrer"
+        />
+      </div>
+      <span className="muted small">
+        As viewers see it, usually 20 to 40 seconds behind the room.{" "}
+        {IS_WEB ? "Muted to start; unmute on this device if you need to hear it." : "Always muted on the booth so it can't play into the house."}
+      </span>
     </div>
   );
 }
@@ -3680,6 +3743,7 @@ export const WIDGETS: WidgetDef[] = [
   { type: "obs", label: "OBS — Live & Scene", group: "Video", w: 4, h: 3, component: ObsWidget },
   { type: "video_input", label: "Stage Feed (NDI)", group: "Video", w: 4, h: 4, component: VideoInputWidget },
   { type: "church_online", label: "Church Online", group: "Video", w: 4, h: 4, component: ChurchOnlineWidget },
+  { type: "stream_monitor", label: "Stream Monitor (Resi)", group: "Video", w: 5, h: 5, component: StreamMonitorWidget },
   { type: "walk_in_music", label: "Walk-in Music", group: "Audio", w: 4, h: 4, component: WalkInMusicWidget },
   { type: "live_viewers", label: "Live Viewers (Online)", group: "ProPresenter", w: 3, h: 4, component: LiveViewersWidget },
   { type: "switcher_cues", label: "Switcher Cues (What's Next)", group: "Video", w: 5, h: 5, component: SwitcherCuesWidget },

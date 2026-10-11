@@ -10272,3 +10272,8 @@ select.input {
 .music-vol { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 120px; }
 .music-vol input { flex: 1; min-width: 0; }
 .music-vol-n { width: 2.5em; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Stream Monitor tile (StreamMonitorWidget). */
+.w-stream { display: flex; flex-direction: column; gap: 6px; height: 100%; min-height: 0; }
+.stream-frame { position: relative; width: 100%; aspect-ratio: 16 / 9; max-height: 100%; background: #000; border-radius: var(--radius-sm); overflow: hidden; }
+.stream-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }

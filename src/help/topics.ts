@@ -759,6 +759,21 @@ Reload the phone or kiosk after updating the booth.`,
     related: ["updates", "gateway-passwords", "report-problem"],
   },
   {
+    id: "stream-monitor",
+    group: "Video",
+    title: "Watching your Resi stream in ProDeck",
+    aliases: ["resi", "stream monitor", "livestream preview", "watch the stream", "is the stream live", "confidence monitor", "web player"],
+    body: `The **Stream Monitor (Resi)** tile shows your Resi stream exactly as people at home see it, so you can check you're really live and it looks right.
+
+**Set up.** In Resi Studio, open **Web Channels**, your channel, **Embed**, and copy the embed code. In ProDeck, **Dashboard → Edit**, add **Stream Monitor (Resi)**, paste the code into the tile and press **Use this stream**.
+
+**Good to know.**
+- It's the viewers' copy, usually **20 to 40 seconds behind** the room. For a picture with no delay, use the **Stage Feed (NDI)** tile with your switcher's output.
+- On the **booth** it is **always muted, with no player controls**, because the booth computer's sound can feed the house. On **phones and kiosks** it starts muted and can be unmuted on that device.
+- It doesn't count as a viewer in Resi's analytics.`,
+    related: ["church-online"],
+  },
+  {
     id: "walk-in-music",
     group: "Audio",
     title: "Walk-in music",
