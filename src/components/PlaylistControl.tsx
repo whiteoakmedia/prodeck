@@ -63,12 +63,18 @@ export function PlaylistControl({
   slideSize,
   onSlideSize,
   page = false,
+  expandAll = page,
+  readOnly = false,
 }: {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   slideSize?: number;
   onSlideSize?: (n: number) => void;
   page?: boolean; // spacious page layout: all songs open, no inner scroll
+  /** Open every song when the playlist loads (the page does; so does the Slide Grid). */
+  expandAll?: boolean;
+  /** Look but don't touch: slides can't be triggered (a member's phone or kiosk). */
+  readOnly?: boolean;
 }) {
   const { connected, status } = useProDeck();
   const [playlists, setPlaylists] = useState<PlNode[]>([]);
@@ -160,7 +166,7 @@ export function PlaylistControl({
           .filter((it: PlItem) => it.itemUuid);
         setItems(its);
         // On the spacious page, open every song so all slides are visible.
-        setOpen(page ? new Set(its.map((i) => i.itemUuid)) : new Set());
+        setOpen(expandAll ? new Set(its.map((i) => i.itemUuid)) : new Set());
       })
       .catch(() => {
         if (live) setItems([]);
@@ -171,7 +177,7 @@ export function PlaylistControl({
     return () => {
       live = false;
     };
-  }, [connected, sel, page]);
+  }, [connected, sel, expandAll]);
 
   // Load slide lists for any open song that doesn't have them yet. Keyed by
   // presentation + arrangement, so the same song used with two arrangements
@@ -210,6 +216,7 @@ export function PlaylistControl({
   // macros) fire. alreadyActive (this item is the live one) skips re-activating
   // it, which would flash back to its first slide.
   const trigger = (it: PlItem, cueIndex: number, alreadyActive: boolean) => {
+    if (readOnly) return;
     if (!it.presUuid || !sel) {
       setTrigErr("This item isn't linked to a presentation, so it can't be triggered.");
       return;
@@ -245,9 +252,10 @@ export function PlaylistControl({
           key={s.index}
           className={`pl-slide ${isLive && liveIdx === s.index ? "active" : ""}`}
           onClick={() => trigger(it, s.index, isLive)}
+          disabled={readOnly}
           title={`${s.group ? s.group + " — " : ""}slide ${s.index + 1}${
             s.text ? ": " + s.text : ""
-          }`}
+          }${readOnly ? " (view only)" : ""}`}
         >
           <SlideThumb
             uuid={it.presUuid}
@@ -337,14 +345,14 @@ export function PlaylistControl({
                     {sl !== undefined && <span className="pl-count">{sl.length}</span>}
                   </button>
                   {isLive && <span className="pl-livetag">LIVE</span>}
-                  <button
+                  {!readOnly && <button
                     className="btn small primary pl-go"
                     title="Trigger from first slide"
                     onClick={() => trigger(it, 0, isLive)}
                     disabled={!it.presUuid}
                   >
                     <Icon name="next" size={12} />
-                  </button>
+                  </button>}
                 </div>
                 {isExpanded && (
                   <div

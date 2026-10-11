@@ -3250,6 +3250,9 @@ select.input {
   gap: 5px;
 }
 .pl-item {
+  /* Full height, always: the list scrolls. Squeezed to fit, every open song
+     showed one row of slides with the rest cut off. */
+  flex: none;
   border: 1px solid var(--hairline);
   border-radius: var(--radius-sm);
   overflow: hidden;
@@ -3371,8 +3374,11 @@ select.input {
   background: var(--panel-3);
   line-height: 0;
 }
-.pl-slide:hover {
+.pl-slide:hover:not(:disabled) {
   border-color: var(--accent);
+}
+.pl-slide:disabled {
+  cursor: default;
 }
 .pl-slide.active {
   border-color: var(--live);

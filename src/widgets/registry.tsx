@@ -91,7 +91,7 @@ import {
   NeedsWeb,
 } from "../components/NeedsConnection";
 import { RtaGraph } from "../components/RtaGraph";
-import { type Slide } from "../components/PlaylistControl";
+import { PlaylistControl, type Slide } from "../components/PlaylistControl";
 import { parseSlides, slidesForActivePresentation } from "../lib/slideOrder";
 import { useLiveItem } from "../lib/useLiveItem";
 import { useFollowLive } from "../lib/followLive";
@@ -306,7 +306,70 @@ function LiveViewersWidget() {
   );
 }
 
-function SlideGridWidget() {
+/**
+ * Slide Grid. Two views:
+ *   playlist (default): the whole live playlist with a picture of every slide,
+ *     like the ProPresenter page, following ProPresenter from playlist to
+ *     playlist and slide to slide.
+ *   song: just the live song, as text cards (the original, compact view).
+ */
+function SlideGridWidget({ widget, editing, update }: WidgetProps) {
+  const view = widget.config.view === "song" ? "song" : "playlist";
+  if (editing) {
+    return (
+      <div className="w-config">
+        <span className="muted small">Show</span>
+        <select
+          className="input"
+          id={`sg-view-${widget.id}`}
+          value={view}
+          onMouseDown={(e) => e.stopPropagation()}
+          onChange={(e) => update({ view: e.target.value })}
+        >
+          <option value="playlist">The whole playlist, with pictures</option>
+          <option value="song">Only the live song, as text</option>
+        </select>
+      </div>
+    );
+  }
+  return view === "song" ? <SlideGridSong /> : <SlideGridPlaylist widget={widget} update={update} />;
+}
+
+function SlideGridPlaylist({ widget, update }: Pick<WidgetProps, "widget" | "update">) {
+  const { connected, status } = useProDeck();
+  const { can } = usePerms();
+  const pres = activePresentation(status);
+  const live = useLiveItem(connected, pres.uuid ?? "", currentTotalCues(status));
+  const livePlaylist = live?.playlistId ?? null;
+  const [sel, setSel] = useState<string | null>(widget.config.playlistId ?? null);
+  // Follow ProPresenter onto whichever playlist it's playing from. A playlist
+  // picked by hand stays until ProPresenter moves to a different one.
+  const lastLive = useRef<string | null>(null);
+  useEffect(() => {
+    if (!livePlaylist || livePlaylist === lastLive.current) return;
+    lastLive.current = livePlaylist;
+    setSel(livePlaylist);
+    if (widget.config.playlistId !== livePlaylist) update({ playlistId: livePlaylist });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [livePlaylist]);
+
+  if (!connected) return <Disconnected />;
+  return (
+    <PlaylistControl
+      expandAll
+      readOnly={!can("control")}
+      selectedId={sel}
+      onSelect={(id) => {
+        setSel(id);
+        update({ playlistId: id });
+      }}
+      slideSize={typeof widget.config.slideSize === "number" ? widget.config.slideSize : 140}
+      onSlideSize={(n) => update({ slideSize: n })}
+    />
+  );
+}
+
+function SlideGridSong() {
   const { connected, status } = useProDeck();
   const [slides, setSlides] = useState<Slide[] | null>(null);
   const pres = activePresentation(status);
