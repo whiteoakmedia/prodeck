@@ -95,3 +95,22 @@ describe("booth video", () => {
     expect(await resiLatestEvent(ID, none as unknown as typeof fetch)).toBeNull();
   });
 });
+
+import { liveSeekTarget } from "../lib/resi";
+
+describe("liveSeekTarget", () => {
+  it("jumps from the beginning of a long event to near the live edge", () => {
+    expect(liveSeekTarget(0, 2940, 0)).toBe(2934);
+  });
+  it("leaves a player that's already live alone", () => {
+    expect(liveSeekTarget(0, 2940, 2932)).toBeNull();
+  });
+  it("catches up when it drifts behind", () => {
+    expect(liveSeekTarget(0, 3000, 2950)).toBe(2994);
+  });
+  it("never jumps before what can be played, and waits for a range", () => {
+    expect(liveSeekTarget(100, 104, 0)).toBe(100);
+    expect(liveSeekTarget(0, 0, 0)).toBeNull();
+    expect(liveSeekTarget(0, Infinity, 0)).toBeNull();
+  });
+});

@@ -100,7 +100,7 @@ import { useFollowLive } from "../lib/followLive";
 import { ppTriggerActiveCue } from "../lib/tauri";
 import { useChop } from "../chopStore";
 import { useMusic } from "../musicStore";
-import { isBoothScreen, isResiMedia, pickVariant, playlistEnded, resiEmbedId, resiLatestEvent, resiPlayerUrl, videoVariants } from "../lib/resi";
+import { isBoothScreen, isResiMedia, liveSeekTarget, pickVariant, playlistEnded, resiEmbedId, resiLatestEvent, resiPlayerUrl, videoVariants } from "../lib/resi";
 import { phaseOf } from "../lib/chop";
 
 export interface WidgetProps {
@@ -409,7 +409,22 @@ function BoothStream({ id }: { id: string }) {
     hush();
     const evs = ["volumechange", "loadedmetadata", "play", "playing"];
     evs.forEach((e) => v.addEventListener(e, hush));
-    return () => evs.forEach((e) => v.removeEventListener(e, hush));
+    // Stay at the live point: the Mac's player opens Resi's live playlist at
+    // its first chunk, and a monitor that drifts behind is no monitor.
+    const toLive = () => {
+      const r = v.seekable;
+      if (!r.length) return;
+      const to = liveSeekTarget(r.start(r.length - 1), r.end(r.length - 1), v.currentTime);
+      if (to !== null) v.currentTime = to;
+    };
+    const liveEvs = ["loadedmetadata", "canplay"];
+    liveEvs.forEach((e) => v.addEventListener(e, toLive));
+    const iv = setInterval(toLive, 10_000);
+    return () => {
+      evs.forEach((e) => v.removeEventListener(e, hush));
+      liveEvs.forEach((e) => v.removeEventListener(e, toLive));
+      clearInterval(iv);
+    };
   }, [st?.url]);
 
   const note = (text: string) => (

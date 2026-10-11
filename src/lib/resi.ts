@@ -110,3 +110,18 @@ export function pickVariant(vs: Variant[], maxHeight = 540): Variant | null {
 
 /** A finished event's playlist ends with ENDLIST; a live one doesn't. */
 export const playlistEnded = (media: string) => /#EXT-X-ENDLIST/.test(media);
+
+/**
+ * Where the booth player should be: near the live edge. Resi's live playlists
+ * are EVENT playlists (every chunk since the start is kept), and the Mac's
+ * player opens those at the beginning, so a monitor showed the service from
+ * its first minute. Returns the time to jump to, or null when it's already
+ * close enough. `seekStart`/`seekEnd` are the player's seekable range.
+ */
+export function liveSeekTarget(seekStart: number, seekEnd: number, current: number): number | null {
+  if (!Number.isFinite(seekEnd) || seekEnd <= 0) return null;
+  // A few seconds back from the very edge, so it doesn't stall waiting for
+  // the next chunk; re-jump only when more than 15 s behind.
+  const target = Math.max(seekStart, seekEnd - 6);
+  return seekEnd - current > 15 ? target : null;
+}
