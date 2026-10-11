@@ -44,6 +44,19 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.104 — 11 October 2026
+
+### New: the stream on the booth, picture only
+
+The **Stream Monitor (Resi)** tile now shows your stream on the booth computer
+too, as a picture with no sound. Resi sends a stream's sound separately, and on
+the booth ProDeck plays only the picture, so no sound is ever downloaded there,
+let alone played. Between services it says "Not live right now" instead of
+replaying the last one. Mac only for now. Phones and kiosks still use Resi's
+own player, muted to start.
+
+Everything from 0.9.102 and 0.9.103 is in this release too.
+
 ## 0.9.103 — 11 October 2026
 
 ### New: Stream Monitor (Resi)
