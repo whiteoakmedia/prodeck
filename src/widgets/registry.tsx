@@ -100,7 +100,7 @@ import { useFollowLive } from "../lib/followLive";
 import { ppTriggerActiveCue } from "../lib/tauri";
 import { useChop } from "../chopStore";
 import { useMusic } from "../musicStore";
-import { resiEmbedId, resiPlayerUrl } from "../lib/resi";
+import { isBoothScreen, resiEmbedId, resiPlayerUrl } from "../lib/resi";
 import { phaseOf } from "../lib/chop";
 
 export interface WidgetProps {
@@ -358,9 +358,10 @@ function WalkInMusicWidget() {
 }
 
 /**
- * Stream Monitor: the church's Resi web player, as viewers at home see it.
- * Muted with no controls on the booth (its sound can feed the house); phones
- * can unmute. Configured by pasting Resi's embed code into the tile.
+ * Stream Monitor: the church's Resi web player, as viewers at home see it, on
+ * phones and kiosks (starting muted). Never on the booth computer: its sound
+ * can feed the house, so the player isn't loaded there at all (lib/resi).
+ * Configured by pasting Resi's embed code into the tile.
  */
 function StreamMonitorWidget({ widget, editing, update }: WidgetProps) {
   const [draft, setDraft] = useState("");
@@ -398,12 +399,22 @@ function StreamMonitorWidget({ widget, editing, update }: WidgetProps) {
         </div>
       </div>
     );
+  if (isBoothScreen(IS_WEB, location.hostname))
+    return (
+      <div className="widget-empty needs-conn">
+        <div className="needs-conn-inner">
+          <p className="needs-conn-hint">
+            The stream plays on phones and kiosks, never on this computer, so its sound can't reach the house.
+          </p>
+        </div>
+      </div>
+    );
   return (
     <div className="w-stream">
       <div className="stream-frame">
         <iframe
-          key={`${id}-${IS_WEB ? "web" : "booth"}`}
-          src={resiPlayerUrl(id, { booth: !IS_WEB })}
+          key={id}
+          src={resiPlayerUrl(id)}
           title="Live stream"
           allow="autoplay; fullscreen"
           allowFullScreen
@@ -412,8 +423,7 @@ function StreamMonitorWidget({ widget, editing, update }: WidgetProps) {
         />
       </div>
       <span className="muted small">
-        As viewers see it, usually 20 to 40 seconds behind the room.{" "}
-        {IS_WEB ? "Muted to start; unmute on this device if you need to hear it." : "Always muted on the booth so it can't play into the house."}
+        As viewers see it, usually 20 to 40 seconds behind the room. Muted to start; unmute on this device if you need to hear it.
       </span>
     </div>
   );

@@ -2,9 +2,11 @@
 //
 // Only a Resi embed ID is ever accepted, and the player address is built here,
 // so a dashboard can't be made to load some other page. Resi's player reads
-// its options from the address (webplayer/loader.min.js): on the booth it
-// plays muted with no controls, because the booth computer's sound can feed
-// the house and a viewer-side player is 20 to 40 seconds behind the room.
+// its options from the address (webplayer/loader.min.js); it starts muted.
+//
+// The booth computer never loads the player at all (isBoothScreen). Its sound
+// can feed the house, and "muted" is only a setting inside Resi's player that
+// ProDeck can't check, so the one guarantee is not playing it there.
 
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 
@@ -20,15 +22,24 @@ export function resiEmbedId(input: string): string | null {
   return null;
 }
 
-export function resiPlayerUrl(id: string, opts: { booth: boolean }): string {
+export function resiPlayerUrl(id: string): string {
   const q = new URLSearchParams({
     id,
     autoplay: "true",
     mute: "true",
-    // No controls on the booth: nothing to unmute into the house by accident.
-    controls: opts.booth ? "false" : "true",
+    controls: "true",
     // A monitor isn't a viewer; keep it out of the church's numbers.
     disableAnalytics: "true",
   });
   return `https://control.resi.io/webplayer/video.html?${q.toString()}`;
+}
+
+/**
+ * True on the booth computer: the app itself, or a browser on the same
+ * computer pointed at its own gateway. The stream never plays there.
+ */
+export function isBoothScreen(isWeb: boolean, hostname: string): boolean {
+  if (!isWeb) return true;
+  const h = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  return h === "localhost" || h === "127.0.0.1" || h === "::1" || h.endsWith(".localhost");
 }

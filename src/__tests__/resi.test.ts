@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resiEmbedId, resiPlayerUrl } from "../lib/resi";
+import { isBoothScreen, resiEmbedId, resiPlayerUrl } from "../lib/resi";
 
 const ID = "d4797dd3-2766-4b6e-9866-4e21e4ac9382";
 const EMBED = `<div style="position:relative;overflow:hidden;padding-top:56.25%;">
@@ -24,13 +24,23 @@ describe("resiEmbedId", () => {
 });
 
 describe("resiPlayerUrl", () => {
-  it("plays muted with no controls on the booth", () => {
-    const u = new URL(resiPlayerUrl(ID, { booth: true }));
+  it("is always a muted Resi player, kept out of the analytics", () => {
+    const u = new URL(resiPlayerUrl(ID));
     expect(u.origin + u.pathname).toBe("https://control.resi.io/webplayer/video.html");
-    expect(Object.fromEntries(u.searchParams)).toEqual({ id: ID, autoplay: "true", mute: "true", controls: "false", disableAnalytics: "true" });
+    expect(Object.fromEntries(u.searchParams)).toEqual({ id: ID, autoplay: "true", mute: "true", controls: "true", disableAnalytics: "true" });
+  });
+});
+
+describe("isBoothScreen", () => {
+  it("is the app itself, and any browser on the booth computer", () => {
+    expect(isBoothScreen(false, "tauri.localhost")).toBe(true);
+    expect(isBoothScreen(true, "localhost")).toBe(true);
+    expect(isBoothScreen(true, "127.0.0.1")).toBe(true);
+    expect(isBoothScreen(true, "[::1]")).toBe(true);
   });
 
-  it("starts muted on phones but lets them unmute", () => {
-    expect(new URL(resiPlayerUrl(ID, { booth: false })).searchParams.get("controls")).toBe("true");
+  it("is not a phone or kiosk on the network", () => {
+    expect(isBoothScreen(true, "192.168.1.40")).toBe(false);
+    expect(isBoothScreen(true, "booth.local")).toBe(false);
   });
 });
