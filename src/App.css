@@ -10254,3 +10254,21 @@ select.input {
 .chop-dot.salvation { background: var(--good); }
 .chop-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 4px 12px; margin: 6px 0; }
 .card-sub { margin: 16px 0 6px; font-size: 13px; font-weight: 700; }
+
+/* Walk-in Music tile (WalkInMusicWidget). */
+.w-music { display: flex; flex-direction: column; gap: 10px; }
+.music-now { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.music-art { width: 56px; height: 56px; border-radius: var(--radius-sm); object-fit: cover; flex: none; }
+.music-art-ph { background: var(--panel-2); border: 1px solid var(--hairline); }
+.music-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.music-track, .music-artist { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.music-state { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.music-state.playing { color: var(--good); }
+.music-state.fading { color: var(--warn); }
+.music-bar { height: 4px; border-radius: 2px; background: var(--hairline); overflow: hidden; }
+.music-bar span { display: block; height: 100%; background: var(--accent); }
+.music-btns { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.music-play { min-width: 72px; }
+.music-vol { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 120px; }
+.music-vol input { flex: 1; min-width: 0; }
+.music-vol-n { width: 2.5em; text-align: right; font-variant-numeric: tabular-nums; }

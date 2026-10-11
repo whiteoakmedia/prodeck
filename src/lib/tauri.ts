@@ -391,7 +391,35 @@ export interface Settings {
   chop_page_to: string[];
   chop_page_prayer: boolean;
   chop_page_salvation: boolean;
+  /** Walk-in music app: "spotify", "music" or "" (off). Mac only. */
+  music_app: string;
+  /** What Start walk-in plays: a Spotify link, or a Music playlist name. */
+  music_playlist: string;
+  /** App volume (0-100) walk-in music fades up to. */
+  music_volume: number;
+  /** Fade out so the music is silent as each service starts. */
+  music_auto_fade: boolean;
+  music_fade_secs: number;
 }
+
+export interface MusicState {
+  /** "spotify" | "music" | "" (off). */
+  app: string;
+  state: "playing" | "paused" | "stopped" | "not_running" | "unavailable" | "off" | string;
+  volume: number;
+  track: string;
+  artist: string;
+  album: string;
+  duration_ms: number;
+  position_ms: number;
+  artwork: string;
+  fading: boolean;
+  error: string;
+}
+export type MusicAction = "play" | "pause" | "toggle" | "next" | "previous" | "volume" | "fade_out" | "start";
+export const musicState = () => invoke<MusicState>("music_state");
+export const musicControl = (action: MusicAction, value?: number) =>
+  invoke<{ ok: boolean }>("music_control", { action, value: value ?? null });
 
 export const chopSetState = (state: unknown) => invoke<void>("chop_set_state", { state });
 export const chopGetState = () => invoke<unknown>("chop_get_state");

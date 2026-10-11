@@ -971,6 +971,7 @@ export function SettingsPage() {
       </section>
 
       {!IS_WEB && <ChopCard form={form} set={set} crew={crew} />}
+      {!IS_WEB && <WalkInCard form={form} set={set} />}
 
       <section className="card">
         <div className="card-head">
@@ -3197,6 +3198,82 @@ function BackupCard() {
       </div>
       {msg && <p className="hint">{msg}</p>}
       <p className="hint"><strong>The backup contains your passwords and API keys</strong> (that's what makes it a full restore). Keep it like a password: a drive in a safe, or an encrypted cloud folder — not email.</p>
+    </section>
+  );
+}
+
+/**
+ * Walk-in music: which app on this computer ProDeck controls, what Start
+ * walk-in plays, and the automatic fade as each service starts.
+ */
+function WalkInCard({ form, set }: { form: Settings; set: <K extends keyof Settings>(k: K, v: Settings[K]) => void }) {
+  const mac = /Mac/.test(navigator.userAgent);
+  const appName = form.music_app === "spotify" ? "Spotify" : form.music_app === "music" ? "Music" : "the music app";
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h3 id="set-music">Walk-in music</h3>
+        <span className={`chip ${form.music_app ? "online" : ""}`}>{form.music_app ? appName : "off"}</span>
+      </div>
+      <p className="muted small">
+        Control the music playing on this computer from any dashboard or crew phone, and fade it out by itself so it's
+        silent as the service starts. Works with the Spotify app or Apple's Music app, signed in as usual; there's no
+        Spotify account to connect. Add the Walk-in Music tile to a dashboard.
+      </p>
+      {!mac && <p className="error small">Walk-in music needs a Mac for now.</p>}
+      <div className="settings-grid">
+        <label className="field">
+          <span>App</span>
+          <select className="input" id="set-music-app" value={form.music_app ?? ""} onChange={(e) => set("music_app", e.target.value)}>
+            <option value="">Off</option>
+            <option value="spotify">Spotify</option>
+            <option value="music">Music (Apple)</option>
+          </select>
+        </label>
+        <label className="field wide">
+          <span>{form.music_app === "music" ? "Playlist name for Start walk-in" : "Spotify link for Start walk-in"}</span>
+          <input
+            className="input"
+            id="set-music-playlist"
+            placeholder={form.music_app === "music" ? "Sunday walk-in" : "https://open.spotify.com/playlist/… (Share, Copy link)"}
+            value={form.music_playlist ?? ""}
+            onChange={(e) => set("music_playlist", e.target.value)}
+          />
+        </label>
+        <label className="field">
+          <span>Walk-in volume (0 to 100)</span>
+          <input
+            className="input"
+            id="set-music-volume"
+            type="number"
+            min={0}
+            max={100}
+            value={form.music_volume ?? 60}
+            onChange={(e) => set("music_volume", Math.max(0, Math.min(100, parseInt(e.target.value) || 0)))}
+          />
+        </label>
+        <label className="field check">
+          <input type="checkbox" id="set-music-autofade" checked={form.music_auto_fade !== false} onChange={(e) => set("music_auto_fade", e.target.checked)} />
+          <span>Fade out by itself so it's silent as each service starts</span>
+        </label>
+        <label className="field">
+          <span>Fade length (seconds)</span>
+          <input
+            className="input"
+            id="set-music-fade"
+            type="number"
+            min={3}
+            max={120}
+            value={form.music_fade_secs ?? 15}
+            onChange={(e) => set("music_fade_secs", Math.max(3, Math.min(120, parseInt(e.target.value) || 15)))}
+          />
+        </label>
+      </div>
+      <p className="hint">
+        The first time, macOS asks whether ProDeck may control {appName}: choose Allow. The fade follows the service
+        times in Planning Center. Playing music in church needs the right licence: Spotify's and Apple's own terms are
+        for personal listening, so check your church's licensing before using them for walk-in music.
+      </p>
     </section>
   );
 }

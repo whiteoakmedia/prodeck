@@ -287,6 +287,16 @@ pub struct Settings {
     pub chop_page_to: Vec<String>,
     pub chop_page_prayer: bool,
     pub chop_page_salvation: bool,
+    /// Walk-in music: "spotify", "music" (Apple's Music app) or "" (off).
+    pub music_app: String,
+    /// What Start walk-in plays: a Spotify link, or a Music playlist name.
+    pub music_playlist: String,
+    /// The app's volume (0-100) walk-in music fades up to.
+    pub music_volume: u32,
+    /// Fade the music out so it's silent as each service starts.
+    pub music_auto_fade: bool,
+    /// How long that fade takes, in seconds.
+    pub music_fade_secs: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -435,6 +445,11 @@ impl Default for Settings {
             chop_page_to: Vec::new(),
             chop_page_prayer: true,
             chop_page_salvation: true,
+            music_app: String::new(),
+            music_playlist: String::new(),
+            music_volume: 60,
+            music_auto_fade: true,
+            music_fade_secs: 15,
         }
     }
 }

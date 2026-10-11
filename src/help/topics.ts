@@ -759,6 +759,23 @@ Reload the phone or kiosk after updating the booth.`,
     related: ["updates", "gateway-passwords", "report-problem"],
   },
   {
+    id: "walk-in-music",
+    group: "Audio",
+    title: "Walk-in music",
+    aliases: ["spotify", "apple music", "music app", "pre-service music", "walk in music", "fade out music", "house music", "background music"],
+    body: `ProDeck can control the music playing on the booth computer, in the **Spotify** app or Apple's **Music** app, from any dashboard or crew phone. There's no Spotify account to connect: ProDeck asks the app that's already open and signed in. Mac only for now.
+
+**Set up.** **Settings → Walk-in music**: choose the app, paste the playlist **Start walk-in** should play (in Spotify: the playlist's **…**, **Share**, **Copy link**; in Music, type the playlist's name), and set the walk-in volume. Add the **Walk-in Music** tile to a dashboard. The first time, macOS asks whether ProDeck may control the app: choose **Allow**. If you said no, switch it on in **System Settings → Privacy & Security → Automation**, under ProDeck.
+
+**On the tile:** what's playing, play and pause, skip, volume, **Start walk-in** (plays the playlist and fades it up over a few seconds) and **Fade out**. Crew phones need the control permission to use the buttons; everyone else sees what's playing.
+
+**The automatic fade.** With **Fade out by itself** ticked, ProDeck fades the music so it's silent as each service time in Planning Center starts, once per service, then pauses it and puts the volume back for next time. Rehearsal and call times never trigger it.
+
+**Licensing.** Spotify's and Apple's terms are for personal listening. Check your church's music licensing before using them for walk-in music.`,
+    settings: "set-music",
+    related: ["church-online"],
+  },
+  {
     id: "church-online",
     group: "Video",
     title: "Church Online Platform",

@@ -48,6 +48,8 @@ import {
   ppSetStageMessage,
   ppTimerOp,
   startAudioCapture,
+  musicControl,
+  type MusicAction,
   stopAudioCapture,
   tapEdgeState,
   tapOverride,
@@ -64,7 +66,7 @@ import {
 import type { Widget } from "../lib/dashboards";
 import { usePco, fmtLen, type TeamMember , isDeclined } from "../pcoStore";
 import { stageCallState, stageCallServiceState, serviceEndsAt, fmtClock } from "../lib/stageCall";
-import { servicePhase, displayServiceTimeId } from "../lib/serviceClock";
+import { servicePhase, displayServiceTimeId, serviceTimesOnly } from "../lib/serviceClock";
 import { itemStartTimes } from "../lib/planTimes";
 import { freshness } from "../lib/planPick";
 import { useAlerts } from "../alertsStore";
@@ -97,6 +99,7 @@ import { useLiveItem } from "../lib/useLiveItem";
 import { useFollowLive } from "../lib/followLive";
 import { ppTriggerActiveCue } from "../lib/tauri";
 import { useChop } from "../chopStore";
+import { useMusic } from "../musicStore";
 import { phaseOf } from "../lib/chop";
 
 export interface WidgetProps {
@@ -241,6 +244,114 @@ function ObsWidget() {
           </span>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Walk-in music: what Spotify or Music is playing on the booth, with play,
+ * pause, skip, volume, Start walk-in (playlist, faded up) and Fade out. Fades
+ * out by itself so it's silent as the service starts (musicStore).
+ */
+function WalkInMusicWidget() {
+  const { settings } = useProDeck();
+  const { serviceTimes } = usePco();
+  const m = useMusic();
+  const { can } = usePerms();
+  const canControl = can("control");
+  const [vol, setVol] = useState<number | null>(null);
+  const [err, setErr] = useState("");
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const iv = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(iv);
+  }, []);
+
+  if ((settings && !settings.music_app) || m?.state === "off")
+    return (
+      <NeedsConnection
+        what="walk-in music"
+        hint={IS_WEB ? "Walk-in music is set up on the booth computer" : "Choose Spotify or Music in Settings to control walk-in music from here"}
+        page="settings"
+        anchor="set-music"
+        icon="mic"
+        action={IS_WEB ? null : "Set up walk-in music"}
+      />
+    );
+  if (!m) return <div className="widget-empty">Loading…</div>;
+
+  const appName = m.app === "spotify" ? "Spotify" : "Music";
+  const act = (a: MusicAction, v?: number) => {
+    setErr("");
+    musicControl(a, v).catch((e) => setErr(String(e)));
+  };
+  const playing = m.state === "playing";
+  const running = m.state === "playing" || m.state === "paused" || m.state === "stopped";
+  const shownVol = vol ?? m.volume;
+  const pct = m.duration_ms ? Math.min(100, (m.position_ms / m.duration_ms) * 100) : 0;
+
+  // When the automatic fade will happen, if it's on and a service is coming.
+  let fadeLine = "";
+  if (settings?.music_auto_fade !== false) {
+    const next = serviceTimesOnly(serviceTimes).find((t) => t.ts > now);
+    if (next) {
+      const at = new Date(next.ts - (settings?.music_fade_secs ?? 15) * 1000);
+      fadeLine = `Fades out by itself at ${at.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" })} for the ${new Date(next.ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} service.`;
+    }
+  }
+
+  return (
+    <div className="w-music" onMouseDown={(e) => e.stopPropagation()}>
+      <div className="music-now">
+        {m.artwork ? <img className="music-art" src={m.artwork} alt="" /> : <div className="music-art music-art-ph" />}
+        <div className="music-meta">
+          <span className={`music-state ${m.state}${m.fading ? " fading" : ""}`}>
+            {m.fading ? "Fading" : playing ? "Playing" : m.state === "paused" ? "Paused" : m.state === "stopped" ? "Stopped" : m.state === "not_running" ? `${appName} isn't open` : "Unavailable"}
+          </span>
+          {m.track ? (
+            <>
+              <strong className="music-track">{m.track}</strong>
+              <span className="muted small music-artist">{m.artist}</span>
+            </>
+          ) : (
+            <span className="muted small">{m.error || (m.state === "not_running" ? `Open ${appName} on the booth computer.` : "Nothing playing")}</span>
+          )}
+        </div>
+      </div>
+      {m.duration_ms > 0 && (
+        <div className="music-bar" aria-hidden="true">
+          <span style={{ width: `${pct}%` }} />
+        </div>
+      )}
+      {canControl && running && (
+        <>
+          <div className="music-btns">
+            <button className="btn small ghost" aria-label="Previous" onClick={() => act("previous")}><Icon name="prev" size={13} /></button>
+            <button className="btn small primary music-play" onClick={() => act(playing ? "pause" : "play")}>{playing ? "Pause" : "Play"}</button>
+            <button className="btn small ghost" aria-label="Next" onClick={() => act("next")}><Icon name="next" size={13} /></button>
+            <label className="music-vol">
+              <span className="muted small">Vol</span>
+              <input
+                type="range"
+                id="music-volume"
+                min={0}
+                max={100}
+                value={shownVol}
+                onChange={(e) => setVol(Number(e.target.value))}
+                onPointerUp={() => vol !== null && (act("volume", vol), setVol(null))}
+                onKeyUp={() => vol !== null && (act("volume", vol), setVol(null))}
+              />
+              <span className="small music-vol-n">{shownVol}</span>
+            </label>
+          </div>
+          <div className="music-btns">
+            <button className="btn small" onClick={() => act("start", 5)} disabled={m.fading}>Start walk-in</button>
+            <button className="btn small" onClick={() => act("fade_out", settings?.music_fade_secs ?? 15)} disabled={!playing || m.fading}>Fade out</button>
+          </div>
+        </>
+      )}
+      {fadeLine && <span className="muted small">{fadeLine}</span>}
+      {err && <span className="error small">{err}</span>}
     </div>
   );
 }
@@ -3569,6 +3680,7 @@ export const WIDGETS: WidgetDef[] = [
   { type: "obs", label: "OBS — Live & Scene", group: "Video", w: 4, h: 3, component: ObsWidget },
   { type: "video_input", label: "Stage Feed (NDI)", group: "Video", w: 4, h: 4, component: VideoInputWidget },
   { type: "church_online", label: "Church Online", group: "Video", w: 4, h: 4, component: ChurchOnlineWidget },
+  { type: "walk_in_music", label: "Walk-in Music", group: "Audio", w: 4, h: 4, component: WalkInMusicWidget },
   { type: "live_viewers", label: "Live Viewers (Online)", group: "ProPresenter", w: 3, h: 4, component: LiveViewersWidget },
   { type: "switcher_cues", label: "Switcher Cues (What's Next)", group: "Video", w: 5, h: 5, component: SwitcherCuesWidget },
   { type: "crew_qr", label: "Join QR (Crew Signup)", group: "General", w: 3, h: 3, component: CrewQrWidget },

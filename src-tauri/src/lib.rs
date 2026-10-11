@@ -16,6 +16,7 @@ mod lan;
 mod chat;
 mod checkin;
 mod chop;
+mod music;
 mod crashreport;
 mod discovery;
 mod edge;
@@ -212,6 +213,7 @@ pub fn run() {
         .manage(midi::KeySendState(std::sync::Mutex::new(serde_json::Value::Null)))
         .manage(follow::AutomixDeck(std::sync::Mutex::new(serde_json::Value::Null)))
         .manage(chop::ChopState(std::sync::Mutex::new(serde_json::Value::Null)))
+        .manage(music::MusicHub::default())
         .manage(multitrack::RecState::default())
         .manage(playback::PlayState::default())
         .manage(dante::DanteState::default())
@@ -232,6 +234,9 @@ pub fn run() {
             // can tell the UI to ask for a reconnect, rather than leaving the
             // plan silently empty.
             pcoauth::init(app.handle().clone());
+
+            // Walk-in music: reads Spotify or Music while one is chosen.
+            music::start(app.handle().clone(), app.state::<music::MusicHub>().inner().clone());
 
             // Sleep guard (Settings → Reliability), on by default: a booth Mac
             // that dozes off takes everything in the room down with it.
@@ -371,6 +376,8 @@ pub fn run() {
             follow::automix_set_state,
             chop::chop_set_state,
             chop::chop_get_state,
+            music::music_state,
+            music::music_control,
             transcription::stop_transcription,
             // Gemini smart matching
             gemini::gemini_pick_slide,

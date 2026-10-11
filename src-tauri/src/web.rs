@@ -44,6 +44,7 @@ const FORWARD_EVENTS: &[&str] = &[
     "pco:attachments",
     "pco:live",
     "chop:state",
+    "music:state",
     "pco:sync_started",
     "pco:sync_stopped",
     "ndi:stream_started",
@@ -1455,6 +1456,8 @@ pub(crate) fn member_cmd_ok(cmd: &str) -> bool {
             // sat blank — found on the office kiosk on a Sunday morning.
             | "pp_thumbnail"
             | "pp_playlist_thumbnail"
+            // What's playing as people walk in: a read, like obs_state.
+            | "music_state"
     )
 }
 
@@ -1469,7 +1472,8 @@ pub(crate) fn perm_for_cmd(cmd: &str) -> Option<&'static str> {
         | "pp_trigger_look" | "pp_trigger_macro" | "pp_trigger_next" | "pp_trigger_previous"
         | "avantis_set_mute" | "avantis_set_fader" | "avantis_set_name" | "avantis_recall_scene"
         | "avantis_reconnect" | "obs_reconnect"
-        | "obs_set_scene" | "pco_live_action" | "midi_send_key" | "osc_send_key" | "keysend_request" => Some("control"),
+        | "obs_set_scene" | "pco_live_action" | "midi_send_key" | "osc_send_key" | "keysend_request"
+        | "music_control" => Some("control"),
         "tap_override" => Some("tap"),
         "identity_list" | "identity_approve" | "identity_remove" | "identity_set_role"
         | "identity_update_profile" | "invite_create" | "invite_list" | "invite_revoke"
@@ -1763,6 +1767,16 @@ async fn dispatch(
             let state = app.state::<crate::avantis::AvantisState>();
             crate::avantis::avantis_set_mute(id, muted, state, app.clone()).await?;
             Ok(json!({ "ok": true }))
+        }
+        "music_state" => {
+            let hub = app.state::<crate::music::MusicHub>();
+            Ok(serde_json::to_value(crate::music::music_state(hub)).unwrap_or(Value::Null))
+        }
+        "music_control" => {
+            let action = s("action").ok_or("missing action")?;
+            let value = args.get("value").and_then(|v| v.as_f64());
+            let hub = app.state::<crate::music::MusicHub>();
+            crate::music::music_control(action, value, app.clone(), hub).await
         }
         "avantis_recall_scene" => {
             let scene = args.get("scene").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
