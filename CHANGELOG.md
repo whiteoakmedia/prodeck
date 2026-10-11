@@ -44,6 +44,25 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.101 — 11 October 2026
+
+### New: the Slide Grid shows the whole playlist
+
+The **Slide Grid** now shows the whole playlist with a picture of every slide,
+like the playlist on the **ProPresenter** page. It switches to whichever
+playlist ProPresenter is playing from, keeps the live slide in view, and a
+click on any slide puts it live. Crew phones and kiosks without control
+permission see the slides but can't put them live. The − and + buttons size the
+pictures, and the tile remembers.
+
+The compact view is still there: edit the dashboard and set the tile to show
+only the live song, as text.
+
+### Fixed: songs squeezed to one row
+
+With several songs open in a playlist tile, each song was squeezed to a single
+row of slides. Each now shows all its slides and the list scrolls.
+
 ## 0.9.100 — 8 October 2026
 
 ### New: the slides follow the song
