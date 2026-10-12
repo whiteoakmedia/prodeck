@@ -44,6 +44,24 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.106 — 12 October 2026
+
+### New: a Settings page you can find your way around
+
+Settings had grown to 28 cards in one long scroll. It's now six sections,
+**Connections**, **Sound**, **Automation**, **Online**, **Crew & screens** and
+**App & help**, shown one at a time: down the side on a wide screen, across the
+top on a smaller one. ProDeck remembers the last one you used.
+
+- **Find a setting** searches every word on every card, labels, hints and
+  options included, whichever section it's in.
+- **Unsaved changes** get a bar at the bottom with **Discard** and **Save
+  changes**, and leaving Settings with changes unsaved asks first instead of
+  dropping them.
+- **Crew & screens** shows how many people are waiting to join.
+- The settings themselves haven't changed, and every link to one (from Help,
+  setup or a dashboard tile) still opens the right card.
+
 ## 0.9.105 — 11 October 2026
 
 ### Fixed: the booth stream monitor started from the beginning
