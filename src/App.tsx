@@ -63,7 +63,8 @@ import { LyricFollowProvider } from "./lyricFollow";
 import { AutopilotProvider } from "./autopilot";
 import { AutomixProvider } from "./automix";
 import { RecorderProvider } from "./recorder";
-import { DialogHost } from "./lib/dialogs";
+import { DialogHost, askConfirm } from "./lib/dialogs";
+import { isSettingsDirty } from "./lib/settingsDirty";
 import { ChecklistsPage } from "./pages/Checklists";
 import { ClearDock } from "./components/ClearDock";
 import { Icon } from "./components/Icon";
@@ -312,7 +313,12 @@ function Shell() {
             <button
               key={n.id}
               className={`nav-item ${page === n.id ? "active" : ""}`}
-              onClick={() => setPage(n.id)}
+              onClick={async () => {
+                // Leaving Settings with edits not saved: ask, don't drop them.
+                if (page === "settings" && n.id !== "settings" && isSettingsDirty() &&
+                  !(await askConfirm("Leave Settings without saving your changes?", "Leave without saving"))) return;
+                setPage(n.id);
+              }}
             >
               <Icon name={n.icon} />
               <span>{n.label}</span>
@@ -388,8 +394,10 @@ function Shell() {
           <HelpPage
             initialTopic={helpTopic}
             onNavigate={(p, anchor) => {
+              // Settings opens the card's section itself (lib/settingsJump).
+              if (anchor && p === "settings") requestSettingsJump(anchor);
               setPage(p as Page);
-              if (anchor) setTimeout(() => document.getElementById(anchor)?.scrollIntoView({ block: "start" }), 80);
+              if (anchor && p !== "settings") setTimeout(() => document.getElementById(anchor)?.scrollIntoView({ block: "start" }), 80);
             }}
           />
         )}

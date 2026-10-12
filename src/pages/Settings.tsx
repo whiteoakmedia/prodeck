@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { CONSOLES, consoleLabel, consoleNeedsMidi, midiBaseForSwitch, portForSwitch } from "../lib/consoles";
 import { rebase } from "../lib/formRebase";
 import { NdiNotice } from "../components/NdiNotice";
@@ -7,7 +7,9 @@ import { LegalDialog, type LegalKind } from "../components/LegalDialog";
 import { requestWizard } from "../lib/wizards";
 import { ReleaseNotesOptIn } from "../components/ReleaseNotesOptIn";
 import { ANCHOR_TOPIC, openHelp } from "../help/nav";
-import { consumeSettingsJump } from "../lib/settingsJump";
+import { consumeSettingsJump, SETTINGS_JUMP_EVENT } from "../lib/settingsJump";
+import { SECTIONS, cardMatches, isDirty, sectionOf } from "../lib/settingsSections";
+import { setSettingsDirty } from "../lib/settingsDirty";
 import { useProDeck } from "../store";
 import { openFeedback } from "../lib/feedback";
 import { useChop } from "../chopStore";
@@ -103,6 +105,21 @@ import { loadDashboards as loadDashList } from "../lib/dashboards";
 import { useSchedules } from "../scheduleStore";
 import { usePco , isDeclined } from "../pcoStore";
 
+const SECTION_KEY = "prodeck.settingsSection";
+
+/** Is this card on screen right now (its section, or a search match)? */
+const SecCtx = createContext<(cardId: string) => boolean>(() => true);
+
+/** One card, filed under its section (lib/settingsSections) by its anchor id. */
+function Sec({ id, children }: { id: string; children: ReactNode }) {
+  const visible = useContext(SecCtx)(id);
+  return (
+    <div className="set-sec" data-card={id} hidden={!visible}>
+      {children}
+    </div>
+  );
+}
+
 export function SettingsPage() {
   const { settings, refreshSettings, midiLog, oscLog, connected: ppUp, host: ppHost, connect: ppConnect, disconnect: ppDisconnect } = useProDeck();
   // Mic numbers come from the Planning Center page's own count, so the list
@@ -132,18 +149,56 @@ export function SettingsPage() {
   const [crew, setCrew] = useState<CrewUser[] | null>(null);
   const [obs, setObs] = useState<ObsSnapshot | null>(null);
 
+  // Sections: one at a time, remembered on this computer; search spans all.
+  const [section, setSectionState] = useState<string>(() => {
+    try {
+      const v = localStorage.getItem(SECTION_KEY);
+      return v && SECTIONS.some((s) => s.id === v) ? v : SECTIONS[0].id;
+    } catch {
+      return SECTIONS[0].id;
+    }
+  });
+  const setSection = (id: string) => {
+    setSectionState(id);
+    try {
+      localStorage.setItem(SECTION_KEY, id);
+    } catch {
+      /* remembered for this visit only */
+    }
+  };
+  const [query, setQuery] = useState("");
+  const contentRef = useRef<HTMLDivElement>(null);
+  // Which cards exist on this screen (some are booth-only) and which match
+  // the search: read from the cards themselves, so search covers every word
+  // on a card without a list to keep up to date.
+  const [present, setPresent] = useState<string[]>([]);
+  const [matches, setMatches] = useState<string[] | null>(null);
+
   // Crew roster (PIN identities). Available on the booth and admin web
   // clients; member clients get an error and the card simply hides.
   // Deep-jump from onboarding: land on the exact card, not the page top.
   useEffect(() => {
     // Consume inside the timeout: StrictMode runs effect→cleanup→effect in
     // dev, and consuming eagerly handed the second run a null target.
-    const t = setTimeout(() => {
-      const target = consumeSettingsJump();
-      if (!target) return;
-      document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 60);
-    return () => clearTimeout(t);
+    let t = 0;
+    const go = () => {
+      clearTimeout(t);
+      t = window.setTimeout(() => {
+        const target = consumeSettingsJump();
+        if (!target) return;
+        // Open the section the card lives in, then scroll to it once shown.
+        const card = document.getElementById(target)?.closest<HTMLElement>(".set-sec")?.dataset.card;
+        setQuery("");
+        if (card) setSection(sectionOf(card));
+        window.setTimeout(() => document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" }), 40);
+      }, 60);
+    };
+    go();
+    window.addEventListener(SETTINGS_JUMP_EVENT, go);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener(SETTINGS_JUMP_EVENT, go);
+    };
   }, []);
 
   useEffect(() => {
@@ -246,6 +301,20 @@ export function SettingsPage() {
       return r;
     });
   }, [settings]);
+
+  // Read the cards on screen: which exist here, and which match the search.
+  useLayoutEffect(() => {
+    const root = contentRef.current;
+    if (!root) return;
+    const els = Array.from(root.querySelectorAll<HTMLElement>(".set-sec"));
+    const ids = els.map((e) => e.dataset.card ?? "");
+    setPresent((prev) => (prev.join() === ids.join() ? prev : ids));
+    setMatches(query.trim() ? els.filter((e) => cardMatches(e.textContent ?? "", query)).map((e) => e.dataset.card ?? "") : null);
+  }, [form !== null, crew === null, query]);
+
+  // Unsaved changes: tell the sidebar, so leaving asks first.
+  useEffect(() => setSettingsDirty(isDirty(form, settings)), [form, settings]);
+  useEffect(() => () => setSettingsDirty(false), []);
 
   if (!form) return <div className="page"><header className="page-head"><h1>Settings</h1></header></div>;
 
@@ -379,1282 +448,1366 @@ export function SettingsPage() {
 
       {status && <div className="banner">{status}</div>}
 
-      {/* Eleven sections is a lot of scrolling — a grouped jump bar keeps
-          "where do I approve someone" one click, not a hunt. */}
-      <nav className="set-jump">
-        {[
-          { g: "Connections", items: [["ProPresenter", "set-pp"], ["Avantis", "set-avantis"], ["OBS", "set-obs"], ["Stage feed (NDI)", "set-ndi"], ["LAN Relay", "set-relay"], ...(!IS_WEB ? [["Browser Access", "set-web"]] : [])] },
-          { g: "Audio", items: [["Audio & Captions", "set-audio"], ["Alerts", "set-alerts"]] },
-          { g: "Crew", items: [["Crew Members", "set-crew"]] },
-          { g: "Advanced", items: [["Troubleshooter", "set-assist"], ["Gemini", "set-gemini"], ["Control Inputs", "set-inputs"], ["Song Key", "set-songkey"], ["TapLink", "set-taplink"]] },
-          { g: "App", items: [["Updates", "set-update"], ...(!IS_WEB ? [["Reliability", "set-reliability"], ["Kiosk screens", "set-kiosk"], ["Backup", "set-backup"], ["Help", "set-help"]] : []), ["Appearance", "set-appearance"]] },
-        ].map(({ g, items }) => (
-          <span key={g} className="set-jump-group">
-            <span className="set-jump-label">{g}</span>
-            {items.map(([label, id]) => (
-              <button
-                key={id}
-                className="btn small ghost"
-                onClick={() =>
-                  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })
-                }
-              >
-                {label}
-              </button>
-            ))}
-          </span>
-        ))}
-      </nav>
-
-      <section className="card">
-        <div className="card-head">
-          <h3 id="set-update">Software Update</h3><HelpLink section="care" />
-          <span className="chip">v{upd.version || "…"}</span>
-        </div>
-        <div className="settings-grid">
-          <label className="field wide">
-            <span>Status</span>
-            <input
-              className="input"
-              readOnly
-              value={
-                upd.status === "checking"
-                  ? "Checking for updates…"
-                  : upd.status === "available"
-                    ? `Update v${upd.newVersion} available`
-                    : upd.status === "downloading"
-                      ? `Downloading… ${upd.progress}%`
-                      : upd.status === "ready"
-                        ? "Installed — restarting"
-                        : upd.status === "uptodate"
-                          ? "Up to date"
-                          : upd.status === "error"
-                            ? "Update server unreachable"
-                            : "—"
-              }
-            />
-          </label>
-          <div className="field btn-field">
-            <span>&nbsp;</span>
-            {upd.status === "available" ? (
-              <button className="btn primary" onClick={() => upd.install()}>
-                Install &amp; Restart
-              </button>
-            ) : (
-              <button
-                className="btn"
-                onClick={() => upd.check()}
-                disabled={upd.status === "checking" || upd.status === "downloading"}
-              >
-                Check for updates
-              </button>
-            )}
-          </div>
-        </div>
-        <p className="hint">
-          ProDeck checks for updates a few seconds after launch and shows a banner when one
-          is ready. Updates are signed releases from the ProDeck GitHub repository (or your
-          own fork's feed, if you build it yourself); installing restarts the app.
-        </p>
-        <ReleaseNotesOptIn compact />
-        <p className="hint made-by">
-          Made by White Oak Media, church websites and Google Ad Grants.{" "}
-          <a href="https://whiteoakmedia.io" onClick={(e) => { e.preventDefault(); openExternal("https://whiteoakmedia.io/?utm_source=prodeck&utm_medium=app&utm_campaign=about"); }}>
-            whiteoakmedia.io
-          </a>
-        </p>
-        <p className="hint">
-          ProDeck is free and MIT licensed, with no warranty. It can change ProPresenter and your console, so rehearse
-          with it before you rely on it in a service. It's an independent project, not affiliated with or endorsed by
-          Renewed Vision, Planning Center, Audinate, Allen &amp; Heath, Elgato or the other products it works with.
-        </p>
-        <p className="hint made-by-links">
-          <a href="#privacy" onClick={(e) => { e.preventDefault(); setLegal("privacy"); }}>Privacy</a>
-          <a href="#licences" onClick={(e) => { e.preventDefault(); setLegal("licences"); }}>Licences and trademarks</a>
-          <a href="https://github.com/whiteoakmedia/prodeck" onClick={(e) => { e.preventDefault(); openExternal("https://github.com/whiteoakmedia/prodeck"); }}>Source code</a>
-        </p>
-        {legal && <LegalDialog kind={legal} onClose={() => setLegal(null)} />}
-      </section>
-
-      <section className="card">
-        {/* Connections — one place to drop and redial anything, without
-            restarting ProDeck. Every integration reconnects on its own when a
-            link falls over; this is for the case it can't see: a socket that is
-            open and dead, a desk or OBS rebooted behind it, a mirror that has
-            drifted, ProPresenter moved to a new address. Until this existed the
-            remedy was "quit ProDeck", mid-service, with everything else on it. */}
-        <div className="card-head"><h3 id="set-connections">Connections</h3><HelpLink section="care" /></div>
-        <p className="muted small">
-          Each line reconnects on its own when it drops. Use these when something says it's
-          connected but isn't behaving — they reconnect the one thing, and leave the rest alone.
-        </p>
-        <ul className="conn-list">
-          {(() => {
-            const st = (k: string) => health.find((h) => h.key === k)?.state ?? "idle";
-            const Dot = ({ s }: { s: string }) => <span className={`dot ${s === "ok" ? "online" : s === "bad" ? "offline" : ""}`} />;
-            return (
-              <>
-                <li>
-                  <Dot s={ppUp ? "ok" : "bad"} /><span className="conn-name">ProPresenter</span>
-                  <span className="muted small conn-detail">{ppUp ? ppHost : "not connected"}</span>
-                  <span className="conn-actions">
-                    <button className="btn small" onClick={() => ppConnect(form.pp_host, form.pp_port).catch(() => {})}>Reconnect</button>
-                    {ppUp && <button className="btn small ghost" onClick={() => ppDisconnect()}>Disconnect</button>}
-                  </span>
-                </li>
-                <li>
-                  <Dot s={st("pco")} /><span className="conn-name">Planning Center</span>
-                  <span className="muted small conn-detail">{health.find((h) => h.key === "pco")?.detail ?? ""}</span>
-                  <span className="conn-actions">
-                    <button className="btn small ghost" title="Forget the saved credentials so you can sign in again"
-                      onClick={async () => {
-                        if (!(await askConfirm("Disconnect Planning Center? You can sign in again straight away — plans and mic assignments are kept."))) return;
-                        await pcoOauthDisconnect().catch(() => {});
-                        await pcoSaveCredentials("", "");
-                      }}>Disconnect</button>
-                  </span>
-                </li>
-                <li>
-                  <Dot s={st("desk")} /><span className="conn-name">Sound console</span>
-                  <span className="muted small conn-detail">{health.find((h) => h.key === "desk")?.detail ?? ""}</span>
-                  <span className="conn-actions">
-                    <button className="btn small" onClick={() => avantisReconnect()}>Reconnect</button>
-                  </span>
-                </li>
-                <li>
-                  <Dot s={obsUp === null ? "idle" : obsUp ? "ok" : "bad"} /><span className="conn-name">OBS Studio</span>
-                  <span className="muted small conn-detail">{obsUp === null ? "" : obsUp ? "connected" : "not connected"}</span>
-                  <span className="conn-actions">
-                    <button className="btn small" onClick={() => obsReconnect()}>Reconnect</button>
-                  </span>
-                </li>
-                <li>
-                  <Dot s={st("cam")} /><span className="conn-name">Stage feed (NDI)</span>
-                  <span className="muted small conn-detail">{health.find((h) => h.key === "cam")?.detail ?? ""}</span>
-                  <span className="conn-actions">
-                    <button className="btn small ghost" title="Stop the receiver; widgets that need it start it again" onClick={() => ndiStop()}>Disconnect</button>
-                  </span>
-                </li>
-                <li>
-                  <Dot s={form.web_enabled ? "ok" : "idle"} /><span className="conn-name">Browser access (phones &amp; kiosks)</span>
-                  <span className="muted small conn-detail">{form.web_enabled ? `port ${form.web_port}` : "off"}</span>
-                  <span className="conn-actions">
-                    <button className="btn small" onClick={async () => { await webStop().catch(() => {}); await webStart(form.web_port).catch(() => {}); }}>Restart</button>
-                  </span>
-                </li>
-              </>
-            );
-          })()}
-        </ul>
-      </section>
-
-      <section className="card">
-        <div className="card-head"><h3 id="set-pp">ProPresenter</h3><HelpLink section="features" /></div>
-        <div className="settings-grid">
-          <label className="field">
-            <span>Host / IP</span>
-            <input className="input" value={form.pp_host}
-              onChange={(e) => set("pp_host", e.target.value)} />
-          </label>
-          <label className="field">
-            <span>Port</span>
-            <input className="input" type="number" value={form.pp_port}
-              onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n)) set("pp_port", n); }} />
-          </label>
-          <label className="field check">
-            <input type="checkbox" checked={form.pp_auto_connect}
-              onChange={(e) => set("pp_auto_connect", e.target.checked)} />
-            <span>Auto-connect on launch</span>
-          </label>
-        </div>
-      </section>
-
-      <section className="card">
-        <div className="card-head">
-          <h3 id="set-avantis">Sound Console</h3><HelpLink section="features" />
-          <span className="chip">{consoleLabel(form.avantis_model)} · mirror</span>
-        </div>
-        <p className="muted small">
-          Watches the sound desk over the network: mutes, faders, scenes and
-          channel names show up live in ProDeck. Allen &amp; Heath desks use MIDI
-          over TCP, Behringer X32 / Midas M32 use OSC, and Yamaha CL, QL and TF
-          use Yamaha's remote control protocol. Control (mutes, faders, names,
-          scene recall) is admin only and off by default in the dashboards, and
-          not available on Yamaha desks yet.
-        </p>
-        <div className="settings-grid">
-          <label className="field check">
-            <input type="checkbox" checked={form.avantis_enabled}
-              onChange={(e) => set("avantis_enabled", e.target.checked)} />
-            <span>Mirror the console</span>
-          </label>
-          <label className="field">
-            <span>Console</span>
-            <select
-              className="input"
-              value={form.avantis_model || "avantis"}
-              onChange={(e) => {
-                const m = e.target.value;
-                set("avantis_model", m);
-                // Each desk's own default port and channel limit. A port that
-                // is just another desk's default follows the desk; one typed
-                // on purpose stays.
-                set("avantis_port", portForSwitch(m, form.avantis_port));
-                set("avantis_midi_base", midiBaseForSwitch(m, form.avantis_midi_base));
-              }}
-            >
-              {CONSOLES.map((c) => (
-                <option key={c.id} value={c.id}>{c.option}</option>
-              ))}
-            </select>
-          </label>
-          <HardwareStatus model={form.avantis_model || "avantis"} />
-          <label className="field">
-            <span>Console IP</span>
-            <input className="input" placeholder="192.168.1.60" value={form.avantis_host}
-              onChange={(e) => set("avantis_host", e.target.value.trim())} />
-          </label>
-          <label className="field">
-            <span>
-              TCP port{" "}
-              <span className="muted">
-                {(form.avantis_model || "avantis") === "dlive"
-                  ? "(MixRack 51325 · Surface 51328)"
-                  : (form.avantis_model || "avantis") === "x32"
-                    ? "(10023)"
-                    : (form.avantis_model || "avantis") === "yamaha"
-                      ? "(49280, rarely needs a change)"
-                      : "(51325)"}
-              </span>
-            </span>
-            <input className="input" type="number" min={1} max={65535} value={form.avantis_port || 51325}
-              onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n)) set("avantis_port", Math.min(65535, Math.max(1, n))); }} />
-          </label>
-          {/* The X32 speaks OSC — it has no MIDI channel to match. Rendered
-              conditionally, not `hidden`: .field sets display:flex, and an
-              author rule beats the browser's [hidden] style. */}
-          {consoleNeedsMidi(form.avantis_model) && (
-          <label className="field">
-            <span>
-              {(form.avantis_model || "avantis") === "sq"
-                ? "MIDI channel (desk: Utility → General → MIDI)"
-                : "Base MIDI channel (desk: Utility → Control → MIDI)"}
-            </span>
-            <input className="input" type="number" min={1} max={(form.avantis_model || "avantis") === "sq" ? 16 : 12} value={form.avantis_midi_base}
-              onChange={(e) => { const n = parseInt(e.target.value); const mx = (form.avantis_model || "avantis") === "sq" ? 16 : 12; if (Number.isFinite(n)) set("avantis_midi_base", Math.min(mx, Math.max(1, n))); }} />
-          </label>
-          )}
-          {(form.avantis_model || "avantis") === "sq" && (
-            <p className="hint wide">
-              SQ's MIDI protocol carries no channel names or colours, so channels show
-              as numbers here (Ch 1, Aux 3 …). Mutes and levels are read on connect,
-              so the mirror starts complete. Scenes 1–300.
-            </p>
-          )}
-          {(form.avantis_model || "avantis") === "x32" && (
-            <p className="hint wide">
-              Nothing to set on the console — ProDeck subscribes over OSC on port
-              10023 and reads every channel, DCA, bus, matrix and mute group on
-              connect. Give the desk a fixed IP so this keeps working after a router
-              restart. Scenes 1–100.
-            </p>
-          )}
-          {(form.avantis_model || "avantis") === "yamaha" && (
-            <p className="hint wide">
-              Nothing to set on the console. ProDeck connects on port 49280 and reads
-              channel names, mutes, faders, mix buses, matrices, DCAs, mute groups and
-              the current scene with its name. Works with CL, QL and TF series desks;
-              RIVAGE PM and DM series aren't supported yet. ProDeck only watches a
-              Yamaha desk for now: mutes, faders, names and scene recall can't be
-              changed from ProDeck. Give the desk a fixed IP so this keeps working
-              after a router restart.
-            </p>
-          )}
-          {(form.avantis_model || "avantis") === "dlive" && (
-            <p className="hint wide">
-              dLive reports current mutes and fader levels on connect, so the mirror
-              starts complete. Inputs 1–128, DCAs 1–24, Mains 1–6, UFX included.
-            </p>
-          )}
-          <label className="field">
-            <span>Desk watchdog — page this person when the desk changes</span>
-            <select
-              className="input"
-              value={form.avantis_watch_user ?? ""}
-              onChange={(e) => set("avantis_watch_user", e.target.value)}
-            >
-              <option value="">Off — nobody watches</option>
-              {(crew ?? [])
-                .filter((u) => u.approved)
-                .map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name}
-                  </option>
-                ))}
-            </select>
-          </label>
-          <label className="field check">
-            <input
-              type="checkbox"
-              checked={form.avantis_watch_armed}
-              disabled={!form.avantis_watch_user}
-              onChange={(e) => set("avantis_watch_armed", e.target.checked)}
-            />
-            <span>
-              Armed — <strong>setup</strong> changes are paged, batched every 45s: FX
-              send/return levels &amp; mutes, channel renames (an FX swap renames its
-              return), and scene recalls. Normal mixing — input/DCA faders and mutes —
-              never alerts. Names are re-checked every 5 minutes while armed.
-            </span>
-          </label>
-          <SoftkeyEditor
-            list={form.avantis_softkeys ?? []}
-            crew={crew}
-            onChange={(next) => set("avantis_softkeys", next)}
+      <div className="set-layout">
+        <aside className="set-rail" aria-label="Settings sections">
+          <input
+            className="input set-search"
+            id="settings-search"
+            type="search"
+            placeholder="Find a setting"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Escape" && setQuery("")}
           />
-          <label className="field wide">
-            <span>Scene names — one per line, e.g. "1 = Pre-service" (the desk only sends numbers)</span>
-            <textarea
-              className="input"
-              rows={4}
-              value={
-                sceneLabelsText ??
-                Object.entries(form.avantis_scene_labels ?? {})
-                  .sort((a, b) => parseInt(a[0]) - parseInt(b[0]))
-                  .map(([n, l]) => `${n} = ${l}`)
-                  .join("\n")
-              }
-              onChange={(e) => {
-                setSceneLabelsText(e.target.value);
-                const map: Record<string, string> = {};
-                for (const line of e.target.value.split("\n")) {
-                  const m = line.match(/^\s*(\d+)\s*[=:—-]\s*(.+)$/);
-                  if (m) map[m[1]] = m[2].trim();
-                }
-                set("avantis_scene_labels", map);
-              }}
-            />
-          </label>
-          <label className="field">
-            <span>Scene that turns the outboard rig (Waves) ON</span>
-            <input className="input" type="number" min={0} value={form.avantis_waves_on_scene ?? 0} onChange={(e) => set("avantis_waves_on_scene", Math.max(0, parseInt(e.target.value || "0", 10)))} />
-          </label>
-          <label className="field">
-            <span>Scene that turns it OFF (0 = not used)</span>
-            <input className="input" type="number" min={0} value={form.avantis_waves_off_scene ?? 0} onChange={(e) => set("avantis_waves_off_scene", Math.max(0, parseInt(e.target.value || "0", 10)))} />
-          </label>
-          <p className="muted small" style={{ gridColumn: "1 / -1", margin: 0 }}>
-            The desk announces every scene recall. With these two set, the Sound Desk tile shows <strong>Waves ON / OFF</strong>,
-            the troubleshooter knows it, and an alert appears if Waves is off within 90 minutes of a service. Mutes ProDeck only
-            remembers from before the desk connected show with a <strong>?</strong> — the console can't be asked for its mute state,
-            so tap a mute once on the desk to confirm it.
-          </p>
-        </div>
-      </section>
-
-      <section className="card">
-        <div className="card-head">
-          <h3 id="set-obs">OBS Studio</h3>
-          <HelpLink section="features" />
-          <span className={`chip ${obs?.connected ? "online" : ""}`}>
-            {obs?.connected ? (obs.streaming ? "live" : "connected") : "not connected"}
-          </span>
-        </div>
-        <p className="muted small">
-          Shows what's actually going out of the building: which scene is on, whether
-          you're streaming and recording, how long for, and whether frames are being
-          dropped. In OBS, turn on <strong>Tools → WebSocket Server Settings →
-          Enable WebSocket server</strong> and copy the port and password here.
-        </p>
-        <div className="settings-grid">
-          <label className="field check">
-            <input type="checkbox" checked={form.obs_enabled}
-              onChange={(e) => set("obs_enabled", e.target.checked)} />
-            <span>Connect to OBS</span>
-          </label>
-          <label className="field">
-            <span>OBS computer <span className="muted">(127.0.0.1 if OBS is on this Mac)</span></span>
-            <input className="input" placeholder="127.0.0.1" value={form.obs_host}
-              onChange={(e) => set("obs_host", e.target.value.trim())} />
-          </label>
-          <label className="field">
-            <span>Port <span className="muted">(OBS default 4455)</span></span>
-            <input className="input" type="number" min={1} max={65535} value={form.obs_port || 4455}
-              onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n)) set("obs_port", Math.min(65535, Math.max(1, n))); }} />
-          </label>
-          <label className="field">
-            <span>WebSocket password <span className="muted">(blank if OBS has auth off)</span></span>
-            <input className="input" type="password" autoComplete="new-password" value={form.obs_password}
-              onChange={(e) => set("obs_password", e.target.value)} />
-          </label>
-        </div>
-        {obs?.error && <p className="error small">{obs.error}</p>}
-        {obs?.connected && (
-          <p className="hint">
-            Connected to OBS {obs.version || ""} — scene <strong>{obs.scene || "—"}</strong>
-            {obs.streaming ? ", streaming" : ", not streaming"}
-            {obs.recording ? " and recording." : "."}
-          </p>
-        )}
-      </section>
-
-      {!IS_WEB && <NdiCard />}
-
-      <section className="card">
-        <div className="card-head"><h3 id="set-audio">Audio &amp; Captions</h3><HelpLink section="features" /></div>
-        <div className="settings-grid">
-          <label className="field wide">
-            <span>Default audio input</span>
-            <select className="input" value={form.audio_input ?? ""}
-              onChange={(e) => set("audio_input", e.target.value || null)}>
-              <option value="">System default</option>
-              {audioInputs.map((i) => <option key={i} value={i}>{i}</option>)}
-            </select>
-          </label>
-          {chCount > 1 && (
-            <>
-              <div className="field wide">
-                <span>Measurement channels ({chCount} available)</span>
-                <div className="chan-row">
-                  {Array.from({ length: chCount }, (_, i) => i + 1).map((ch) => (
-                    <button
-                      key={ch}
-                      type="button"
-                      className={`chan-chip ${(form.audio_measure_channels ?? []).includes(ch) ? "on" : ""}`}
-                      onClick={() => toggleChan("audio_measure_channels", ch)}
-                    >
-                      <span
-                        className="chan-lvl"
-                        style={{ height: `${Math.min(100, (chanLevels[ch - 1] ?? 0) * 160)}%` }}
-                      />
-                      <span className="chan-n">{ch}</span>
-                    </button>
-                  ))}
-                </div>
-                <span className="hint">
-                  Channels the SPL/RTA/LUFS meter mixes. Empty = all. (e.g. pick 1, 2 for your
-                  measurement mic.)
-                </span>
-              </div>
-              <label className="field">
-                <span>SPL frequency weighting</span>
-                <select
-                  className="input"
-                  value={form.spl_freq_weighting || "a"}
-                  onChange={(e) => set("spl_freq_weighting", e.target.value)}
+          <nav className="set-rail-list">
+            {SECTIONS.filter((s) => !present.length || s.cards.some((c) => present.includes(c))).map((s) => {
+              const pending = s.id === "crew" ? (crew ?? []).filter((u) => !u.approved).length : 0;
+              return (
+                <button
+                  key={s.id}
+                  className={`set-rail-item ${!query.trim() && section === s.id ? "on" : ""}`}
+                  aria-current={!query.trim() && section === s.id ? "page" : undefined}
+                  onClick={() => {
+                    setQuery("");
+                    setSection(s.id);
+                    contentRef.current?.scrollIntoView({ block: "start" });
+                  }}
                 >
-                  <option value="a">A — matches exposure limits and handheld meters</option>
-                  <option value="c">C — keeps the low end</option>
-                  <option value="z">Z — unweighted</option>
-                </select>
-                <span className="hint">
-                  A is what hearing-damage limits and noise rules are written in, so it's the
-                  number that can be compared to anything. C is measured alongside it either way —
-                  the gap between them is the size of your bottom end.
-                  <strong> Changing this means recalibrating</strong>, since the offset depends on
-                  the curve.
-                </span>
-              </label>
-              <label className="field">
-                <span>SPL time weighting</span>
-                <select
-                  className="input"
-                  value={form.spl_time_weighting || "slow"}
-                  onChange={(e) => set("spl_time_weighting", e.target.value)}
-                >
-                  <option value="slow">Slow — 1 s (matches most handheld meters)</option>
-                  <option value="fast">Fast — 125 ms</option>
-                </select>
-                <span className="hint">
-                  How long the SPL reading averages over, the way a sound level meter does it.
-                  Set this to whatever your handheld is on before you calibrate — the two have to
-                  match or the offset you land on won't hold.
-                </span>
-              </label>
-              <div className="field wide">
-                <span>Vocal mic channels</span>
-                <div className="mic-map">
-                  {Array.from({ length: micCount }, (_, i) => String(i + 1)).map((mic) => {
-                    const ch = form.audio_mic_channels?.[mic];
-                    const peak = ch ? (chanLevels[ch - 1] ?? 0) : 0;
-                    return (
-                      <label key={mic} className="mic-map-row">
-                        <span className="mic-map-n">Mic {mic}</span>
-                        <select
-                          className="input"
-                          value={ch ?? ""}
-                          onChange={(e) => setMicChan(mic, e.target.value ? Number(e.target.value) : null)}
-                        >
-                          <option value="">not watched</option>
-                          {Array.from({ length: chCount }, (_, i) => i + 1).map((c) => (
-                            <option key={c} value={c}>Channel {c}</option>
-                          ))}
-                        </select>
-                        {/* Live proof the mapping is right: talk into the mic
-                            and this lights. Far quicker than trusting a
-                            Dante routing sheet. */}
-                        <span className={`mic-map-lamp ${ch && peak > 0.003 ? "on" : ""}`}>
-                          {ch ? (peak > 0.003 ? "signal" : "quiet") : ""}
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
-                <span className="hint">
-                  Route each vocal mic to its own channel on this input, then map it here — the
-                  desk can't report signal, so this is how ProDeck knows a mic has gone dead.
-                  Talk into a mic and watch its lamp to confirm the mapping.
-                </span>
-              </div>
-              <div className="field wide">
-                <span>Overflow / Listen channels</span>
-                <div className="chan-row">
-                  {Array.from({ length: chCount }, (_, i) => i + 1).map((ch) => (
-                    <button
-                      key={ch}
-                      type="button"
-                      className={`chan-chip ${(form.audio_overflow_channels ?? []).includes(ch) ? "on" : ""}`}
-                      onClick={() => toggleChan("audio_overflow_channels", ch)}
-                    >
-                      <span
-                        className="chan-lvl"
-                        style={{ height: `${Math.min(100, (chanLevels[ch - 1] ?? 0) * 160)}%` }}
-                      />
-                      <span className="chan-n">{ch}</span>
-                    </button>
-                  ))}
-                </div>
-                <span className="hint">
-                  Streamed to the “Overflow Listen” widget for phones in other rooms. Empty = off.
-                  Restart audio capture after changing channels.
-                </span>
-              </div>
-              <div className="field wide">
-                <span>Auto-Follow listens to</span>
-                <div className="chan-row">
-                  {Array.from({ length: chCount }, (_, i) => i + 1).map((ch) => (
-                    <button
-                      key={ch}
-                      type="button"
-                      className={`chan-chip ${(form.caption_channels ?? []).includes(ch) ? "on" : ""}`}
-                      onClick={() => toggleChan("caption_channels", ch)}
-                    >
-                      <span
-                        className="chan-lvl"
-                        style={{ height: `${Math.min(100, (chanLevels[ch - 1] ?? 0) * 160)}%` }}
-                      />
-                      <span className="chan-n">{ch}</span>
-                    </button>
-                  ))}
-                </div>
-                <span className="hint">
-                  What Whisper hears for Auto-Follow and captions. Empty = the Listen channels above (a
-                  board mix). Best of all is a vocals-only feed — patch the lead-vocal group to a spare
-                  channel in Dante Controller and pick it here. Restart audio capture after changing.
-                </span>
-              </div>
-            </>
-          )}
-          <label className="field wide">
-            <span>Whisper binary (whisper.cpp CLI)</span>
-            <input className="input" placeholder="/opt/homebrew/bin/whisper-cli"
-              value={form.whisper_bin ?? ""}
-              onChange={(e) => set("whisper_bin", e.target.value || null)} />
-          </label>
-          <label className="field wide">
-            <span>Whisper model (.bin)</span>
-            <input className="input" placeholder="…/ggml-base.en.bin"
-              value={form.whisper_model ?? ""}
-              onChange={(e) => set("whisper_model", e.target.value || null)} />
-          </label>
-        </div>
-      </section>
-
-      {!IS_WEB && <ChopCard form={form} set={set} crew={crew} />}
-      {!IS_WEB && <WalkInCard form={form} set={set} />}
-
-      <section className="card">
-        <div className="card-head">
-          <h3 id="set-ga4">Live Viewers (Google Analytics)</h3><HelpLink section="phase3" />
-          <span className={`chip ${ga4Ok ? "online" : ""}`}>{ga4Ok ? "on" : "off"}</span>
-        </div>
-        <p className="muted small">
-          Live count of people watching on the Church Online web player, from GA4's realtime
-          report. Church Online has no viewer API of its own, so this reads the analytics tag
-          already running on the watch page. <strong>The Facebook simulcast is not counted</strong> —
-          only the web player.
-        </p>
-        <div className="settings-grid">
-          <label className="field">
-            <span>GA4 property ID</span>
-            <input
-              className="input"
-              placeholder="e.g. 520479442"
-              value={form.ga4_property_id ?? ""}
-              onChange={(e) => set("ga4_property_id", e.target.value.trim())}
-            />
-          </label>
-          <label className="field wide">
-            <span>Service-account key file</span>
-            <input
-              className="input"
-              placeholder={
-                form.ga4_property_id && !form.ga4_key_path
-                  ? "set on the booth Mac — hidden from browsers"
-                  : "/Users/…/ProDeck/ga4-key.json"
-              }
-              value={form.ga4_key_path ?? ""}
-              onChange={(e) => set("ga4_key_path", e.target.value.trim())}
-            />
-          </label>
-          <label className="field">
-            <span>Page filter (optional)</span>
-            <input
-              className="input"
-              placeholder="blank = whole property"
-              value={form.ga4_page_filter ?? ""}
-              onChange={(e) => set("ga4_page_filter", e.target.value.trim())}
-            />
-          </label>
-        </div>
-        <p className="hint">
-          The property ID is the number in GA4 Admin → Property Settings, <em>not</em> the
-          <code>G-</code> measurement ID. Add the service account as a <strong>Viewer</strong> on
-          that property, and enable the Google Analytics Data API in its Cloud project. Leave the
-          page filter blank when the property only covers the watch subdomain.
-        </p>
-      </section>
-
-      <section className="card">
-        <div className="card-head">
-          <h3 id="set-assist">Troubleshooter — Ask ProDeck</h3><HelpLink section="ask-prodeck" />
-          <span className={`chip ${form.assist_api_key ? "online" : ""}`}>{form.assist_api_key ? "on" : "off"}</span>
-        </div>
-        <p className="muted small">
-          A volunteer types what is wrong in their own words — on a phone under <strong>No sound?</strong> or here under
-          Routing — and gets what ProDeck already checked plus the next thing to walk to. It answers only from the routing
-          map, the knowledge files below and live state, cites every fact, and never touches the desk. The key stays on
-          this machine; phones ask through it. Each question is sent to Anthropic with the routing map and live status
-          it needs, on your church's own key.
-        </p>
-        <div className="settings-grid">
-          <label className="field wide">
-            <span>Anthropic API key (console.anthropic.com)</span>
-            <input
-              className="input"
-              type="password"
-              autoComplete="off"
-              placeholder="sk-ant-… — stored only on this machine"
-              value={form.assist_api_key ?? ""}
-              onChange={(e) => set("assist_api_key", e.target.value || null)}
-            />
-          </label>
-          <label className="field">
-            <span>Workspace ID (only for an account-level key)</span>
-            <input className="input" autoComplete="off" placeholder="wrkspc_… — console.anthropic.com → Settings → Workspaces" value={form.assist_workspace_id ?? ""} onChange={(e) => set("assist_workspace_id", e.target.value.trim())} />
-          </label>
-          <label className="field">
-            <span>Model</span>
-            <select className="input" value={form.assist_model || "claude-sonnet-5"} onChange={(e) => set("assist_model", e.target.value)}>
-              <option value="claude-sonnet-5">Claude Sonnet 5 — fast, recommended</option>
-              <option value="claude-opus-5">Claude Opus 5 — deeper, slower</option>
-              <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 — cheapest</option>
-            </select>
-          </label>
-          <label className="field">
-            <span>Calls per month before it stops (0 = no cap)</span>
-            <input className="input" type="number" min={0} value={form.assist_monthly_cap ?? 500} onChange={(e) => set("assist_monthly_cap", Math.max(0, parseInt(e.target.value || "0", 10)))} />
-          </label>
-          <label className="field check">
-            <input type="checkbox" checked={form.assist_members} onChange={(e) => set("assist_members", e.target.checked)} />
-            <span>Let crew phones ask (the booth always can)</span>
-          </label>
-        </div>
-        <p className="muted small" style={{ marginTop: 10 }}>
-          {assist ? `Used ${assist.usedThisMonth} of ${assist.monthlyCap || "∞"} calls this month · model ${assist.model}.` : ""}
-          {" "}
-          <strong>Knowledge files</strong>: {assist && assist.knowledgeFiles.length ? assist.knowledgeFiles.join(", ") : "none yet"}.
-          {" "}Plain markdown about your building, read on every question. Folder:{" "}
-          <button className="btn small ghost" onClick={() => assistKnowledgeDir().then((d) => { navigator.clipboard?.writeText(d).catch(() => {}); assistStatus().then(setAssist).catch(() => {}); })} title="Create the folder if needed and copy its path">
-            copy path
-          </button>
-          {assist?.knowledgeDir ? <span className="mono"> {assist.knowledgeDir}</span> : null}
-        </p>
-      </section>
-
-      <section className="card">
-        <div className="card-head">
-          <h3 id="set-gemini">Auto‑Follow</h3><HelpLink section="features" />
-          <span className={`chip ${form.assist_api_key ? "online" : ""}`}>{form.assist_api_key ? "model on standby" : "by ear only"}</span>
-        </div>
-        <p className="muted small">
-          Auto‑Follow (its own page in the sidebar) hears the singing on this Mac with Whisper — audio never leaves
-          the building — and moves ProPresenter at the end of each slide. When two slides are equally
-          likely it asks Claude to read the lyric, using the Anthropic key from the Troubleshooter
-          card above, on its own monthly budget. Without a key it follows by ear alone.
-        </p>
-        <div className="settings-grid">
-          <label className="field">
-            <span>Model</span>
-            <input className="input" placeholder="claude-haiku-4-5" value={form.follow_model ?? ""}
-              onChange={(e) => set("follow_model", e.target.value)} />
-          </label>
-          <label className="field">
-            <span>Model calls per month (0 = no cap)</span>
-            <input className="input" type="number" min={0} value={form.follow_monthly_cap ?? 2000}
-              onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n) && n >= 0) set("follow_monthly_cap", n); }} />
-          </label>
-          <label className="field">
-            <span>Click channel (0 = none)</span>
-            <input className="input" type="number" min={0} max={128} value={form.follow_click_channel ?? 0}
-              onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n) && n >= 0) set("follow_click_channel", n); }} />
-          </label>
-          <label className="field">
-            <span>Guide channel (0 = none)</span>
-            <input className="input" type="number" min={0} max={128} value={form.follow_guide_channel ?? 0}
-              onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n) && n >= 0) set("follow_guide_channel", n); }} />
-          </label>
-          <label className="field">
-            <span>Whisper audio context (0 = full)</span>
-            <input className="input" type="number" min={0} max={1500} value={form.whisper_audio_ctx ?? 768}
-              onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n) && n >= 0) set("whisper_audio_ctx", n); }} />
-          </label>
-        </div>
-        <p className="hint">
-          <strong>Click and guide</strong> from the playback rig (the channels on this Mac's audio input they're
-          routed to): with them Follow knows the beat and hears the guide's section calls a bar early, and lands each
-          section on its downbeat. Restart audio capture after changing.
-        </p>
-        <p className="hint">
-          Whisper's model: leave the path under Audio empty and ProDeck uses the best one in its models
-          folder (large‑v3‑turbo). What it listens to is under Audio → “Auto‑Follow listens to”.
-        </p>
-      </section>
-
-      <AutopilotCard form={form} set={set} />
-      <AutomixCard form={form} set={set} />
-      <RecorderCard form={form} set={set} />
-
-      <section className="card">
-        <div className="card-head"><h3 id="set-inputs">Control Inputs</h3><HelpLink section="features" /></div>
-        <div className="settings-grid">
-          <label className="field">
-            <span>OSC port</span>
-            <input className="input" type="number" value={form.osc_port}
-              onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n)) set("osc_port", n); }} />
-          </label>
-          <div className="field btn-field">
-            <span>&nbsp;</span>
-            <button className={`btn ${oscOn ? "danger" : ""}`} onClick={toggleOsc}>
-              {oscOn ? "Stop OSC" : "Start OSC"}
-            </button>
-          </div>
-          <label className="field wide">
-            <span>MIDI input</span>
-            <div className="inline">
-              <select className="input" value={form.midi_port ?? ""}
-                onChange={(e) => set("midi_port", e.target.value || null)}>
-                <option value="">None</option>
-                {midiPorts.map((p) => <option key={p} value={p}>{p}</option>)}
-              </select>
-              <button className="btn" onClick={toggleMidi}>
-                {form.midi_port ? "Connect" : "Disconnect"}
-              </button>
+                  <span>{s.label}</span>
+                  {pending > 0 && <span className="nav-badge" title={`${pending} waiting to join`}>{pending}</span>}
+                </button>
+              );
+            })}
+          </nav>
+        </aside>
+        <div className="set-content" ref={contentRef}>
+          {query.trim() ? (
+            <div className="set-section-head">
+              <h2>{matches?.length ? `Settings matching "${query.trim()}"` : `Nothing matches "${query.trim()}"`}</h2>
+              <p className="muted small">
+                {matches?.length ? `${matches.length} ${matches.length === 1 ? "card" : "cards"}. ` : "Try fewer or different words. "}
+                <button className="link-btn" onClick={() => setQuery("")}>Clear search</button>
+              </p>
             </div>
-          </label>
-        </div>
-        <p className="hint">
-          MIDI: notes D3/C3/E3 → next / previous / clear. OSC: <code>/prodeck/next</code>,{" "}
-          <code>/prodeck/previous</code>, <code>/prodeck/clear/&lt;layer&gt;</code>.
-        </p>
-        {(midiLog.length > 0 || oscLog.length > 0) && (
-          <div className="log-strip">
-            {[...oscLog, ...midiLog].slice(-3).map((l, i) => (
-              <span key={i} className="log-line">{l.text}</span>
-            ))}
-          </div>
-        )}
-      </section>
+          ) : (
+            (() => {
+              const s = SECTIONS.find((x) => x.id === section) ?? SECTIONS[0];
+              return (
+                <div className="set-section-head">
+                  <h2>{s.label}</h2>
+                  <p className="muted small">{s.blurb}</p>
+                </div>
+              );
+            })()
+          )}
+          <SecCtx.Provider value={(id) => (matches ? matches.includes(id) : sectionOf(id) === section)}>
 
-      <section className="card">
-        <div className="card-head">
-          <h3 id="set-songkey">Song Key → Backing Track / Vocal Tune</h3><HelpLink section="features" />
-          <span className={`chip ${form.keysend_enabled ? "online" : ""}`}>
-            {form.keysend_enabled ? "on" : "off"}
-          </span>
-        </div>
-        <p className="muted small">
-          Sends the live song's key (from Planning Center, or your in-app override) to your Waves /
-          MultiTracks PC as a <strong>pitch class 0–11</strong>, so the rig switches to a per-key
-          state automatically. Sent both as OSC and as a MIDI Program Change (+ optional CC) — wire
-          up whichever your rig uses.
-        </p>
-        <div className="settings-grid">
-          <label className="field check">
-            <input
-              type="checkbox"
-              checked={form.keysend_enabled}
-              onChange={(e) => set("keysend_enabled", e.target.checked)}
-            />
-            <span>Auto-send the live song's key</span>
-          </label>
-          <label className="field">
-            <span>OSC host — rig PC's IP (blank = off)</span>
-            <input
-              className="input"
-              placeholder="e.g. 192.168.1.50"
-              value={form.keysend_osc_host}
-              onChange={(e) => set("keysend_osc_host", e.target.value)}
-            />
-          </label>
-          <label className="field">
-            <span>OSC port</span>
-            <input
-              className="input"
-              type="number"
-              value={form.keysend_osc_port}
-              onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n)) set("keysend_osc_port", n); }}
-            />
-          </label>
-          <label className="field wide">
-            <span>MIDI output — e.g. a Network/rtpMIDI session (None = off)</span>
-            <select
-              className="input"
-              value={form.keysend_midi_port ?? ""}
-              onChange={(e) => set("keysend_midi_port", e.target.value || null)}
-            >
-              <option value="">None</option>
-              {midiOutPorts.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            <span>MIDI channel</span>
-            <input
-              className="input"
-              type="number"
-              min={1}
-              max={16}
-              value={form.keysend_midi_channel}
-              onChange={(e) =>
-                set("keysend_midi_channel", Math.min(16, Math.max(1, parseInt(e.target.value) || 1)))
-              }
-            />
-          </label>
-          <label className="field">
-            <span>Also send CC# (−1 = Program Change only)</span>
-            <input
-              className="input"
-              type="number"
-              min={-1}
-              max={127}
-              value={form.keysend_cc}
-              onChange={(e) => {
-                const n = parseInt(e.target.value);
-                set("keysend_cc", Number.isNaN(n) ? -1 : Math.min(127, Math.max(-1, n)));
-              }}
-            />
-          </label>
-          <div className="field btn-field">
-            <span>&nbsp;</span>
-            <button className="btn" onClick={testKeySend}>
-              Save &amp; send test (G)
-            </button>
-          </div>
-        </div>
-        {keysendMsg && (
-          <p className={keysendMsg.startsWith("✓") ? "hint" : "error"}>{keysendMsg}</p>
-        )}
-        <details className="hint">
-          <summary>How to receive it on the Waves / MultiTracks PC</summary>
-          <p>
-            The key is sent as a number 0–11 (C=0, C#=1, … B=11; minor keys use the root — Am→9).
-            It selects a <em>pre-built per-key state</em>; it is not a live transpose.
-          </p>
-          <ul>
-            <li>
-              <strong>Waves Tune Real-Time in SuperRack (recommended):</strong> build 12 snapshots,
-              one per key, ordered so snapshot 1 = C … snapshot 12 = B. Program Change <em>N</em>{" "}
-              recalls snapshot <em>N+1</em>. On Windows install <code>rtpMIDI</code>, connect to this
-              Mac's Network MIDI session, then choose that session as the MIDI output above.
-            </li>
-            <li>
-              <strong>Waves Tune in a DAW (Ableton/Logic/Cubase):</strong> right-click Scale Root →
-              Learn, then send a CC once to bind it (set a CC# above).
-            </li>
-            <li>
-              <strong>Prefer OSC?</strong> Run Bitfocus Companion on the rig PC, enable its OSC
-              listener (port 12321), and map <code>/key/pc &lt;n&gt;</code> → send Program Change{" "}
-              <em>n</em> to the rig.
-            </li>
-            <li>
-              <strong>MultiTracks Playback</strong> has no remote key control — keep setting its key
-              per song in advance (it cloud-syncs). This drives Waves, not Playback.
-            </li>
-          </ul>
-        </details>
-      </section>
 
-      <section className="card">
-        <div className="card-head">
-          <h3 id="set-taplink">TapLink (NFC giving link)</h3><HelpLink section="phase3" />
-          <span className={`chip ${form.tap_enabled ? "online" : ""}`}>
-            {form.tap_enabled ? "armed" : "off"}
-          </span>
-        </div>
-        <p className="muted small">
-          NFC discs in your lobby all open one link, and that link follows the service: put{" "}
-          <code>tap:give</code> in a slide's notes and every disc points at giving the moment that
-          slide goes live; <code>tap:default</code> reverts. Only this booth instance follows
-          slides; phones can watch and override, but not change the setup here.{" "}
-          <button className="link-btn" onClick={() => openHelp("taplink-overview")}>What this is</button>
-        </p>
-        <TapLinkGuide form={form} tested={tapMsg.startsWith("✓")} />
-        <div className="settings-grid">
-          <label className="field check">
-            <input
-              type="checkbox"
-              checked={form.tap_enabled}
-              onChange={(e) => set("tap_enabled", e.target.checked)}
-              disabled={IS_WEB}
-            />
-            <span>Follow slides (arm the watcher)</span>
-          </label>
-          <label className="field wide">
-            <span>Edge URL</span>
-            <input
-              className="input"
-              value={form.tap_edge_url}
-              onChange={(e) => set("tap_edge_url", e.target.value)}
-              disabled={IS_WEB}
-            />
-          </label>
-          <label className="field wide">
-            <span>API token (from taplink-edge deploy)</span>
-            <input
-              className="input"
-              type="password"
-              value={form.tap_token}
-              onChange={(e) => set("tap_token", e.target.value)}
-              disabled={IS_WEB}
-              placeholder={IS_WEB ? "hidden on web clients" : ""}
-            />
-          </label>
-          {!IS_WEB && (
+      <Sec id="set-update">
+        <section className="card">
+          <div className="card-head">
+            <h3 id="set-update">Software Update</h3><HelpLink section="care" />
+            <span className="chip">v{upd.version || "…"}</span>
+          </div>
+          <div className="settings-grid">
+            <label className="field wide">
+              <span>Status</span>
+              <input
+                className="input"
+                readOnly
+                value={
+                  upd.status === "checking"
+                    ? "Checking for updates…"
+                    : upd.status === "available"
+                      ? `Update v${upd.newVersion} available`
+                      : upd.status === "downloading"
+                        ? `Downloading… ${upd.progress}%`
+                        : upd.status === "ready"
+                          ? "Installed — restarting"
+                          : upd.status === "uptodate"
+                            ? "Up to date"
+                            : upd.status === "error"
+                              ? "Update server unreachable"
+                              : "—"
+                }
+              />
+            </label>
             <div className="field btn-field">
               <span>&nbsp;</span>
-              <button className="btn" onClick={testTapLink}>
-                Save &amp; test connection
-              </button>
+              {upd.status === "available" ? (
+                <button className="btn primary" onClick={() => upd.install()}>
+                  Install &amp; Restart
+                </button>
+              ) : (
+                <button
+                  className="btn"
+                  onClick={() => upd.check()}
+                  disabled={upd.status === "checking" || upd.status === "downloading"}
+                >
+                  Check for updates
+                </button>
+              )}
             </div>
-          )}
-        </div>
-        {tapMsg && <p className={tapMsg.startsWith("✓") ? "hint" : "error"}>{tapMsg}</p>}
-        {/* Configured, not armed: disarming only stops slide-following, so the
-            links must stay editable. */}
-        {!IS_WEB && !!form.tap_edge_url && !!form.tap_token && <TapMappingEditor />}
-      </section>
-
-      {crew !== null && (
-        <section className="card">
-          <div className="card-head">
-            <h3 id="set-crew">Crew Members</h3><HelpLink section="phase1" />
-            {crew.some((u) => !u.approved) && (
-              <span className="chip">{crew.filter((u) => !u.approved).length} pending</span>
-            )}
           </div>
-          <p className="muted small">
-            PIN identities for phones — messages carry these verified names. New joins
-            wait here until you approve them — or skip the wait entirely by
-            sending a personal invite link below.{" "}
-            <button className="link-btn" onClick={() => openHelp("crew-overview")}>How the crew system works</button>
+          <p className="hint">
+            ProDeck checks for updates a few seconds after launch and shows a banner when one
+            is ready. Updates are signed releases from the ProDeck GitHub repository (or your
+            own fork's feed, if you build it yourself); installing restarts the app.
           </p>
-          <div className="guide-steps">
-            <div className={`guide-step ${form.web_member_password ? "done" : ""}`}>
-              <span className="guide-step-n">1</span>
-              <div>
-                <strong>Set the crew password</strong>
-                <span className="muted small">In Browser Access. It's what the join link carries, and what every crew phone holds.</span>
-              </div>
-            </div>
-            <div className={`guide-step ${form.web_invite_token ? "done" : ""}`}>
-              <span className="guide-step-n">2</span>
-              <div>
-                <strong>Open joining and share the poster — or send personal invites</strong>
-                <span className="muted small">The poster works only while joining is open (below). A personal invite is for one person and arrives pre-approved.</span>
-              </div>
-            </div>
-            <div className={`guide-step ${crew.some((u) => u.approved) ? "done" : ""}`}>
-              <span className="guide-step-n">3</span>
-              <div>
-                <strong>Approve people as they join</strong>
-                <span className="muted small">Once each. Roles come from this week's Planning Center plan through the PCO link on each person.</span>
-              </div>
-            </div>
-          </div>
-          <CrewRolesEditor roles={form.crew_roles ?? []} onChange={(r) => set("crew_roles", r)} />
-          <PersonalInvites roleSuggestions={form.crew_roles ?? []} />
-          {crew.length === 0 && <p className="muted small">Nobody has joined yet.</p>}
-          {crew.map((u) => (
-            <CrewRow key={u.id} u={u} />
-          ))}
+          <ReleaseNotesOptIn compact />
+          <p className="hint made-by">
+            Made by White Oak Media, church websites and Google Ad Grants.{" "}
+            <a href="https://whiteoakmedia.io" onClick={(e) => { e.preventDefault(); openExternal("https://whiteoakmedia.io/?utm_source=prodeck&utm_medium=app&utm_campaign=about"); }}>
+              whiteoakmedia.io
+            </a>
+          </p>
+          <p className="hint">
+            ProDeck is free and MIT licensed, with no warranty. It can change ProPresenter and your console, so rehearse
+            with it before you rely on it in a service. It's an independent project, not affiliated with or endorsed by
+            Renewed Vision, Planning Center, Audinate, Allen &amp; Heath, Elgato or the other products it works with.
+          </p>
+          <p className="hint made-by-links">
+            <a href="#privacy" onClick={(e) => { e.preventDefault(); setLegal("privacy"); }}>Privacy</a>
+            <a href="#licences" onClick={(e) => { e.preventDefault(); setLegal("licences"); }}>Licences and trademarks</a>
+            <a href="https://github.com/whiteoakmedia/prodeck" onClick={(e) => { e.preventDefault(); openExternal("https://github.com/whiteoakmedia/prodeck"); }}>Source code</a>
+          </p>
+          {legal && <LegalDialog kind={legal} onClose={() => setLegal(null)} />}
         </section>
-      )}
+      </Sec>
 
-      {!IS_WEB && <ScheduledAlerts crew={crew ?? []} />}
-
-      <section className="card">
-        <div className="card-head">
-          <h3 id="set-relay">LAN Relay (multi-instance sync)</h3><HelpLink section="features" />
-          <span className={`chip ${relay.mode !== "off" ? "online" : "offline"}`}>
-            {relay.mode === "host"
-              ? `Hosting · ${relay.clients} client${relay.clients === 1 ? "" : "s"}`
-              : relay.mode === "client"
-                ? relay.connected
-                  ? "Client · connected"
-                  : "Client · connecting…"
-                : "Off"}
-          </span>
-        </div>
-        <div className="settings-grid">
-          <label className="field">
-            <span>Mode</span>
-            <select
-              className="input"
-              value={relay.mode}
-              onChange={(e) => {
-                const m = e.target.value;
-                if (m === "host") relay.startHost();
-                else if (m === "client") relay.connectClient();
-                else relay.stop();
-              }}
-            >
-              <option value="off">Off</option>
-              <option value="host">Host (this machine shares its state)</option>
-              <option value="client">Client (mirror another machine)</option>
-            </select>
-          </label>
-          {relay.mode !== "client" && (
-            <label className="field">
-              <span>Host port</span>
-              <input
-                className="input"
-                type="number"
-                value={relay.hostPort}
-                onChange={(e) => relay.setHostPort(parseInt(e.target.value) || 51421)}
-              />
-            </label>
-          )}
-          {relay.mode !== "host" && (
-            <label className="field wide">
-              <span>Host address (ws://IP:port)</span>
-              <input
-                className="input"
-                placeholder="ws://192.168.1.50:51421"
-                value={relay.clientUrl}
-                onChange={(e) => relay.setClientUrl(e.target.value)}
-              />
-            </label>
-          )}
-        </div>
-        <p className="hint">
-          Make the booth machine (the one connected to ProPresenter / NDI / audio) the{" "}
-          <strong>Host</strong>. On each other machine, choose <strong>Client</strong> and enter{" "}
-          <code>ws://HOST-IP:{relay.hostPort}</code>. Clients mirror ProPresenter state, audio
-          levels, dashboards, and pull camera/NDI video from the host. Control stays on the host.
-        </p>
-      </section>
-
-      <section className="card">
-        <div className="card-head"><h3 id="set-alerts">Alerts &amp; Monitoring</h3><HelpLink section="care" /></div>
-        <div className="settings-grid">
-          <label className="field check">
-            <input type="checkbox" checked={alertCfg.enabled}
-              onChange={(e) => setAlertCfg({ enabled: e.target.checked })} />
-            <span>Enable smart alerts (visual only)</span>
-          </label>
-          <label className="field check">
-            <input type="checkbox" checked={alertCfg.ppDisconnect}
-              onChange={(e) => setAlertCfg({ ppDisconnect: e.target.checked })} />
-            <span>ProPresenter disconnect</span>
-          </label>
-          <label className="field check">
-            <input type="checkbox" checked={alertCfg.ndiLoss}
-              onChange={(e) => setAlertCfg({ ndiLoss: e.target.checked })} />
-            <span>Stage feed (NDI) loss</span>
-          </label>
-          <label className="field check">
-            <input type="checkbox" checked={alertCfg.tapPushFail}
-              onChange={(e) => setAlertCfg({ tapPushFail: e.target.checked })} />
-            <span>TapLink push failed (NFC discs)</span>
-          </label>
-          <label className="field check">
-            <input type="checkbox" checked={alertCfg.micMuted}
-              onChange={(e) => setAlertCfg({ micMuted: e.target.checked })} />
-            <span>Scheduled mic muted during service (Avantis)</span>
-          </label>
-          <label className="field check">
-            <input type="checkbox" checked={alertCfg.micSilent}
-              onChange={(e) => setAlertCfg({ micSilent: e.target.checked })} />
-            <span>
-              Scheduled mic open but silent
-              <span className="muted small">
-                {" "}— 90 s before each service and during songs. Needs the mic channels mapped below.
-              </span>
-            </span>
-          </label>
-          <label className="field check">
-            <input type="checkbox" checked={alertCfg.audioSilence}
-              onChange={(e) => setAlertCfg({ audioSilence: e.target.checked })} />
-            <span>Dead-feed alert</span>
-          </label>
-          <label className="field">
-            <span>Silence below (dBFS)</span>
-            <input className="input" type="number" value={alertCfg.silenceDb}
-              onChange={(e) => setAlertCfg({ silenceDb: parseInt(e.target.value) || -80 })} />
-          </label>
-          <label className="field">
-            <span>Silence after (sec)</span>
-            <input className="input" type="number" min={1} value={alertCfg.silenceSecs}
-              onChange={(e) => setAlertCfg({ silenceSecs: parseInt(e.target.value) || 1 })} />
-          </label>
-          <label className="field check">
-            <input type="checkbox" checked={alertCfg.overSpl}
-              onChange={(e) => setAlertCfg({ overSpl: e.target.checked })} />
-            <span>Sustained over-SPL</span>
-          </label>
-          <label className="field">
-            <span>Over-SPL threshold (dB)</span>
-            <input className="input" type="number" value={alertCfg.overSplValue}
-              onChange={(e) => setAlertCfg({ overSplValue: parseInt(e.target.value) || 0 })} />
-          </label>
-          <label className="field">
-            <span>Over-SPL after (sec)</span>
-            <input className="input" type="number" min={1} value={alertCfg.overSecs}
-              onChange={(e) => setAlertCfg({ overSecs: parseInt(e.target.value) || 1 })} />
-          </label>
-        </div>
-        <p className="hint">
-          Alerts pop as banners on any screen (with optional sound). Add the{" "}
-          <strong>System Health</strong> widget to a dashboard for an at-a-glance status row.
-        </p>
-      </section>
-
-      {!IS_WEB && (
+      <Sec id="set-connections">
         <section className="card">
-          <div className="card-head">
-            <h3 id="set-web">Browser Access (LAN)</h3><HelpLink section="phase1" />
-            {webInfo.running ? (
-              <span className="chip online">serving · :{webInfo.port}</span>
-            ) : webInfo.error ? (
-              <span className="chip bad">not serving</span>
-            ) : (
-              <span className="chip">off</span>
-            )}
-          </div>
-          {webInfo.error && (
-            <p className="error small">
-              Phones and kiosks can't reach this Mac. {webInfo.error}
-            </p>
-          )}
+          {/* Connections — one place to drop and redial anything, without
+              restarting ProDeck. Every integration reconnects on its own when a
+              link falls over; this is for the case it can't see: a socket that is
+              open and dead, a desk or OBS rebooted behind it, a mirror that has
+              drifted, ProPresenter moved to a new address. Until this existed the
+              remedy was "quit ProDeck", mid-service, with everything else on it. */}
+          <div className="card-head"><h3 id="set-connections">Connections</h3><HelpLink section="care" /></div>
           <p className="muted small">
-            Serve the dashboards to phones, tablets, and laptops on the church network.
-            They open this Mac's address in a browser and sign in with the password below.
+            Each line reconnects on its own when it drops. Use these when something says it's
+            connected but isn't behaving — they reconnect the one thing, and leave the rest alone.
           </p>
-          <CrewInviteLink form={form} set={set} />
-          <AutoCheckin form={form} set={set} />
+          <ul className="conn-list">
+            {(() => {
+              const st = (k: string) => health.find((h) => h.key === k)?.state ?? "idle";
+              const Dot = ({ s }: { s: string }) => <span className={`dot ${s === "ok" ? "online" : s === "bad" ? "offline" : ""}`} />;
+              return (
+                <>
+                  <li>
+                    <Dot s={ppUp ? "ok" : "bad"} /><span className="conn-name">ProPresenter</span>
+                    <span className="muted small conn-detail">{ppUp ? ppHost : "not connected"}</span>
+                    <span className="conn-actions">
+                      <button className="btn small" onClick={() => ppConnect(form.pp_host, form.pp_port).catch(() => {})}>Reconnect</button>
+                      {ppUp && <button className="btn small ghost" onClick={() => ppDisconnect()}>Disconnect</button>}
+                    </span>
+                  </li>
+                  <li>
+                    <Dot s={st("pco")} /><span className="conn-name">Planning Center</span>
+                    <span className="muted small conn-detail">{health.find((h) => h.key === "pco")?.detail ?? ""}</span>
+                    <span className="conn-actions">
+                      <button className="btn small ghost" title="Forget the saved credentials so you can sign in again"
+                        onClick={async () => {
+                          if (!(await askConfirm("Disconnect Planning Center? You can sign in again straight away — plans and mic assignments are kept."))) return;
+                          await pcoOauthDisconnect().catch(() => {});
+                          await pcoSaveCredentials("", "");
+                        }}>Disconnect</button>
+                    </span>
+                  </li>
+                  <li>
+                    <Dot s={st("desk")} /><span className="conn-name">Sound console</span>
+                    <span className="muted small conn-detail">{health.find((h) => h.key === "desk")?.detail ?? ""}</span>
+                    <span className="conn-actions">
+                      <button className="btn small" onClick={() => avantisReconnect()}>Reconnect</button>
+                    </span>
+                  </li>
+                  <li>
+                    <Dot s={obsUp === null ? "idle" : obsUp ? "ok" : "bad"} /><span className="conn-name">OBS Studio</span>
+                    <span className="muted small conn-detail">{obsUp === null ? "" : obsUp ? "connected" : "not connected"}</span>
+                    <span className="conn-actions">
+                      <button className="btn small" onClick={() => obsReconnect()}>Reconnect</button>
+                    </span>
+                  </li>
+                  <li>
+                    <Dot s={st("cam")} /><span className="conn-name">Stage feed (NDI)</span>
+                    <span className="muted small conn-detail">{health.find((h) => h.key === "cam")?.detail ?? ""}</span>
+                    <span className="conn-actions">
+                      <button className="btn small ghost" title="Stop the receiver; widgets that need it start it again" onClick={() => ndiStop()}>Disconnect</button>
+                    </span>
+                  </li>
+                  <li>
+                    <Dot s={form.web_enabled ? "ok" : "idle"} /><span className="conn-name">Browser access (phones &amp; kiosks)</span>
+                    <span className="muted small conn-detail">{form.web_enabled ? `port ${form.web_port}` : "off"}</span>
+                    <span className="conn-actions">
+                      <button className="btn small" onClick={async () => { await webStop().catch(() => {}); await webStart(form.web_port).catch(() => {}); }}>Restart</button>
+                    </span>
+                  </li>
+                </>
+              );
+            })()}
+          </ul>
+        </section>
+      </Sec>
+
+      <Sec id="set-pp">
+        <section className="card">
+          <div className="card-head"><h3 id="set-pp">ProPresenter</h3><HelpLink section="features" /></div>
           <div className="settings-grid">
-          <label className="field wide">
-            <span>Public URL — the domain volunteers reach from anywhere (your tunnel), e.g. https://booth.yourchurch.org. Blank = LAN only.</span>
-            <input className="input" placeholder="https://…"
-              value={form.public_url ?? ""}
-              onChange={(e) => set("public_url", e.target.value.trim())} />
-          </label>
-            <label className="field switch">
-              <input
-                type="checkbox"
-                checked={form.web_enabled}
-                onChange={(e) => set("web_enabled", e.target.checked)}
-              />
-              <span>Enable browser access</span>
+            <label className="field">
+              <span>Host / IP</span>
+              <input className="input" value={form.pp_host}
+                onChange={(e) => set("pp_host", e.target.value)} />
             </label>
             <label className="field">
               <span>Port</span>
+              <input className="input" type="number" value={form.pp_port}
+                onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n)) set("pp_port", n); }} />
+            </label>
+            <label className="field check">
+              <input type="checkbox" checked={form.pp_auto_connect}
+                onChange={(e) => set("pp_auto_connect", e.target.checked)} />
+              <span>Auto-connect on launch</span>
+            </label>
+          </div>
+        </section>
+      </Sec>
+
+      <Sec id="set-avantis">
+        <section className="card">
+          <div className="card-head">
+            <h3 id="set-avantis">Sound Console</h3><HelpLink section="features" />
+            <span className="chip">{consoleLabel(form.avantis_model)} · mirror</span>
+          </div>
+          <p className="muted small">
+            Watches the sound desk over the network: mutes, faders, scenes and
+            channel names show up live in ProDeck. Allen &amp; Heath desks use MIDI
+            over TCP, Behringer X32 / Midas M32 use OSC, and Yamaha CL, QL and TF
+            use Yamaha's remote control protocol. Control (mutes, faders, names,
+            scene recall) is admin only and off by default in the dashboards, and
+            not available on Yamaha desks yet.
+          </p>
+          <div className="settings-grid">
+            <label className="field check">
+              <input type="checkbox" checked={form.avantis_enabled}
+                onChange={(e) => set("avantis_enabled", e.target.checked)} />
+              <span>Mirror the console</span>
+            </label>
+            <label className="field">
+              <span>Console</span>
+              <select
+                className="input"
+                value={form.avantis_model || "avantis"}
+                onChange={(e) => {
+                  const m = e.target.value;
+                  set("avantis_model", m);
+                  // Each desk's own default port and channel limit. A port that
+                  // is just another desk's default follows the desk; one typed
+                  // on purpose stays.
+                  set("avantis_port", portForSwitch(m, form.avantis_port));
+                  set("avantis_midi_base", midiBaseForSwitch(m, form.avantis_midi_base));
+                }}
+              >
+                {CONSOLES.map((c) => (
+                  <option key={c.id} value={c.id}>{c.option}</option>
+                ))}
+              </select>
+            </label>
+            <HardwareStatus model={form.avantis_model || "avantis"} />
+            <label className="field">
+              <span>Console IP</span>
+              <input className="input" placeholder="192.168.1.60" value={form.avantis_host}
+                onChange={(e) => set("avantis_host", e.target.value.trim())} />
+            </label>
+            <label className="field">
+              <span>
+                TCP port{" "}
+                <span className="muted">
+                  {(form.avantis_model || "avantis") === "dlive"
+                    ? "(MixRack 51325 · Surface 51328)"
+                    : (form.avantis_model || "avantis") === "x32"
+                      ? "(10023)"
+                      : (form.avantis_model || "avantis") === "yamaha"
+                        ? "(49280, rarely needs a change)"
+                        : "(51325)"}
+                </span>
+              </span>
+              <input className="input" type="number" min={1} max={65535} value={form.avantis_port || 51325}
+                onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n)) set("avantis_port", Math.min(65535, Math.max(1, n))); }} />
+            </label>
+            {/* The X32 speaks OSC — it has no MIDI channel to match. Rendered
+                conditionally, not `hidden`: .field sets display:flex, and an
+                author rule beats the browser's [hidden] style. */}
+            {consoleNeedsMidi(form.avantis_model) && (
+            <label className="field">
+              <span>
+                {(form.avantis_model || "avantis") === "sq"
+                  ? "MIDI channel (desk: Utility → General → MIDI)"
+                  : "Base MIDI channel (desk: Utility → Control → MIDI)"}
+              </span>
+              <input className="input" type="number" min={1} max={(form.avantis_model || "avantis") === "sq" ? 16 : 12} value={form.avantis_midi_base}
+                onChange={(e) => { const n = parseInt(e.target.value); const mx = (form.avantis_model || "avantis") === "sq" ? 16 : 12; if (Number.isFinite(n)) set("avantis_midi_base", Math.min(mx, Math.max(1, n))); }} />
+            </label>
+            )}
+            {(form.avantis_model || "avantis") === "sq" && (
+              <p className="hint wide">
+                SQ's MIDI protocol carries no channel names or colours, so channels show
+                as numbers here (Ch 1, Aux 3 …). Mutes and levels are read on connect,
+                so the mirror starts complete. Scenes 1–300.
+              </p>
+            )}
+            {(form.avantis_model || "avantis") === "x32" && (
+              <p className="hint wide">
+                Nothing to set on the console — ProDeck subscribes over OSC on port
+                10023 and reads every channel, DCA, bus, matrix and mute group on
+                connect. Give the desk a fixed IP so this keeps working after a router
+                restart. Scenes 1–100.
+              </p>
+            )}
+            {(form.avantis_model || "avantis") === "yamaha" && (
+              <p className="hint wide">
+                Nothing to set on the console. ProDeck connects on port 49280 and reads
+                channel names, mutes, faders, mix buses, matrices, DCAs, mute groups and
+                the current scene with its name. Works with CL, QL and TF series desks;
+                RIVAGE PM and DM series aren't supported yet. ProDeck only watches a
+                Yamaha desk for now: mutes, faders, names and scene recall can't be
+                changed from ProDeck. Give the desk a fixed IP so this keeps working
+                after a router restart.
+              </p>
+            )}
+            {(form.avantis_model || "avantis") === "dlive" && (
+              <p className="hint wide">
+                dLive reports current mutes and fader levels on connect, so the mirror
+                starts complete. Inputs 1–128, DCAs 1–24, Mains 1–6, UFX included.
+              </p>
+            )}
+            <label className="field">
+              <span>Desk watchdog — page this person when the desk changes</span>
+              <select
+                className="input"
+                value={form.avantis_watch_user ?? ""}
+                onChange={(e) => set("avantis_watch_user", e.target.value)}
+              >
+                <option value="">Off — nobody watches</option>
+                {(crew ?? [])
+                  .filter((u) => u.approved)
+                  .map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <label className="field check">
+              <input
+                type="checkbox"
+                checked={form.avantis_watch_armed}
+                disabled={!form.avantis_watch_user}
+                onChange={(e) => set("avantis_watch_armed", e.target.checked)}
+              />
+              <span>
+                Armed — <strong>setup</strong> changes are paged, batched every 45s: FX
+                send/return levels &amp; mutes, channel renames (an FX swap renames its
+                return), and scene recalls. Normal mixing — input/DCA faders and mutes —
+                never alerts. Names are re-checked every 5 minutes while armed.
+              </span>
+            </label>
+            <SoftkeyEditor
+              list={form.avantis_softkeys ?? []}
+              crew={crew}
+              onChange={(next) => set("avantis_softkeys", next)}
+            />
+            <label className="field wide">
+              <span>Scene names — one per line, e.g. "1 = Pre-service" (the desk only sends numbers)</span>
+              <textarea
+                className="input"
+                rows={4}
+                value={
+                  sceneLabelsText ??
+                  Object.entries(form.avantis_scene_labels ?? {})
+                    .sort((a, b) => parseInt(a[0]) - parseInt(b[0]))
+                    .map(([n, l]) => `${n} = ${l}`)
+                    .join("\n")
+                }
+                onChange={(e) => {
+                  setSceneLabelsText(e.target.value);
+                  const map: Record<string, string> = {};
+                  for (const line of e.target.value.split("\n")) {
+                    const m = line.match(/^\s*(\d+)\s*[=:—-]\s*(.+)$/);
+                    if (m) map[m[1]] = m[2].trim();
+                  }
+                  set("avantis_scene_labels", map);
+                }}
+              />
+            </label>
+            <label className="field">
+              <span>Scene that turns the outboard rig (Waves) ON</span>
+              <input className="input" type="number" min={0} value={form.avantis_waves_on_scene ?? 0} onChange={(e) => set("avantis_waves_on_scene", Math.max(0, parseInt(e.target.value || "0", 10)))} />
+            </label>
+            <label className="field">
+              <span>Scene that turns it OFF (0 = not used)</span>
+              <input className="input" type="number" min={0} value={form.avantis_waves_off_scene ?? 0} onChange={(e) => set("avantis_waves_off_scene", Math.max(0, parseInt(e.target.value || "0", 10)))} />
+            </label>
+            <p className="muted small" style={{ gridColumn: "1 / -1", margin: 0 }}>
+              The desk announces every scene recall. With these two set, the Sound Desk tile shows <strong>Waves ON / OFF</strong>,
+              the troubleshooter knows it, and an alert appears if Waves is off within 90 minutes of a service. Mutes ProDeck only
+              remembers from before the desk connected show with a <strong>?</strong> — the console can't be asked for its mute state,
+              so tap a mute once on the desk to confirm it.
+            </p>
+          </div>
+        </section>
+      </Sec>
+
+      <Sec id="set-obs">
+        <section className="card">
+          <div className="card-head">
+            <h3 id="set-obs">OBS Studio</h3>
+            <HelpLink section="features" />
+            <span className={`chip ${obs?.connected ? "online" : ""}`}>
+              {obs?.connected ? (obs.streaming ? "live" : "connected") : "not connected"}
+            </span>
+          </div>
+          <p className="muted small">
+            Shows what's actually going out of the building: which scene is on, whether
+            you're streaming and recording, how long for, and whether frames are being
+            dropped. In OBS, turn on <strong>Tools → WebSocket Server Settings →
+            Enable WebSocket server</strong> and copy the port and password here.
+          </p>
+          <div className="settings-grid">
+            <label className="field check">
+              <input type="checkbox" checked={form.obs_enabled}
+                onChange={(e) => set("obs_enabled", e.target.checked)} />
+              <span>Connect to OBS</span>
+            </label>
+            <label className="field">
+              <span>OBS computer <span className="muted">(127.0.0.1 if OBS is on this Mac)</span></span>
+              <input className="input" placeholder="127.0.0.1" value={form.obs_host}
+                onChange={(e) => set("obs_host", e.target.value.trim())} />
+            </label>
+            <label className="field">
+              <span>Port <span className="muted">(OBS default 4455)</span></span>
+              <input className="input" type="number" min={1} max={65535} value={form.obs_port || 4455}
+                onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n)) set("obs_port", Math.min(65535, Math.max(1, n))); }} />
+            </label>
+            <label className="field">
+              <span>WebSocket password <span className="muted">(blank if OBS has auth off)</span></span>
+              <input className="input" type="password" autoComplete="new-password" value={form.obs_password}
+                onChange={(e) => set("obs_password", e.target.value)} />
+            </label>
+          </div>
+          {obs?.error && <p className="error small">{obs.error}</p>}
+          {obs?.connected && (
+            <p className="hint">
+              Connected to OBS {obs.version || ""} — scene <strong>{obs.scene || "—"}</strong>
+              {obs.streaming ? ", streaming" : ", not streaming"}
+              {obs.recording ? " and recording." : "."}
+            </p>
+          )}
+        </section>
+      </Sec>
+
+      <Sec id="set-ndi">
+        {!IS_WEB && <NdiCard />}
+      </Sec>
+
+      <Sec id="set-audio">
+        <section className="card">
+          <div className="card-head"><h3 id="set-audio">Audio &amp; Captions</h3><HelpLink section="features" /></div>
+          <div className="settings-grid">
+            <label className="field wide">
+              <span>Default audio input</span>
+              <select className="input" value={form.audio_input ?? ""}
+                onChange={(e) => set("audio_input", e.target.value || null)}>
+                <option value="">System default</option>
+                {audioInputs.map((i) => <option key={i} value={i}>{i}</option>)}
+              </select>
+            </label>
+            {chCount > 1 && (
+              <>
+                <div className="field wide">
+                  <span>Measurement channels ({chCount} available)</span>
+                  <div className="chan-row">
+                    {Array.from({ length: chCount }, (_, i) => i + 1).map((ch) => (
+                      <button
+                        key={ch}
+                        type="button"
+                        className={`chan-chip ${(form.audio_measure_channels ?? []).includes(ch) ? "on" : ""}`}
+                        onClick={() => toggleChan("audio_measure_channels", ch)}
+                      >
+                        <span
+                          className="chan-lvl"
+                          style={{ height: `${Math.min(100, (chanLevels[ch - 1] ?? 0) * 160)}%` }}
+                        />
+                        <span className="chan-n">{ch}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <span className="hint">
+                    Channels the SPL/RTA/LUFS meter mixes. Empty = all. (e.g. pick 1, 2 for your
+                    measurement mic.)
+                  </span>
+                </div>
+                <label className="field">
+                  <span>SPL frequency weighting</span>
+                  <select
+                    className="input"
+                    value={form.spl_freq_weighting || "a"}
+                    onChange={(e) => set("spl_freq_weighting", e.target.value)}
+                  >
+                    <option value="a">A — matches exposure limits and handheld meters</option>
+                    <option value="c">C — keeps the low end</option>
+                    <option value="z">Z — unweighted</option>
+                  </select>
+                  <span className="hint">
+                    A is what hearing-damage limits and noise rules are written in, so it's the
+                    number that can be compared to anything. C is measured alongside it either way —
+                    the gap between them is the size of your bottom end.
+                    <strong> Changing this means recalibrating</strong>, since the offset depends on
+                    the curve.
+                  </span>
+                </label>
+                <label className="field">
+                  <span>SPL time weighting</span>
+                  <select
+                    className="input"
+                    value={form.spl_time_weighting || "slow"}
+                    onChange={(e) => set("spl_time_weighting", e.target.value)}
+                  >
+                    <option value="slow">Slow — 1 s (matches most handheld meters)</option>
+                    <option value="fast">Fast — 125 ms</option>
+                  </select>
+                  <span className="hint">
+                    How long the SPL reading averages over, the way a sound level meter does it.
+                    Set this to whatever your handheld is on before you calibrate — the two have to
+                    match or the offset you land on won't hold.
+                  </span>
+                </label>
+                <div className="field wide">
+                  <span>Vocal mic channels</span>
+                  <div className="mic-map">
+                    {Array.from({ length: micCount }, (_, i) => String(i + 1)).map((mic) => {
+                      const ch = form.audio_mic_channels?.[mic];
+                      const peak = ch ? (chanLevels[ch - 1] ?? 0) : 0;
+                      return (
+                        <label key={mic} className="mic-map-row">
+                          <span className="mic-map-n">Mic {mic}</span>
+                          <select
+                            className="input"
+                            value={ch ?? ""}
+                            onChange={(e) => setMicChan(mic, e.target.value ? Number(e.target.value) : null)}
+                          >
+                            <option value="">not watched</option>
+                            {Array.from({ length: chCount }, (_, i) => i + 1).map((c) => (
+                              <option key={c} value={c}>Channel {c}</option>
+                            ))}
+                          </select>
+                          {/* Live proof the mapping is right: talk into the mic
+                              and this lights. Far quicker than trusting a
+                              Dante routing sheet. */}
+                          <span className={`mic-map-lamp ${ch && peak > 0.003 ? "on" : ""}`}>
+                            {ch ? (peak > 0.003 ? "signal" : "quiet") : ""}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <span className="hint">
+                    Route each vocal mic to its own channel on this input, then map it here — the
+                    desk can't report signal, so this is how ProDeck knows a mic has gone dead.
+                    Talk into a mic and watch its lamp to confirm the mapping.
+                  </span>
+                </div>
+                <div className="field wide">
+                  <span>Overflow / Listen channels</span>
+                  <div className="chan-row">
+                    {Array.from({ length: chCount }, (_, i) => i + 1).map((ch) => (
+                      <button
+                        key={ch}
+                        type="button"
+                        className={`chan-chip ${(form.audio_overflow_channels ?? []).includes(ch) ? "on" : ""}`}
+                        onClick={() => toggleChan("audio_overflow_channels", ch)}
+                      >
+                        <span
+                          className="chan-lvl"
+                          style={{ height: `${Math.min(100, (chanLevels[ch - 1] ?? 0) * 160)}%` }}
+                        />
+                        <span className="chan-n">{ch}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <span className="hint">
+                    Streamed to the “Overflow Listen” widget for phones in other rooms. Empty = off.
+                    Restart audio capture after changing channels.
+                  </span>
+                </div>
+                <div className="field wide">
+                  <span>Auto-Follow listens to</span>
+                  <div className="chan-row">
+                    {Array.from({ length: chCount }, (_, i) => i + 1).map((ch) => (
+                      <button
+                        key={ch}
+                        type="button"
+                        className={`chan-chip ${(form.caption_channels ?? []).includes(ch) ? "on" : ""}`}
+                        onClick={() => toggleChan("caption_channels", ch)}
+                      >
+                        <span
+                          className="chan-lvl"
+                          style={{ height: `${Math.min(100, (chanLevels[ch - 1] ?? 0) * 160)}%` }}
+                        />
+                        <span className="chan-n">{ch}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <span className="hint">
+                    What Whisper hears for Auto-Follow and captions. Empty = the Listen channels above (a
+                    board mix). Best of all is a vocals-only feed — patch the lead-vocal group to a spare
+                    channel in Dante Controller and pick it here. Restart audio capture after changing.
+                  </span>
+                </div>
+              </>
+            )}
+            <label className="field wide">
+              <span>Whisper binary (whisper.cpp CLI)</span>
+              <input className="input" placeholder="/opt/homebrew/bin/whisper-cli"
+                value={form.whisper_bin ?? ""}
+                onChange={(e) => set("whisper_bin", e.target.value || null)} />
+            </label>
+            <label className="field wide">
+              <span>Whisper model (.bin)</span>
+              <input className="input" placeholder="…/ggml-base.en.bin"
+                value={form.whisper_model ?? ""}
+                onChange={(e) => set("whisper_model", e.target.value || null)} />
+            </label>
+          </div>
+        </section>
+      </Sec>
+
+      <Sec id="set-chop">
+        {!IS_WEB && <ChopCard form={form} set={set} crew={crew} />}
+      </Sec>
+      <Sec id="set-music">
+        {!IS_WEB && <WalkInCard form={form} set={set} />}
+      </Sec>
+
+      <Sec id="set-ga4">
+        <section className="card">
+          <div className="card-head">
+            <h3 id="set-ga4">Live Viewers (Google Analytics)</h3><HelpLink section="phase3" />
+            <span className={`chip ${ga4Ok ? "online" : ""}`}>{ga4Ok ? "on" : "off"}</span>
+          </div>
+          <p className="muted small">
+            Live count of people watching on the Church Online web player, from GA4's realtime
+            report. Church Online has no viewer API of its own, so this reads the analytics tag
+            already running on the watch page. <strong>The Facebook simulcast is not counted</strong> —
+            only the web player.
+          </p>
+          <div className="settings-grid">
+            <label className="field">
+              <span>GA4 property ID</span>
+              <input
+                className="input"
+                placeholder="e.g. 520479442"
+                value={form.ga4_property_id ?? ""}
+                onChange={(e) => set("ga4_property_id", e.target.value.trim())}
+              />
+            </label>
+            <label className="field wide">
+              <span>Service-account key file</span>
+              <input
+                className="input"
+                placeholder={
+                  form.ga4_property_id && !form.ga4_key_path
+                    ? "set on the booth Mac — hidden from browsers"
+                    : "/Users/…/ProDeck/ga4-key.json"
+                }
+                value={form.ga4_key_path ?? ""}
+                onChange={(e) => set("ga4_key_path", e.target.value.trim())}
+              />
+            </label>
+            <label className="field">
+              <span>Page filter (optional)</span>
+              <input
+                className="input"
+                placeholder="blank = whole property"
+                value={form.ga4_page_filter ?? ""}
+                onChange={(e) => set("ga4_page_filter", e.target.value.trim())}
+              />
+            </label>
+          </div>
+          <p className="hint">
+            The property ID is the number in GA4 Admin → Property Settings, <em>not</em> the
+            <code>G-</code> measurement ID. Add the service account as a <strong>Viewer</strong> on
+            that property, and enable the Google Analytics Data API in its Cloud project. Leave the
+            page filter blank when the property only covers the watch subdomain.
+          </p>
+        </section>
+      </Sec>
+
+      <Sec id="set-assist">
+        <section className="card">
+          <div className="card-head">
+            <h3 id="set-assist">Troubleshooter — Ask ProDeck</h3><HelpLink section="ask-prodeck" />
+            <span className={`chip ${form.assist_api_key ? "online" : ""}`}>{form.assist_api_key ? "on" : "off"}</span>
+          </div>
+          <p className="muted small">
+            A volunteer types what is wrong in their own words — on a phone under <strong>No sound?</strong> or here under
+            Routing — and gets what ProDeck already checked plus the next thing to walk to. It answers only from the routing
+            map, the knowledge files below and live state, cites every fact, and never touches the desk. The key stays on
+            this machine; phones ask through it. Each question is sent to Anthropic with the routing map and live status
+            it needs, on your church's own key.
+          </p>
+          <div className="settings-grid">
+            <label className="field wide">
+              <span>Anthropic API key (console.anthropic.com)</span>
+              <input
+                className="input"
+                type="password"
+                autoComplete="off"
+                placeholder="sk-ant-… — stored only on this machine"
+                value={form.assist_api_key ?? ""}
+                onChange={(e) => set("assist_api_key", e.target.value || null)}
+              />
+            </label>
+            <label className="field">
+              <span>Workspace ID (only for an account-level key)</span>
+              <input className="input" autoComplete="off" placeholder="wrkspc_… — console.anthropic.com → Settings → Workspaces" value={form.assist_workspace_id ?? ""} onChange={(e) => set("assist_workspace_id", e.target.value.trim())} />
+            </label>
+            <label className="field">
+              <span>Model</span>
+              <select className="input" value={form.assist_model || "claude-sonnet-5"} onChange={(e) => set("assist_model", e.target.value)}>
+                <option value="claude-sonnet-5">Claude Sonnet 5 — fast, recommended</option>
+                <option value="claude-opus-5">Claude Opus 5 — deeper, slower</option>
+                <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 — cheapest</option>
+              </select>
+            </label>
+            <label className="field">
+              <span>Calls per month before it stops (0 = no cap)</span>
+              <input className="input" type="number" min={0} value={form.assist_monthly_cap ?? 500} onChange={(e) => set("assist_monthly_cap", Math.max(0, parseInt(e.target.value || "0", 10)))} />
+            </label>
+            <label className="field check">
+              <input type="checkbox" checked={form.assist_members} onChange={(e) => set("assist_members", e.target.checked)} />
+              <span>Let crew phones ask (the booth always can)</span>
+            </label>
+          </div>
+          <p className="muted small" style={{ marginTop: 10 }}>
+            {assist ? `Used ${assist.usedThisMonth} of ${assist.monthlyCap || "∞"} calls this month · model ${assist.model}.` : ""}
+            {" "}
+            <strong>Knowledge files</strong>: {assist && assist.knowledgeFiles.length ? assist.knowledgeFiles.join(", ") : "none yet"}.
+            {" "}Plain markdown about your building, read on every question. Folder:{" "}
+            <button className="btn small ghost" onClick={() => assistKnowledgeDir().then((d) => { navigator.clipboard?.writeText(d).catch(() => {}); assistStatus().then(setAssist).catch(() => {}); })} title="Create the folder if needed and copy its path">
+              copy path
+            </button>
+            {assist?.knowledgeDir ? <span className="mono"> {assist.knowledgeDir}</span> : null}
+          </p>
+        </section>
+      </Sec>
+
+      <Sec id="set-gemini">
+        <section className="card">
+          <div className="card-head">
+            <h3 id="set-gemini">Auto‑Follow</h3><HelpLink section="features" />
+            <span className={`chip ${form.assist_api_key ? "online" : ""}`}>{form.assist_api_key ? "model on standby" : "by ear only"}</span>
+          </div>
+          <p className="muted small">
+            Auto‑Follow (its own page in the sidebar) hears the singing on this Mac with Whisper — audio never leaves
+            the building — and moves ProPresenter at the end of each slide. When two slides are equally
+            likely it asks Claude to read the lyric, using the Anthropic key from the Troubleshooter
+            card above, on its own monthly budget. Without a key it follows by ear alone.
+          </p>
+          <div className="settings-grid">
+            <label className="field">
+              <span>Model</span>
+              <input className="input" placeholder="claude-haiku-4-5" value={form.follow_model ?? ""}
+                onChange={(e) => set("follow_model", e.target.value)} />
+            </label>
+            <label className="field">
+              <span>Model calls per month (0 = no cap)</span>
+              <input className="input" type="number" min={0} value={form.follow_monthly_cap ?? 2000}
+                onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n) && n >= 0) set("follow_monthly_cap", n); }} />
+            </label>
+            <label className="field">
+              <span>Click channel (0 = none)</span>
+              <input className="input" type="number" min={0} max={128} value={form.follow_click_channel ?? 0}
+                onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n) && n >= 0) set("follow_click_channel", n); }} />
+            </label>
+            <label className="field">
+              <span>Guide channel (0 = none)</span>
+              <input className="input" type="number" min={0} max={128} value={form.follow_guide_channel ?? 0}
+                onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n) && n >= 0) set("follow_guide_channel", n); }} />
+            </label>
+            <label className="field">
+              <span>Whisper audio context (0 = full)</span>
+              <input className="input" type="number" min={0} max={1500} value={form.whisper_audio_ctx ?? 768}
+                onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n) && n >= 0) set("whisper_audio_ctx", n); }} />
+            </label>
+          </div>
+          <p className="hint">
+            <strong>Click and guide</strong> from the playback rig (the channels on this Mac's audio input they're
+            routed to): with them Follow knows the beat and hears the guide's section calls a bar early, and lands each
+            section on its downbeat. Restart audio capture after changing.
+          </p>
+          <p className="hint">
+            Whisper's model: leave the path under Audio empty and ProDeck uses the best one in its models
+            folder (large‑v3‑turbo). What it listens to is under Audio → “Auto‑Follow listens to”.
+          </p>
+        </section>
+      </Sec>
+
+      <Sec id="set-autopilot">
+        <AutopilotCard form={form} set={set} />
+      </Sec>
+      <Sec id="set-automix">
+        <AutomixCard form={form} set={set} />
+      </Sec>
+      <Sec id="set-recorder">
+        <RecorderCard form={form} set={set} />
+      </Sec>
+
+      <Sec id="set-inputs">
+        <section className="card">
+          <div className="card-head"><h3 id="set-inputs">Control Inputs</h3><HelpLink section="features" /></div>
+          <div className="settings-grid">
+            <label className="field">
+              <span>OSC port</span>
+              <input className="input" type="number" value={form.osc_port}
+                onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n)) set("osc_port", n); }} />
+            </label>
+            <div className="field btn-field">
+              <span>&nbsp;</span>
+              <button className={`btn ${oscOn ? "danger" : ""}`} onClick={toggleOsc}>
+                {oscOn ? "Stop OSC" : "Start OSC"}
+              </button>
+            </div>
+            <label className="field wide">
+              <span>MIDI input</span>
+              <div className="inline">
+                <select className="input" value={form.midi_port ?? ""}
+                  onChange={(e) => set("midi_port", e.target.value || null)}>
+                  <option value="">None</option>
+                  {midiPorts.map((p) => <option key={p} value={p}>{p}</option>)}
+                </select>
+                <button className="btn" onClick={toggleMidi}>
+                  {form.midi_port ? "Connect" : "Disconnect"}
+                </button>
+              </div>
+            </label>
+          </div>
+          <p className="hint">
+            MIDI: notes D3/C3/E3 → next / previous / clear. OSC: <code>/prodeck/next</code>,{" "}
+            <code>/prodeck/previous</code>, <code>/prodeck/clear/&lt;layer&gt;</code>.
+          </p>
+          {(midiLog.length > 0 || oscLog.length > 0) && (
+            <div className="log-strip">
+              {[...oscLog, ...midiLog].slice(-3).map((l, i) => (
+                <span key={i} className="log-line">{l.text}</span>
+              ))}
+            </div>
+          )}
+        </section>
+      </Sec>
+
+      <Sec id="set-songkey">
+        <section className="card">
+          <div className="card-head">
+            <h3 id="set-songkey">Song Key → Backing Track / Vocal Tune</h3><HelpLink section="features" />
+            <span className={`chip ${form.keysend_enabled ? "online" : ""}`}>
+              {form.keysend_enabled ? "on" : "off"}
+            </span>
+          </div>
+          <p className="muted small">
+            Sends the live song's key (from Planning Center, or your in-app override) to your Waves /
+            MultiTracks PC as a <strong>pitch class 0–11</strong>, so the rig switches to a per-key
+            state automatically. Sent both as OSC and as a MIDI Program Change (+ optional CC) — wire
+            up whichever your rig uses.
+          </p>
+          <div className="settings-grid">
+            <label className="field check">
+              <input
+                type="checkbox"
+                checked={form.keysend_enabled}
+                onChange={(e) => set("keysend_enabled", e.target.checked)}
+              />
+              <span>Auto-send the live song's key</span>
+            </label>
+            <label className="field">
+              <span>OSC host — rig PC's IP (blank = off)</span>
+              <input
+                className="input"
+                placeholder="e.g. 192.168.1.50"
+                value={form.keysend_osc_host}
+                onChange={(e) => set("keysend_osc_host", e.target.value)}
+              />
+            </label>
+            <label className="field">
+              <span>OSC port</span>
               <input
                 className="input"
                 type="number"
-                value={form.web_port}
-                onChange={(e) => set("web_port", parseInt(e.target.value) || 8088)}
+                value={form.keysend_osc_port}
+                onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n)) set("keysend_osc_port", n); }}
               />
             </label>
             <label className="field wide">
-              <span>Admin password — full view &amp; control</span>
+              <span>MIDI output — e.g. a Network/rtpMIDI session (None = off)</span>
+              <select
+                className="input"
+                value={form.keysend_midi_port ?? ""}
+                onChange={(e) => set("keysend_midi_port", e.target.value || null)}
+              >
+                <option value="">None</option>
+                {midiOutPorts.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>MIDI channel</span>
               <input
                 className="input"
-                type="text"
-                value={form.web_password}
-                onChange={(e) => set("web_password", e.target.value)}
-                placeholder="Required — admins sign in with this"
+                type="number"
+                min={1}
+                max={16}
+                value={form.keysend_midi_channel}
+                onChange={(e) =>
+                  set("keysend_midi_channel", Math.min(16, Math.max(1, parseInt(e.target.value) || 1)))
+                }
+              />
+            </label>
+            <label className="field">
+              <span>Also send CC# (−1 = Program Change only)</span>
+              <input
+                className="input"
+                type="number"
+                min={-1}
+                max={127}
+                value={form.keysend_cc}
+                onChange={(e) => {
+                  const n = parseInt(e.target.value);
+                  set("keysend_cc", Number.isNaN(n) ? -1 : Math.min(127, Math.max(-1, n)));
+                }}
+              />
+            </label>
+            <div className="field btn-field">
+              <span>&nbsp;</span>
+              <button className="btn" onClick={testKeySend}>
+                Save &amp; send test (G)
+              </button>
+            </div>
+          </div>
+          {keysendMsg && (
+            <p className={keysendMsg.startsWith("✓") ? "hint" : "error"}>{keysendMsg}</p>
+          )}
+          <details className="hint">
+            <summary>How to receive it on the Waves / MultiTracks PC</summary>
+            <p>
+              The key is sent as a number 0–11 (C=0, C#=1, … B=11; minor keys use the root — Am→9).
+              It selects a <em>pre-built per-key state</em>; it is not a live transpose.
+            </p>
+            <ul>
+              <li>
+                <strong>Waves Tune Real-Time in SuperRack (recommended):</strong> build 12 snapshots,
+                one per key, ordered so snapshot 1 = C … snapshot 12 = B. Program Change <em>N</em>{" "}
+                recalls snapshot <em>N+1</em>. On Windows install <code>rtpMIDI</code>, connect to this
+                Mac's Network MIDI session, then choose that session as the MIDI output above.
+              </li>
+              <li>
+                <strong>Waves Tune in a DAW (Ableton/Logic/Cubase):</strong> right-click Scale Root →
+                Learn, then send a CC once to bind it (set a CC# above).
+              </li>
+              <li>
+                <strong>Prefer OSC?</strong> Run Bitfocus Companion on the rig PC, enable its OSC
+                listener (port 12321), and map <code>/key/pc &lt;n&gt;</code> → send Program Change{" "}
+                <em>n</em> to the rig.
+              </li>
+              <li>
+                <strong>MultiTracks Playback</strong> has no remote key control — keep setting its key
+                per song in advance (it cloud-syncs). This drives Waves, not Playback.
+              </li>
+            </ul>
+          </details>
+        </section>
+      </Sec>
+
+      <Sec id="set-taplink">
+        <section className="card">
+          <div className="card-head">
+            <h3 id="set-taplink">TapLink (NFC giving link)</h3><HelpLink section="phase3" />
+            <span className={`chip ${form.tap_enabled ? "online" : ""}`}>
+              {form.tap_enabled ? "armed" : "off"}
+            </span>
+          </div>
+          <p className="muted small">
+            NFC discs in your lobby all open one link, and that link follows the service: put{" "}
+            <code>tap:give</code> in a slide's notes and every disc points at giving the moment that
+            slide goes live; <code>tap:default</code> reverts. Only this booth instance follows
+            slides; phones can watch and override, but not change the setup here.{" "}
+            <button className="link-btn" onClick={() => openHelp("taplink-overview")}>What this is</button>
+          </p>
+          <TapLinkGuide form={form} tested={tapMsg.startsWith("✓")} />
+          <div className="settings-grid">
+            <label className="field check">
+              <input
+                type="checkbox"
+                checked={form.tap_enabled}
+                onChange={(e) => set("tap_enabled", e.target.checked)}
+                disabled={IS_WEB}
+              />
+              <span>Follow slides (arm the watcher)</span>
+            </label>
+            <label className="field wide">
+              <span>Edge URL</span>
+              <input
+                className="input"
+                value={form.tap_edge_url}
+                onChange={(e) => set("tap_edge_url", e.target.value)}
+                disabled={IS_WEB}
               />
             </label>
             <label className="field wide">
-              <span>Member password — dashboards + team chat only (blank = off)</span>
+              <span>API token (from taplink-edge deploy)</span>
               <input
                 className="input"
-                type="text"
-                value={form.web_member_password}
-                onChange={(e) => set("web_member_password", e.target.value)}
-                placeholder="Members can't message stage/confidence or control anything"
+                type="password"
+                value={form.tap_token}
+                onChange={(e) => set("tap_token", e.target.value)}
+                disabled={IS_WEB}
+                placeholder={IS_WEB ? "hidden on web clients" : ""}
               />
             </label>
-            {form.web_enabled && form.web_password && (
-              <div className="field wide">
-                <span>Open in a browser</span>
-                <code className="web-url">
-                  http://{(form.device_name || "this-mac").replace(/\.local$/i, "")}.local:
-                  {form.web_port}/
-                </code>
+            {!IS_WEB && (
+              <div className="field btn-field">
+                <span>&nbsp;</span>
+                <button className="btn" onClick={testTapLink}>
+                  Save &amp; test connection
+                </button>
               </div>
             )}
           </div>
-          {form.web_enabled && !form.web_password && (
-            <p className="error">Set a password — browser access stays off until you do.</p>
-          )}
+          {tapMsg && <p className={tapMsg.startsWith("✓") ? "hint" : "error"}>{tapMsg}</p>}
+          {/* Configured, not armed: disarming only stops slide-following, so the
+              links must stay editable. */}
+          {!IS_WEB && !!form.tap_edge_url && !!form.tap_token && <TapMappingEditor />}
+        </section>
+      </Sec>
+
+      <Sec id="set-crew">
+        {crew !== null && (
+          <section className="card">
+            <div className="card-head">
+              <h3 id="set-crew">Crew Members</h3><HelpLink section="phase1" />
+              {crew.some((u) => !u.approved) && (
+                <span className="chip">{crew.filter((u) => !u.approved).length} pending</span>
+              )}
+            </div>
+            <p className="muted small">
+              PIN identities for phones — messages carry these verified names. New joins
+              wait here until you approve them — or skip the wait entirely by
+              sending a personal invite link below.{" "}
+              <button className="link-btn" onClick={() => openHelp("crew-overview")}>How the crew system works</button>
+            </p>
+            <div className="guide-steps">
+              <div className={`guide-step ${form.web_member_password ? "done" : ""}`}>
+                <span className="guide-step-n">1</span>
+                <div>
+                  <strong>Set the crew password</strong>
+                  <span className="muted small">In Browser Access. It's what the join link carries, and what every crew phone holds.</span>
+                </div>
+              </div>
+              <div className={`guide-step ${form.web_invite_token ? "done" : ""}`}>
+                <span className="guide-step-n">2</span>
+                <div>
+                  <strong>Open joining and share the poster — or send personal invites</strong>
+                  <span className="muted small">The poster works only while joining is open (below). A personal invite is for one person and arrives pre-approved.</span>
+                </div>
+              </div>
+              <div className={`guide-step ${crew.some((u) => u.approved) ? "done" : ""}`}>
+                <span className="guide-step-n">3</span>
+                <div>
+                  <strong>Approve people as they join</strong>
+                  <span className="muted small">Once each. Roles come from this week's Planning Center plan through the PCO link on each person.</span>
+                </div>
+              </div>
+            </div>
+            <CrewRolesEditor roles={form.crew_roles ?? []} onChange={(r) => set("crew_roles", r)} />
+            <PersonalInvites roleSuggestions={form.crew_roles ?? []} />
+            {crew.length === 0 && <p className="muted small">Nobody has joined yet.</p>}
+            {crew.map((u) => (
+              <CrewRow key={u.id} u={u} />
+            ))}
+          </section>
+        )}
+      </Sec>
+
+      <Sec id="set-schedule">
+        {!IS_WEB && <ScheduledAlerts crew={crew ?? []} />}
+      </Sec>
+
+      <Sec id="set-relay">
+        <section className="card">
+          <div className="card-head">
+            <h3 id="set-relay">LAN Relay (multi-instance sync)</h3><HelpLink section="features" />
+            <span className={`chip ${relay.mode !== "off" ? "online" : "offline"}`}>
+              {relay.mode === "host"
+                ? `Hosting · ${relay.clients} client${relay.clients === 1 ? "" : "s"}`
+                : relay.mode === "client"
+                  ? relay.connected
+                    ? "Client · connected"
+                    : "Client · connecting…"
+                  : "Off"}
+            </span>
+          </div>
+          <div className="settings-grid">
+            <label className="field">
+              <span>Mode</span>
+              <select
+                className="input"
+                value={relay.mode}
+                onChange={(e) => {
+                  const m = e.target.value;
+                  if (m === "host") relay.startHost();
+                  else if (m === "client") relay.connectClient();
+                  else relay.stop();
+                }}
+              >
+                <option value="off">Off</option>
+                <option value="host">Host (this machine shares its state)</option>
+                <option value="client">Client (mirror another machine)</option>
+              </select>
+            </label>
+            {relay.mode !== "client" && (
+              <label className="field">
+                <span>Host port</span>
+                <input
+                  className="input"
+                  type="number"
+                  value={relay.hostPort}
+                  onChange={(e) => relay.setHostPort(parseInt(e.target.value) || 51421)}
+                />
+              </label>
+            )}
+            {relay.mode !== "host" && (
+              <label className="field wide">
+                <span>Host address (ws://IP:port)</span>
+                <input
+                  className="input"
+                  placeholder="ws://192.168.1.50:51421"
+                  value={relay.clientUrl}
+                  onChange={(e) => relay.setClientUrl(e.target.value)}
+                />
+              </label>
+            )}
+          </div>
           <p className="hint">
-            Press Save to apply. Admin password = view and control everything. Member
-            password = see dashboards, hear Listen, and send <strong>team</strong> chat —
-            no stage or confidence messages, no controls (enforced by the host, not the
-            browser). Give volunteers the member password only.
+            Make the booth machine (the one connected to ProPresenter / NDI / audio) the{" "}
+            <strong>Host</strong>. On each other machine, choose <strong>Client</strong> and enter{" "}
+            <code>ws://HOST-IP:{relay.hostPort}</code>. Clients mirror ProPresenter state, audio
+            levels, dashboards, and pull camera/NDI video from the host. Control stays on the host.
           </p>
         </section>
-      )}
+      </Sec>
 
-      {!IS_WEB && (
-        <>
-          <ReliabilityCard />
-          <KioskCard form={form} />
-          <BackupCard />
-          <HelpCard />
-        </>
-      )}
+      <Sec id="set-alerts">
+        <section className="card">
+          <div className="card-head"><h3 id="set-alerts">Alerts &amp; Monitoring</h3><HelpLink section="care" /></div>
+          <div className="settings-grid">
+            <label className="field check">
+              <input type="checkbox" checked={alertCfg.enabled}
+                onChange={(e) => setAlertCfg({ enabled: e.target.checked })} />
+              <span>Enable smart alerts (visual only)</span>
+            </label>
+            <label className="field check">
+              <input type="checkbox" checked={alertCfg.ppDisconnect}
+                onChange={(e) => setAlertCfg({ ppDisconnect: e.target.checked })} />
+              <span>ProPresenter disconnect</span>
+            </label>
+            <label className="field check">
+              <input type="checkbox" checked={alertCfg.ndiLoss}
+                onChange={(e) => setAlertCfg({ ndiLoss: e.target.checked })} />
+              <span>Stage feed (NDI) loss</span>
+            </label>
+            <label className="field check">
+              <input type="checkbox" checked={alertCfg.tapPushFail}
+                onChange={(e) => setAlertCfg({ tapPushFail: e.target.checked })} />
+              <span>TapLink push failed (NFC discs)</span>
+            </label>
+            <label className="field check">
+              <input type="checkbox" checked={alertCfg.micMuted}
+                onChange={(e) => setAlertCfg({ micMuted: e.target.checked })} />
+              <span>Scheduled mic muted during service (Avantis)</span>
+            </label>
+            <label className="field check">
+              <input type="checkbox" checked={alertCfg.micSilent}
+                onChange={(e) => setAlertCfg({ micSilent: e.target.checked })} />
+              <span>
+                Scheduled mic open but silent
+                <span className="muted small">
+                  {" "}— 90 s before each service and during songs. Needs the mic channels mapped below.
+                </span>
+              </span>
+            </label>
+            <label className="field check">
+              <input type="checkbox" checked={alertCfg.audioSilence}
+                onChange={(e) => setAlertCfg({ audioSilence: e.target.checked })} />
+              <span>Dead-feed alert</span>
+            </label>
+            <label className="field">
+              <span>Silence below (dBFS)</span>
+              <input className="input" type="number" value={alertCfg.silenceDb}
+                onChange={(e) => setAlertCfg({ silenceDb: parseInt(e.target.value) || -80 })} />
+            </label>
+            <label className="field">
+              <span>Silence after (sec)</span>
+              <input className="input" type="number" min={1} value={alertCfg.silenceSecs}
+                onChange={(e) => setAlertCfg({ silenceSecs: parseInt(e.target.value) || 1 })} />
+            </label>
+            <label className="field check">
+              <input type="checkbox" checked={alertCfg.overSpl}
+                onChange={(e) => setAlertCfg({ overSpl: e.target.checked })} />
+              <span>Sustained over-SPL</span>
+            </label>
+            <label className="field">
+              <span>Over-SPL threshold (dB)</span>
+              <input className="input" type="number" value={alertCfg.overSplValue}
+                onChange={(e) => setAlertCfg({ overSplValue: parseInt(e.target.value) || 0 })} />
+            </label>
+            <label className="field">
+              <span>Over-SPL after (sec)</span>
+              <input className="input" type="number" min={1} value={alertCfg.overSecs}
+                onChange={(e) => setAlertCfg({ overSecs: parseInt(e.target.value) || 1 })} />
+            </label>
+          </div>
+          <p className="hint">
+            Alerts pop as banners on any screen (with optional sound). Add the{" "}
+            <strong>System Health</strong> widget to a dashboard for an at-a-glance status row.
+          </p>
+        </section>
+      </Sec>
 
-      <section className="card">
-        <div className="card-head"><h3 id="set-appearance">Appearance</h3><HelpLink section="features" /></div>
-        <div className="settings-grid">
-          <label className="field">
-            <span>Theme</span>
-            <select className="input" value={form.theme}
-              onChange={(e) => set("theme", e.target.value)}>
-              <option value="dark">Dark (Slate / Indigo)</option>
-              <option value="midnight">Midnight</option>
-              <option value="light">Light</option>
-            </select>
-          </label>
+      <Sec id="set-web">
+        {!IS_WEB && (
+          <section className="card">
+            <div className="card-head">
+              <h3 id="set-web">Browser Access (LAN)</h3><HelpLink section="phase1" />
+              {webInfo.running ? (
+                <span className="chip online">serving · :{webInfo.port}</span>
+              ) : webInfo.error ? (
+                <span className="chip bad">not serving</span>
+              ) : (
+                <span className="chip">off</span>
+              )}
+            </div>
+            {webInfo.error && (
+              <p className="error small">
+                Phones and kiosks can't reach this Mac. {webInfo.error}
+              </p>
+            )}
+            <p className="muted small">
+              Serve the dashboards to phones, tablets, and laptops on the church network.
+              They open this Mac's address in a browser and sign in with the password below.
+            </p>
+            <CrewInviteLink form={form} set={set} />
+            <AutoCheckin form={form} set={set} />
+            <div className="settings-grid">
+            <label className="field wide">
+              <span>Public URL — the domain volunteers reach from anywhere (your tunnel), e.g. https://booth.yourchurch.org. Blank = LAN only.</span>
+              <input className="input" placeholder="https://…"
+                value={form.public_url ?? ""}
+                onChange={(e) => set("public_url", e.target.value.trim())} />
+            </label>
+              <label className="field switch">
+                <input
+                  type="checkbox"
+                  checked={form.web_enabled}
+                  onChange={(e) => set("web_enabled", e.target.checked)}
+                />
+                <span>Enable browser access</span>
+              </label>
+              <label className="field">
+                <span>Port</span>
+                <input
+                  className="input"
+                  type="number"
+                  value={form.web_port}
+                  onChange={(e) => set("web_port", parseInt(e.target.value) || 8088)}
+                />
+              </label>
+              <label className="field wide">
+                <span>Admin password — full view &amp; control</span>
+                <input
+                  className="input"
+                  type="text"
+                  value={form.web_password}
+                  onChange={(e) => set("web_password", e.target.value)}
+                  placeholder="Required — admins sign in with this"
+                />
+              </label>
+              <label className="field wide">
+                <span>Member password — dashboards + team chat only (blank = off)</span>
+                <input
+                  className="input"
+                  type="text"
+                  value={form.web_member_password}
+                  onChange={(e) => set("web_member_password", e.target.value)}
+                  placeholder="Members can't message stage/confidence or control anything"
+                />
+              </label>
+              {form.web_enabled && form.web_password && (
+                <div className="field wide">
+                  <span>Open in a browser</span>
+                  <code className="web-url">
+                    http://{(form.device_name || "this-mac").replace(/\.local$/i, "")}.local:
+                    {form.web_port}/
+                  </code>
+                </div>
+              )}
+            </div>
+            {form.web_enabled && !form.web_password && (
+              <p className="error">Set a password — browser access stays off until you do.</p>
+            )}
+            <p className="hint">
+              Press Save to apply. Admin password = view and control everything. Member
+              password = see dashboards, hear Listen, and send <strong>team</strong> chat —
+              no stage or confidence messages, no controls (enforced by the host, not the
+              browser). Give volunteers the member password only.
+            </p>
+          </section>
+        )}
+      </Sec>
+
+      {!IS_WEB && <Sec id="set-reliability"><ReliabilityCard /></Sec>}
+      {!IS_WEB && <Sec id="set-kiosk"><KioskCard form={form} /></Sec>}
+      {!IS_WEB && <Sec id="set-backup"><BackupCard /></Sec>}
+      {!IS_WEB && <Sec id="set-help"><HelpCard /></Sec>}
+
+      <Sec id="set-appearance">
+        <section className="card">
+          <div className="card-head"><h3 id="set-appearance">Appearance</h3><HelpLink section="features" /></div>
+          <div className="settings-grid">
+            <label className="field">
+              <span>Theme</span>
+              <select className="input" value={form.theme}
+                onChange={(e) => set("theme", e.target.value)}>
+                <option value="dark">Dark (Slate / Indigo)</option>
+                <option value="midnight">Midnight</option>
+                <option value="light">Light</option>
+              </select>
+            </label>
+          </div>
+        </section>
+      </Sec>
+          </SecCtx.Provider>
         </div>
-      </section>
+      </div>
+
+      {isDirty(form, settings) && (
+        <div className="set-savebar" role="status">
+          <span>You have unsaved changes.</span>
+          <button className="btn small ghost" onClick={() => { setForm(settings); setSceneLabelsText(null); }}>Discard</button>
+          <button className="btn small primary" onClick={save}>Save changes</button>
+        </div>
+      )}
+
       <img
         className="settings-credit-lockup"
         src={lockupHorizontal}

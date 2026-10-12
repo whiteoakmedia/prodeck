@@ -1815,30 +1815,6 @@ select.input {
 }
 
 /* Settings jump bar */
-.set-jump {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 14px;
-  align-items: center;
-  margin-bottom: 16px;
-  padding: 10px 12px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-}
-.set-jump-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.set-jump-label {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-  color: var(--muted);
-  font-weight: 700;
-  margin-right: 2px;
-}
 .page h3[id] {
   scroll-margin-top: 16px;
 }
@@ -10278,3 +10254,68 @@ select.input {
 .stream-frame { position: relative; width: 100%; aspect-ratio: 16 / 9; max-height: 100%; background: #000; border-radius: var(--radius-sm); overflow: hidden; }
 .stream-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .stream-frame video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+
+/* Settings: sections down the side, one at a time (lib/settingsSections). */
+.set-layout {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.set-rail {
+  position: sticky;
+  top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.set-search { width: 100%; }
+.set-rail-list { display: flex; flex-direction: column; gap: 2px; }
+.set-rail-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.set-rail-item:hover { background: var(--panel-2); color: var(--text); }
+.set-rail-item.on { background: var(--accent-soft); color: var(--text); box-shadow: inset 3px 0 0 var(--accent); }
+.set-rail-item:focus-visible { outline: 2px solid var(--accent-hi); outline-offset: 2px; }
+.set-content { min-width: 0; scroll-margin-top: 12px; }
+.set-section-head { margin: 0 0 14px; }
+.set-section-head h2 { margin: 0 0 4px; font-size: 20px; }
+.set-section-head p { margin: 0; }
+.set-sec[hidden] { display: none; }
+.set-savebar {
+  position: sticky;
+  bottom: 12px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 10px 14px;
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius-lg);
+  background: var(--panel);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.set-savebar span { margin-right: auto; font-weight: 600; }
+/* Not enough room for a side rail and full-width cards: sections go across the top. */
+@media (max-width: 1100px) {
+  .set-layout { grid-template-columns: 1fr; gap: 12px; }
+  .set-rail { position: static; }
+  .set-rail-list { flex-direction: row; overflow-x: auto; gap: 4px; padding-bottom: 2px; }
+  .set-rail-item { width: auto; white-space: nowrap; }
+  .set-rail-item.on { box-shadow: inset 0 -3px 0 var(--accent); }
+}
