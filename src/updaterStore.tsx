@@ -38,6 +38,12 @@ interface UpdaterCtx {
 
 const DISMISS_KEY = "prodeck.updateDismissed";
 
+/** How often a long-running copy looks for a new release. */
+export const RECHECK_MS = 3 * 60 * 60 * 1000;
+
+/** Look again only when nothing is on screen or in progress. */
+export const shouldRecheck = (s: UpdateStatus) => s === "idle" || s === "uptodate" || s === "error";
+
 const Ctx = createContext<UpdaterCtx | null>(null);
 
 export function UpdaterProvider({ children }: { children: ReactNode }) {
@@ -48,6 +54,8 @@ export function UpdaterProvider({ children }: { children: ReactNode }) {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const updateRef = useRef<Update | null>(null);
+  const statusRef = useRef<UpdateStatus>("idle");
+  statusRef.current = status;
 
   async function doCheck(silent = false) {
     setStatus("checking");
@@ -150,11 +158,20 @@ export function UpdaterProvider({ children }: { children: ReactNode }) {
       return;
     }
     getVersion().then(setVersion).catch(() => {});
-    // Auto-check a few seconds after launch (silent if the server is unreachable).
+    // Auto-check a few seconds after launch (silent if the server is unreachable),
+    // then again every few hours. A booth stays open for days, and checking only
+    // at launch meant it never heard about a release published after it opened
+    // ("I'm not getting the update banner"). Never while one is showing or installing.
     const t = setTimeout(() => {
       doCheck(true);
     }, 4000);
-    return () => clearTimeout(t);
+    const iv = setInterval(() => {
+      if (shouldRecheck(statusRef.current)) doCheck(true);
+    }, RECHECK_MS);
+    return () => {
+      clearTimeout(t);
+      clearInterval(iv);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
