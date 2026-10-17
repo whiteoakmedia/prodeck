@@ -1128,6 +1128,7 @@ function ClockWidget({ widget, update, editing }: WidgetProps) {
 function VideoInputWidget({ widget, editing, update }: WidgetProps) {
   const [sources, setSources] = useState<NdiSource[]>([]);
   const [scanning, setScanning] = useState(false);
+  const [scanErr, setScanErr] = useState("");
   const [port, setPort] = useState<number | null>(null);
   const source: string | null = widget.config.source ?? null;
   const relay = useRelay();
@@ -1135,8 +1136,13 @@ function VideoInputWidget({ widget, editing, update }: WidgetProps) {
 
   async function scan() {
     setScanning(true);
+    setScanErr("");
     try {
       setSources(await ndiDiscover());
+    } catch (e) {
+      // Without this a failed scan surfaced as an unhandled rejection.
+      setScanErr(String(e));
+      setSources([]);
     } finally {
       setScanning(false);
     }
@@ -1205,6 +1211,7 @@ function VideoInputWidget({ widget, editing, update }: WidgetProps) {
             {scanning ? "Scanning…" : "Scan NDI"}
           </button>
         )}
+        {!isClient && scanErr && <p className="error small">{scanErr}</p>}
       </div>
     );
   }

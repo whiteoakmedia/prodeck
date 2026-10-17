@@ -14,6 +14,7 @@ export function Multiview() {
   /// Sources whose ndiStart is in flight — a second tap must not start again.
   const starting = useRef<Set<string>>(new Set());
   const [scanning, setScanning] = useState(false);
+  const [err, setErr] = useState("");
 
   // Leaving the page must stop the tiles' receivers — without this they kept
   // capturing + JPEG-encoding ~15 fps on the booth Mac for the rest of the day.
@@ -28,8 +29,13 @@ export function Multiview() {
 
   async function scan() {
     setScanning(true);
+    setErr("");
     try {
       setSources(await ndiDiscover());
+    } catch (e) {
+      // Without this a failed scan surfaced as an unhandled rejection.
+      setErr(String(e));
+      setSources([]);
     } finally {
       setScanning(false);
     }
@@ -75,6 +81,7 @@ export function Multiview() {
             <h3>NDI Sources</h3>
             <span className="count">{sources.length}</span>
           </div>
+          {err && <p className="error small">{err}</p>}
           {sources.length === 0 ? (
             <p className="muted">
               {scanning

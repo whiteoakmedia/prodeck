@@ -269,7 +269,15 @@ pub async fn ndi_discover_sources(app: AppHandle) -> Result<Vec<NdiSource>, Stri
 async fn mdns_discover(app: &AppHandle) -> Result<Vec<NdiSource>, String> {
     use mdns_sd::{ServiceDaemon, ServiceEvent};
     let mdns = ServiceDaemon::new().map_err(|e| e.to_string())?;
-    let receiver = mdns.browse("_ndi._tcp.local.").map_err(|e| e.to_string())?;
+    // Dropping the handle doesn't stop the daemon thread, so shut it down on every exit path
+    // or each scan leaks its sockets.
+    let receiver = match mdns.browse("_ndi._tcp.local.") {
+        Ok(rx) => rx,
+        Err(e) => {
+            let _ = mdns.shutdown();
+            return Err(e.to_string());
+        }
+    };
     let found: Arc<tokio::sync::Mutex<Vec<NdiSource>>> =
         Arc::new(tokio::sync::Mutex::new(Vec::new()));
     let found_clone = found.clone();
@@ -289,6 +297,7 @@ async fn mdns_discover(app: &AppHandle) -> Result<Vec<NdiSource>, String> {
         }
     })
     .await;
+    let _ = mdns.shutdown();
     let sources = found.lock().await.clone();
     let _ = app.emit("ndi:sources", &sources);
     Ok(sources)
