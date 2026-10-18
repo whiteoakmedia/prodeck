@@ -45,7 +45,13 @@ pub struct Found {
 async fn discover(window: Duration) -> Result<Vec<Found>, String> {
     use mdns_sd::{ServiceDaemon, ServiceEvent};
     let daemon = ServiceDaemon::new().map_err(|e| format!("mDNS: {e}"))?;
-    let rx = daemon.browse(proto::ARC_SERVICE).map_err(|e| format!("mDNS browse: {e}"))?;
+    let rx = match daemon.browse(proto::ARC_SERVICE) {
+        Ok(rx) => rx,
+        Err(e) => {
+            let _ = daemon.shutdown();
+            return Err(format!("mDNS browse: {e}"));
+        }
+    };
     let mut out: HashMap<String, Found> = HashMap::new();
     let _ = tokio::time::timeout(window, async {
         while let Ok(ev) = rx.recv_async().await {
