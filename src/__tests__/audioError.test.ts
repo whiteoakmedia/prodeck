@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { audioStartMessage } from "../lib/audioError";
+import { audioStartMessage, CREW_AUDIO_MESSAGE, isCrewRefusal } from "../lib/audioError";
 
 describe("audioStartMessage", () => {
   it("turns the CoreAudio refusal into something to do (PRODECK-4)", () => {
@@ -43,5 +43,21 @@ describe("audioStartMessage", () => {
 
   it("passes anything else through, readably", () => {
     expect(audioStartMessage("Error: stream closed", null)).toBe("Audio couldn't start: stream closed");
+  });
+
+  it("tells a crew password session where captions get set up", () => {
+    expect(audioStartMessage("Error: 'start_audio_capture' needs admin access", null)).toBe(CREW_AUDIO_MESSAGE);
+  });
+});
+
+describe("isCrewRefusal (Sentry 7798638221)", () => {
+  it("spots the web gateway's refusals", () => {
+    expect(isCrewRefusal(new Error("'list_audio_inputs' needs admin access"))).toBe(true);
+    expect(isCrewRefusal('sending to stage needs the "stage" permission')).toBe(true);
+  });
+
+  it("leaves other errors alone", () => {
+    expect(isCrewRefusal("no input device available")).toBe(false);
+    expect(isCrewRefusal(new Error("stream closed"))).toBe(false);
   });
 });

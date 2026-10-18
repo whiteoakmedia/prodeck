@@ -1,4 +1,4 @@
-import { audioStartMessage } from "../lib/audioError";
+import { audioStartMessage, CREW_AUDIO_MESSAGE, isCrewRefusal } from "../lib/audioError";
 import { useEffect, useRef, useState } from "react";
 import { useProDeck } from "../store";
 import { useLyricFollow } from "../lyricFollow";
@@ -27,10 +27,13 @@ export function Captions() {
 
   useEffect(() => {
     // A crew phone or kiosk isn't allowed these (admin only on the booth):
-    // it shows the captions without them (PRODECK-7).
-    listAudioInputs().then(setInputs).catch(() => {});
-    defaultAudioInput().then((d) => d && setDevice(d)).catch(() => {});
-    transcriptionStatus().then(setCfg).catch(() => {});
+    // it shows the captions without them and says why (PRODECK-7).
+    const refused = (e: unknown) => {
+      if (isCrewRefusal(e)) setError(CREW_AUDIO_MESSAGE);
+    };
+    listAudioInputs().then(setInputs).catch(refused);
+    defaultAudioInput().then((d) => d && setDevice(d)).catch(refused);
+    transcriptionStatus().then(setCfg).catch(refused);
   }, []);
 
   useEffect(() => {
