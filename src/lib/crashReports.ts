@@ -26,8 +26,19 @@ export function stripUrl(u: string): string {
 }
 
 /** Every event and breadcrumb passes through here on its way out. */
+/**
+ * The booth saying "you don't have permission for that" to a crew phone is
+ * working as designed, not a crash. Those refusals would otherwise arrive as
+ * unhandled rejections from every member-tier screen (PRODECK-7).
+ */
+export function isPermissionRefusal(e: Sentry.ErrorEvent): boolean {
+  const texts = [e.message ?? "", ...(e.exception?.values ?? []).map((v) => v.value ?? "")];
+  return texts.some((t) => /needs admin access|needs the "[a-z]+" permission|^unauthorized$/i.test(t.trim()));
+}
+
 export function scrubEvent<T extends Sentry.ErrorEvent>(e: T): T | null {
   if (!enabled) return null;
+  if (isPermissionRefusal(e)) return null;
   delete e.user;
   delete e.server_name;
   if (e.request) {

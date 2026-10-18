@@ -26,9 +26,11 @@ export function Captions() {
   const feedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    listAudioInputs().then(setInputs);
-    defaultAudioInput().then((d) => d && setDevice(d));
-    transcriptionStatus().then(setCfg);
+    // A crew phone or kiosk isn't allowed these (admin only on the booth):
+    // it shows the captions without them (PRODECK-7).
+    listAudioInputs().then(setInputs).catch(() => {});
+    defaultAudioInput().then((d) => d && setDevice(d)).catch(() => {});
+    transcriptionStatus().then(setCfg).catch(() => {});
   }, []);
 
   useEffect(() => {

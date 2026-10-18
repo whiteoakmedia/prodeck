@@ -51,7 +51,7 @@ async fn discover(window: Duration) -> Result<Vec<Found>, String> {
         while let Ok(ev) = rx.recv_async().await {
             if let ServiceEvent::ServiceResolved(info) = ev {
                 let name = info.get_fullname().split('.').next().unwrap_or("").replace('\\', "");
-                let ip = info.get_addresses().iter().find(|a| a.is_ipv4()).or_else(|| info.get_addresses().iter().next()).copied();
+                let ip = info.get_addresses().iter().find(|a| a.is_ipv4()).or_else(|| info.get_addresses().iter().next()).map(|a| a.to_ip_addr());
                 if let Some(ip) = ip {
                     out.insert(name.clone(), Found { name, ip, port: info.get_port() });
                 }

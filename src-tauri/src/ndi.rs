@@ -276,19 +276,24 @@ async fn mdns_discover(app: &AppHandle) -> Result<Vec<NdiSource>, String> {
     let _ = tokio::time::timeout(Duration::from_secs(3), async {
         while let Ok(event) = receiver.recv_async().await {
             if let ServiceEvent::ServiceResolved(info) = event {
+                let addrs = info.get_addresses();
                 found_clone.lock().await.push(NdiSource {
                     name: info.get_fullname().to_string(),
-                    url_address: info
-                        .get_addresses()
+                    url_address: addrs
                         .iter()
-                        .next()
-                        .map(|a| format!("{}:{}", a, info.get_port()))
+                        .find(|a| a.is_ipv4())
+                        .or_else(|| addrs.iter().next())
+                        .map(|a| format!("{}:{}", a.to_ip_addr(), info.get_port()))
                         .unwrap_or_default(),
                 });
             }
         }
     })
     .await;
+    // Every browse starts a daemon thread with its own sockets. This one was
+    // never shut down, so each look for camera sources leaked one, until
+    // macOS refused to open any more ("Too many open files", PRODECK-6).
+    let _ = mdns.shutdown();
     let sources = found.lock().await.clone();
     let _ = app.emit("ndi:sources", &sources);
     Ok(sources)

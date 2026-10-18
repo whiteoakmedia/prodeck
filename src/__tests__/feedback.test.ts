@@ -120,3 +120,17 @@ describe("crash report scrubbing", () => {
     expect(stripUrl("/plain")).toBe("/plain");
   });
 });
+
+import { isPermissionRefusal } from "../lib/crashReports";
+
+describe("permission refusals aren't crashes", () => {
+  it("drops the booth's admin and permission refusals", () => {
+    setCrashReportsEnabled(true);
+    const refusal = (value: string) => ({ type: undefined, exception: { values: [{ type: "Error", value }] } });
+    expect(isPermissionRefusal(refusal("'list_audio_inputs' needs admin access"))).toBe(true);
+    expect(isPermissionRefusal(refusal("'pp_action' needs the \"control\" permission — ask whoever runs the booth to grant it"))).toBe(true);
+    expect(scrubEvent(refusal("'transcription_status' needs admin access"))).toBeNull();
+    expect(isPermissionRefusal(refusal("Cannot read properties of undefined"))).toBe(false);
+    setCrashReportsEnabled(false);
+  });
+});
