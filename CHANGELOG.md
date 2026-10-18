@@ -44,6 +44,24 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.107 — 18 October 2026 · hotfix
+
+### Fixed
+
+- **Running out of network connections.** When NDI Tools isn't installed,
+  ProDeck looks for camera feeds itself, and each look left a small network
+  listener running. After a long day the computer refused to open any more,
+  and finding devices stopped working. Each look now cleans up after itself.
+- **A crash in device discovery.** An unusual network message from another
+  device could stop ProDeck's device discovery. The library behind it is
+  updated.
+- **Crew phones and kiosks on the Auto-Follow page** no longer trip over
+  information only the booth may see.
+- **Camera scans that fail** now say why, on the Stage Feed tile and the
+  Multiview page.
+- **Update checks** now happen every three hours as well as at launch, so a
+  booth left open for days still sees new versions.
+
 ## 0.9.106 — 12 October 2026
 
 ### New: a Settings page you can find your way around
