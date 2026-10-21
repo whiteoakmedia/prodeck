@@ -309,6 +309,14 @@ describe("stage pockets", () => {
     map.panels = [{ id: "p", label: "Back", port: "stage", from: 11, to: 20 }];
     expect(panelViews(map)[0].sockets[6]).toMatchObject({ n: 17, inserts: ["Waves LV1"] });
   });
+  it("keeps a socket with a source but no patch as not free, not dead, landing nowhere", () => {
+    const map = emptyMap();
+    map.nodes.push({ id: "src:stage:5", kind: "source", label: "stage 5", ref: { port: "stage", index: "5" } });
+    map.panels = [{ id: "p", label: "P", port: "stage", from: 1, to: 6 }];
+    const [p] = panelViews(map);
+    expect(p.sockets[4]).toMatchObject({ n: 5, sourceId: "src:stage:5", free: false, dead: false, lands: [] });
+    expect(p.live).toBe(1);
+  });
   it("the example ships with pockets", () => {
     const v = panelViews(exampleMap());
     expect(v.map((p) => p.panel.label)).toEqual(["Drum riser pocket", "Keys pocket"]);

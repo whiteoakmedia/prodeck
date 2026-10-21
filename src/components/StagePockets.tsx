@@ -93,12 +93,15 @@ function SocketTile({
           ? "Marked dead — looks normal, goes nowhere"
           : s.free
             ? "Nothing on the map uses this socket. Free at the desk, or a tie line nobody wrote down."
-            : `Socket ${s.n} → ${first!.doorLabel} ${first!.at} → channel ${first!.channelIndex}${s.inserts.length ? ` · insert via ${s.inserts.join(", ")}` : ""}`
+            : !first
+              ? "On the map as a source, but not patched to a door or channel yet."
+              : `Socket ${s.n} → ${first.doorLabel} ${first.at} → channel ${first.channelIndex}${s.inserts.length ? ` · insert via ${s.inserts.join(", ")}` : ""}`
       }
     >
       <div className="sp-num mono">{s.n}</div>
       {s.dead && <div className="sp-state">dead</div>}
       {!s.dead && s.free && <div className="sp-state">free</div>}
+      {!s.dead && !s.free && !first && <div className="sp-state">unpatched</div>}
       {first && !s.dead && (
         <>
           <div className="sp-door mono">
