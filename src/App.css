@@ -6917,6 +6917,10 @@ select.input {
     text-align: center;
     font-variant-numeric: tabular-nums;
   }
+  .pb-slide.last {
+    background: var(--warn-soft);
+    color: var(--warn);
+  }
 }
 
 /* "Also page people not here" toggle on the page composer. */
@@ -10319,3 +10323,4 @@ select.input {
   .set-rail-item { width: auto; white-space: nowrap; }
   .set-rail-item.on { box-shadow: inset 0 -3px 0 var(--accent); }
 }
+.slide-last { color: var(--warn); font-weight: 600; }

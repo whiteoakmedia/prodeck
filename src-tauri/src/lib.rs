@@ -378,6 +378,7 @@ pub fn run() {
             chop::chop_get_state,
             music::music_state,
             music::music_control,
+            lan::lan_address,
             transcription::stop_transcription,
             // Gemini smart matching
             gemini::gemini_pick_slide,

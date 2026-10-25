@@ -10,6 +10,7 @@ import { ANCHOR_TOPIC, openHelp } from "../help/nav";
 import { consumeSettingsJump, SETTINGS_JUMP_EVENT } from "../lib/settingsJump";
 import { SECTIONS, cardMatches, isDirty, sectionOf } from "../lib/settingsSections";
 import { setSettingsDirty } from "../lib/settingsDirty";
+import { ipBaseUrl, lanBaseUrl, useLanAddress } from "../lib/lanUrl";
 import { useProDeck } from "../store";
 import { openFeedback } from "../lib/feedback";
 import { useChop } from "../chopStore";
@@ -168,6 +169,7 @@ export function SettingsPage() {
   };
   const [query, setQuery] = useState("");
   const contentRef = useRef<HTMLDivElement>(null);
+  const lan = useLanAddress();
   // Which cards exist on this screen (some are booth-only) and which match
   // the search: read from the cards themselves, so search covers every word
   // on a card without a list to keep up to date.
@@ -1755,10 +1757,10 @@ export function SettingsPage() {
               {form.web_enabled && form.web_password && (
                 <div className="field wide">
                   <span>Open in a browser</span>
-                  <code className="web-url">
-                    http://{(form.device_name || "this-mac").replace(/\.local$/i, "")}.local:
-                    {form.web_port}/
-                  </code>
+                  <code className="web-url">{lanBaseUrl("", lan, form.device_name, form.web_port)}/</code>
+                  {ipBaseUrl(lan, form.web_port) && (
+                    <span className="muted small">or, for devices that can't find .local names: <code>{ipBaseUrl(lan, form.web_port)}/</code></span>
+                  )}
                 </div>
               )}
             </div>
@@ -3228,8 +3230,12 @@ function KioskCard({ form }: { form: Settings }) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const f = form as any;
   const token = f.web_member_password || "";
-  const base = (f.public_url?.trim?.() as string) || `http://${(f.device_name || "this-mac").replace(/\.local$/i, "")}.local:${f.web_port || 8088}`;
-  const url = name && token ? `${base.replace(/\/+$/, "")}/?kiosk=${encodeURIComponent(name)}&token=${encodeURIComponent(token)}` : "";
+  const lan = useLanAddress();
+  const base = lanBaseUrl(f.public_url, lan, f.device_name, f.web_port);
+  const ipBase = (f.public_url ?? "").trim() ? null : ipBaseUrl(lan, f.web_port);
+  const q = name && token ? `/?kiosk=${encodeURIComponent(name)}&token=${encodeURIComponent(token)}` : "";
+  const url = q ? `${base}${q}` : "";
+  const ipUrl = q && ipBase ? `${ipBase}${q}` : "";
   useEffect(() => {
     if (!url) return setQr("");
     QRCode.toDataURL(url, { margin: 1, width: 180 }).then(setQr).catch(() => setQr(""));
@@ -3265,6 +3271,13 @@ function KioskCard({ form }: { form: Settings }) {
                 {copied ? "Copied ✓" : "Copy link"}
               </button>
             </div>
+            {ipUrl && (
+              <p className="muted small">
+                Not opening on a TV or Windows PC? Some can't find names ending in .local. Use this address instead:{" "}
+                <code className="kiosk-url">{ipUrl}</code>{" "}
+                <button className="link-btn" onClick={() => navigator.clipboard.writeText(ipUrl).catch(() => {})}>Copy</button>
+              </p>
+            )}
             <ol className="kiosk-steps muted small">
               <li><strong>Mac:</strong> open the link in Safari or Chrome, go full screen (⌃⌘F), and add it to Login Items so it comes back after a restart.</li>
               <li><strong>Windows PC:</strong> a shortcut to <code>chrome.exe --kiosk "&lt;link&gt;"</code> in the Startup folder.</li>

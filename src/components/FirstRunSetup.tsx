@@ -25,8 +25,9 @@ import {
 } from "../lib/dashboards";
 import { requestSettingsJump } from "../lib/settingsJump";
 import { STARTER_CHECKLISTS, addStarterChecklists } from "../lib/checklistTemplates";
-import { keepaliveStatus, keepaliveInstall, setDemo, crewJoinOpen, crewJoinState, openPrintHtml, type KeepaliveStatus } from "../lib/tauri";
+import { keepaliveStatus, keepaliveInstall, setDemo, crewJoinOpen, crewJoinState, openPrintHtml, lanAddress, type KeepaliveStatus } from "../lib/tauri";
 import { joinPosterHtml } from "../lib/joinPoster";
+import { lanBaseUrl } from "../lib/lanUrl";
 import { openHelp } from "../help/nav";
 import { isFreshInstall, readSetupDone, writeSetupDone, ONBOARDING_EVENT } from "../lib/onboarding";
 import { ConnectCard } from "./ConnectCard";
@@ -145,12 +146,12 @@ function randomToken(bytes = 12): string {
   return Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
 }
 /** Where phones on the church network reach this Mac. */
-function lanBase(s: Settings): string {
+async function lanBase(s: Settings): Promise<string> {
   const pub = (s as any).public_url?.trim?.() as string | undefined;
   if (pub) return pub.replace(/\/+$/, "");
   if (PUBLIC_URL) return PUBLIC_URL.replace(/\/+$/, "");
-  const host = ((s as any).device_name || "this-mac").replace(/\.local$/i, "");
-  return `http://${host}.local:${(s as any).web_port || 8088}`;
+  const lan = await lanAddress().catch(() => null);
+  return lanBaseUrl("", lan, (s as any).device_name || "", (s as any).web_port || 8088);
 }
 
 export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void }) {
@@ -275,7 +276,7 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
           await updateSettings({ ...s, web_invite_token: token } as unknown as Settings);
           await refreshSettings();
         }
-        const url = `${lanBase(s)}/join`;
+        const url = `${await lanBase(s)}/join`;
         if (!alive) return;
         setJoinUrl(url);
         setJoinMsg("");

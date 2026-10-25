@@ -421,6 +421,13 @@ export const musicState = () => invoke<MusicState>("music_state");
 export const musicControl = (action: MusicAction, value?: number) =>
   invoke<{ ok: boolean }>("music_control", { action, value: value ?? null });
 
+export interface LanAddress {
+  /** e.g. "Booth-Mac.local" */
+  host: string;
+  ips: string[];
+}
+export const lanAddress = () => invoke<LanAddress>("lan_address");
+
 export const chopSetState = (state: unknown) => invoke<void>("chop_set_state", { state });
 export const chopGetState = () => invoke<unknown>("chop_get_state");
 

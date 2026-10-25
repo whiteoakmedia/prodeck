@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { usePco } from "../pcoStore";
 import { useProDeck } from "../store";
-import { activePresentation, currentSlideIndex } from "../lib/status";
+import { activePresentation, currentSlideIndex, currentTotalCues } from "../lib/status";
+import { slideProgress, slideProgressText } from "../lib/slideProgress";
 import { Icon } from "./Icon";
 import { DASHBOARD_TEMPLATES, type Dashboard as Dash, type DashboardTemplate } from "../lib/dashboards";
 
@@ -133,6 +134,8 @@ export function DashTopBar({
   const pcoItem = pco.items.find((i) => i.id === pco.liveItemId) ?? null;
   const pres = connected ? activePresentation(status) : { uuid: null, name: null };
   const slideIdx = connected ? currentSlideIndex(status) : null;
+  // "6/25", amber on the last slide: a transition is coming.
+  const prog = slideProgress(slideIdx, connected ? currentTotalCues(status) : null);
   const onScreen = !!pres.name;
 
   // Match the live presentation back to a plan item by name so the key chip
@@ -338,8 +341,10 @@ export function DashTopBar({
             {liveTitle ?? (connected ? "Nothing live" : "ProPresenter offline")}
           </span>
         </span>
-        {onScreen && slideIdx !== null && (
-          <span className="pb-slide">{slideIdx + 1}</span>
+        {onScreen && prog && (
+          <span className={`pb-slide ${prog.last ? "last" : ""}`} title={`Slide ${slideProgressText(prog)}`}>
+            {prog.total ? `${prog.n}/${prog.total}` : prog.n}
+          </span>
         )}
         {liveKey && <span className="pb-key">{liveKey}</span>}
       </div>

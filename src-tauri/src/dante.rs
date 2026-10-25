@@ -226,7 +226,7 @@ async fn poll_once(app: &AppHandle, prev: &Value) -> Value {
 
 /// This Mac's IPv4 addresses (the Dante device answering on one of them is
 /// this Mac's Virtual Soundcard — the Live tab and the Recording page use it).
-fn local_ips() -> Vec<String> {
+pub(crate) fn local_ips() -> Vec<String> {
     #[cfg(unix)]
     let (cmd, prefix) = ("/sbin/ifconfig", "inet ");
     // "   IPv4 Address. . . . . . . . . . . : 192.168.1.20"

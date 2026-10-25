@@ -169,3 +169,61 @@ mod tests {
         assert!(!verdict(true, &[false, false], false));
     }
 }
+
+/// How phones and kiosks on the church network reach this computer.
+#[derive(Serialize, Clone, Debug)]
+pub struct LanAddress {
+    /// The name other devices can look up, e.g. "Booth-Mac.local".
+    pub host: String,
+    /// This computer's IPv4 addresses, for devices that can't look up
+    /// ".local" names (some Android TVs, older Windows).
+    pub ips: Vec<String>,
+}
+
+/// The ".local" name for this computer.
+///
+/// The settings' device name comes from `hostname`, and when the router hands
+/// out its own domain that reads "Mac.localdomain", which ProDeck turned into
+/// "Mac.localdomain.local": a link no device could open, so kiosk mode and
+/// browser access "never loaded". macOS's LocalHostName is the real Bonjour
+/// name; elsewhere, the first label of the host name.
+fn bonjour_host(fallback: &str) -> String {
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(o) = crate::diag::command("/usr/sbin/scutil").args(["--get", "LocalHostName"]).output() {
+            let name = String::from_utf8_lossy(&o.stdout).trim().to_string();
+            if o.status.success() && !name.is_empty() {
+                return format!("{name}.local");
+            }
+        }
+    }
+    host_label(fallback)
+}
+
+/// "Mac.localdomain" → "Mac.local"; "Booth.local" → "Booth.local".
+pub(crate) fn host_label(name: &str) -> String {
+    let first = name.trim().split('.').next().unwrap_or("").trim();
+    format!("{}.local", if first.is_empty() { "this-computer" } else { first })
+}
+
+#[tauri::command]
+pub fn lan_address(settings: tauri::State<'_, SettingsState>) -> LanAddress {
+    let device = settings.lock().unwrap_or_else(|p| p.into_inner()).device_name.clone();
+    let ips = crate::dante::local_ips()
+        .into_iter()
+        // Self-assigned addresses (no DHCP) aren't reachable from the Wi-Fi.
+        .filter(|ip| !ip.starts_with("169.254."))
+        .collect();
+    LanAddress { host: bonjour_host(&device), ips }
+}
+
+#[cfg(test)]
+mod lan_address_tests {
+    #[test]
+    fn makes_a_dot_local_name_from_whatever_hostname_says() {
+        assert_eq!(super::host_label("Mac.localdomain"), "Mac.local");
+        assert_eq!(super::host_label("Booth-Mac.local"), "Booth-Mac.local");
+        assert_eq!(super::host_label("BOOTH-PC"), "BOOTH-PC.local");
+        assert_eq!(super::host_label(""), "this-computer.local");
+    }
+}

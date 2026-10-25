@@ -275,7 +275,7 @@ function ppStatusPayloads(): { stream: string; data: unknown }[] {
       stream: "active_presentation",
       data: { presentation: { id: { uuid: `demo-pres-${idx}`, name: slideTitle(), index: idx } } },
     },
-    { stream: "slide_index", data: { presentation_index: { index: slide } } },
+    { stream: "slide_index", data: { presentation_index: { index: slide, total_cues: 6 } } },
     {
       stream: "layers",
       data: { slide: true, media: idx === 6, audio: false, props: false, announcements: idx === 0, messages: false, video_input: false },

@@ -35,6 +35,7 @@ import {
   pcoOauthStatus,} from "./lib/tauri";
 import { normTitle, bestMatch } from "./lib/match";
 import { autoTargetPlan, mergePlanPages } from "./lib/planPick";
+import { micPool } from "./lib/micPool";
 
 export interface ServiceType {
   id: string;
@@ -1375,10 +1376,7 @@ export function PcoProvider({ children }: { children: ReactNode }) {
     // People who declined aren't serving this plan — keep them out of the mic
     // pool so they don't take up channels.
     const active = team.filter((m) => !isDeclined(m.status));
-    const eligible = active.filter(
-      (m) => micPositions.includes(m.position) || !!micFor(m.id, m.position).mic,
-    );
-    let list = micPositions.length === 0 && eligible.length === 0 ? active : eligible;
+    let list = micPool(active, micPositions, (m) => !!micFor(m.id, m.position).mic);
     // ONE card per person: PCO schedules the same human as several team
     // entries (per position, per service time — "Team Lead" AND "Thursday"),
     // and a person only wears one mic. Prefer the entry with a real mic

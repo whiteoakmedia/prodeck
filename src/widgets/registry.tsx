@@ -96,6 +96,7 @@ import { RtaGraph } from "../components/RtaGraph";
 import { PlaylistControl, type Slide } from "../components/PlaylistControl";
 import { parseSlides, slidesForActivePresentation } from "../lib/slideOrder";
 import { useLiveItem } from "../lib/useLiveItem";
+import { slideProgress, slideProgressText } from "../lib/slideProgress";
 import { useFollowLive } from "../lib/followLive";
 import { ppTriggerActiveCue } from "../lib/tauri";
 import { useChop } from "../chopStore";
@@ -1007,7 +1008,15 @@ function SlidePreviewWidget({ widget, update }: WidgetProps) {
         <span className="muted small">
           {screen ? screen.name : pres.name ?? "No presentation"}
         </span>
-        <span className="muted small">Slide {idx !== null ? idx + 1 : "—"}</span>
+        {(() => {
+          // "Slide 6 of 25 · 19 to go", so a transition can be seen coming.
+          const p = slideProgress(idx, currentTotalCues(status));
+          return (
+            <span className={`small ${p?.last ? "slide-last" : "muted"}`}>
+              {p ? `Slide ${slideProgressText(p)}` : "Slide —"}
+            </span>
+          );
+        })()}
       </div>
       {layerState && (
         <div className="screen-layers">
