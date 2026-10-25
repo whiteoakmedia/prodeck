@@ -44,6 +44,37 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.108 — 25 October 2026
+
+### Thank you, Kris
+
+Everything in this update came from Kris Kircher at Haven Worship Center, who
+reported the bugs and suggested the feature through ProDeck's **Report a bug**
+and **Request a feature** buttons. Thank you, Kris.
+
+### New: Slide 6 of 25
+
+The current-item chip in the top bar shows where the live slide is in what
+ProPresenter is playing, like **6/25**, and turns amber on the last slide so a
+transition can be seen coming. The **Slide Preview** tile says "Slide 6 of 25 ·
+19 to go". The count follows the arrangement ProPresenter is playing, so songs
+with repeats count correctly.
+
+### Fixed: Mic Assignments hid everyone after the first mic
+
+When no mic positions were chosen, the tile showed everyone serving only until
+the first person was given a mic, then only the people with mics. It now keeps
+showing everyone, with the people who have mics first.
+
+### Fixed: kiosk links that never loaded
+
+Kiosk links, the Browser Access address and the first-run crew join link were
+built from the computer's name, and a router that adds its own domain (making
+it "Mac.localdomain") produced links nothing could open, even on the booth
+itself. ProDeck now uses the name the local network actually answers to, and
+also shows a link by IP address for TVs and Windows PCs that can't find names
+ending in .local.
+
 ## 0.9.107 — 18 October 2026 · hotfix
 
 ### Fixed
