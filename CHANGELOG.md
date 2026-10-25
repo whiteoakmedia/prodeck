@@ -48,9 +48,9 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ### Thank you, Kris
 
-Everything in this update came from Kris Kircher at Haven Worship Center, who
-reported the bugs and suggested the feature through ProDeck's **Report a bug**
-and **Request a feature** buttons. Thank you, Kris.
+Everything in this update came from Kris, who reported the bugs and suggested
+the feature through ProDeck's **Report a bug** and **Request a feature**
+buttons. Thank you, Kris.
 
 ### New: Slide 6 of 25
 
