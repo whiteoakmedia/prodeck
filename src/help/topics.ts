@@ -682,12 +682,14 @@ Running either one again starts from your current answers.`,
 - **Virtual SoundCheck:** the I/O Port 1 channel to set for that channel in the desk's Virtual SoundCheck matrix.
 - **Dante subscription:** which console Dante input to point at which of this Mac's outputs, in Dante Controller.
 
-It works this out from the recording (where each track came from), the console's show file and the live Dante network. It never changes anything itself.
+**The layout is fixed.** The first time, ProDeck works out a soundcheck layout from your Sunday routing and keeps it: every channel always comes back on the same console input, from the same output of this Mac, whichever recording you play. So the Dante subscriptions and the Virtual SoundCheck matrix are the same every time. Set them up once and save them as a preset. ProDeck only ever adds to the layout, when this Mac starts recording a new source. Open this page with your Sunday routing in place the first time: if the console is already listening to this Mac, ProDeck can't see the Sunday sources and asks you to load your Sunday preset first.
+
+It never changes anything on the desk or the network itself.
 
 **Do it when no service is on:**
 
 1. In Dante Controller, **save a preset of your Sunday routing first**. That's your way back.
-2. Make the subscriptions on the sheet, and save them as a Soundcheck preset for next time.
+2. Make the subscriptions on the sheet, and save them as a Soundcheck preset. Next time, just load it.
 3. On the Avantis: **I/O, Virtual SoundCheck**. Pick I/O Port 1, set the matrix from the sheet, every other channel off, and switch it on.
 4. Press **Play**. Jump to any song with its marker.
 5. **After:** Virtual SoundCheck to Inactive on the desk, then apply your Sunday preset in Dante Controller.

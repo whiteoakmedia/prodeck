@@ -584,6 +584,25 @@ pub fn save_pco_data(data: serde_json::Value) -> Result<(), String> {
     write_json_atomic_backed_up(pco_data_path(), json)
 }
 
+fn soundcheck_layout_path() -> PathBuf {
+    config_dir().join("soundcheck-layout.json")
+}
+
+/// The soundcheck layout: which console input and which of this Mac's Dante
+/// outputs each channel uses for Virtual SoundCheck. Worked out once from the
+/// Sunday routing and then kept, so one Dante preset fits every recording.
+/// Opaque JSON owned by the frontend (src/lib/soundcheckSheet.ts).
+#[tauri::command]
+pub fn load_soundcheck_layout() -> Result<serde_json::Value, String> {
+    read_json_strict(&soundcheck_layout_path(), "soundcheck-layout.json")
+}
+
+#[tauri::command]
+pub fn save_soundcheck_layout(data: serde_json::Value) -> Result<(), String> {
+    let json = serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?;
+    write_json_atomic_backed_up(soundcheck_layout_path(), json)
+}
+
 fn checklists_path() -> PathBuf {
     config_dir().join("checklists.json")
 }

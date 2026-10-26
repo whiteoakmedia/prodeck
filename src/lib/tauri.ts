@@ -807,6 +807,8 @@ export interface PlaybackStatus {
   error?: string | null;
 }
 export const playbackSession = (dir: string) => invoke<PlaybackSession>("playback_session", { dir });
+export const loadSoundcheckLayout = () => invoke<unknown>("load_soundcheck_layout");
+export const saveSoundcheckLayout = (data: unknown) => invoke<void>("save_soundcheck_layout", { data });
 export const playbackOutputs = () => invoke<{ name: string; channels: number }[]>("playback_outputs");
 /** routes: track number → output channel (1-based). */
 export const playbackStart = (dir: string, device: string, routes: Record<string, number>, from: number) =>

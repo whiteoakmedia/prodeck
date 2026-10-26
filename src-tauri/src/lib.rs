@@ -317,6 +317,8 @@ pub fn run() {
             settings::load_routing,
             settings::save_routing,
             settings::save_checklists,
+            settings::load_soundcheck_layout,
+            settings::save_soundcheck_layout,
             settings::checklist_toggle,
             // Planning Center
             pco::pco_get,

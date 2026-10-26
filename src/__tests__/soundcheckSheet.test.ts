@@ -159,3 +159,57 @@ describe("stillPatched", () => {
     expect(stillPatched(consoleDev(), LOCAL, local, [3, 4])).toEqual([]);
   });
 });
+
+import { buildLayout, listensToSoundcheck, sheetFromLayout, srcKey } from "../lib/soundcheckSheet";
+
+describe("the saved soundcheck layout", () => {
+  // This Mac's inputs on a Sunday: everything it records, not one recording's tracks.
+  const localRx = recordedRx;
+  const base = () => {
+    const i = input();
+    return { localRx, localName: LOCAL, local, console: i.console, devices: i.devices, patch, deskNames: i.deskNames };
+  };
+  const layout = buildLayout(base(), 1000);
+  const at = (ch: number) => layout.rows.find((r) => r.ch === ch)!;
+
+  it("is worked out once from the Sunday routing, for every source this Mac records", () => {
+    expect(layout.rows.map((r) => r.ch)).toEqual([1, 2, 20, 28, 31, 42]);
+    expect(at(1)).toMatchObject({ rx: 3, tx: 3, src: "FOH-Console · 9" });
+    expect(at(42)).toMatchObject({ rx: 44, src: "ULXD4Q-5-8 · 8" });
+  });
+
+  it("gives every recording the same inputs and outputs, whichever tracks it has", () => {
+    // A recording without Kick IN: Kick Out must not slide onto Kick IN's output.
+    const s = sheetFromLayout(layout, { tracks: tracks.filter((t) => t.n !== 9), recordedRx, routingIsToday: false, patch, deskNames: {} });
+    expect(s.rows.find((r) => r.ch === 2)).toMatchObject({ rx: at(2).rx, tx: at(2).tx });
+    expect(s.rows.find((r) => r.ch === 1)).toBeUndefined();
+    expect(Object.fromEntries(s.skipped.map((x) => [x.track, x.why]))).toMatchObject({ 1: expect.stringMatching(/Room L/), 27: expect.stringMatching(/Same channel/), 40: expect.stringMatching(/No Dante source/) });
+    // The preset borrows the whole layout, so the reminder watches all of it.
+    expect(s.txUsed).toEqual([...new Set(layout.rows.map((r) => r.tx))].sort((a, b) => a - b));
+  });
+
+  it("matches tracks by source, so a recording made on other inputs still lands right", () => {
+    const moved = [rx(5, CONSOLE, "3")]; // Kick Out, recorded on input 5 that day
+    const s = sheetFromLayout(layout, { tracks: [{ n: 5, name: "Kick Out" }], recordedRx: moved, routingIsToday: false, patch, deskNames: {} });
+    expect(s.rows).toEqual([expect.objectContaining({ ch: 2, track: 5, tx: at(2).tx })]);
+  });
+
+  it("knows when the console already listens for soundcheck", () => {
+    expect(listensToSoundcheck(consoleDev(), LOCAL, local)).toBe(false); // Spotify on 1 and 2 is Sunday
+    expect(listensToSoundcheck(consoleDev([rx(3, LOCAL, "03")]), LOCAL, local)).toBe(true);
+  });
+
+  it("keeps what it has and only adds new sources", () => {
+    const more = [...localRx, rx(30, CONSOLE, "09")];
+    const patch2 = { ...patch, inputs: [...patch.inputs, { ch: 5, port: 3, socket: 5, text: "SLink 5" }], danteOut: [...(patch.danteOut ?? []), { out: 9, code: 4, index: 0, text: "x" }] };
+    // Same rig a week later with the inputs reshuffled on the console: the kept rows don't move.
+    const shuffled = buildLayout({ ...base(), localRx: [...more].reverse(), patch: patch2, keep: layout }, 2000);
+    for (const r of layout.rows) expect(shuffled.rows.find((x) => x.ch === r.ch)).toEqual(r);
+    expect(shuffled.made).toBe(1000);
+  });
+
+  it("spells a source one way", () => {
+    expect(srcKey("ULXD4Q-1-4", "04")).toBe(srcKey("ULXD4Q-1-4", "4"));
+    expect(srcKey("DA2EX", "CH1")).toBe("DA2EX · CH1");
+  });
+});

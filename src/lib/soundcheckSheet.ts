@@ -53,6 +53,8 @@ export interface SheetInput {
   patch: AvantisPatch;
   /** Console channel names, by channel number. */
   deskNames: Record<number, string>;
+  /** Channels whose console input and output are already settled (the saved layout). */
+  fixed?: { ch: number; rx: number; tx: number }[];
 }
 
 /** The Waves insert loop and the console's own loopbacks are never borrowed. */
@@ -100,6 +102,11 @@ export function buildSheet(inp: SheetInput): Sheet {
         skipped.push({ track: t.n, name: t.name, why: `It's ${o.text}, not one channel` });
         continue;
       }
+      const own = inputs.find((i) => i.ch === o.index + 1);
+      if (own && own.socket == null) {
+        skipped.push({ track: t.n, name: t.name, why: `${chName(o.index + 1)} has no input patched on the console` });
+        continue;
+      }
       chans = [o.index + 1];
     } else {
       // Recorded straight from another device (wireless, playback rig): the
@@ -130,7 +137,16 @@ export function buildSheet(inp: SheetInput): Sheet {
   const assign = new Map<number, number>();
   // Tracks sharing one source (a vocal on two channels) share one input.
   const trackRx = new Map<number, number>();
+  const fixed = new Map((inp.fixed ?? []).map((f) => [f.ch, f]));
   for (const w of wanted) {
+    const f = fixed.get(w.ch);
+    if (!f) continue;
+    assign.set(w.ch, f.rx);
+    taken.add(f.rx);
+    trackRx.set(w.track, f.rx);
+  }
+  for (const w of wanted) {
+    if (assign.has(w.ch)) continue;
     const inp1 = inputOf(w.ch);
     if (inp1?.port === 1 && inp1.socket && borrowable(inp1.socket) && (!taken.has(inp1.socket) || trackRx.get(w.track) === inp1.socket)) {
       assign.set(w.ch, inp1.socket);
@@ -171,7 +187,7 @@ export function buildSheet(inp: SheetInput): Sheet {
   }
   const localCount = Math.max(64, inp.local?.txCount ?? 0);
   const txOf = new Map<number, number>();
-  const usedTx = new Set<number>();
+  const usedTx = new Set<number>((inp.fixed ?? []).map((f) => f.tx));
   const nextFree = () => {
     for (let n = 3; n <= localCount; n++) if (!inUse.has(n) && !usedTx.has(n)) return n;
     return null;
@@ -180,7 +196,8 @@ export function buildSheet(inp: SheetInput): Sheet {
   for (const w of [...wanted].sort((a, b) => a.ch - b.ch)) {
     const rx = assign.get(w.ch);
     if (rx == null) continue;
-    let tx = txOf.get(w.track);
+    let tx = txOf.get(w.track) ?? fixed.get(w.ch)?.tx;
+    if (tx != null) txOf.set(w.track, tx);
     if (tx == null) {
       tx = !inUse.has(rx) && !usedTx.has(rx) && rx <= localCount ? rx : (nextFree() ?? undefined);
       if (tx == null) {
@@ -207,6 +224,135 @@ export function buildSheet(inp: SheetInput): Sheet {
     notes.push("This recording was made before ProDeck saved its routing, so the sheet uses today's. If something was repatched since, check those channels.");
   }
   return { rows, skipped, silent: silent.sort((a, b) => a.ch - b.ch), txUsed: [...usedTx].sort((a, b) => a - b), notes };
+}
+
+// ---------------------------------------------------------------------------
+// The saved layout
+//
+// Worked out once, from the Sunday routing, for every source this Mac records
+// (not just one recording's tracks), then kept. Each channel always comes back
+// on the same console input from the same output of this Mac, so one Dante
+// preset and one Virtual SoundCheck matrix fit every recording. Working it out
+// again from the live network was what broke this: once the console listened
+// to the soundcheck outputs, the Sunday sources were gone and the sheet
+// reshuffled itself away from the patch just made.
+
+export interface LayoutRow {
+  ch: number;
+  chName: string;
+  rx: number;
+  /** What that console input listens to on Sundays. */
+  rxWas: string;
+  tx: number;
+  /** The Sunday source this Mac records the channel from (srcKey). */
+  src: string;
+}
+
+export interface SoundcheckLayout {
+  v: 1;
+  console: string;
+  local: string;
+  made: number;
+  rows: LayoutRow[];
+}
+
+/** One name for a Dante source, however its channel is spelled ("09", "9"). */
+export function srcKey(device: string, channel: string | null | undefined): string {
+  const c = (channel ?? "").trim();
+  const n = parseInt(c, 10);
+  return `${device} · ${/^\d+$/.test(c) && Number.isFinite(n) ? n : c}`;
+}
+
+export function isLayout(v: unknown): v is SoundcheckLayout {
+  const l = v as SoundcheckLayout | null;
+  return !!l && l.v === 1 && typeof l.console === "string" && Array.isArray(l.rows);
+}
+
+/**
+ * Is the console listening to this Mac for anything beyond its own audio
+ * (outputs 1 and 2)? Then the Sunday routing isn't in place to work from.
+ */
+export function listensToSoundcheck(consoleDev: DanteDevice, localName: string, local?: DanteDevice): boolean {
+  return consoleDev.rx.some((r) => {
+    if (r.txDevice !== localName) return false;
+    const n = chNo(local, r.txChannel);
+    return n == null || !RESERVED_TX.has(n);
+  });
+}
+
+export type LayoutInput = Omit<SheetInput, "tracks" | "recordedRx" | "routingIsToday" | "fixed"> & {
+  /** This Mac's Dante inputs now: every source it records. */
+  localRx: DanteRx[];
+  /** The layout so far. Its channels keep their inputs and outputs; only new ones are added. */
+  keep?: SoundcheckLayout | null;
+};
+
+export function buildLayout(inp: LayoutInput, now = Date.now()): SoundcheckLayout {
+  const keep = inp.keep && inp.keep.console === inp.console.name ? inp.keep : null;
+  const subscribed = inp.localRx.filter((r) => r.txDevice);
+  const sheet = buildSheet({
+    ...inp,
+    tracks: subscribed.map((r) => ({ n: r.ch, name: r.name })),
+    recordedRx: subscribed,
+    routingIsToday: false,
+    fixed: keep?.rows.map(({ ch, rx, tx }) => ({ ch, rx, tx })),
+  });
+  const rows: LayoutRow[] = [...(keep?.rows ?? [])];
+  const have = new Set(rows.map((r) => r.ch));
+  for (const r of sheet.rows) {
+    if (have.has(r.ch)) continue;
+    const src = subscribed.find((x) => x.ch === r.track);
+    rows.push({ ch: r.ch, chName: r.chName, rx: r.rx, rxWas: r.rxWas, tx: r.tx, src: srcKey(src?.txDevice ?? "", src?.txChannel) });
+  }
+  rows.sort((a, b) => a.ch - b.ch);
+  return { v: 1, console: inp.console.name, local: inp.localName, made: keep?.made ?? now, rows };
+}
+
+/** One recording's sheet, from the saved layout. Nothing here reads the live network. */
+export function sheetFromLayout(
+  layout: SoundcheckLayout,
+  inp: { tracks: { n: number; name: string }[]; recordedRx: DanteRx[]; routingIsToday: boolean; patch: AvantisPatch; deskNames: Record<number, string> },
+): Sheet {
+  const skipped: Sheet["skipped"] = [];
+  const rows: SheetRow[] = [];
+  const claimed = new Map<number, number>();
+  const bySrc = new Map<string, LayoutRow[]>();
+  for (const r of layout.rows) bySrc.set(r.src, [...(bySrc.get(r.src) ?? []), r]);
+  for (const t of inp.tracks) {
+    const src = inp.recordedRx.find((r) => r.ch === t.n);
+    if (!src?.txDevice) {
+      skipped.push({ track: t.n, name: t.name, why: "No Dante source was recorded for it" });
+      continue;
+    }
+    const hits = bySrc.get(srcKey(src.txDevice, src.txChannel)) ?? [];
+    if (!hits.length) {
+      const out = src.txDevice === layout.console ? parseInt(src.txChannel ?? "", 10) : NaN;
+      const o = inp.patch.danteOut?.find((d) => d.out === out);
+      skipped.push({ track: t.n, name: t.name, why: o && o.code !== DIRECT_OUT ? `It's ${o.text}, not one channel` : "Not in the soundcheck layout" });
+      continue;
+    }
+    for (const h of hits) {
+      if (claimed.has(h.ch)) {
+        skipped.push({ track: t.n, name: t.name, why: `Same channel as track ${claimed.get(h.ch)} (${inp.deskNames[h.ch] || h.chName})` });
+        continue;
+      }
+      claimed.set(h.ch, t.n);
+      rows.push({ ch: h.ch, chName: inp.deskNames[h.ch] || h.chName, track: t.n, trackName: t.name, rx: h.rx, rxWas: h.rxWas, tx: h.tx });
+    }
+  }
+  rows.sort((a, b) => a.ch - b.ch);
+  // The preset borrows every input in the layout, whichever tracks play.
+  const layoutCh = new Set(layout.rows.map((r) => r.ch));
+  const borrowed = new Map(layout.rows.map((r) => [r.rx, r.rxWas]));
+  const silent: Sheet["silent"] = (inp.patch.inputs ?? [])
+    .filter((i) => i.port === 1 && i.socket && borrowed.has(i.socket) && !layoutCh.has(i.ch))
+    .map((i) => ({ ch: i.ch, name: inp.deskNames[i.ch] || `Ch ${i.ch}`, was: borrowed.get(i.socket!) ?? "" }))
+    .sort((a, b) => a.ch - b.ch);
+  const notes: string[] = [];
+  if (inp.routingIsToday) {
+    notes.push("This recording was made before ProDeck saved its routing, so its tracks are matched by today's. If something was repatched since, check those channels.");
+  }
+  return { rows, skipped, silent, txUsed: [...new Set(layout.rows.map((r) => r.tx))].sort((a, b) => a - b), notes };
 }
 
 /** Playback routes for ProDeck: track number → this Mac's output. */

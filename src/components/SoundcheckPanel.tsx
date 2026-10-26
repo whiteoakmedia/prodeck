@@ -3,19 +3,21 @@ import {
   avantisPatchGet,
   avantisState,
   danteSnapshot,
+  loadSoundcheckLayout,
   on,
   playbackOutputs,
   playbackSession,
   playbackStart,
   playbackStatus,
   playbackStop,
+  saveSoundcheckLayout,
   type AvantisPatch,
   type DanteSnapshot,
   type PlaybackSession,
   type PlaybackStatus,
   type RecSession,
 } from "../lib/tauri";
-import { buildSheet, routesOf, sheetText, type Sheet } from "../lib/soundcheckSheet";
+import { buildLayout, isLayout, listensToSoundcheck, routesOf, sheetFromLayout, sheetText, type Sheet, type SoundcheckLayout } from "../lib/soundcheckSheet";
 import { fmtClock } from "../recorder";
 
 // Recording → Soundcheck: play a recorded service back into the console's
@@ -40,6 +42,8 @@ export function SoundcheckPanel({ sessions, dir, onDir }: { sessions: RecSession
   const [pos, setPos] = useState(0);
   const [err, setErr] = useState("");
   const [copied, setCopied] = useState(false);
+  // undefined while loading; null when none has been worked out yet.
+  const [layout, setLayout] = useState<SoundcheckLayout | null | undefined>(undefined);
 
   useEffect(() => {
     playbackOutputs()
@@ -58,6 +62,9 @@ export function SoundcheckPanel({ sessions, dir, onDir }: { sessions: RecSession
       })
       .catch(() => {});
     playbackStatus().then(setStatus).catch(() => {});
+    loadSoundcheckLayout()
+      .then((v) => setLayout(isLayout(v) ? v : null))
+      .catch(() => setLayout(null));
     const a = on<DanteSnapshot>("routing:dante", (d) => d && setDante(d));
     const b = on<PlaybackStatus>("playback:status", (s) => {
       if (!s) return;
@@ -84,21 +91,28 @@ export function SoundcheckPanel({ sessions, dir, onDir }: { sessions: RecSession
   const recordedRx = session?.routing?.danteRx ?? local?.rx ?? [];
   const fromUsb = !!session?.routing?.device;
 
-  const sheet: Sheet | null = useMemo(() => {
-    if (!session || !consoleDev || !patch || patch.live || fromUsb) return null;
-    return buildSheet({
-      tracks: session.tracks,
-      recordedRx,
-      routingIsToday: !session.routing?.danteRx,
-      localName,
-      local,
-      console: consoleDev,
-      devices: dante?.devices ?? [],
-      patch,
-      deskNames,
-    });
+  const canSheet = !!consoleDev && !!patch && !patch.live && !fromUsb;
+  const sundayGone = !!consoleDev && listensToSoundcheck(consoleDev, localName, local);
+
+  // Work the layout out once from the Sunday routing, then only ever add to
+  // it (a new source this Mac records). Never from a network that's already
+  // patched for soundcheck: the Sunday sources aren't visible then.
+  useEffect(() => {
+    if (layout === undefined || !canSheet || !consoleDev || !patch || !local || sundayGone) return;
+    const keep = layout && layout.console === consoleDev.name ? layout : null;
+    const next = buildLayout({ localRx: local.rx, localName, local, console: consoleDev, devices: dante?.devices ?? [], patch, deskNames, keep });
+    if (keep && next.rows.length === keep.rows.length) return;
+    if (!next.rows.length) return;
+    setLayout(next);
+    saveSoundcheckLayout(next).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, consoleDev, patch, localName, local, deskNames, fromUsb]);
+  }, [layout, canSheet, consoleDev, patch, local, sundayGone, localName, deskNames]);
+
+  const sheet: Sheet | null = useMemo(() => {
+    if (!session || !canSheet || !patch || !layout || layout.console !== consoleDev?.name) return null;
+    return sheetFromLayout(layout, { tracks: session.tracks, recordedRx, routingIsToday: !session.routing?.danteRx, patch, deskNames });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, canSheet, patch, layout, consoleDev?.name, deskNames, recordedRx]);
 
   useEffect(() => {
     if (!sheet) return;
@@ -233,7 +247,11 @@ export function SoundcheckPanel({ sessions, dir, onDir }: { sessions: RecSession
               ? "The patch sheet reads an Avantis show file. For this console, play each track out on the output of the same number."
               : !consoleDev
                 ? "ProDeck hasn't found the console on the Dante network yet (Routing, Live)."
-                : "The patch sheet needs a show file from the console: save the show to a USB stick or from Avantis Director and put it in Downloads."}
+                : !patch
+                  ? "The patch sheet needs a show file from the console: save the show to a USB stick or from Avantis Director and put it in Downloads."
+                  : sundayGone && layout !== undefined
+                    ? "The console is already listening to this Mac for soundcheck, so ProDeck can't see your Sunday routing to work the layout out from. Load your Sunday preset in Dante Controller and come back: ProDeck works the layout out once and keeps it, so one soundcheck preset fits every recording."
+                    : "Working out the soundcheck layout."}
         </p>
       )}
 
