@@ -304,6 +304,28 @@ function demoThumb(index: number, text = THUMB_LINES[index % THUMB_LINES.length]
 
 // ------------------------------------------------------------------ console
 
+// A pretend ATEM: Preview, Cut and Auto work, so the tile can be tried with no switcher.
+const DEMO_ATEM = {
+  program: 1,
+  preview: 2,
+  inTransition: false,
+  inputs: [
+    { id: 1, name: "Camera 1 Wide", short: "CAM1", camera: true },
+    { id: 2, name: "Camera 2 Pulpit", short: "CAM2", camera: true },
+    { id: 3, name: "Camera 3 Stage", short: "CAM3", camera: true },
+    { id: 4, name: "ProPresenter", short: "PRO", camera: true },
+    { id: 0, name: "Black", short: "BLK", camera: false },
+    { id: 3010, name: "Media Player 1", short: "MP1", camera: false },
+  ],
+};
+function atemSnapshot() {
+  return {
+    connected: true, ready: true, product: "ATEM Television Studio HD8", me: 0, mes: 1,
+    program: DEMO_ATEM.program, preview: DEMO_ATEM.preview, inTransition: DEMO_ATEM.inTransition,
+    inputs: DEMO_ATEM.inputs, error: null,
+  };
+}
+
 function deskSnapshot() {
   const names: Record<string, string> = {};
   const mutes: Record<string, boolean> = {};
@@ -592,6 +614,8 @@ const SETTINGS_OVERLAY: Record<string, unknown> = {
   spl_calibration: 125.7,
   ga4_property_id: "000000000",
   tap_enabled: true,
+  atem_enabled: true,
+  atem_host: "10.0.1.20",
   // Collection-typed fields, so a browser demo (which has no real struct to
   // merge over) never hands a component `undefined` where it maps or filters.
   avantis_softkeys: [],
@@ -729,6 +753,17 @@ export async function demoInvoke<T>(cmd: string, args?: Record<string, unknown>)
     }
     case "avantis_state":
       return out(deskSnapshot());
+    case "atem_state":
+      return out(atemSnapshot());
+    case "atem_set_preview":
+      DEMO_ATEM.preview = Number(args?.source ?? DEMO_ATEM.preview);
+      return out(null);
+    case "atem_cut":
+    case "atem_auto":
+      [DEMO_ATEM.program, DEMO_ATEM.preview] = [DEMO_ATEM.preview, DEMO_ATEM.program];
+      return out(null);
+    case "atem_reconnect":
+      return out(null);
     case "ga4_state": {
       const base = 30 + Math.round(12 * Math.sin(NOW() / 60_000));
       const history = Array.from({ length: 30 }, (_, i) => ({

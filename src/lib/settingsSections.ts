@@ -17,7 +17,7 @@ export const SECTIONS: SettingsSection[] = [
     id: "connections",
     label: "Connections",
     blurb: "ProPresenter, your sound console, OBS and camera feeds.",
-    cards: ["set-connections", "set-pp", "set-avantis", "set-obs", "set-ndi", "set-relay"],
+    cards: ["set-connections", "set-pp", "set-avantis", "set-obs", "set-atem", "set-ndi", "set-relay"],
   },
   {
     id: "sound",

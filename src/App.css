@@ -7521,6 +7521,32 @@ select.input {
 .crash-more pre { margin-top: 8px; max-height: 240px; overflow: auto; font-family: var(--mono); font-size: 11px; line-height: 1.5; padding: 10px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; white-space: pre-wrap; word-break: break-word; }
 
 /* ---- OBS widget ---- */
+/* --bad was used (OBS LIVE pill and skipped-frames warning, the crash screen,
+   the release-notes error) but never defined, so none of them showed red.
+   Every theme defines --live; alias it here and each theme follows. */
+:root {
+  --bad: var(--live);
+  --bad-soft: var(--live-soft);
+}
+
+/* ATEM switcher tile: Program red, Preview green, like the switcher's panel. */
+.atem-w { display: flex; flex-direction: column; gap: 10px; height: 100%; padding: 4px 2px; }
+.atem-w-top, .atem-w-next, .atem-w-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.atem-w-next { margin-top: auto; }
+.atem-w-actions > .btn { flex: 1; }
+.atem-now, .atem-next-name { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.atem-now { font-size: 1.05em; }
+.atem-tag { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; padding: 2px 6px; border-radius: 4px; }
+.atem-tag.pgm { background: var(--bad-soft); color: var(--bad); border: 1px solid var(--bad); }
+.atem-tag.pvw { background: var(--good-soft); color: var(--good); border: 1px solid var(--good); }
+.atem-tag.moving { background: var(--panel-2); color: var(--faint); border: 1px solid var(--border); }
+.atem-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; overflow: auto; }
+.atem-src { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel-2); color: inherit; cursor: pointer; text-align: left; min-height: 52px; }
+.atem-src:disabled { cursor: default; opacity: 0.85; }
+.atem-src.pvw { border-color: var(--good); background: var(--good-soft); }
+.atem-src.pgm { border-color: var(--bad); background: var(--bad-soft); }
+.atem-src-short { font-weight: 700; font-size: 13px; }
+.atem-src-name { font-size: 11px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .obs-w { display: flex; flex-direction: column; gap: 10px; height: 100%; padding: 4px 2px; }
 .obs-w-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .obs-pill {

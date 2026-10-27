@@ -802,6 +802,14 @@ async fn handle_conn(
                 }
             }
             "confidence-clear" => dispatch(&app, "chat_clear_confidence", &json!({}), Tier::Admin, None).await,
+            // ATEM switcher: Cut / Auto take Preview live; atem-preview puts
+            // source n on Preview (the source numbers the switcher uses).
+            "atem-cut" => dispatch(&app, "atem_cut", &json!({}), Tier::Admin, None).await,
+            "atem-auto" => dispatch(&app, "atem_auto", &json!({}), Tier::Admin, None).await,
+            "atem-preview" => {
+                if n == 0 { Err("add &n=<source number>".into()) }
+                else { dispatch(&app, "atem_set_preview", &json!({"source": n}), Tier::Admin, None).await }
+            }
             "avantis-scene" => {
                 if n == 0 { Err("add &n=<scene number>".into()) }
                 else { dispatch(&app, "avantis_recall_scene", &json!({"scene": n}), Tier::Admin, None).await }
@@ -1521,6 +1529,9 @@ pub(crate) fn member_cmd_ok(cmd: &str) -> bool {
             // "Are we live?" is a read every kiosk and phone should have.
             // Changing the scene is admin-only and absent from this list.
             | "obs_state"
+            // Program/Preview tally, same as "are we live?". Switching needs
+            // the control grant (perm_for_cmd).
+            | "atem_state"
             // The console mirror is read-only and on the same kiosk tiles as
             // obs_state; without it the desk widget reported "unreachable" on
             // every browser even while the booth was mirroring fine.
@@ -1556,7 +1567,8 @@ pub(crate) fn perm_for_cmd(cmd: &str) -> Option<&'static str> {
         | "pp_trigger_look" | "pp_trigger_macro" | "pp_trigger_next" | "pp_trigger_previous"
         | "avantis_set_mute" | "avantis_set_fader" | "avantis_set_name" | "avantis_recall_scene"
         | "avantis_reconnect" | "obs_reconnect"
-        | "obs_set_scene" | "pco_live_action" | "midi_send_key" | "osc_send_key" | "keysend_request"
+        | "obs_set_scene" | "atem_cut" | "atem_auto" | "atem_set_preview" | "atem_set_program"
+        | "atem_reconnect" | "pco_live_action" | "midi_send_key" | "osc_send_key" | "keysend_request"
         | "music_control" => Some("control"),
         "tap_override" => Some("tap"),
         "identity_list" | "identity_approve" | "identity_remove" | "identity_set_role"
@@ -1843,6 +1855,32 @@ async fn dispatch(
         "obs_reconnect" => {
             crate::obs::obs_reconnect();
             Ok(Value::Null)
+        }
+        "atem_state" => {
+            let state = app.state::<crate::atem::AtemState>();
+            Ok(crate::atem::atem_state(state))
+        }
+        "atem_reconnect" => {
+            crate::atem::atem_reconnect();
+            Ok(Value::Null)
+        }
+        // Switching reaches here only for admin, or a member with "control":
+        // it changes what the room and the stream see.
+        "atem_cut" => crate::atem::atem_cut(app.state::<crate::atem::AtemState>()).map(|_| Value::Null),
+        "atem_auto" => crate::atem::atem_auto(app.state::<crate::atem::AtemState>()).map(|_| Value::Null),
+        "atem_set_preview" | "atem_set_program" => {
+            let source = args
+                .get("source")
+                .and_then(|v| v.as_u64())
+                .and_then(|v| u16::try_from(v).ok())
+                .ok_or("source required")?;
+            let state = app.state::<crate::atem::AtemState>();
+            if cmd == "atem_set_preview" {
+                crate::atem::atem_set_preview(source, state)
+            } else {
+                crate::atem::atem_set_program(source, state)
+            }
+            .map(|_| Value::Null)
         }
         "obs_set_scene" => {
             let scene = args.get("scene").and_then(|v| v.as_str()).unwrap_or("").to_string();
@@ -2449,7 +2487,7 @@ mod member_pp_tests {
             "page_ack", "page_list", "posfile_list", "checkin_set", "checkin_list",
             "checklist_toggle", "ga4_state",
             // The three tiles that were silently broken on every kiosk.
-            "obs_state", "avantis_state",
+            "obs_state", "atem_state", "avantis_state",
             // Cameras.
             "ndi_discover_sources", "ndi_start_receiver", "ndi_stop_receiver",
             // Slide pictures for the Slide Preview / Slide Grid tiles.
@@ -2501,7 +2539,8 @@ mod member_pp_tests {
         for cmd in [
             "update_settings", "pp_action", "pp_set_stage_message", "pp_clear_stage_message",
             "avantis_set_mute", "avantis_set_fader", "avantis_recall_scene",
-            "obs_set_scene", "pco_live_action", "tap_override", "crew_join_open",
+            "obs_set_scene", "atem_cut", "atem_auto", "atem_set_preview", "atem_set_program",
+            "pco_live_action", "tap_override", "crew_join_open",
             "save_dashboards", "identity_approve", "identity_remove", "web_start",
             "backup_export", "backup_import", "diag_bundle", "page_send",
         ] {
