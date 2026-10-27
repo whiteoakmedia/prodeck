@@ -456,9 +456,23 @@ async function stateOf(env: Env): Promise<CrewStateData> {
  *  presented token is hashed and compared; the worker's own ADMIN_TOKEN
  *  secret stays a direct comparison. (Pre-hash plaintext entries are still
  *  honored so a not-yet-upgraded booth doesn't lock its crew out.) */
+/** Constant-time compare (same as taplink-edge): hash both sides so length can't shortcut it. */
+async function safeEqual(a: string, b: string): Promise<boolean> {
+  const enc = new TextEncoder();
+  const [ha, hb] = await Promise.all([
+    crypto.subtle.digest("SHA-256", enc.encode(a)),
+    crypto.subtle.digest("SHA-256", enc.encode(b)),
+  ]);
+  const va = new Uint8Array(ha);
+  const vb = new Uint8Array(hb);
+  let diff = 0;
+  for (let i = 0; i < va.length; i++) diff |= va[i] ^ vb[i];
+  return diff === 0;
+}
+
 async function tokenOk(data: CrewStateData, env: Env, token: string): Promise<boolean> {
   if (!token) return false;
-  if (token === env.ADMIN_TOKEN) return true;
+  if (env.ADMIN_TOKEN && (await safeEqual(token, env.ADMIN_TOKEN))) return true;
   if (data.tokens.includes(token)) return true; // legacy plaintext mirror
   return data.tokens.includes(await sha256Hex(token));
 }

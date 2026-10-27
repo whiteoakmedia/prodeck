@@ -220,8 +220,80 @@ fn token_tier(app: &AppHandle, token: &str) -> Option<Tier> {
     None
 }
 
-pub(crate) fn token_ok(app: &AppHandle, token: &str) -> bool {
-    token_tier(app, token).is_some()
+/// Whose failures count together. Behind the church's own domain every remote
+/// request reaches the booth from cloudflared on loopback, so one bucket would
+/// cover every phone outside the building: one person guessing could lock
+/// everyone out, and nobody could be told apart. There, the visitor is
+/// Cloudflare's CF-Connecting-IP. The header is only trusted from loopback,
+/// where nothing but the tunnel (or the booth itself) can connect.
+fn throttle_key(peer: &str, headers: &str) -> String {
+    let loopback = peer
+        .parse::<std::net::IpAddr>()
+        .map(|ip| ip.is_loopback())
+        .unwrap_or(false);
+    if loopback {
+        let cf = headers.lines().find_map(|l| {
+            let (k, v) = l.split_once(':')?;
+            k.trim().eq_ignore_ascii_case("cf-connecting-ip").then(|| v.trim().to_string())
+        });
+        if let Some(ip) = cf.filter(|ip| !ip.is_empty() && ip.len() <= 64) {
+            return format!("cf:{ip}");
+        }
+    }
+    peer.to_string()
+}
+
+/// For the camera (MJPEG) ports in ndi.rs: any valid gateway token, behind the
+/// same throttle as every other password check. Those ports bind the LAN, so
+/// without it they were one more place to test passwords at full speed.
+pub(crate) fn token_ok_throttled(app: &AppHandle, peer: &str, token: &str) -> bool {
+    matches!(get_auth(app, peer, token, false), GetAuth::Ok)
+}
+
+enum GetAuth {
+    Ok,
+    Denied,
+    Wait(u64),
+}
+
+/// The password check for the GET routes (event stream, audio, files, deck),
+/// with the same throttle POST /api/cmd has. Those routes used to check the
+/// token with no throttle at all, and /api/deck only accepts the admin
+/// password, so a script on the guest wifi could test admin guesses as fast
+/// as the network allowed (security review, 2026-10-27). `need_admin`: a
+/// valid member password on an admin-only route counts as a failed guess.
+fn get_auth(app: &AppHandle, key: &str, token: &str, need_admin: bool) -> GetAuth {
+    if let Some(wait) = auth_backoff(key) {
+        return GetAuth::Wait(wait);
+    }
+    match token_tier(app, token) {
+        Some(t) if !need_admin || t == Tier::Admin => {
+            // Only the admin password wipes the slate. Clearing on any success
+            // let someone who knows the crew password reset their own throttle
+            // between admin guesses.
+            if t == Tier::Admin {
+                clear_auth_failures(key);
+            }
+            GetAuth::Ok
+        }
+        _ => {
+            note_auth_failure(key);
+            GetAuth::Denied
+        }
+    }
+}
+
+async fn write_get_refusal(stream: &mut tokio::net::TcpStream, a: &GetAuth, json: bool) -> std::io::Result<()> {
+    match (a, json) {
+        (GetAuth::Wait(w), true) => {
+            write_bytes(stream, 429, "application/json", format!("{{\"error\":\"too many attempts, wait {w}s\"}}").as_bytes()).await
+        }
+        (GetAuth::Wait(w), false) => {
+            write_bytes(stream, 429, "text/plain", format!("too many attempts, wait {w}s").as_bytes()).await
+        }
+        (_, true) => write_bytes(stream, 401, "application/json", b"{\"error\":\"admin token required\"}").await,
+        (_, false) => write_bytes(stream, 401, "text/plain", b"unauthorized").await,
+    }
 }
 
 /// Register one-time global listeners that fan app events into the SSE channel.
@@ -443,6 +515,12 @@ async fn handle_conn(
         return write_bytes(&mut stream, 204, "text/plain", b"").await;
     }
 
+    // Who a failed password counts against (see throttle_key).
+    let auth_key = throttle_key(
+        &stream.peer_addr().map(|a| a.ip().to_string()).unwrap_or_default(),
+        &header_str,
+    );
+
     // SSE event stream.
     if method == "GET" && path.starts_with("/api/events") {
         let token = path
@@ -450,8 +528,9 @@ async fn handle_conn(
             .map(|(_, t)| t.split('&').next().unwrap_or(""))
             .map(|t| urlencoding::decode(t).map(|c| c.into_owned()).unwrap_or_default())
             .unwrap_or_default();
-        if !token_ok(&app, &token) {
-            return write_bytes(&mut stream, 401, "text/plain", b"unauthorized").await;
+        let auth = get_auth(&app, &auth_key, &token, false);
+        if !matches!(auth, GetAuth::Ok) {
+            return write_get_refusal(&mut stream, &auth, false).await;
         }
         return serve_sse(stream, app, web).await;
     }
@@ -464,8 +543,9 @@ async fn handle_conn(
             .map(|(_, t)| t.split('&').next().unwrap_or(""))
             .map(|t| urlencoding::decode(t).map(|c| c.into_owned()).unwrap_or_default())
             .unwrap_or_default();
-        if !token_ok(&app, &token) {
-            return write_bytes(&mut stream, 401, "text/plain", b"unauthorized").await;
+        let auth = get_auth(&app, &auth_key, &token, false);
+        if !matches!(auth, GetAuth::Ok) {
+            return write_get_refusal(&mut stream, &auth, false).await;
         }
         return serve_audio_mp3(stream, app).await;
     }
@@ -478,8 +558,9 @@ async fn handle_conn(
             .map(|(_, t)| t.split('&').next().unwrap_or(""))
             .map(|t| urlencoding::decode(t).map(|c| c.into_owned()).unwrap_or_default())
             .unwrap_or_default();
-        if !token_ok(&app, &token) {
-            return write_bytes(&mut stream, 401, "text/plain", b"unauthorized").await;
+        let auth = get_auth(&app, &auth_key, &token, false);
+        if !matches!(auth, GetAuth::Ok) {
+            return write_get_refusal(&mut stream, &auth, false).await;
         }
         let id = path
             .trim_start_matches("/api/file/")
@@ -504,8 +585,9 @@ async fn handle_conn(
             .map(|(_, t)| t.split('&').next().unwrap_or(""))
             .map(|t| urlencoding::decode(t).map(|c| c.into_owned()).unwrap_or_default())
             .unwrap_or_default();
-        if !token_ok(&app, &token) {
-            return write_bytes(&mut stream, 401, "text/plain", b"unauthorized").await;
+        let auth = get_auth(&app, &auth_key, &token, false);
+        if !matches!(auth, GetAuth::Ok) {
+            return write_get_refusal(&mut stream, &auth, false).await;
         }
         return serve_audio(stream, app).await;
     }
@@ -556,14 +638,10 @@ async fn handle_conn(
             )
             .await;
         }
-        let peer_ip = stream
-            .peer_addr()
-            .map(|a| a.ip().to_string())
-            .unwrap_or_default();
         // Slow down guessing. Unlike the PIN path (identity::login_core) the
         // gateway passwords had no attempt counter, no backoff and no lockout
         // at all, so they could be enumerated as fast as the LAN allows.
-        if let Some(wait) = auth_backoff(&peer_ip) {
+        if let Some(wait) = auth_backoff(&auth_key) {
             return write_bytes(
                 &mut stream,
                 429,
@@ -573,11 +651,15 @@ async fn handle_conn(
             .await;
         }
         let Some(tier) = token_tier(&app, token) else {
-            note_auth_failure(&peer_ip);
+            note_auth_failure(&auth_key);
             return write_bytes(&mut stream, 401, "application/json", b"{\"error\":\"unauthorized\"}")
                 .await;
         };
-        clear_auth_failures(&peer_ip);
+        // Admin only, as in get_auth: a crew password must not reset the
+        // throttle on admin guesses.
+        if tier == Tier::Admin {
+            clear_auth_failures(&auth_key);
+        }
         // Auto check-in lives HERE, not in dispatch: it needs the connection's
         // presence evidence (TCP peer + Cloudflare's CF-Connecting-IP), which
         // only this layer can see. Any signed-in tier may use it.
@@ -660,8 +742,9 @@ async fn handle_conn(
             })
         };
         let token = qp("token").unwrap_or_default();
-        if token_tier(&app, &token) != Some(Tier::Admin) {
-            return write_bytes(&mut stream, 401, "application/json", b"{\"error\":\"admin token required\"}").await;
+        let auth = get_auth(&app, &auth_key, &token, true);
+        if !matches!(auth, GetAuth::Ok) {
+            return write_get_refusal(&mut stream, &auth, true).await;
         }
         let action = route.trim_start_matches("/api/deck/").trim_end_matches('/');
         let text = qp("text").unwrap_or_default();
@@ -719,6 +802,14 @@ async fn handle_conn(
                 }
             }
             "confidence-clear" => dispatch(&app, "chat_clear_confidence", &json!({}), Tier::Admin, None).await,
+            // ATEM switcher: Cut / Auto take Preview live; atem-preview puts
+            // source n on Preview (the source numbers the switcher uses).
+            "atem-cut" => dispatch(&app, "atem_cut", &json!({}), Tier::Admin, None).await,
+            "atem-auto" => dispatch(&app, "atem_auto", &json!({}), Tier::Admin, None).await,
+            "atem-preview" => {
+                if n == 0 { Err("add &n=<source number>".into()) }
+                else { dispatch(&app, "atem_set_preview", &json!({"source": n}), Tier::Admin, None).await }
+            }
             "avantis-scene" => {
                 if n == 0 { Err("add &n=<scene number>".into()) }
                 else { dispatch(&app, "avantis_recall_scene", &json!({"scene": n}), Tier::Admin, None).await }
@@ -1312,6 +1403,7 @@ async fn write_bytes(
         204 => "No Content",
         401 => "Unauthorized",
         404 => "Not Found",
+        429 => "Too Many Requests",
         _ => "OK",
     };
     // HTML must revalidate every load: TV browsers (Samsung especially)
@@ -1437,6 +1529,9 @@ pub(crate) fn member_cmd_ok(cmd: &str) -> bool {
             // "Are we live?" is a read every kiosk and phone should have.
             // Changing the scene is admin-only and absent from this list.
             | "obs_state"
+            // Program/Preview tally, same as "are we live?". Switching needs
+            // the control grant (perm_for_cmd).
+            | "atem_state"
             // The console mirror is read-only and on the same kiosk tiles as
             // obs_state; without it the desk widget reported "unreachable" on
             // every browser even while the booth was mirroring fine.
@@ -1472,7 +1567,8 @@ pub(crate) fn perm_for_cmd(cmd: &str) -> Option<&'static str> {
         | "pp_trigger_look" | "pp_trigger_macro" | "pp_trigger_next" | "pp_trigger_previous"
         | "avantis_set_mute" | "avantis_set_fader" | "avantis_set_name" | "avantis_recall_scene"
         | "avantis_reconnect" | "obs_reconnect"
-        | "obs_set_scene" | "pco_live_action" | "midi_send_key" | "osc_send_key" | "keysend_request"
+        | "obs_set_scene" | "atem_cut" | "atem_auto" | "atem_set_preview" | "atem_set_program"
+        | "atem_reconnect" | "pco_live_action" | "midi_send_key" | "osc_send_key" | "keysend_request"
         | "music_control" => Some("control"),
         "tap_override" => Some("tap"),
         "identity_list" | "identity_approve" | "identity_remove" | "identity_set_role"
@@ -1542,6 +1638,12 @@ async fn dispatch(
             set.web_invite_token = String::new();
             set.edge_admin_token = String::new();
             set.tap_token = String::new();
+            // The Church Online relay token reads prayer and salvation
+            // responders' names and can replace or delete the church's inbox
+            // from anywhere. Only the booth uses it (chopStore skips IS_WEB, and
+            // the Church Online card is booth-only), so no browser needs it
+            // (security review, 2026-10-27).
+            set.chop_inbox_token = String::new();
             // The OBS WebSocket password is a real credential on the booth's
             // network and was the one secret still going out in the clear —
             // any member-tier phone could read it straight out of get_settings.
@@ -1753,6 +1855,32 @@ async fn dispatch(
         "obs_reconnect" => {
             crate::obs::obs_reconnect();
             Ok(Value::Null)
+        }
+        "atem_state" => {
+            let state = app.state::<crate::atem::AtemState>();
+            Ok(crate::atem::atem_state(state))
+        }
+        "atem_reconnect" => {
+            crate::atem::atem_reconnect();
+            Ok(Value::Null)
+        }
+        // Switching reaches here only for admin, or a member with "control":
+        // it changes what the room and the stream see.
+        "atem_cut" => crate::atem::atem_cut(app.state::<crate::atem::AtemState>()).map(|_| Value::Null),
+        "atem_auto" => crate::atem::atem_auto(app.state::<crate::atem::AtemState>()).map(|_| Value::Null),
+        "atem_set_preview" | "atem_set_program" => {
+            let source = args
+                .get("source")
+                .and_then(|v| v.as_u64())
+                .and_then(|v| u16::try_from(v).ok())
+                .ok_or("source required")?;
+            let state = app.state::<crate::atem::AtemState>();
+            if cmd == "atem_set_preview" {
+                crate::atem::atem_set_preview(source, state)
+            } else {
+                crate::atem::atem_set_program(source, state)
+            }
+            .map(|_| Value::Null)
         }
         "obs_set_scene" => {
             let scene = args.get("scene").and_then(|v| v.as_str()).unwrap_or("").to_string();
@@ -1977,6 +2105,11 @@ async fn dispatch(
                 // (they receive it redacted) or flip the watcher on/off.
                 new.tap_token = g.tap_token.clone();
                 new.tap_enabled = g.tap_enabled;
+                // Church Online relay: redacted in get_settings, so a browser's
+                // round-trip would send the token back empty and silently
+                // disconnect the booth. The inbox is booth-managed too.
+                new.chop_inbox_token = g.chop_inbox_token.clone();
+                new.chop_inbox = g.chop_inbox.clone();
                 new.tap_edge_url = g.tap_edge_url.clone();
                 // Booth-only too: the edge heartbeat POSTs the edge admin
                 // token and password hashes to public_url, and whisper_bin is
@@ -2354,7 +2487,7 @@ mod member_pp_tests {
             "page_ack", "page_list", "posfile_list", "checkin_set", "checkin_list",
             "checklist_toggle", "ga4_state",
             // The three tiles that were silently broken on every kiosk.
-            "obs_state", "avantis_state",
+            "obs_state", "atem_state", "avantis_state",
             // Cameras.
             "ndi_discover_sources", "ndi_start_receiver", "ndi_stop_receiver",
             // Slide pictures for the Slide Preview / Slide Grid tiles.
@@ -2406,7 +2539,8 @@ mod member_pp_tests {
         for cmd in [
             "update_settings", "pp_action", "pp_set_stage_message", "pp_clear_stage_message",
             "avantis_set_mute", "avantis_set_fader", "avantis_recall_scene",
-            "obs_set_scene", "pco_live_action", "tap_override", "crew_join_open",
+            "obs_set_scene", "atem_cut", "atem_auto", "atem_set_preview", "atem_set_program",
+            "pco_live_action", "tap_override", "crew_join_open",
             "save_dashboards", "identity_approve", "identity_remove", "web_start",
             "backup_export", "backup_import", "diag_bundle", "page_send",
         ] {
@@ -2433,6 +2567,22 @@ mod member_pp_tests {
         // Getting it right clears the record.
         clear_auth_failures(peer);
         assert!(auth_backoff(peer).is_none());
+    }
+
+    #[test]
+    fn throttle_key_names_the_visitor_behind_the_tunnel() {
+        use super::throttle_key;
+        let via_tunnel = "GET /api/events HTTP/1.1\r\nHost: booth.church.org\r\nCF-Connecting-IP: 198.51.100.7\r\n\r\n";
+        // Through cloudflared (loopback), each visitor gets their own bucket.
+        assert_eq!(throttle_key("127.0.0.1", via_tunnel), "cf:198.51.100.7");
+        assert_eq!(throttle_key("::1", via_tunnel), "cf:198.51.100.7");
+        // A LAN client can't pick its own bucket by sending the header.
+        assert_eq!(throttle_key("192.168.1.40", via_tunnel), "192.168.1.40");
+        // Loopback without the header (the booth itself, Companion) is one bucket.
+        assert_eq!(throttle_key("127.0.0.1", "GET / HTTP/1.1\r\n\r\n"), "127.0.0.1");
+        // Header name is case-insensitive; an empty value falls back to the peer.
+        assert_eq!(throttle_key("127.0.0.1", "cf-connecting-ip: 203.0.113.5\r\n"), "cf:203.0.113.5");
+        assert_eq!(throttle_key("127.0.0.1", "CF-Connecting-IP: \r\n"), "127.0.0.1");
     }
 
     #[test]

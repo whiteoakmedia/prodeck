@@ -12,6 +12,7 @@ import {
 } from "react";
 import { useProDeck } from "../store";
 import { usePerms } from "../lib/perms";
+import { atemButtons, atemName } from "../lib/atem";
 import { SlideThumb } from "../components/SlideThumb";
 import {
   activePresentation,
@@ -58,6 +59,11 @@ import {
   type Ga4Snapshot,
   obsState,
   type ObsSnapshot,
+  atemState,
+  atemCut,
+  atemAuto,
+  atemSetPreview,
+  type AtemSnapshot,
   type NdiSource,
   type TapEdgeState,
   type TapStatRow,
@@ -86,6 +92,7 @@ import {
   NeedsDesk,
   NeedsGa4,
   NeedsObs,
+  NeedsAtem,
   NeedsNdi,
   NeedsPco,
   NeedsPro,
@@ -246,6 +253,95 @@ function ObsWidget() {
           </span>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Blackmagic ATEM: Program in red, Preview in green, like the switcher's own
+ * panel. Tap a source to put it on Preview, then Cut or Auto takes it live.
+ * There's deliberately no tap-to-Program: a stray tap would cut the room and
+ * the stream to the wrong camera. Switching needs the control grant on a phone.
+ */
+function AtemWidget() {
+  const { settings } = useProDeck();
+  const { can } = usePerms();
+  const canSwitch = can("control");
+  const [snap, setSnap] = useState<AtemSnapshot | null>(null);
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let stop = false;
+    atemState()
+      .then((s) => !stop && setSnap(s))
+      .catch(() => {});
+    const un = on<AtemSnapshot>("atem:state", (s) => !stop && setSnap(s));
+    return () => {
+      stop = true;
+      un.then((f) => f());
+    };
+  }, []);
+
+  if (settings && !settings.atem_enabled) return <NeedsAtem />;
+  if (!snap) return <div className="widget-empty">Connecting to the switcher…</div>;
+  if (!snap.connected) {
+    return <NeedsAtem offline hint={snap.error ?? "Can't reach the switcher. Reconnecting…"} />;
+  }
+  if (!snap.ready) return <div className="widget-empty">Reading the switcher…</div>;
+
+  // Every action re-reads the state too, so the tile is right even if an
+  // event is missed (and in demo mode, which has no events).
+  const act = (f: () => Promise<void>) => {
+    if (!canSwitch || busy) return;
+    setErr("");
+    setBusy(true);
+    f()
+      .then(() => atemState().then(setSnap))
+      .catch((e) => setErr(String(e)))
+      .finally(() => setBusy(false));
+  };
+  const buttons = atemButtons(snap);
+
+  return (
+    <div className="atem-w">
+      <div className="atem-w-top">
+        <span className="atem-tag pgm">PROGRAM</span>
+        <strong className="atem-now">{atemName(snap, snap.program)}</strong>
+        {snap.inTransition && <span className="atem-tag moving">TRANSITION</span>}
+      </div>
+      <div className="atem-grid" role="group" aria-label="Sources">
+        {buttons.map((b) => (
+          <button
+            key={b.id}
+            type="button"
+            className={`atem-src${b.program ? " pgm" : ""}${b.preview ? " pvw" : ""}`}
+            title={`${b.label}${b.program ? " (on Program)" : b.preview ? " (on Preview)" : canSwitch ? ". Tap to put it on Preview" : ""}`}
+            aria-pressed={b.preview}
+            disabled={!canSwitch || busy}
+            onClick={() => act(() => atemSetPreview(b.id))}
+          >
+            <span className="atem-src-short">{b.short}</span>
+            <span className="atem-src-name">{b.label}</span>
+          </button>
+        ))}
+      </div>
+      <div className="atem-w-next">
+        <span className="atem-tag pvw">PREVIEW</span>
+        <strong className="atem-next-name">{atemName(snap, snap.preview)}</strong>
+      </div>
+      {canSwitch && (
+        <div className="atem-w-actions">
+          <button type="button" className="btn small" disabled={busy || snap.inTransition} onClick={() => act(atemCut)}>
+            Cut
+          </button>
+          <button type="button" className="btn small primary" disabled={busy || snap.inTransition} onClick={() => act(atemAuto)}>
+            Auto
+          </button>
+        </div>
+      )}
+      {!canSwitch && <p className="muted small">View only. Switching needs the control permission.</p>}
+      {err && <p className="hint">{err}</p>}
     </div>
   );
 }
@@ -3862,6 +3958,7 @@ export const WIDGETS: WidgetDef[] = [
   { type: "readiness", label: "Sunday Readiness", group: "General", w: 4, h: 4, component: ReadinessWidget },
   // Video & Switcher
   { type: "obs", label: "OBS — Live & Scene", group: "Video", w: 4, h: 3, component: ObsWidget },
+  { type: "atem", label: "ATEM Switcher", group: "Video", w: 5, h: 5, component: AtemWidget },
   { type: "video_input", label: "Stage Feed (NDI)", group: "Video", w: 4, h: 4, component: VideoInputWidget },
   { type: "church_online", label: "Church Online", group: "Video", w: 4, h: 4, component: ChurchOnlineWidget },
   { type: "stream_monitor", label: "Stream Monitor (Resi)", group: "Video", w: 5, h: 5, component: StreamMonitorWidget },

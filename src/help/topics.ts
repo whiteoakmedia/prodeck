@@ -646,6 +646,25 @@ The NDI runtime comes from NDI Tools or the NDI SDK at ndi.video; ProDeck uses t
     related: ["kiosk"],
   },
   {
+    id: "atem",
+    group: "Video",
+    title: "ATEM switcher: Program, Preview, Cut and Auto",
+    aliases: ["atem", "blackmagic", "video switcher", "switcher", "vision mixer", "cut", "auto transition", "tally", "program preview"],
+    body: `ProDeck connects to Blackmagic ATEM switchers over your network. In **Settings → ATEM Switcher**, tick **Connect to an ATEM switcher** and type its address, which ATEM Setup shows under **Network**. The switcher and the booth computer need to be on the same network.
+
+Add the **ATEM Switcher** tile to a dashboard. It shows each source with the name you gave it on the switcher, **red** for what's on Program and **green** for what's on Preview, just like the switcher's own buttons.
+
+- **Tap a source** to put it on Preview.
+- **Cut** takes Preview live straight away. **Auto** uses the transition set on the switcher (mix, wipe and so on, at its rate).
+- There's no tap-to-Program on purpose, so a stray tap can't cut the room and the stream to the wrong camera.
+- On a phone, switching needs the **control** permission; everyone else sees the tile read only.
+- A switcher with more than one M/E: choose which one in Settings.
+- Stream Deck: \`/api/deck/atem-cut\`, \`/api/deck/atem-auto\` and \`/api/deck/atem-preview?n=<source number>\` (admin password).
+
+If the tile says it can't reach the switcher, check the address, that the switcher is on, and that nothing else on the network has the same address. ProDeck keeps trying and reconnects by itself, for example after the switcher restarts.`,
+    settings: "set-atem",
+  },
+  {
     id: "obs",
     group: "Video",
     title: "OBS Studio: are we live?",
@@ -819,7 +838,7 @@ Reload the phone or kiosk after updating the booth.`,
     id: "report-problem",
     group: "Troubleshooting",
     title: "Reporting a bug or asking for a feature",
-    aliases: ["found a bug", "how do I report", "diagnostics", "send logs", "contact", "feature request", "suggestion", "idea", "feedback", "crash reports", "sentry"],
+    aliases: ["found a bug", "how do I report", "diagnostics", "send logs", "contact", "feature request", "suggestion", "idea", "feedback", "crash reports", "sentry", "usage count", "analytics", "telemetry", "privacy"],
     body: `Press **Report a bug** or **Request a feature** at the bottom of the sidebar (also on the Help page and in **Settings → Help & support**). Fill in what happened, how much it matters, and an email if you'd like a reply. It goes privately to Zach at White Oak Media, who reads every one.
 
 Tick **Include diagnostics** and the report carries ProDeck's version, the computer's system, which connections are up, and the recent log, with every password, key and token removed first, along with your Planning Center ID and public address. **See exactly what's sent** shows it before you send. You can attach a screenshot too.
@@ -827,6 +846,8 @@ Tick **Include diagnostics** and the report carries ProDeck's version, the compu
 The more specific the better: what you pressed, what you expected, what happened, and roughly when.
 
 **Crash reports.** When something breaks, ProDeck also sends White Oak Media an automatic report of what failed and where in the code: no names, plans, passwords or addresses. Turn it off in **Settings → Help & support → Send crash reports**.
+
+**Anonymous usage count.** About once a day the booth app tells White Oak Media that one copy of ProDeck is in use: a random ID made on that computer, the ProDeck version, and Mac or Windows. Nothing about your church or anyone in it. Turn it off in **Settings → Help & support → Send an anonymous usage count**.
 
 Rather post publicly? **Settings → Help & support → Rather post it publicly on GitHub?** opens a pre-filled GitHub issue, which anyone can read.`,
     settings: "set-help",

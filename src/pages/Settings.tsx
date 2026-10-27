@@ -17,6 +17,7 @@ import { useChop } from "../chopStore";
 import { chopHost, createInbox, deleteInbox, fetchCurrentService, setInboxSecret, webhookUrl } from "../lib/chop";
 import { joinPosterHtml } from "../lib/joinPoster";
 import { setCrashReportsEnabled } from "../lib/crashReports";
+import { setUsageCountEnabled, usageCountEnabled } from "../lib/usageCount";
 import { useAutopilot } from "../autopilot";
 import { useAutomix } from "../automix";
 import { fmtClock, useRecorder } from "../recorder";
@@ -90,6 +91,8 @@ import {
   setDemo,
   obsState,
   type ObsSnapshot,
+  atemState,
+  type AtemSnapshot,
   ndiDiscover,
   type NdiSource,
   type KeepaliveStatus,
@@ -149,6 +152,7 @@ export function SettingsPage() {
   const [tapMsg, setTapMsg] = useState("");
   const [crew, setCrew] = useState<CrewUser[] | null>(null);
   const [obs, setObs] = useState<ObsSnapshot | null>(null);
+  const [atem, setAtem] = useState<AtemSnapshot | null>(null);
 
   // Sections: one at a time, remembered on this computer; search spans all.
   const [section, setSectionState] = useState<string>(() => {
@@ -212,10 +216,13 @@ export function SettingsPage() {
     load();
     obsState().then(setObs).catch(() => {});
     const unObs = on<ObsSnapshot>("obs:state", setObs);
+    atemState().then(setAtem).catch(() => {});
+    const unAtem = on<AtemSnapshot>("atem:state", setAtem);
     const un = on("identity:changed", load);
     return () => {
       alive = false;
       unObs.then((f) => f());
+      unAtem.then((f) => f());
       un.then((f) => f());
     };
   }, []);
@@ -902,6 +909,53 @@ export function SettingsPage() {
               Connected to OBS {obs.version || ""} — scene <strong>{obs.scene || "—"}</strong>
               {obs.streaming ? ", streaming" : ", not streaming"}
               {obs.recording ? " and recording." : "."}
+            </p>
+          )}
+        </section>
+      </Sec>
+
+      <Sec id="set-atem">
+        <section className="card">
+          <div className="card-head">
+            <h3 id="set-atem">ATEM Switcher</h3>
+            <HelpLink section="features" />
+            <span className={`chip ${atem?.connected ? "online" : ""}`}>
+              {atem?.connected ? "connected" : "not connected"}
+            </span>
+          </div>
+          <p className="muted small">
+            For Blackmagic ATEM switchers. The <strong>ATEM Switcher</strong> tile shows what's on Program and
+            Preview with the names you gave your inputs, and lets the crew pick Preview and take it with Cut or
+            Auto. Use the address shown in ATEM Setup under <strong>Network</strong>. The switcher and this
+            computer need to be on the same network. New in this version, so tell us how it goes.
+          </p>
+          <div className="settings-grid">
+            <label className="field check">
+              <input type="checkbox" checked={form.atem_enabled}
+                onChange={(e) => set("atem_enabled", e.target.checked)} />
+              <span>Connect to an ATEM switcher</span>
+            </label>
+            <label className="field">
+              <span>Switcher address <span className="muted">(for example 192.168.10.240)</span></span>
+              <input className="input" placeholder="192.168.10.240" value={form.atem_host ?? ""}
+                onChange={(e) => set("atem_host", e.target.value.trim())} />
+            </label>
+            {(atem?.mes ?? 1) > 1 && (
+              <label className="field">
+                <span>Which M/E <span className="muted">(this switcher has {atem?.mes})</span></span>
+                <select className="input" value={form.atem_me ?? 0}
+                  onChange={(e) => set("atem_me", Number(e.target.value))}>
+                  {Array.from({ length: atem?.mes ?? 1 }, (_, i) => (
+                    <option key={i} value={i}>M/E {i + 1}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
+          {atem?.error && <p className="error small">{atem.error}</p>}
+          {atem?.connected && (
+            <p className="hint">
+              Connected to {atem.product || "the switcher"}. {atem.inputs.length} sources on M/E {atem.me + 1}.
             </p>
           )}
         </section>
@@ -3671,6 +3725,7 @@ function HelpCard() {
   const { subsystems } = useAlerts();
   const { settings, refreshSettings } = useProDeck();
   const [crashBusy, setCrashBusy] = useState(false);
+  const [usageOn, setUsageOn] = useState(() => usageCountEnabled());
   const setCrash = async (on: boolean) => {
     setCrashBusy(true);
     try {
@@ -3746,6 +3801,20 @@ function HelpCard() {
           <span>
             Send crash reports. When something breaks, ProDeck tells White Oak Media what failed and where in the code,
             so it gets fixed. No names, plans, passwords or addresses are included.
+          </span>
+        </label>
+      )}
+      {!IS_WEB && (
+        <label className="field check" style={{ marginTop: 8 }}>
+          <input
+            type="checkbox"
+            id="set-usage-count"
+            checked={usageOn}
+            onChange={(e) => { setUsageCountEnabled(e.target.checked); setUsageOn(e.target.checked); }}
+          />
+          <span>
+            Send an anonymous usage count. Once a day ProDeck tells White Oak Media that one copy is in use, with its
+            version and whether it is a Mac or Windows. No church, names or addresses, so we know how many booths rely on it.
           </span>
         </label>
       )}

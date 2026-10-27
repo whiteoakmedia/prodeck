@@ -622,7 +622,8 @@ fn handle_conn(mut stream: TcpStream, latest: FrameSlot, running: Arc<AtomicBool
         // stayed blank with nothing to explain it, while the same screen's
         // other widgets worked fine. Shared with the gateway so the two can't
         // drift apart again.
-        if token.is_empty() || !crate::web::token_ok(&app, &token) {
+        let peer = stream.peer_addr().map(|a| a.ip().to_string()).unwrap_or_default();
+        if token.is_empty() || !crate::web::token_ok_throttled(&app, &peer, &token) {
             let _ = stream.write_all(
                 b"HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
             );

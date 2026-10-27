@@ -29,6 +29,7 @@ mod midi;
 mod netmidi;
 mod ndi;
 mod obs;
+mod atem;
 mod osc;
 mod pages;
 mod posfiles;
@@ -205,6 +206,7 @@ pub fn run() {
         .manage(Mutex::new(loaded_settings) as settings::SettingsState)
         .manage(keepalive::KeepAwake(Mutex::new(None)))
         .manage(obs::new_state())
+        .manage(atem::new_state())
         .manage(Arc::new(audio::AudioInner::new()) as audio::AudioState)
         .manage(Arc::new(transcription::TranscriptionInner::new())
             as transcription::TranscriptionState)
@@ -260,6 +262,7 @@ pub fn run() {
             rig::spawn_always(app.handle().clone());
             avantis::spawn_watch_flush(app.handle().clone());
             obs::spawn_client(app.handle().clone());
+            atem::spawn_client(app.handle().clone());
             x32::spawn_mirror(app.handle().clone());
             yamaha::spawn_mirror(app.handle().clone());
             edge::spawn_edge_push(app.handle().clone());
@@ -443,6 +446,12 @@ pub fn run() {
             identity::invite_revoke,
             obs::obs_state,
             obs::obs_set_scene,
+            atem::atem_state,
+            atem::atem_reconnect,
+            atem::atem_cut,
+            atem::atem_auto,
+            atem::atem_set_preview,
+            atem::atem_set_program,
             avantis::avantis_state,
             ga4::ga4_state,
             avantis::avantis_set_mute,
