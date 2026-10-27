@@ -1,6 +1,6 @@
 # ProDeck privacy notice
 
-Effective 11 October 2026. ProDeck is a free app from White Oak Media (Zach Green), contact zach@whiteoakmedia.io.
+Effective 27 October 2026 (ProDeck 0.9.109). ProDeck is a free app from White Oak Media (Zach Green), contact zach@whiteoakmedia.io.
 
 **The short version:** ProDeck runs on your church's own computer. It has no accounts with us and no tracking. It does send us crash reports when something breaks, and an anonymous count once a day that one copy is in use, with nothing that identifies your church or anyone in it, and you can turn either off. Almost everything it handles stays on that computer and your church network. The few things that leave it are listed below, and most go only to services your church chose and signed in to itself.
 
