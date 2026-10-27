@@ -44,6 +44,61 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.109 — 27 October 2026
+
+### New: ATEM switchers
+
+Asked for by Ryan at Springfield Assembly of God through ProDeck's **Request a
+feature** button. Thank you, Ryan.
+
+Connect a Blackmagic ATEM in **Settings → ATEM Switcher** (tick it on and type
+the address ATEM Setup shows under Network), then add the **ATEM Switcher** tile
+to a dashboard. It shows what's on **Program in red** and **Preview in green**,
+using the names you gave your inputs on the switcher, just like its own buttons.
+Tap a source to put it on Preview; **Cut** takes it live straight away and
+**Auto** uses the transition set on the switcher. There's no tap-to-Program on
+purpose, so a stray tap can't cut the room and the stream to the wrong camera.
+On a phone, switching needs the **control** permission. If the switcher
+restarts, the tile says so and ProDeck reconnects by itself.
+
+Stream Deck and Companion can call `/api/deck/atem-cut`, `/api/deck/atem-auto`
+and `/api/deck/atem-preview?n=<source number>`.
+
+This is new, so please tell us how it goes with your switcher.
+
+### Safer Browser Access
+
+- Every place that checks a password now slows down repeated wrong guesses:
+  the event stream, audio, files, camera feeds and the Stream Deck links, not
+  just the main connection. Before, a script on the guest wifi could have
+  guessed the admin password at full speed through those.
+- Phones reaching the booth through your own domain each get their own limit,
+  so one person guessing can't lock everyone else out.
+- The crew password can no longer reset that limit between guesses at the
+  admin password.
+- Crew phones no longer receive the Church Online connection key, which could
+  read the names of people who responded and change your Church Online inbox.
+  It stays on the booth computer.
+- A volunteer's PIN gets five tries in total, however their name is typed.
+  Their name, Planning Center name and nickname used to get five each.
+- crew-edge (for churches that run their own Cloudflare worker): the admin
+  token is compared in constant time, and request logs are off so passwords in
+  links don't end up in your Cloudflare logs. Redeploy the worker to get these.
+
+### Fixed: warnings that weren't red
+
+The **LIVE** badge and skipped-frames warning on the OBS tile, the crash screen
+and the release-notes error were meant to be red but showed in the default
+colour. They're red now.
+
+### Anonymous usage count
+
+About once a day the booth app tells White Oak Media that one copy of ProDeck is
+in use: a random ID made on that computer, the version, and Mac or Windows.
+Nothing about your church or anyone in it, and no IP address is kept. Phones and
+kiosks never send it. Turn it off in **Settings → Help & support → Send an
+anonymous usage count**. The privacy notice is updated to say so.
+
 ## 0.9.108 — 25 October 2026
 
 ### Thank you, Kris
