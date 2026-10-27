@@ -48,8 +48,7 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ### New: ATEM switchers
 
-Asked for by Ryan at Springfield Assembly of God through ProDeck's **Request a
-feature** button. Thank you, Ryan.
+Asked for through ProDeck's **Request a feature** button. Thank you, Ryan.
 
 Connect a Blackmagic ATEM in **Settings → ATEM Switcher** (tick it on and type
 the address ATEM Setup shows under Network), then add the **ATEM Switcher** tile
@@ -84,6 +83,18 @@ This is new, so please tell us how it goes with your switcher.
 - crew-edge (for churches that run their own Cloudflare worker): the admin
   token is compared in constant time, and request logs are off so passwords in
   links don't end up in your Cloudflare logs. Redeploy the worker to get these.
+
+### Soundcheck playback keeps one layout
+
+Playing a recorded service back through the console (Recording, Soundcheck)
+used to work out its patch sheet again from the live Dante network every time.
+Once the console was listening to this computer, the sheet changed itself away
+from the patch you'd just made, and a recording missing a track moved the
+others onto different outputs. Now ProDeck works the layout out once, from your
+Sunday routing, and keeps it. Every channel comes back on the same console
+input from the same output every time, so one Dante preset and one Virtual
+SoundCheck matrix fit every recording. Open Soundcheck the first time with your
+Sunday routing in place.
 
 ### Fixed: warnings that weren't red
 
