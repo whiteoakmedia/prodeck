@@ -150,7 +150,7 @@ struct Store {
 #[derive(Default)]
 pub struct IdentityInner {
     store: Mutex<Store>,
-    /// name -> (fail count, locked-until ms). In-memory: reboot clears it.
+    /// user id -> (fail count, locked-until ms). In-memory: reboot clears it.
     lockouts: Mutex<HashMap<String, (u32, u64)>>,
 }
 
@@ -384,15 +384,6 @@ pub fn login_core(
     name: String,
     pin: String,
 ) -> Result<serde_json::Value, String> {
-    let key = name.trim().to_lowercase();
-    {
-        let lock = id_state.lockouts.lock().unwrap_or_else(|p| p.into_inner());
-        if let Some((n, until)) = lock.get(&key) {
-            if *n >= LOCKOUT_AFTER && now_ms() < *until {
-                return Err("too many attempts — try again in a few minutes".into());
-            }
-        }
-    }
     let mut s = id_state.store.lock().unwrap_or_else(|p| p.into_inner());
     // Typed name first; the healed PCO spelling second. Phones adopt pco_name
     // as their display/matching name after the heal, so a re-login typed from
@@ -415,6 +406,21 @@ pub fn login_core(
                 .position(|u| !u.nickname.is_empty() && u.nickname.eq_ignore_ascii_case(trimmed))
         })
         .ok_or("no such name — register first")?;
+    // One lockout per PERSON, keyed on their id. It used to be keyed on the
+    // typed string, so a volunteer's name, Planning Center name and nickname
+    // were three separate budgets of five tries, and a crew-password holder
+    // could guess a granted volunteer's 4-digit PIN three times as fast
+    // (security review, 2026-10-27). Lock order is store → lockouts, the same
+    // as the success path below.
+    let key = s.users[idx].id.clone();
+    {
+        let lock = id_state.lockouts.lock().unwrap_or_else(|p| p.into_inner());
+        if let Some((n, until)) = lock.get(&key) {
+            if *n >= LOCKOUT_AFTER && now_ms() < *until {
+                return Err("too many attempts — try again in a few minutes".into());
+            }
+        }
+    }
     let user = &mut s.users[idx];
     if hash_pin(&user.salt, &pin) != user.pin_hash {
         drop(s);
@@ -443,7 +449,7 @@ pub fn login_core(
     let token = rand_hex(24);
     s.sessions.insert(token.clone(), uid.clone());
     id_state.persist(&s);
-    id_state.lockouts.lock().unwrap_or_else(|p| p.into_inner()).remove(&name.trim().to_lowercase());
+    id_state.lockouts.lock().unwrap_or_else(|p| p.into_inner()).remove(&uid);
     // The id rides along so devices can match checklist-item owners without a
     // second round-trip (names stay display-only).
     Ok(json!({ "status": "ok", "session": token, "name": uname, "id": uid, "role": urole }))
@@ -1122,5 +1128,39 @@ mod heal_tests {
         let (linked, _) = heal_users(&mut users, &[entry("Zach Green", "Audio")]);
         assert_eq!(linked, 1);
         assert_eq!(users[0].pco_name, "Zach Green");
+    }
+}
+
+#[cfg(test)]
+mod lockout_tests {
+    use super::*;
+
+    /// Every name a volunteer answers to shares ONE set of five tries. Only
+    /// wrong-PIN paths run here, and those never write identity.json.
+    #[test]
+    fn every_spelling_shares_one_lockout() {
+        let st: IdentityState = std::sync::Arc::new(IdentityInner::default());
+        st.store.lock().unwrap().users.push(User {
+            id: "u-devon".to_string(),
+            name: "devon".to_string(),
+            pin_hash: hash_pin("salt", "4321"),
+            salt: "salt".to_string(),
+            approved: true,
+            created_ms: 0,
+            last_seen_ms: 0,
+            role: String::new(),
+            pco_name: "Devon Smith".to_string(),
+            nickname: "Dev".to_string(),
+            pco_pinned: false,
+            perms: Vec::new(),
+        });
+        for name in ["devon", "Devon Smith", "Dev", "DEVON", "dev"] {
+            assert_eq!(login_core(&st, name.to_string(), "0000".to_string()).unwrap_err(), "wrong PIN");
+        }
+        // Five wrong tries across three spellings lock the person, so even the
+        // right PIN under a fresh spelling waits.
+        let err = login_core(&st, "Devon Smith".to_string(), "4321".to_string()).unwrap_err();
+        assert!(err.contains("too many attempts"), "{err}");
+        assert!(st.lockouts.lock().unwrap().contains_key("u-devon"));
     }
 }

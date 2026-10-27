@@ -21,5 +21,8 @@
     "binding": "ASSETS",
     "run_worker_first": true
   },
-  "observability": { "enabled": true }
+  // Off: phones pass the crew password in the URL (?token= on the event stream
+  // and the deck routes), and request logs keep URLs, so they would sit in the
+  // church's Cloudflare logs. Turn it on only while debugging.
+  "observability": { "enabled": false }
 }

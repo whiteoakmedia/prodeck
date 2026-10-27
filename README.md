@@ -165,9 +165,11 @@ complete source of every release is this repository at its version tag.
 
 ## Privacy
 
-ProDeck has no analytics or tracking and sends nothing to White Oak Media
-unless you ask for release notes by email. What it does send, and where, is
-in [docs/PRIVACY.md](docs/PRIVACY.md).
+ProDeck has no tracking. It sends White Oak Media crash reports and an
+anonymous daily count that one copy is in use (a random ID, the version, Mac
+or Windows), both of which you can turn off in Settings, plus your email only
+if you ask for release notes. What it sends, and where, is in
+[docs/PRIVACY.md](docs/PRIVACY.md).
 
 ## Trademarks
 

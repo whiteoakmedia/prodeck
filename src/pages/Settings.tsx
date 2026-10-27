@@ -17,6 +17,7 @@ import { useChop } from "../chopStore";
 import { chopHost, createInbox, deleteInbox, fetchCurrentService, setInboxSecret, webhookUrl } from "../lib/chop";
 import { joinPosterHtml } from "../lib/joinPoster";
 import { setCrashReportsEnabled } from "../lib/crashReports";
+import { setUsageCountEnabled, usageCountEnabled } from "../lib/usageCount";
 import { useAutopilot } from "../autopilot";
 import { useAutomix } from "../automix";
 import { fmtClock, useRecorder } from "../recorder";
@@ -3671,6 +3672,7 @@ function HelpCard() {
   const { subsystems } = useAlerts();
   const { settings, refreshSettings } = useProDeck();
   const [crashBusy, setCrashBusy] = useState(false);
+  const [usageOn, setUsageOn] = useState(() => usageCountEnabled());
   const setCrash = async (on: boolean) => {
     setCrashBusy(true);
     try {
@@ -3746,6 +3748,20 @@ function HelpCard() {
           <span>
             Send crash reports. When something breaks, ProDeck tells White Oak Media what failed and where in the code,
             so it gets fixed. No names, plans, passwords or addresses are included.
+          </span>
+        </label>
+      )}
+      {!IS_WEB && (
+        <label className="field check" style={{ marginTop: 8 }}>
+          <input
+            type="checkbox"
+            id="set-usage-count"
+            checked={usageOn}
+            onChange={(e) => { setUsageCountEnabled(e.target.checked); setUsageOn(e.target.checked); }}
+          />
+          <span>
+            Send an anonymous usage count. Once a day ProDeck tells White Oak Media that one copy is in use, with its
+            version and whether it is a Mac or Windows. No church, names or addresses, so we know how many booths rely on it.
           </span>
         </label>
       )}
