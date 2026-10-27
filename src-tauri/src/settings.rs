@@ -231,6 +231,13 @@ pub struct Settings {
     /// Set in OBS under Tools -> WebSocket Server Settings. Empty = OBS has
     /// authentication turned off.
     pub obs_password: String,
+    /// Blackmagic ATEM switcher (atem.rs). Off until a church ticks it on and
+    /// types the address; nothing touches the network before that.
+    pub atem_enabled: bool,
+    /// The switcher's IP address or name (port 9910 is fixed by the protocol).
+    pub atem_host: String,
+    /// Which M/E to show and drive, 0-based. Most church switchers have one.
+    pub atem_me: u8,
     /// Sleep guard: keep the Mac from idling/sleeping while ProDeck runs
     /// (Settings → Reliability). Default on — a booth Mac that sleeps takes
     /// everything in the room down with it.
@@ -421,6 +428,9 @@ impl Default for Settings {
             obs_host: String::new(),
             obs_port: 4455,
             obs_password: String::new(),
+            atem_enabled: false,
+            atem_host: String::new(),
+            atem_me: 0,
             keep_awake: true,
             avantis_enabled: false,
             avantis_host: String::new(),

@@ -141,6 +141,20 @@ export function NeedsObs(p: Preset) {
   );
 }
 
+export function NeedsAtem(p: Preset) {
+  return (
+    <NeedsConnection
+      what="your ATEM switcher"
+      hint="Connect your Blackmagic ATEM to see Program and Preview and switch from here"
+      page="settings"
+      anchor="set-atem"
+      icon="slides"
+      action="Set up the switcher"
+      {...p}
+    />
+  );
+}
+
 export function NeedsGa4(p: Preset) {
   return (
     <NeedsConnection

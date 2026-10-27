@@ -356,6 +356,11 @@ export interface Settings {
   obs_host: string;
   obs_port: number;
   obs_password: string;
+  /** Blackmagic ATEM switcher (atem.rs). Off until switched on with an address. */
+  atem_enabled: boolean;
+  atem_host: string;
+  /** Which M/E to show and drive, 0-based. */
+  atem_me: number;
   /** Sleep guard while ProDeck runs (Settings → Reliability). */
   keep_awake: boolean;
   avantis_enabled: boolean;
@@ -1444,3 +1449,32 @@ export interface ObsSnapshot {
 export const obsState = () => invoke<ObsSnapshot>("obs_state");
 /** Admin tier only — this changes what the world sees. */
 export const obsSetScene = (scene: string) => invoke<void>("obs_set_scene", { scene });
+
+/** One source the switcher can put on this M/E, with the name the switcher uses. */
+export interface AtemInput {
+  id: number;
+  name: string;
+  short: string;
+  /** A camera or other external input (not black, bars or a media player). */
+  camera: boolean;
+}
+/** Blackmagic ATEM state (atem.rs). Program and Preview are source ids. */
+export interface AtemSnapshot {
+  connected: boolean;
+  /** The switcher finished sending its state. */
+  ready: boolean;
+  product: string;
+  me: number;
+  mes: number;
+  program: number | null;
+  preview: number | null;
+  inTransition: boolean;
+  inputs: AtemInput[];
+  error: string | null;
+}
+export const atemState = () => invoke<AtemSnapshot>("atem_state");
+export const atemReconnect = () => invoke<void>("atem_reconnect");
+/** Admin, or a member with the control grant: these change what the room and the stream see. */
+export const atemCut = () => invoke<void>("atem_cut");
+export const atemAuto = () => invoke<void>("atem_auto");
+export const atemSetPreview = (source: number) => invoke<void>("atem_set_preview", { source });

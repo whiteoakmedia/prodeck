@@ -646,6 +646,25 @@ The NDI runtime comes from NDI Tools or the NDI SDK at ndi.video; ProDeck uses t
     related: ["kiosk"],
   },
   {
+    id: "atem",
+    group: "Video",
+    title: "ATEM switcher: Program, Preview, Cut and Auto",
+    aliases: ["atem", "blackmagic", "video switcher", "switcher", "vision mixer", "cut", "auto transition", "tally", "program preview"],
+    body: `ProDeck connects to Blackmagic ATEM switchers over your network. In **Settings → ATEM Switcher**, tick **Connect to an ATEM switcher** and type its address, which ATEM Setup shows under **Network**. The switcher and the booth computer need to be on the same network.
+
+Add the **ATEM Switcher** tile to a dashboard. It shows each source with the name you gave it on the switcher, **red** for what's on Program and **green** for what's on Preview, just like the switcher's own buttons.
+
+- **Tap a source** to put it on Preview.
+- **Cut** takes Preview live straight away. **Auto** uses the transition set on the switcher (mix, wipe and so on, at its rate).
+- There's no tap-to-Program on purpose, so a stray tap can't cut the room and the stream to the wrong camera.
+- On a phone, switching needs the **control** permission; everyone else sees the tile read only.
+- A switcher with more than one M/E: choose which one in Settings.
+- Stream Deck: \`/api/deck/atem-cut\`, \`/api/deck/atem-auto\` and \`/api/deck/atem-preview?n=<source number>\` (admin password).
+
+If the tile says it can't reach the switcher, check the address, that the switcher is on, and that nothing else on the network has the same address. ProDeck keeps trying and reconnects by itself, for example after the switcher restarts.`,
+    settings: "set-atem",
+  },
+  {
     id: "obs",
     group: "Video",
     title: "OBS Studio: are we live?",
