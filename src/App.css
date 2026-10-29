@@ -10374,3 +10374,121 @@ select.input {
 
 /* A fieldset only for disabling a group of controls at once (view-only Pro). */
 .fs-plain { border: 0; padding: 0; margin: 0; min-width: 0; display: contents; }
+
+/* ------------------------------------------------------------ camera tally */
+/* Full-screen tally for a phone or tablet on a camera. Colours are the
+   broadcast ones on purpose, the same in light and dark themes: an operator
+   reads them from across the room in a glance. */
+.tally {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2vh;
+  padding: 16px;
+  text-align: center;
+  font-family: var(--sans, system-ui, sans-serif);
+  user-select: none;
+  -webkit-user-select: none;
+  background: #161616;
+  color: #8a8a8a;
+  transition: background-color 60ms linear;
+}
+.tally-program { background: #e00000; color: #fff; }
+.tally-preview { background: #00a63e; color: #fff; }
+.tally-off { background: #161616; color: #6b6b6b; }
+.tally-off.tally-dim { background: #000; color: #262626; }
+.tally-unknown {
+  background: repeating-linear-gradient(-45deg, #3a2c00 0 28px, #1f1800 28px 56px);
+  color: #ffcc33;
+}
+.tally-word { font-size: min(26vw, 30vh); font-weight: 900; line-height: 0.9; letter-spacing: 0.02em; }
+.tally-preview .tally-word, .tally-unknown .tally-word { font-size: min(16vw, 20vh); }
+.tally-name { font-size: min(9vw, 9vh); font-weight: 700; max-width: 100%; overflow-wrap: anywhere; }
+.tally-why { font-size: min(5vw, 4vh); font-weight: 600; }
+.tally-info {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  font-size: 15px;
+}
+.tally-info-btn, .tally-pick-btn {
+  font: inherit;
+  color: #fff;
+  background: #2b2b2b;
+  border: 1px solid #555;
+  border-radius: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+.tally-info-btn:focus-visible, .tally-pick-btn:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.tally-pick { color: #eee; background: #111; overflow-y: auto; justify-content: flex-start; padding-top: 8vh; }
+.tally-pick h1 { font-size: 28px; margin: 0; }
+.tally-pick-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+  width: min(720px, 100%);
+}
+.tally-pick-btn { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; text-align: left; padding: 16px; }
+.tally-pick-btn strong { font-size: 20px; }
+.tally-pick-btn span { font-size: 13px; color: #aaa; }
+@media (prefers-reduced-motion: reduce) { .tally { transition: none; } }
+/* Operator view: this camera big, what's live and next along the bottom. */
+.tally-op { justify-content: center; padding-bottom: 18vh; }
+.tally-strip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  font-size: min(5vw, 5vh);
+  font-weight: 700;
+}
+.tally-strip-cell { display: flex; align-items: center; justify-content: center; gap: 0.5em; padding: 2vh 12px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: #fff; }
+.tally-strip-cell.live { background: #8a0000; }
+.tally-strip-cell.next { background: #005c22; }
+.tally-strip-cell b { font-size: 0.7em; letter-spacing: 0.08em; opacity: 0.9; }
+/* Board: every camera at once (an iPad at the director's desk). */
+.tally-board {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  background: #0e0e0e;
+  color: #eee;
+  font-family: var(--sans, system-ui, sans-serif);
+  user-select: none;
+  -webkit-user-select: none;
+  overflow: auto;
+}
+.tally-board.unknown { background: repeating-linear-gradient(-45deg, #2a2000 0 28px, #171200 28px 56px); }
+.tally-board-head { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tally-board-now { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-radius: 14px; font-size: clamp(20px, 3.4vw, 40px); font-weight: 800; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: #fff; }
+.tally-board-now b { font-size: 0.55em; letter-spacing: 0.1em; padding: 4px 10px; border-radius: 8px; background: rgba(0, 0, 0, 0.25); }
+.tally-board-now.live { background: #e00000; }
+.tally-board-now.next { background: #00a63e; }
+.tally-board-why { margin: 0; color: #ffcc33; font-weight: 600; font-size: 18px; }
+.tally-board-grid { flex: 1; min-height: 0; display: grid; grid-auto-rows: 1fr; gap: 12px; }
+.tally-card { display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 16px; min-height: 120px; border-radius: 14px; border: 2px solid #2c2c2c; background: #1b1b1b; color: #9a9a9a; }
+.tally-card.program { background: #e00000; border-color: #ff4d4d; color: #fff; }
+.tally-card.preview { background: #00a63e; border-color: #3bd27a; color: #fff; }
+.tally-card.unknown { opacity: 0.5; }
+.tally-card-word { font-size: clamp(14px, 3vmin, 32px); font-weight: 800; letter-spacing: 0.1em; min-height: 1em; }
+.tally-card-short { font-size: clamp(28px, 8vmin, 120px); line-height: 1; }
+.tally-card-name { font-size: clamp(14px, 2.6vmin, 30px); overflow-wrap: anywhere; }

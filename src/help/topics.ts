@@ -682,6 +682,28 @@ If the tile can't reach the switcher at all, check the address, that the switche
     settings: "set-atem",
   },
   {
+    id: "atem-tally",
+    group: "Video",
+    title: "Camera tally on a phone or iPad",
+    aliases: ["tally", "tally light", "camera tally", "on air light", "which camera is live", "ipad tally", "camera operator"],
+    body: `Any phone or iPad can be a tally light, using the switcher's own tally, so keys and transitions count. Make the link in **Settings → Camera tally** (it needs Browser Access with a member password), then scan the code on the device.
+
+Three views:
+
+- **Tally light:** one camera. The whole screen is red when it's **LIVE** and green when it's **NEXT** (on Preview). Mount it on the camera.
+- **Operator:** one camera big, with what's live and what's next along the bottom, so the operator knows what's coming.
+- **All cameras:** every camera on one screen, red for live and green for next. Good on an iPad at the director's desk or side of stage.
+
+Options: turn off green for next, or make the screen black when off air so it doesn't glow on stage.
+
+**If it can't be sure**, it shows amber stripes and **NO TALLY**, never a dark screen that looks safe to move. That happens when it loses ProDeck or ProDeck loses the switcher. It reconnects by itself and reloads itself after ProDeck updates.
+
+For a permanent install: add it to the Home Screen, set Auto-Lock to Never (iPhone and iPad) or the longest screen timeout (Android), lock it with Guided Access or App pinning, and keep it plugged in on the church wifi. Tap the screen to see which camera it is or to change it.
+
+The link carries the member password. Changing that password stops every tally link, so rescan them.`,
+    settings: "set-tally",
+  },
+  {
     id: "obs",
     group: "Video",
     title: "OBS Studio: are we live?",

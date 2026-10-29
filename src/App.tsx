@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import {
   IS_WEB,
   KIOSK_DASH,
+  TALLY_PARAM,
   getWebToken,
   JOIN_CLOSED,
   setWebToken,
@@ -18,6 +19,7 @@ import {
   pcoOauthStatus,
 } from "./lib/tauri";
 import { KioskPage } from "./pages/Kiosk";
+import { TallyPage } from "./pages/Tally";
 import { ChatProvider, useChat } from "./chatStore";
 import { PagesProvider } from "./pagesStore";
 import { ScheduleProvider } from "./scheduleStore";
@@ -670,6 +672,15 @@ function WebGate({ children }: { children: ReactNode }) {
 startOutbox();
 
 export default function App() {
+  // A camera tally screen needs none of the app around it: keep it light,
+  // since it runs on old phones for months.
+  if (TALLY_PARAM !== null) {
+    return (
+      <WebGate>
+        <TallyPage param={TALLY_PARAM} />
+      </WebGate>
+    );
+  }
   return (
     <WebGate>
       <UpdaterProvider>

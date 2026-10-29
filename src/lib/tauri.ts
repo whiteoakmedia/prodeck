@@ -145,6 +145,26 @@ if (IS_WEB && bootToken && typeof localStorage !== "undefined") {
   localStorage.setItem(TOKEN_KEY, bootToken);
 }
 export const KIOSK_DASH: string | null = IS_WEB ? bootParams?.get("kiosk") ?? null : null;
+/**
+ * Camera tally screen (?tally=<camera>&token=…): a phone or tablet on a
+ * camera that goes red when it's on air. "" = not chosen yet (it asks).
+ * Demo mode too, so it can be tried without a switcher.
+ */
+export const TALLY_PARAM: string | null =
+  IS_WEB || IS_DEMO ? bootParams?.get("tally") ?? null : null;
+export const TALLY_OPTS = {
+  /** light | operator | board (see lib/tally.ts). */
+  view: bootParams?.get("view") ?? null,
+  /** Green on preview (default on). */
+  preview: bootParams?.get("preview") !== "0",
+  /** Black, not dark grey, when off air: no glow on stage. */
+  dim: bootParams?.get("dim") === "1",
+  /** An M/E (1-based in the link); default = the switcher's default M/E. */
+  me: (() => {
+    const n = parseInt(bootParams?.get("me") ?? "", 10);
+    return Number.isFinite(n) && n >= 1 ? n - 1 : undefined;
+  })(),
+};
 
 // Demo mode has no booth to stream from — its events come from the ticker.
 if (IS_WEB && !IS_DEMO) reconnectSse();
@@ -1479,6 +1499,8 @@ export interface AtemSnapshot {
   buses?: { program: number | null; preview: number | null; inTransition: boolean }[];
   inputs: AtemInput[];
   error: string | null;
+  /** The switcher's own tally by source id: 1 on air, 2 preview, 3 both. Only lit sources. */
+  tally?: Record<string, number>;
   /** Link health: this session's start and the switcher's last packet (epoch ms), drops since ProDeck started. */
   linkSince?: number | null;
   lastHeard?: number | null;

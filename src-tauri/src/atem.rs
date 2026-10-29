@@ -96,6 +96,10 @@ pub struct AtemInner {
     pub inputs: Vec<Input>,
     /// Tally for every M/E the switcher has told us about, by index.
     pub buses: Vec<MeState>,
+    /// The switcher's own tally, by source: bit 1 on air, bit 2 on preview.
+    /// It already allows for keys, transitions and every M/E, which is what
+    /// a camera operator's tally light must show. Empty until it sends one.
+    pub tally: std::collections::BTreeMap<u16, u8>,
     /// The address this state came from, so a new switcher starts clean.
     pub host: String,
     /// Link health for Settings: when this session connected and when the
@@ -172,6 +176,8 @@ pub fn snapshot(state: &AtemState) -> Value {
         "preview": cur.preview,
         "inTransition": cur.in_transition,
         "buses": buses,
+        // Source id → 1 on air, 2 preview, 3 both. Only sources that are lit.
+        "tally": s.tally.iter().filter(|(_, f)| **f != 0).map(|(k, v)| (k.to_string(), json!(v))).collect::<serde_json::Map<String, Value>>(),
         "inputs": inputs,
         "error": s.error,
         "linkSince": s.link_since,
@@ -332,6 +338,21 @@ pub fn apply(s: &mut AtemInner, name: &[u8; 4], d: &[u8]) -> bool {
                 }
                 _ => false,
             }
+        }
+        // Tally by source: u16 count, then (u16 source, u8 flags) each.
+        b"TlSr" if d.len() >= 2 => {
+            let n = u16::from_be_bytes([d[0], d[1]]) as usize;
+            let mut t = std::collections::BTreeMap::new();
+            for i in 0..n {
+                let at = 2 + i * 3;
+                let Some(e) = d.get(at..at + 3) else { break };
+                t.insert(u16::from_be_bytes([e[0], e[1]]), e[2] & 0x03);
+            }
+            if t == s.tally {
+                return false;
+            }
+            s.tally = t;
+            true
         }
         b"InCm" => {
             s.ready = true;
@@ -512,6 +533,7 @@ pub async fn run_link(
         if s.host != host {
             s.inputs.clear();
             s.buses.clear();
+            s.tally.clear();
             s.product.clear();
             s.mes = 0;
             s.host = host.to_string();
@@ -847,6 +869,27 @@ mod tests {
     }
 
     #[test]
+    fn tally_by_source_is_the_switchers_own() {
+        let mut s = AtemInner::default();
+        // Three sources: 1 on air, 2 on preview, 3 both (mid-transition).
+        let d = [0, 3, 0, 1, 1, 0, 2, 2, 0, 3, 3];
+        assert!(apply(&mut s, b"TlSr", &d));
+        assert_eq!(s.tally.get(&1), Some(&1));
+        assert_eq!(s.tally.get(&2), Some(&2));
+        assert_eq!(s.tally.get(&3), Some(&3));
+        assert!(!apply(&mut s, b"TlSr", &d), "unchanged tally isn't news");
+        // A count that overstates what's there stops at the data, no panic.
+        assert!(apply(&mut s, b"TlSr", &[0, 9, 0, 4, 1]));
+        assert_eq!(s.tally.len(), 1);
+        assert!(!apply(&mut s, b"TlSr", &[0]));
+        let st = new_state();
+        st.lock().unwrap().tally = [(1u16, 1u8), (2, 0)].into_iter().collect();
+        let v = snapshot(&st);
+        assert_eq!(v["tally"]["1"], 1);
+        assert!(v["tally"].get("2").is_none(), "only lit sources are sent");
+    }
+
+    #[test]
     fn retries_back_off_but_not_forever() {
         assert_eq!(retry_delay(0), Duration::from_secs(1));
         assert_eq!(retry_delay(1), Duration::from_secs(2));
@@ -916,6 +959,8 @@ mod tests {
         wait_for(&state, "preview 4", |s| s.bus(0).preview == Some(4)).await;
         send(&state, cmd_cut(me)).unwrap();
         wait_for(&state, "the cut", |s| s.bus(0).program == Some(4) && s.bus(0).preview == Some(1)).await;
+        // The switcher's own tally follows: camera 4 on air, 1 on preview.
+        wait_for(&state, "tally after the cut", |s| s.tally.get(&4) == Some(&1) && s.tally.get(&1) == Some(&2)).await;
         send(&state, cmd_auto(me)).unwrap();
         wait_for(&state, "the auto transition", |s| s.bus(0).program == Some(1) && !s.bus(0).in_transition).await;
         send(&state, cmd_program(me, 3)).unwrap();

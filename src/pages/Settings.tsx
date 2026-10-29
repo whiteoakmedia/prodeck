@@ -18,6 +18,7 @@ import { chopHost, createInbox, deleteInbox, fetchCurrentService, setInboxSecret
 import { joinPosterHtml } from "../lib/joinPoster";
 import { setCrashReportsEnabled } from "../lib/crashReports";
 import { setUsageCountEnabled, usageCountEnabled } from "../lib/usageCount";
+import { tallyQuery, tallySources, type TallyView } from "../lib/tally";
 import { useAutopilot } from "../autopilot";
 import { useAutomix } from "../automix";
 import { fmtClock, useRecorder } from "../recorder";
@@ -1863,6 +1864,7 @@ export function SettingsPage() {
 
       {!IS_WEB && <Sec id="set-reliability"><ReliabilityCard /></Sec>}
       {!IS_WEB && <Sec id="set-kiosk"><KioskCard form={form} /></Sec>}
+      {!IS_WEB && form.atem_enabled && <Sec id="set-tally"><TallyCard form={form} atem={atem} /></Sec>}
       {!IS_WEB && <Sec id="set-backup"><BackupCard /></Sec>}
       {!IS_WEB && <Sec id="set-help"><HelpCard /></Sec>}
 
@@ -3370,6 +3372,109 @@ function KioskCard({ form }: { form: Settings }) {
             <p className="hint">The link carries the member password. Rotating that password (Browser Access) invalidates every kiosk link at once — update the shortcuts when you do.</p>
           </div>
           {qr && <img src={qr} alt="Kiosk link" className="kiosk-qr" />}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Camera tally: a link and QR code per camera for a phone or tablet mounted on
+ * it (pages/Tally.tsx). Same member password as kiosk links, so no sign-in.
+ */
+function TallyCard({ form, atem }: { form: Settings; atem: AtemSnapshot | null }) {
+  const f = form as any;
+  const token = f.web_member_password || "";
+  const lan = useLanAddress();
+  const base = lanBaseUrl(f.public_url, lan, f.device_name, f.web_port);
+  const ipBase = (f.public_url ?? "").trim() ? null : ipBaseUrl(lan, f.web_port);
+  const sources = tallySources(atem);
+  const [pick, setPick] = useState<number | null>(null);
+  const [preview, setPreview] = useState(true);
+  const [dim, setDim] = useState(false);
+  const [view, setView] = useState<TallyView>("light");
+  const [qr, setQr] = useState("");
+  const [copied, setCopied] = useState(false);
+  const cam = sources.find((s) => s.id === pick) ?? sources[0] ?? null;
+  const board = view === "board";
+  const q = token && (board || cam) ? tallyQuery(board ? null : cam!.id, token, { preview, dim, view }) : "";
+  const url = q ? `${base}${q}` : "";
+  const ipUrl = q && ipBase ? `${ipBase}${q}` : "";
+  useEffect(() => {
+    if (!url) return setQr("");
+    QRCode.toDataURL(url, { margin: 1, width: 180 }).then(setQr).catch(() => setQr(""));
+  }, [url]);
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h3 id="set-tally">Camera tally</h3>
+        <HelpLink section="features" />
+      </div>
+      <p className="muted small">
+        Turn an old phone or tablet into a tally light. Mounted on a camera, it goes red when that camera is on
+        air and green when it's on Preview, using the switcher's own tally (keys and transitions included). If it
+        loses ProDeck or the switcher it shows amber stripes and NO TALLY, never a dark screen that looks safe.
+      </p>
+      {!f.web_enabled ? (
+        <p className="hint">Turn on <strong>Browser Access</strong> first. Tally screens connect through it.</p>
+      ) : !token ? (
+        <p className="hint">Set a <strong>member password</strong> in Browser Access. Tally links use it.</p>
+      ) : !atem?.connected && sources.length === 0 ? (
+        <p className="hint">Connect the switcher above first, so ProDeck knows its cameras.</p>
+      ) : (
+        <div className="kiosk-wrap">
+          <div className="kiosk-side">
+            <label className="field">
+              <span>View</span>
+              <select className="input" value={view} onChange={(e) => setView(e.target.value as TallyView)}>
+                <option value="light">Tally light: one camera, the whole screen red or green</option>
+                <option value="operator">Operator: one camera, plus what's live and next</option>
+                <option value="board">All cameras: which one is live and which is next</option>
+              </select>
+            </label>
+            {!board && (
+              <label className="field">
+                <span>Camera</span>
+                <select className="input" value={cam?.id ?? ""} onChange={(e) => setPick(Number(e.target.value))}>
+                  {sources.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name || s.short} ({s.id})</option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {!board && (
+              <label className="field check">
+                <input type="checkbox" checked={preview} onChange={(e) => setPreview(e.target.checked)} />
+                <span>Green when it's next (on Preview)</span>
+              </label>
+            )}
+            {!board && (
+              <label className="field check">
+                <input type="checkbox" checked={dim} onChange={(e) => setDim(e.target.checked)} />
+                <span>Black when off air, so the screen doesn't glow on stage</span>
+              </label>
+            )}
+            <code className="kiosk-url">{url}</code>
+            <div className="kiosk-actions">
+              <button className="btn small" onClick={() => { navigator.clipboard.writeText(url).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }).catch(() => {}); }}>
+                {copied ? "Copied" : "Copy link"}
+              </button>
+            </div>
+            {ipUrl && (
+              <p className="muted small">
+                If a device can't find names ending in .local, use this address instead:{" "}
+                <code className="kiosk-url">{ipUrl}</code>{" "}
+                <button className="link-btn" onClick={() => navigator.clipboard.writeText(ipUrl).catch(() => {})}>Copy</button>
+              </p>
+            )}
+            <ol className="kiosk-steps muted small">
+              <li><strong>iPhone or iPad:</strong> scan the code, Share, Add to Home Screen, open it from there. In Settings set Auto-Lock to Never, and use Guided Access (Accessibility) to lock it to the tally.</li>
+              <li><strong>Android:</strong> scan the code in Chrome, menu, Add to Home screen. Pin the screen (Security, App pinning) and set the screen timeout to the longest.</li>
+              <li>Keep it on the church wifi and plugged in. It reconnects by itself and updates itself when ProDeck does. Tap the screen to see which camera it is or to change it.</li>
+            </ol>
+            <p className="hint">The link carries the member password. Changing that password stops every tally link, so rescan them when you do.</p>
+          </div>
+          {qr && <img src={qr} alt={board ? "Tally board link" : `Tally link for ${cam?.name ?? "the camera"}`} className="kiosk-qr" />}
         </div>
       )}
     </section>

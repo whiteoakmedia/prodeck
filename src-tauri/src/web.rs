@@ -59,6 +59,9 @@ const FORWARD_EVENTS: &[&str] = &[
     // TapLink push failure was invisible on every phone and kiosk.
     "obs:state",
     "obs:status",
+    // The ATEM tile and camera tally screens on phones and tablets live on
+    // this; without it they only changed on reload or after a button press.
+    "atem:state",
     "tap:pushed",
     "tap:error",
     "checklist:changed",
