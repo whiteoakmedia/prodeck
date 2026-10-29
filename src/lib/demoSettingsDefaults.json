@@ -112,6 +112,7 @@
   "pco_client_id": null,
   "pco_secret": null,
   "pp_auto_connect": false,
+  "pp_view_only": false,
   "pp_host": "localhost",
   "pp_port": 1025,
   "public_url": "",

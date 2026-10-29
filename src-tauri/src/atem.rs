@@ -2,8 +2,10 @@
 //!
 //! The booth asks one thing of the switcher all service: *what's on Program,
 //! what's on Preview, and take it*. So that is all this does. Program and
-//! Preview tally, the input names the switcher already has, Cut and Auto, and
-//! picking the Preview source. No keyers, macros, audio or media pool.
+//! Preview tally on every M/E, the input names the switcher already has, Cut
+//! and Auto, and picking the Preview source. No keyers, macros, audio or
+//! media pool. Each ATEM tile picks its own M/E; Settings picks the default
+//! (and the one Stream Deck drives unless a link says &me=).
 //!
 //! Off until a church ticks it on and types the switcher's address
 //! (Settings → Video). A booth without an ATEM never opens the socket.
@@ -54,6 +56,10 @@ const SILENCE: Duration = Duration::from_secs(5);
 /// Resend a command the switcher hasn't confirmed after this long.
 const RESEND_AFTER: Duration = Duration::from_millis(150);
 const MAX_RESENDS: u8 = 10;
+/// A connected switcher sends its whole state within a second or two.
+const STATE_DUMP_LIMIT: Duration = Duration::from_secs(10);
+/// Re-ack the last packet if we've sent nothing for this long.
+const KEEPALIVE: Duration = Duration::from_secs(1);
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Input {
@@ -67,6 +73,17 @@ pub struct Input {
     pub me_mask: u8,
 }
 
+/// One M/E's tally.
+#[derive(Clone, Default, Debug, PartialEq)]
+pub struct MeState {
+    pub program: Option<u16>,
+    pub preview: Option<u16>,
+    pub in_transition: bool,
+}
+
+/// Switchers have 1 to 4 M/Es. A byte claiming more is ignored, never allocated.
+pub const MAX_MES: usize = 8;
+
 #[derive(Default)]
 pub struct AtemInner {
     pub connected: bool,
@@ -74,17 +91,45 @@ pub struct AtemInner {
     pub product: String,
     /// How many M/Es the switcher has.
     pub mes: u8,
-    /// Which M/E we drive (Settings), 0-based.
+    /// The default M/E (Settings), 0-based. Tiles may show another.
     pub me: u8,
     pub inputs: Vec<Input>,
-    pub program: Option<u16>,
-    pub preview: Option<u16>,
-    pub in_transition: bool,
+    /// Tally for every M/E the switcher has told us about, by index.
+    pub buses: Vec<MeState>,
+    /// The address this state came from, so a new switcher starts clean.
+    pub host: String,
+    /// Link health for Settings: when this session connected and when the
+    /// switcher was last heard (epoch ms), and drops since ProDeck started.
+    pub link_since: Option<u64>,
+    pub last_heard: Option<u64>,
+    pub drops: u32,
     /// The switcher finished sending its state.
     pub ready: bool,
     pub error: Option<String>,
     /// Commands for the live session, if there is one.
     tx: Option<mpsc::UnboundedSender<Vec<u8>>>,
+}
+
+impl AtemInner {
+    fn bus_mut(&mut self, me: u8) -> Option<&mut MeState> {
+        let i = me as usize;
+        if i >= MAX_MES {
+            return None;
+        }
+        if self.buses.len() <= i {
+            self.buses.resize(i + 1, MeState::default());
+        }
+        Some(&mut self.buses[i])
+    }
+
+    pub fn bus(&self, me: u8) -> MeState {
+        self.buses.get(me as usize).cloned().unwrap_or_default()
+    }
+
+    /// How many M/Es to offer: what the switcher says, at least one.
+    pub fn me_count(&self) -> usize {
+        (self.mes as usize).max(self.buses.len()).clamp(1, MAX_MES)
+    }
 }
 
 pub type AtemState = Arc<Mutex<AtemInner>>;
@@ -93,30 +138,45 @@ pub fn new_state() -> AtemState {
     Arc::new(Mutex::new(AtemInner::default()))
 }
 
-/// Inputs worth a button on this M/E: anything the switcher says can go to
+/// Inputs worth a button on an M/E: anything the switcher says can go to
 /// it. That leaves out outputs and media-player keys, which can't.
-pub fn bus_inputs(s: &AtemInner) -> Vec<&Input> {
-    let bit = 1u8.checked_shl(s.me as u32).unwrap_or(0);
+pub fn bus_inputs(s: &AtemInner, me: u8) -> Vec<&Input> {
+    let bit = 1u8.checked_shl(me as u32).unwrap_or(0);
     s.inputs.iter().filter(|i| i.me_mask & bit != 0).collect()
 }
 
 pub fn snapshot(state: &AtemState) -> Value {
     let s = state.lock().unwrap_or_else(|p| p.into_inner());
-    let inputs: Vec<Value> = bus_inputs(&s)
-        .into_iter()
-        .map(|i| json!({ "id": i.id, "name": i.name, "short": i.short, "camera": i.kind == 0 }))
+    // Every source that can go to some M/E; each tile filters by its own.
+    let inputs: Vec<Value> = s
+        .inputs
+        .iter()
+        .filter(|i| i.me_mask != 0)
+        .map(|i| json!({ "id": i.id, "name": i.name, "short": i.short, "camera": i.kind == 0, "meMask": i.me_mask }))
         .collect();
+    let buses: Vec<Value> = (0..s.me_count())
+        .map(|i| {
+            let b = s.bus(i as u8);
+            json!({ "program": b.program, "preview": b.preview, "inTransition": b.in_transition })
+        })
+        .collect();
+    let cur = s.bus(s.me);
     json!({
         "connected": s.connected,
         "ready": s.ready,
         "product": s.product,
         "me": s.me,
-        "mes": s.mes,
-        "program": s.program,
-        "preview": s.preview,
-        "inTransition": s.in_transition,
+        "mes": s.me_count(),
+        // The default M/E's tally, as before M/E support.
+        "program": cur.program,
+        "preview": cur.preview,
+        "inTransition": cur.in_transition,
+        "buses": buses,
         "inputs": inputs,
         "error": s.error,
+        "linkSince": s.link_since,
+        "lastHeard": s.last_heard,
+        "drops": s.drops,
     })
 }
 
@@ -219,7 +279,6 @@ fn cstr(b: &[u8]) -> String {
 
 /// Apply one command from the switcher. True if anything a screen shows changed.
 pub fn apply(s: &mut AtemInner, name: &[u8; 4], d: &[u8]) -> bool {
-    let me = s.me;
     match name {
         b"_pin" if d.len() >= 40 => {
             s.product = cstr(&d[..40]);
@@ -244,19 +303,35 @@ pub fn apply(s: &mut AtemInner, name: &[u8; 4], d: &[u8]) -> bool {
             }
             true
         }
-        b"PrgI" if d.len() >= 4 && d[0] == me => {
-            s.program = Some(u16::from_be_bytes([d[2], d[3]]));
-            true
+        b"PrgI" if d.len() >= 4 => {
+            let v = Some(u16::from_be_bytes([d[2], d[3]]));
+            match s.bus_mut(d[0]) {
+                Some(b) if b.program != v => {
+                    b.program = v;
+                    true
+                }
+                _ => false,
+            }
         }
-        b"PrvI" if d.len() >= 4 && d[0] == me => {
-            s.preview = Some(u16::from_be_bytes([d[2], d[3]]));
-            true
+        b"PrvI" if d.len() >= 4 => {
+            let v = Some(u16::from_be_bytes([d[2], d[3]]));
+            match s.bus_mut(d[0]) {
+                Some(b) if b.preview != v => {
+                    b.preview = v;
+                    true
+                }
+                _ => false,
+            }
         }
-        b"TrPs" if d.len() >= 2 && d[0] == me => {
+        b"TrPs" if d.len() >= 2 => {
             let t = d[1] == 1;
-            let changed = t != s.in_transition;
-            s.in_transition = t;
-            changed
+            match s.bus_mut(d[0]) {
+                Some(b) if b.in_transition != t => {
+                    b.in_transition = t;
+                    true
+                }
+                _ => false,
+            }
         }
         b"InCm" => {
             s.ready = true;
@@ -295,7 +370,9 @@ fn set_down(app: &AppHandle, state: &AtemState, error: Option<String>) {
         let changed = s.connected || s.error != error || s.tx.is_some();
         s.connected = false;
         s.ready = false;
-        s.in_transition = false;
+        for b in s.buses.iter_mut() {
+            b.in_transition = false;
+        }
         s.tx = None;
         s.error = error;
         changed
@@ -320,6 +397,7 @@ pub fn atem_state(state: tauri::State<'_, AtemState>) -> Value {
 pub fn spawn_client(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
         let state: AtemState = app.state::<AtemState>().inner().clone();
+        let mut failures: u32 = 0;
         loop {
             let (enabled, host, me) = settings(&app);
             if !enabled || host.is_empty() {
@@ -327,16 +405,37 @@ pub fn spawn_client(app: AppHandle) {
                 tokio::time::sleep(Duration::from_secs(3)).await;
                 continue;
             }
-            match run_session(&app, &state, &host, me).await {
+            let result = run_session(&app, &state, &host, me).await;
+            // A session that got as far as the switcher's whole state was a
+            // real connection: reconnect quickly. One that never did backs
+            // off, so a switcher that's off or full isn't hammered with new
+            // sessions (each HELLO it answers holds one of its few slots
+            // until it times out).
+            let was_up = {
+                let mut s = state.lock().unwrap_or_else(|p| p.into_inner());
+                let up = s.ready;
+                if up && result.is_err() {
+                    s.drops = s.drops.saturating_add(1);
+                }
+                up
+            };
+            match result {
                 Ok(()) => set_down(&app, &state, None),
                 Err(e) => {
                     crate::diag::log(format!("[atem] {e}"));
                     set_down(&app, &state, Some(e));
                 }
             }
-            tokio::time::sleep(Duration::from_secs(2)).await;
+            failures = if was_up { 0 } else { failures.saturating_add(1) };
+            tokio::time::sleep(retry_delay(failures)).await;
         }
     });
+}
+
+/// 1 s after a working session dropped; then 2, 4, 8, capped at 15 s while
+/// the switcher keeps not answering.
+pub fn retry_delay(failures: u32) -> Duration {
+    Duration::from_millis((1000u64 << failures.min(4)).min(15_000))
 }
 
 async fn run_session(app: &AppHandle, state: &AtemState, host: &str, me: u8) -> Result<(), String> {
@@ -407,16 +506,28 @@ pub async fn run_link(
     let (tx, mut rx) = mpsc::unbounded_channel::<Vec<u8>>();
     {
         let mut s = state.lock().unwrap_or_else(|p| p.into_inner());
+        // Same switcher as before: keep the last known names and tally on
+        // screen while it re-sends them, instead of blanking every tile on a
+        // blip. A different address starts clean.
+        if s.host != host {
+            s.inputs.clear();
+            s.buses.clear();
+            s.product.clear();
+            s.mes = 0;
+            s.host = host.to_string();
+        }
         s.connected = true;
         s.ready = false;
         s.me = me;
         s.error = None;
-        s.inputs.clear();
-        s.program = None;
-        s.preview = None;
         s.tx = Some(tx);
+        let now = crate::identity::now_ms();
+        s.link_since = Some(now);
+        s.last_heard = Some(now);
     }
     changed();
+    let connected_at = Instant::now();
+    let mut last_sent = Instant::now();
 
     let mut next_id: u16 = 1;
     // (packet id, bytes, last sent, resends)
@@ -432,10 +543,17 @@ pub async fn run_link(
                 let n = match r {
                     Ok(n) => n,
                     // ICMP "port unreachable" lands here on some systems; the
-                    // silence check decides when it's really gone.
-                    Err(_) => continue,
+                    // silence check decides when it's really gone. The pause
+                    // keeps an error that repeats from spinning the loop.
+                    Err(_) => {
+                        tokio::time::sleep(Duration::from_millis(20)).await;
+                        continue;
+                    }
                 };
                 let Some(h) = parse_header(&buf[..n]) else { continue };
+                if last_heard.elapsed() > Duration::from_millis(500) {
+                    state.lock().unwrap_or_else(|p| p.into_inner()).last_heard = Some(crate::identity::now_ms());
+                }
                 last_heard = Instant::now();
                 session = h.session;
                 if h.flags & F_NEW_SESSION != 0 {
@@ -471,6 +589,7 @@ pub async fn run_link(
                                 }
                             }
                             let _ = sock.send(&ack_packet(session, last_recv)).await;
+                            last_sent = Instant::now();
                         }
                         // A resend of something we already have: ack again so
                         // it stops. Anything ahead of a gap is dropped; the
@@ -490,11 +609,23 @@ pub async fn run_link(
                 next_id = ((next_id as u32 + 1) % MAX_ID) as u16;
                 let pkt = data_packet(session, id, &payload);
                 let _ = sock.send(&pkt).await;
+                last_sent = Instant::now();
                 inflight.push_back((id, pkt, Instant::now(), 0));
             }
             _ = tick.tick() => {
                 if last_heard.elapsed() > SILENCE {
                     return Err("The switcher stopped answering. Reconnecting.".into());
+                }
+                // It answered hello but never sent its state: usually every
+                // connection slot it has is taken.
+                if connected_at.elapsed() > STATE_DUMP_LIMIT && !state.lock().unwrap_or_else(|p| p.into_inner()).ready {
+                    return Err("The switcher answered but didn't send its settings. It may have no free connections: close ATEM Software Control on another computer, then press Reconnect.".into());
+                }
+                // Our side of the keepalive, so a quiet link through a busy
+                // switch or firewall still looks alive from both ends.
+                if last_sent.elapsed() > KEEPALIVE {
+                    let _ = sock.send(&ack_packet(session, last_recv)).await;
+                    last_sent = Instant::now();
                 }
                 for (_, pkt, sent, tries) in inflight.iter_mut() {
                     if sent.elapsed() >= RESEND_AFTER {
@@ -527,45 +658,53 @@ fn send(state: &AtemState, payload: Vec<u8>) -> Result<(), String> {
     }
 }
 
-fn check_source(state: &AtemState, source: u16) -> Result<u8, String> {
+/// The M/E a command is for: the one asked for, else the default. Refused if
+/// the switcher doesn't have it.
+fn resolve_me(state: &AtemState, me: Option<u8>) -> Result<u8, String> {
     let s = state.lock().unwrap_or_else(|p| p.into_inner());
-    if !bus_inputs(&s).iter().any(|i| i.id == source) {
-        return Err("That source isn't on this switcher.".into());
+    let me = me.unwrap_or(s.me);
+    if s.mes > 0 && me >= s.mes {
+        return Err(format!("This switcher has {} M/E{}.", s.mes, if s.mes == 1 { "" } else { "s" }));
     }
-    Ok(s.me)
+    Ok(me)
 }
 
-fn me_of(state: &AtemState) -> u8 {
-    state.lock().unwrap_or_else(|p| p.into_inner()).me
+fn check_source(state: &AtemState, source: u16, me: Option<u8>) -> Result<u8, String> {
+    let me = resolve_me(state, me)?;
+    let s = state.lock().unwrap_or_else(|p| p.into_inner());
+    if !bus_inputs(&s, me).iter().any(|i| i.id == source) {
+        return Err("That source can't go to this M/E.".into());
+    }
+    Ok(me)
 }
 
-/// Take Preview to Program with no transition.
+/// Take Preview to Program with no transition. `me` 0-based; default M/E if absent.
 #[tauri::command]
-pub fn atem_cut(state: tauri::State<'_, AtemState>) -> Result<(), String> {
+pub fn atem_cut(me: Option<u8>, state: tauri::State<'_, AtemState>) -> Result<(), String> {
     let st = state.inner();
-    send(st, cmd_cut(me_of(st)))
+    send(st, cmd_cut(resolve_me(st, me)?))
 }
 
 /// Take Preview to Program with the switcher's current transition.
 #[tauri::command]
-pub fn atem_auto(state: tauri::State<'_, AtemState>) -> Result<(), String> {
+pub fn atem_auto(me: Option<u8>, state: tauri::State<'_, AtemState>) -> Result<(), String> {
     let st = state.inner();
-    send(st, cmd_auto(me_of(st)))
+    send(st, cmd_auto(resolve_me(st, me)?))
 }
 
 #[tauri::command]
-pub fn atem_set_preview(source: u16, state: tauri::State<'_, AtemState>) -> Result<(), String> {
+pub fn atem_set_preview(source: u16, me: Option<u8>, state: tauri::State<'_, AtemState>) -> Result<(), String> {
     let st = state.inner();
-    let me = check_source(st, source)?;
+    let me = check_source(st, source, me)?;
     send(st, cmd_preview(me, source))
 }
 
 /// Straight to Program, no transition. The tile doesn't offer this (a stray
 /// tap would cut live); it's here for Stream Deck and the deck routes.
 #[tauri::command]
-pub fn atem_set_program(source: u16, state: tauri::State<'_, AtemState>) -> Result<(), String> {
+pub fn atem_set_program(source: u16, me: Option<u8>, state: tauri::State<'_, AtemState>) -> Result<(), String> {
     let st = state.inner();
-    let me = check_source(st, source)?;
+    let me = check_source(st, source, me)?;
     send(st, cmd_program(me, source))
 }
 
@@ -636,17 +775,22 @@ mod tests {
         assert!(!apply(&mut s, b"InPr", &in_pr(1, "Camera 1 Wide", "CAM1", 0, 0x1f)));
         // Renamed on the switcher: picked up.
         assert!(apply(&mut s, b"InPr", &in_pr(1, "Wide", "WIDE", 0, 0x1f)));
-        let names: Vec<_> = bus_inputs(&s).iter().map(|i| i.name.clone()).collect();
+        let names: Vec<_> = bus_inputs(&s, 0).iter().map(|i| i.name.clone()).collect();
         assert_eq!(names, vec!["Wide"], "keys and outputs never get a button");
 
         assert!(apply(&mut s, b"PrgI", &[0, 0, 0, 1]));
         assert!(apply(&mut s, b"PrvI", &[0, 0, 0x0b, 0xc2]));
-        assert_eq!((s.program, s.preview), (Some(1), Some(3010)));
-        // Another M/E's tally is not ours.
-        assert!(!apply(&mut s, b"PrgI", &[1, 0, 0, 4]));
-        assert_eq!(s.program, Some(1));
+        assert_eq!((s.bus(0).program, s.bus(0).preview), (Some(1), Some(3010)));
+        // The same tally again isn't news.
+        assert!(!apply(&mut s, b"PrgI", &[0, 0, 0, 1]));
+        // Another M/E keeps its own tally.
+        assert!(apply(&mut s, b"PrgI", &[1, 0, 0, 4]));
+        assert_eq!((s.bus(0).program, s.bus(1).program), (Some(1), Some(4)));
+        // A nonsense M/E index is ignored, never allocated.
+        assert!(!apply(&mut s, b"PrgI", &[200, 0, 0, 4]));
+        assert_eq!(s.buses.len(), 2);
         assert!(apply(&mut s, b"TrPs", &[0, 1, 25, 0, 0, 0, 0, 0]));
-        assert!(s.in_transition);
+        assert!(s.bus(0).in_transition);
         assert!(!apply(&mut s, b"TrPs", &[0, 1, 20, 0, 0, 0, 0, 0]), "still mid-transition");
         assert!(apply(&mut s, b"InCm", &[]));
         assert!(s.ready);
@@ -661,11 +805,53 @@ mod tests {
         let mut s = AtemInner { me: 1, ..Default::default() };
         apply(&mut s, b"InPr", &in_pr(1, "Cam 1", "C1", 0, 0b01)); // M/E 1 only
         apply(&mut s, b"InPr", &in_pr(2, "Cam 2", "C2", 0, 0b11));
-        assert_eq!(bus_inputs(&s).iter().map(|i| i.id).collect::<Vec<_>>(), vec![2]);
+        assert_eq!(bus_inputs(&s, 1).iter().map(|i| i.id).collect::<Vec<_>>(), vec![2]);
+        assert_eq!(bus_inputs(&s, 0).len(), 2);
         assert!(apply(&mut s, b"PrgI", &[1, 0, 0, 2]));
-        assert_eq!(s.program, Some(2));
-        let s8 = AtemInner { me: 9, ..Default::default() };
-        assert!(bus_inputs(&s8).is_empty(), "an out-of-range M/E shows nothing instead of panicking");
+        assert_eq!(s.bus(1).program, Some(2));
+        assert!(bus_inputs(&s, 9).is_empty(), "an out-of-range M/E shows nothing instead of panicking");
+    }
+
+    #[test]
+    fn snapshot_carries_every_me() {
+        let st = new_state();
+        {
+            let mut s = st.lock().unwrap();
+            s.mes = 2;
+            apply(&mut s, b"InPr", &in_pr(1, "Cam 1", "C1", 0, 0b11));
+            apply(&mut s, b"InPr", &in_pr(3011, "MP1 Key", "MP1K", 5, 0));
+            apply(&mut s, b"PrgI", &[0, 0, 0, 1]);
+            apply(&mut s, b"PrvI", &[1, 0, 0, 1]);
+        }
+        let v = snapshot(&st);
+        assert_eq!(v["mes"], 2);
+        assert_eq!(v["buses"][0]["program"], 1);
+        assert_eq!(v["buses"][1]["preview"], 1);
+        assert_eq!(v["program"], 1, "the default M/E, as before");
+        assert_eq!(v["inputs"].as_array().unwrap().len(), 1, "keys never get a button");
+        assert_eq!(v["inputs"][0]["meMask"], 3);
+    }
+
+    #[test]
+    fn commands_refuse_an_me_the_switcher_lacks() {
+        let st = new_state();
+        {
+            let mut s = st.lock().unwrap();
+            s.mes = 1;
+            apply(&mut s, b"InPr", &in_pr(1, "Cam 1", "C1", 0, 0b01));
+        }
+        assert_eq!(resolve_me(&st, None), Ok(0));
+        assert!(resolve_me(&st, Some(1)).unwrap_err().contains("1 M/E."));
+        assert_eq!(check_source(&st, 1, Some(0)), Ok(0));
+        assert!(check_source(&st, 2, None).is_err());
+    }
+
+    #[test]
+    fn retries_back_off_but_not_forever() {
+        assert_eq!(retry_delay(0), Duration::from_secs(1));
+        assert_eq!(retry_delay(1), Duration::from_secs(2));
+        assert_eq!(retry_delay(3), Duration::from_secs(8));
+        assert_eq!(retry_delay(40), Duration::from_secs(15));
     }
 
     #[test]
@@ -712,28 +898,28 @@ mod tests {
                 tokio::time::sleep(Duration::from_millis(50)).await;
             }
             let s = state.lock().unwrap();
-            panic!("timed out waiting for {what}: program {:?} preview {:?} ready {} err {:?}", s.program, s.preview, s.ready, s.error);
+            panic!("timed out waiting for {what}: tally {:?} ready {} err {:?}", s.bus(0), s.ready, s.error);
         }
         wait_for(&state, "the state dump", |s| s.ready).await;
         {
             let s = state.lock().unwrap();
             assert_eq!(s.product, "ATEM Television Studio HD8");
-            assert_eq!((s.program, s.preview), (Some(1), Some(2)));
-            let names: Vec<_> = bus_inputs(&s).iter().map(|i| i.name.clone()).collect();
+            assert_eq!((s.bus(0).program, s.bus(0).preview), (Some(1), Some(2)));
+            let names: Vec<_> = bus_inputs(&s, 0).iter().map(|i| i.name.clone()).collect();
             assert_eq!(names, ["Black", "Camera 1 Wide", "Camera 2 Pulpit", "Camera 3 Stage", "ProPresenter", "Color Bars", "Media Player 1"]);
         }
         assert!(changes.load(std::sync::atomic::Ordering::Relaxed) > 0, "screens were told");
 
-        let me = check_source(&state, 4).unwrap();
-        assert!(check_source(&state, 10010).is_err(), "outputs can't go to Preview");
+        let me = check_source(&state, 4, None).unwrap();
+        assert!(check_source(&state, 10010, None).is_err(), "outputs can't go to Preview");
         send(&state, cmd_preview(me, 4)).unwrap();
-        wait_for(&state, "preview 4", |s| s.preview == Some(4)).await;
+        wait_for(&state, "preview 4", |s| s.bus(0).preview == Some(4)).await;
         send(&state, cmd_cut(me)).unwrap();
-        wait_for(&state, "the cut", |s| s.program == Some(4) && s.preview == Some(1)).await;
+        wait_for(&state, "the cut", |s| s.bus(0).program == Some(4) && s.bus(0).preview == Some(1)).await;
         send(&state, cmd_auto(me)).unwrap();
-        wait_for(&state, "the auto transition", |s| s.program == Some(1) && !s.in_transition).await;
+        wait_for(&state, "the auto transition", |s| s.bus(0).program == Some(1) && !s.bus(0).in_transition).await;
         send(&state, cmd_program(me, 3)).unwrap();
-        wait_for(&state, "program 3", |s| s.program == Some(3)).await;
+        wait_for(&state, "program 3", |s| s.bus(0).program == Some(3)).await;
 
         stop.store(true, std::sync::atomic::Ordering::Relaxed);
         let r = tokio::time::timeout(Duration::from_secs(5), link).await.expect("session ends when asked").unwrap();

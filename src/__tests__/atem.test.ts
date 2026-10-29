@@ -48,3 +48,71 @@ describe("ATEM tile", () => {
     expect(atemButtons(null)).toEqual([]);
   });
 });
+
+import { atemBus, moveSource, tileMe, toggleHidden, withLabel } from "../lib/atem";
+
+describe("ATEM tile, arranged by the church", () => {
+  it("keeps the tile's own order, and adds a new source after the placed ones", () => {
+    const ids = atemButtons(snap(), { order: [3010, 2] }).map((b) => b.id);
+    expect(ids).toEqual([3010, 2, 1, 3, 0]);
+    // An id the switcher no longer has is skipped, not shown blank.
+    expect(atemButtons(snap(), { order: [77, 1] }).map((b) => b.id)[0]).toBe(1);
+  });
+
+  it("hides sources, but shows them dimmed while editing", () => {
+    expect(atemButtons(snap(), { hidden: [0, 3010] }).map((b) => b.id)).toEqual([1, 2, 3]);
+    const all = atemButtons(snap(), { hidden: [0] }, { includeHidden: true });
+    expect(all.find((b) => b.id === 0)?.hidden).toBe(true);
+    expect(all).toHaveLength(5);
+  });
+
+  it("uses the tile's own labels on the buttons and in the Program line", () => {
+    const cfg = { labels: { "2": "Pastor" } };
+    expect(atemButtons(snap(), cfg).find((b) => b.id === 2)?.label).toBe("Pastor");
+    expect(atemName(snap(), 2, cfg)).toBe("Pastor");
+    expect(withLabel(cfg, 2, "  ")).toEqual({});
+    expect(withLabel({}, 1, " Wide ")).toEqual({ "1": "Wide" });
+  });
+
+  it("moves and toggles without losing anything", () => {
+    expect(moveSource([1, 2, 3, 4], 0, 2)).toEqual([2, 3, 1, 4]);
+    expect(moveSource([1, 2, 3, 4], 3, 0)).toEqual([4, 1, 2, 3]);
+    expect(moveSource([1, 2], 5, 0)).toEqual([1, 2]);
+    expect(toggleHidden({ hidden: [1] }, 1)).toEqual([]);
+    expect(toggleHidden({}, 4)).toEqual([4]);
+  });
+});
+
+describe("ATEM M/Es", () => {
+  const two = snap({
+    mes: 2,
+    buses: [
+      { program: 1, preview: 2, inTransition: false },
+      { program: 2, preview: 0, inTransition: true },
+    ],
+    inputs: [
+      { id: 0, name: "Black", short: "BLK", camera: false, meMask: 3 },
+      { id: 1, name: "Camera 1", short: "CAM1", camera: true, meMask: 1 },
+      { id: 2, name: "Camera 2", short: "CAM2", camera: true, meMask: 3 },
+    ],
+  });
+
+  it("shows each tile its own M/E's sources and tally", () => {
+    expect(atemButtons(two, { me: 1 }).map((b) => b.id)).toEqual([2, 0]);
+    const b = atemButtons(two, { me: 1 });
+    expect(b.find((x) => x.program)?.id).toBe(2);
+    expect(b.find((x) => x.preview)?.id).toBe(0);
+    expect(atemBus(two, 1).inTransition).toBe(true);
+  });
+
+  it("falls back to the default M/E when the tile's isn't on this switcher", () => {
+    expect(tileMe(two, { me: 1 })).toBe(1);
+    expect(tileMe(two, { me: 3 })).toBe(0);
+    expect(tileMe(two, {})).toBe(0);
+  });
+
+  it("reads an older snapshot that only had the default M/E", () => {
+    expect(atemBus(snap(), 0)).toEqual({ program: 2, preview: 3, inTransition: false });
+    expect(atemBus(snap(), 1)).toEqual({ program: null, preview: null, inTransition: false });
+  });
+});

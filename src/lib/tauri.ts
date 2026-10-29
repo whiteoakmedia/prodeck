@@ -258,6 +258,8 @@ export interface Settings {
   pp_host: string;
   pp_port: number;
   pp_auto_connect: boolean;
+  /** ProDeck reads ProPresenter and never changes it (enforced in propresenter.rs). */
+  pp_view_only: boolean;
   audio_input: string | null;
   whisper_bin: string | null;
   whisper_model: string | null;
@@ -1459,6 +1461,8 @@ export interface AtemInput {
   short: string;
   /** A camera or other external input (not black, bars or a media player). */
   camera: boolean;
+  /** Bit n set = it can go to M/E n (0-based). */
+  meMask?: number;
 }
 /** Blackmagic ATEM state (atem.rs). Program and Preview are source ids. */
 export interface AtemSnapshot {
@@ -1471,12 +1475,19 @@ export interface AtemSnapshot {
   program: number | null;
   preview: number | null;
   inTransition: boolean;
+  /** Every M/E's tally, by 0-based index. Program/Preview above are the default M/E's. */
+  buses?: { program: number | null; preview: number | null; inTransition: boolean }[];
   inputs: AtemInput[];
   error: string | null;
+  /** Link health: this session's start and the switcher's last packet (epoch ms), drops since ProDeck started. */
+  linkSince?: number | null;
+  lastHeard?: number | null;
+  drops?: number;
 }
 export const atemState = () => invoke<AtemSnapshot>("atem_state");
 export const atemReconnect = () => invoke<void>("atem_reconnect");
 /** Admin, or a member with the control grant: these change what the room and the stream see. */
-export const atemCut = () => invoke<void>("atem_cut");
-export const atemAuto = () => invoke<void>("atem_auto");
-export const atemSetPreview = (source: number) => invoke<void>("atem_set_preview", { source });
+/** `me` 0-based; absent = the M/E chosen in Settings. */
+export const atemCut = (me?: number) => invoke<void>("atem_cut", { me: me ?? null });
+export const atemAuto = (me?: number) => invoke<void>("atem_auto", { me: me ?? null });
+export const atemSetPreview = (source: number, me?: number) => invoke<void>("atem_set_preview", { source, me: me ?? null });

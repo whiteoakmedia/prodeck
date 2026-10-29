@@ -92,6 +92,7 @@ import {
   obsState,
   type ObsSnapshot,
   atemState,
+  atemReconnect,
   type AtemSnapshot,
   ndiDiscover,
   type NdiSource,
@@ -122,6 +123,13 @@ function Sec({ id, children }: { id: string; children: ReactNode }) {
       {children}
     </div>
   );
+}
+
+/** "3 min", "2 h 5 min": how long the ATEM link has been up. */
+function linkAge(ms: number): string {
+  const m = Math.max(0, Math.floor(ms / 60_000));
+  if (m < 60) return `${m} min`;
+  return `${Math.floor(m / 60)} h ${m % 60} min`;
 }
 
 export function SettingsPage() {
@@ -677,7 +685,18 @@ export function SettingsPage() {
                 onChange={(e) => set("pp_auto_connect", e.target.checked)} />
               <span>Auto-connect on launch</span>
             </label>
+            <label className="field check">
+              <input type="checkbox" checked={form.pp_view_only}
+                onChange={(e) => set("pp_view_only", e.target.checked)} />
+              <span>View only: show what ProPresenter is doing, never change it</span>
+            </label>
           </div>
+          {form.pp_view_only && (
+            <p className="muted small">
+              ProDeck won't trigger slides, clear layers, send stage messages, run timers or edit playlists, from this
+              computer or any phone. Auto-Follow and Stream Deck slide buttons stop too. Everything still shows live.
+            </p>
+          )}
         </section>
       </Sec>
 
@@ -942,7 +961,7 @@ export function SettingsPage() {
             </label>
             {(atem?.mes ?? 1) > 1 && (
               <label className="field">
-                <span>Which M/E <span className="muted">(this switcher has {atem?.mes})</span></span>
+                <span>Default M/E <span className="muted">(this switcher has {atem?.mes}; each tile can pick its own)</span></span>
                 <select className="input" value={form.atem_me ?? 0}
                   onChange={(e) => set("atem_me", Number(e.target.value))}>
                   {Array.from({ length: atem?.mes ?? 1 }, (_, i) => (
@@ -955,8 +974,19 @@ export function SettingsPage() {
           {atem?.error && <p className="error small">{atem.error}</p>}
           {atem?.connected && (
             <p className="hint">
-              Connected to {atem.product || "the switcher"}. {atem.inputs.length} sources on M/E {atem.me + 1}.
+              Connected to {atem.product || "the switcher"}
+              {atem.mes > 1 ? `, ${atem.mes} M/Es` : ""}.{" "}
+              {atem.linkSince ? `Up for ${linkAge(Date.now() - atem.linkSince)}. ` : ""}
+              {atem.drops ? `It has dropped ${atem.drops} time${atem.drops === 1 ? "" : "s"} since ProDeck started; each time it reconnected by itself.` : "No drops since ProDeck started."}
             </p>
+          )}
+          {atem && !atem.connected && form.atem_enabled && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <button type="button" className="btn small" onClick={() => atemReconnect().catch(() => {})}>
+                Reconnect now
+              </button>
+              <span className="muted small">ProDeck keeps trying by itself, waiting a little longer each time the switcher doesn't answer.</span>
+            </div>
           )}
         </section>
       </Sec>

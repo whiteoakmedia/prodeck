@@ -12,7 +12,8 @@ import {
 } from "react";
 import { useProDeck } from "../store";
 import { usePerms } from "../lib/perms";
-import { atemButtons, atemName } from "../lib/atem";
+import { atemBus, atemButtons, atemName, moveSource, tileMe, toggleHidden, withLabel, type AtemActionsAt, type AtemTileConfig } from "../lib/atem";
+import { useProControl } from "../lib/proControl";
 import { SlideThumb } from "../components/SlideThumb";
 import {
   activePresentation,
@@ -262,14 +263,20 @@ function ObsWidget() {
  * panel. Tap a source to put it on Preview, then Cut or Auto takes it live.
  * There's deliberately no tap-to-Program: a stray tap would cut the room and
  * the stream to the wrong camera. Switching needs the control grant on a phone.
+ *
+ * Each tile picks its M/E and arranges its own buttons in edit mode: drag (or
+ * the arrows, on a touch screen) to reorder, hide a source, rename it, and
+ * choose where Cut and Auto sit. If the link drops, the last known tally stays
+ * on screen, greyed, while ProDeck reconnects.
  */
-function AtemWidget() {
+function AtemWidget({ widget, editing, update }: WidgetProps) {
   const { settings } = useProDeck();
   const { can } = usePerms();
   const canSwitch = can("control");
   const [snap, setSnap] = useState<AtemSnapshot | null>(null);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const cfg = (widget.config ?? {}) as AtemTileConfig;
 
   useEffect(() => {
     let stop = false;
@@ -283,17 +290,27 @@ function AtemWidget() {
     };
   }, []);
 
+  const shown = atemButtons(snap, cfg, { includeHidden: editing });
+  const dnd = useDragReorder((_g, from, to) => update({ order: moveSource(shown.map((b) => b.id), from, to) }), "x");
+
   if (settings && !settings.atem_enabled) return <NeedsAtem />;
   if (!snap) return <div className="widget-empty">Connecting to the switcher…</div>;
-  if (!snap.connected) {
+  // Never connected this run (or a new address): nothing to show yet.
+  const known = snap.inputs.length > 0;
+  if (!snap.connected && !known) {
     return <NeedsAtem offline hint={snap.error ?? "Can't reach the switcher. Reconnecting…"} />;
   }
-  if (!snap.ready) return <div className="widget-empty">Reading the switcher…</div>;
+  if (snap.connected && !snap.ready && !known) return <div className="widget-empty">Reading the switcher…</div>;
+  // The link dropped (or is re-reading): keep the last known tally, greyed.
+  const stale = !snap.connected || !snap.ready;
+  const me = tileMe(snap, cfg);
+  const bus = atemBus(snap, me);
+  const live = canSwitch && !stale && !editing;
 
   // Every action re-reads the state too, so the tile is right even if an
   // event is missed (and in demo mode, which has no events).
   const act = (f: () => Promise<void>) => {
-    if (!canSwitch || busy) return;
+    if (!live || busy) return;
     setErr("");
     setBusy(true);
     f()
@@ -301,46 +318,138 @@ function AtemWidget() {
       .catch((e) => setErr(String(e)))
       .finally(() => setBusy(false));
   };
-  const buttons = atemButtons(snap);
+  const at: AtemActionsAt = cfg.actions ?? "below";
+  const cols = typeof cfg.cols === "number" && cfg.cols > 0 ? cfg.cols : 0;
+  const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
+  const rename = async (id: number, current: string) => {
+    const t = await askText("Label for this button (leave empty for the switcher's own name)", cfg.labels?.[String(id)] ?? current);
+    if (t !== null) update({ labels: withLabel(cfg, id, t) });
+  };
+
+  const actions = canSwitch && !editing && (
+    <div className={`atem-w-actions ${at === "side" ? "side" : ""}`}>
+      <button type="button" className="btn small" disabled={!live || busy || bus.inTransition} onClick={() => act(() => atemCut(me))}>
+        Cut
+      </button>
+      <button type="button" className="btn small primary" disabled={!live || busy || bus.inTransition} onClick={() => act(() => atemAuto(me))}>
+        Auto
+      </button>
+    </div>
+  );
 
   return (
-    <div className="atem-w">
+    <div className={`atem-w${stale ? " stale" : ""}${editing ? " editing" : ""}`}>
+      {editing && (
+        <div className="atem-w-edit" onMouseDown={stop}>
+          {snap.mes > 1 && (
+            <label className="atem-w-opt">
+              <span>M/E</span>
+              <select className="input small" value={me} onChange={(e) => update({ me: Number(e.target.value) })}>
+                {Array.from({ length: snap.mes }, (_, i) => (
+                  <option key={i} value={i}>
+                    M/E {i + 1}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <label className="atem-w-opt">
+            <span>Cut and Auto</span>
+            <select className="input small" value={at} onChange={(e) => update({ actions: e.target.value as AtemActionsAt })}>
+              <option value="below">Below</option>
+              <option value="above">Above</option>
+              <option value="side">On the side</option>
+            </select>
+          </label>
+          <label className="atem-w-opt">
+            <span>Per row</span>
+            <select className="input small" value={cols} onChange={(e) => update({ cols: Number(e.target.value) })}>
+              <option value={0}>As many as fit</option>
+              {[2, 3, 4, 5, 6, 8].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="button" className="btn small ghost" onClick={() => update({ order: [], hidden: [], labels: {}, actions: "below", cols: 0 })}>
+            Reset
+          </button>
+          <span className="muted small">Drag to reorder. Tap the eye to hide, the pencil to rename.</span>
+        </div>
+      )}
       <div className="atem-w-top">
         <span className="atem-tag pgm">PROGRAM</span>
-        <strong className="atem-now">{atemName(snap, snap.program)}</strong>
-        {snap.inTransition && <span className="atem-tag moving">TRANSITION</span>}
+        <strong className="atem-now">{atemName(snap, bus.program, cfg)}</strong>
+        {snap.mes > 1 && <span className="atem-tag moving">M/E {me + 1}</span>}
+        {bus.inTransition && <span className="atem-tag moving">TRANSITION</span>}
       </div>
-      <div className="atem-grid" role="group" aria-label="Sources">
-        {buttons.map((b) => (
-          <button
-            key={b.id}
-            type="button"
-            className={`atem-src${b.program ? " pgm" : ""}${b.preview ? " pvw" : ""}`}
-            title={`${b.label}${b.program ? " (on Program)" : b.preview ? " (on Preview)" : canSwitch ? ". Tap to put it on Preview" : ""}`}
-            aria-pressed={b.preview}
-            disabled={!canSwitch || busy}
-            onClick={() => act(() => atemSetPreview(b.id))}
-          >
-            <span className="atem-src-short">{b.short}</span>
-            <span className="atem-src-name">{b.label}</span>
-          </button>
-        ))}
+      {stale && (
+        <p className="hint atem-w-stale">
+          {snap.connected ? "Re-reading the switcher." : "Reconnecting to the switcher."} Showing what it last said.
+        </p>
+      )}
+      {at === "above" && actions}
+      <div className={`atem-w-body ${at === "side" ? "side" : ""}`}>
+        <div
+          className="atem-grid"
+          role="group"
+          aria-label="Sources"
+          style={cols ? { gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` } : undefined}
+        >
+          {shown.map((b, i) =>
+            editing ? (
+              <div
+                key={b.id}
+                className={`atem-src edit${b.hidden ? " off" : ""} ${dnd.dropClass("src", i)}`}
+                {...dnd.rowProps("src", i)}
+                onMouseDown={stop}
+              >
+                <span className="atem-src-short">{b.short}</span>
+                <span className="atem-src-name">{b.label}</span>
+                <span className="atem-src-tools">
+                  <button type="button" className="atem-tool" title="Move earlier" aria-label={`Move ${b.label} earlier`} disabled={i === 0}
+                    onClick={() => update({ order: moveSource(shown.map((x) => x.id), i, i - 1) })}>
+                    <Icon name="prev" size={12} />
+                  </button>
+                  <button type="button" className="atem-tool" title="Move later" aria-label={`Move ${b.label} later`} disabled={i === shown.length - 1}
+                    onClick={() => update({ order: moveSource(shown.map((x) => x.id), i, i + 1) })}>
+                    <Icon name="next" size={12} />
+                  </button>
+                  <button type="button" className="atem-tool" title={b.hidden ? "Show this source" : "Hide this source"} aria-label={b.hidden ? `Show ${b.label}` : `Hide ${b.label}`}
+                    onClick={() => update({ hidden: toggleHidden(cfg, b.id) })}>
+                    <Icon name={b.hidden ? "eyeOff" : "eye"} size={12} />
+                  </button>
+                  <button type="button" className="atem-tool" title="Rename" aria-label={`Rename ${b.label}`} onClick={() => rename(b.id, b.label)}>
+                    <Icon name="edit" size={12} />
+                  </button>
+                </span>
+              </div>
+            ) : (
+              <button
+                key={b.id}
+                type="button"
+                className={`atem-src${b.program ? " pgm" : ""}${b.preview ? " pvw" : ""}`}
+                title={`${b.label}${b.program ? " (on Program)" : b.preview ? " (on Preview)" : live ? ". Tap to put it on Preview" : ""}`}
+                aria-pressed={b.preview}
+                disabled={!live || busy}
+                onClick={() => act(() => atemSetPreview(b.id, me))}
+              >
+                <span className="atem-src-short">{b.short}</span>
+                <span className="atem-src-name">{b.label}</span>
+              </button>
+            ),
+          )}
+          {shown.length === 0 && <p className="muted small">Every source is hidden. Edit the tile to show some.</p>}
+        </div>
+        {at === "side" && actions}
       </div>
       <div className="atem-w-next">
         <span className="atem-tag pvw">PREVIEW</span>
-        <strong className="atem-next-name">{atemName(snap, snap.preview)}</strong>
+        <strong className="atem-next-name">{atemName(snap, bus.preview, cfg)}</strong>
       </div>
-      {canSwitch && (
-        <div className="atem-w-actions">
-          <button type="button" className="btn small" disabled={busy || snap.inTransition} onClick={() => act(atemCut)}>
-            Cut
-          </button>
-          <button type="button" className="btn small primary" disabled={busy || snap.inTransition} onClick={() => act(atemAuto)}>
-            Auto
-          </button>
-        </div>
-      )}
-      {!canSwitch && <p className="muted small">View only. Switching needs the control permission.</p>}
+      {at === "below" && actions}
+      {!canSwitch && !editing && <p className="muted small">View only. Switching needs the control permission.</p>}
       {err && <p className="hint">{err}</p>}
     </div>
   );
@@ -810,7 +919,7 @@ function SlideGridWidget({ widget, editing, update }: WidgetProps) {
 
 function SlideGridPlaylist({ widget, update }: Pick<WidgetProps, "widget" | "update">) {
   const { connected, status } = useProDeck();
-  const { can } = usePerms();
+  const { canControl } = useProControl();
   const pres = activePresentation(status);
   const live = useLiveItem(connected, pres.uuid ?? "", currentTotalCues(status));
   const livePlaylist = live?.playlistId ?? null;
@@ -830,7 +939,7 @@ function SlideGridPlaylist({ widget, update }: Pick<WidgetProps, "widget" | "upd
   return (
     <PlaylistControl
       expandAll
-      readOnly={!can("control")}
+      readOnly={!canControl}
       selectedId={sel}
       onSelect={(id) => {
         setSel(id);
@@ -848,8 +957,7 @@ function SlideGridSong() {
   const pres = activePresentation(status);
   const liveIdx = currentSlideIndex(status);
   const uuid = pres.uuid ?? "";
-  const { can } = usePerms();
-  const canControl = can("control");
+  const { canControl } = useProControl();
   // From slide_index, NOT from the presentation document — the two disagree
   // and only this one counts in the same space as liveIdx. Held in a ref so a
   // cue count arriving after the fetch doesn't re-trigger it.
@@ -1132,6 +1240,7 @@ function SlidePreviewWidget({ widget, update }: WidgetProps) {
 
 function TimerWidget({ widget, editing, update }: WidgetProps) {
   const { connected } = useProDeck();
+  const { canControl } = useProControl();
   const timers = useLiveTimers();
   const selected = widget.config.timerId
     ? timers.find((t) => t.id === widget.config.timerId)
@@ -1169,7 +1278,7 @@ function TimerWidget({ widget, editing, update }: WidgetProps) {
       <div className="w-timer">
         <span className="w-timer-name muted small">{selected.name}</span>
         <span className={`w-timer-time ${selected.state}`}>{selected.time}</span>
-        <div className="w-timer-btns" onMouseDown={(e) => e.stopPropagation()}>
+        {canControl && <div className="w-timer-btns" onMouseDown={(e) => e.stopPropagation()}>
           <button className="btn small" onClick={() => ppTimerOp(selected.id, "start")}>
             Start
           </button>
@@ -1179,7 +1288,7 @@ function TimerWidget({ widget, editing, update }: WidgetProps) {
           <button className="btn small ghost" onClick={() => ppTimerOp(selected.id, "reset")}>
             Reset
           </button>
-        </div>
+        </div>}
       </div>
     );
   }
@@ -3250,6 +3359,7 @@ function ServiceClockWidget({ widget, editing, update }: WidgetProps) {
 // clear/layer/announcements.
 function LobbyTvWidget(_: WidgetProps) {
   const { connected } = useProDeck();
+  const { canControl } = useProControl();
   const [active, setActive] = useState<string | null>(null);
   const [buttons, setButtons] = useState<{ pl: string; plName: string; index: number; name: string }[]>([]);
   const [busy, setBusy] = useState("");
@@ -3358,7 +3468,7 @@ function LobbyTvWidget(_: WidgetProps) {
           <button
             key={`${b.pl}:${b.index}`}
             className={`btn small ${active === b.name ? "primary" : ""}`}
-            disabled={busy === b.name}
+            disabled={!canControl || busy === b.name}
             title={`From playlist "${b.plName}"`}
             onClick={() => play(b)}
           >
@@ -3374,7 +3484,7 @@ function LobbyTvWidget(_: WidgetProps) {
       </div>
       <button
         className="btn small ghost"
-        disabled={!active}
+        disabled={!canControl || !active}
         title={auto ? "Also turns off auto-restore — otherwise the watchdog would relight the TVs within a minute" : undefined}
         onClick={async () => {
           try {
@@ -3432,7 +3542,8 @@ function LobbyTvWidget(_: WidgetProps) {
 function StageMessageWidget({ widget, update, editing }: WidgetProps) {
   const { connected, status } = useProDeck();
   const { can } = usePerms();
-  const locked = !can("stage");
+  const { viewOnly } = useProControl();
+  const locked = !can("stage") || viewOnly;
   const live = stageMessageText(status);
   const presets: string[] = Array.isArray(widget.config.presets)
     ? widget.config.presets
@@ -3461,7 +3572,7 @@ function StageMessageWidget({ widget, update, editing }: WidgetProps) {
   useEffect(() => {
     if (left !== 0) return;
     setLeft(null);
-    ppClearStageMessage();
+    if (!locked) ppClearStageMessage();
   }, [left]);
 
   if (!connected) return <Disconnected />;

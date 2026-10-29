@@ -283,6 +283,19 @@ fn get_auth(app: &AppHandle, key: &str, token: &str, need_admin: bool) -> GetAut
     }
 }
 
+/// The ATEM M/E in a command's args: "me", 0-based. Absent = the default.
+fn atem_me_arg(args: &Value) -> Option<u8> {
+    args.get("me").and_then(|v| v.as_u64()).and_then(|v| u8::try_from(v).ok())
+}
+
+/// Deck links count M/Es from 1, like the switcher's own panel.
+fn atem_deck_args(qp: &dyn Fn(&str) -> Option<String>, mut args: Value) -> Value {
+    if let Some(me) = qp("me").and_then(|v| v.trim().parse::<u64>().ok()).filter(|&m| m >= 1) {
+        args["me"] = json!(me - 1);
+    }
+    args
+}
+
 async fn write_get_refusal(stream: &mut tokio::net::TcpStream, a: &GetAuth, json: bool) -> std::io::Result<()> {
     match (a, json) {
         (GetAuth::Wait(w), true) => {
@@ -804,11 +817,13 @@ async fn handle_conn(
             "confidence-clear" => dispatch(&app, "chat_clear_confidence", &json!({}), Tier::Admin, None).await,
             // ATEM switcher: Cut / Auto take Preview live; atem-preview puts
             // source n on Preview (the source numbers the switcher uses).
-            "atem-cut" => dispatch(&app, "atem_cut", &json!({}), Tier::Admin, None).await,
-            "atem-auto" => dispatch(&app, "atem_auto", &json!({}), Tier::Admin, None).await,
+            // &me=2 picks M/E 2 (as the switcher numbers them); without it,
+            // the M/E chosen in Settings.
+            "atem-cut" => dispatch(&app, "atem_cut", &atem_deck_args(&qp, json!({})), Tier::Admin, None).await,
+            "atem-auto" => dispatch(&app, "atem_auto", &atem_deck_args(&qp, json!({})), Tier::Admin, None).await,
             "atem-preview" => {
                 if n == 0 { Err("add &n=<source number>".into()) }
-                else { dispatch(&app, "atem_set_preview", &json!({"source": n}), Tier::Admin, None).await }
+                else { dispatch(&app, "atem_set_preview", &atem_deck_args(&qp, json!({"source": n})), Tier::Admin, None).await }
             }
             "avantis-scene" => {
                 if n == 0 { Err("add &n=<scene number>".into()) }
@@ -1448,6 +1463,7 @@ async fn pco_auth(app: &AppHandle) -> Result<pco::Auth, String> {
 
 // ProPresenter trigger/clear endpoints are GET (a PUT 404s).
 async fn pp_action_raw(app: &AppHandle, full_path: &str) -> Result<Value, String> {
+    crate::propresenter::guard("GET", full_path)?;
     let (client, base) = current_config(&pp_handle(app)).await?;
     client
         .get(format!("{}{}", base, full_path))
@@ -1473,15 +1489,10 @@ fn member_pp_read_ok(path: &str) -> bool {
         "video_inputs", "libraries", "library/", "transport/", "groups", "masks", "themes",
         "theme/", "capture/status", "capture/settings",
     ];
-    const VERBS: &[&str] = &[
-        "trigger", "focus", "start", "stop", "reset", "pause", "play", "next", "previous",
-        "toggle", "show", "hide", "activate", "deactivate", "go_to_end", "skip_backward",
-        "skip_forward", "auto_advance", "set", "timeline", "find_my_mouse",
-    ];
     if !READ_PREFIXES.iter().any(|pre| p == pre.trim_end_matches('/') || p.starts_with(pre)) {
         return false;
     }
-    !p.split('/').any(|seg| VERBS.contains(&seg))
+    !crate::propresenter::is_action_path(p)
 }
 
 /// May a member-tier token run this command?
@@ -1866,8 +1877,8 @@ async fn dispatch(
         }
         // Switching reaches here only for admin, or a member with "control":
         // it changes what the room and the stream see.
-        "atem_cut" => crate::atem::atem_cut(app.state::<crate::atem::AtemState>()).map(|_| Value::Null),
-        "atem_auto" => crate::atem::atem_auto(app.state::<crate::atem::AtemState>()).map(|_| Value::Null),
+        "atem_cut" => crate::atem::atem_cut(atem_me_arg(args), app.state::<crate::atem::AtemState>()).map(|_| Value::Null),
+        "atem_auto" => crate::atem::atem_auto(atem_me_arg(args), app.state::<crate::atem::AtemState>()).map(|_| Value::Null),
         "atem_set_preview" | "atem_set_program" => {
             let source = args
                 .get("source")
@@ -1876,9 +1887,9 @@ async fn dispatch(
                 .ok_or("source required")?;
             let state = app.state::<crate::atem::AtemState>();
             if cmd == "atem_set_preview" {
-                crate::atem::atem_set_preview(source, state)
+                crate::atem::atem_set_preview(source, atem_me_arg(args), state)
             } else {
-                crate::atem::atem_set_program(source, state)
+                crate::atem::atem_set_program(source, atem_me_arg(args), state)
             }
             .map(|_| Value::Null)
         }
@@ -2130,6 +2141,7 @@ async fn dispatch(
             if tier == Tier::Member && !member_pp_read_ok(&path) && !perms.iter().any(|p| p == "control") {
                 return Err("that ProPresenter path needs admin access".into());
             }
+            crate::propresenter::guard("GET", &path)?;
             let (client, base) = current_config(&pp_handle(app)).await?;
             let url = format!("{}/v1/{}", base, path.trim_start_matches('/'));
             let resp = client.get(&url).send().await.map_err(|e| e.to_string())?;
@@ -2140,6 +2152,7 @@ async fn dispatch(
         }
         "pp_put" => {
             let path = s("path").ok_or("missing path")?;
+            crate::propresenter::guard("PUT", &path)?;
             let (client, base) = current_config(&pp_handle(app)).await?;
             let url = format!("{}/v1/{}", base, path.trim_start_matches('/'));
             let mut req = client.put(&url);
@@ -2156,6 +2169,7 @@ async fn dispatch(
         }
         "pp_delete" => {
             let path = s("path").ok_or("missing path")?;
+            crate::propresenter::guard("DELETE", &path)?;
             let (client, base) = current_config(&pp_handle(app)).await?;
             let url = format!("{}/v1/{}", base, path.trim_start_matches('/'));
             client.delete(&url).send().await.map_err(|e| e.to_string())?;
@@ -2186,6 +2200,7 @@ async fn dispatch(
         }
         "pp_set_stage_message" => {
             let msg = s("message").unwrap_or_default();
+            crate::propresenter::guard("PUT", "stage/message")?;
             let (client, base) = current_config(&pp_handle(app)).await?;
             client
                 .put(format!("{}/v1/stage/message", base))
@@ -2196,6 +2211,7 @@ async fn dispatch(
             Ok(Value::Null)
         }
         "pp_clear_stage_message" => {
+            crate::propresenter::guard("DELETE", "stage/message")?;
             let (client, base) = current_config(&pp_handle(app)).await?;
             client
                 .delete(format!("{}/v1/stage/message", base))

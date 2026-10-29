@@ -105,7 +105,7 @@ const IDLE_VIEW: FollowView = {
 const Ctx = createContext<LyricFollowCtx | null>(null);
 
 export function LyricFollowProvider({ children }: { children: ReactNode }) {
-  const { connected, status: ppStatus } = useProDeck();
+  const { connected, status: ppStatus, settings } = useProDeck();
   const { items, effectiveLink } = usePco();
   const activeUuidRef = useRef<string | null>(null);
   activeUuidRef.current = ((ppStatus.activePresentation as any)?.presentation?.id?.uuid as string | undefined) ?? null;
@@ -121,7 +121,9 @@ export function LyricFollowProvider({ children }: { children: ReactNode }) {
   const [modelNote, setModelNote] = useState<string | null>(null);
   const [practice, setPracticeState] = useState(() => localStorage.getItem("prodeck.followPractice") === "1");
   const practiceRef = useRef(practice);
-  practiceRef.current = practice;
+  // View-only ProPresenter (Settings): Follow can only ever practise, saying
+  // where it would have moved without touching Pro.
+  practiceRef.current = practice || !!settings?.pp_view_only;
   const [score, setScore] = useState<PracticeScore>(EMPTY_SCORE);
   // Practice bookkeeping: Follow's would-be moves and the person's moves it
   // hasn't matched yet, keyed "song:slide".

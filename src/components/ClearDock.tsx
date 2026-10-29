@@ -18,7 +18,7 @@ const CLEAR_LAYERS = [
 // every page while ProPresenter is connected, so the operator can always blank
 // the screen (or a single layer) no matter where they are in the app.
 export function ClearDock() {
-  const { connected } = useProDeck();
+  const { connected, settings } = useProDeck();
   const [open, setOpen] = useState(
     () => localStorage.getItem("prodeck.clearDock") !== "0",
   );
@@ -36,7 +36,8 @@ export function ClearDock() {
     };
   }, [open, connected]);
 
-  if (!connected) return null;
+  // View-only ProPresenter: nothing here would be allowed to run.
+  if (!connected || settings?.pp_view_only) return null;
 
   // The flash used to be set unconditionally on the line after a fire-and-
   // forget call, so pressing Clear All against a stale ProPresenter link

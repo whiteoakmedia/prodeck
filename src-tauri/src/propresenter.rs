@@ -189,6 +189,48 @@ pub async fn pp_is_connected(state: tauri::State<'_, ProPresenterState>) -> Resu
 }
 
 // ---------------------------------------------------------------------------
+// View-only mode (Settings → ProPresenter)
+// ---------------------------------------------------------------------------
+
+static VIEW_ONLY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+pub fn set_view_only(on: bool) {
+    VIEW_ONLY.store(on, std::sync::atomic::Ordering::Release);
+}
+
+pub const VIEW_ONLY_MSG: &str = "ProPresenter is view only on this ProDeck. Turn that off in Settings, ProPresenter.";
+
+/// Path segments that make a ProPresenter GET do something. Pro's triggers,
+/// clears and timer controls are all GETs, so the method alone can't tell a
+/// read from an action. Shared with web.rs's member read check.
+pub(crate) const ACTION_SEGMENTS: &[&str] = &[
+    "trigger", "focus", "start", "stop", "reset", "pause", "play", "next", "previous",
+    "toggle", "show", "hide", "activate", "deactivate", "go_to_end", "go_to_time",
+    "skip_backward", "skip_forward", "auto_advance", "set", "timeline", "find_my_mouse",
+];
+
+/// Does this GET change something in ProPresenter? `path` with or without
+/// a leading "/v1/".
+pub(crate) fn is_action_path(path: &str) -> bool {
+    let p = path.trim_start_matches('/').to_ascii_lowercase();
+    let p = p.strip_prefix("v1/").unwrap_or(&p);
+    let p = p.split('?').next().unwrap_or("");
+    p.starts_with("clear/layer") || p.split('/').any(|seg| ACTION_SEGMENTS.contains(&seg))
+}
+
+/// Every request that could change ProPresenter asks this first. In view-only
+/// mode only plain reads pass.
+pub(crate) fn guard(method: &str, path: &str) -> Result<(), String> {
+    if !VIEW_ONLY.load(std::sync::atomic::Ordering::Acquire) {
+        return Ok(());
+    }
+    if method.eq_ignore_ascii_case("GET") && !is_action_path(path) {
+        return Ok(());
+    }
+    Err(VIEW_ONLY_MSG.into())
+}
+
+// ---------------------------------------------------------------------------
 // Generic REST passthrough (GET / PUT / DELETE)
 // ---------------------------------------------------------------------------
 
@@ -197,6 +239,7 @@ pub async fn pp_get(
     path: String,
     state: tauri::State<'_, ProPresenterState>,
 ) -> Result<serde_json::Value, String> {
+    guard("GET", &path)?;
     let (client, base) = current_config(&state).await?;
     let url = format!("{}/v1/{}", base, path.trim_start_matches('/'));
     let resp = client.get(&url).send().await.map_err(|e| e.to_string())?;
@@ -214,6 +257,7 @@ pub async fn pp_put(
     body: Option<serde_json::Value>,
     state: tauri::State<'_, ProPresenterState>,
 ) -> Result<(), String> {
+    guard("PUT", &path)?;
     let (client, base) = current_config(&state).await?;
     let url = format!("{}/v1/{}", base, path.trim_start_matches('/'));
     let mut req = client.put(&url);
@@ -229,6 +273,7 @@ pub async fn pp_delete(
     path: String,
     state: tauri::State<'_, ProPresenterState>,
 ) -> Result<(), String> {
+    guard("DELETE", &path)?;
     let (client, base) = current_config(&state).await?;
     let url = format!("{}/v1/{}", base, path.trim_start_matches('/'));
     client.delete(&url).send().await.map_err(|e| e.to_string())?;
@@ -256,6 +301,7 @@ macro_rules! get_cmd {
     ($name:ident, $path:expr) => {
         #[tauri::command]
         pub async fn $name(state: tauri::State<'_, ProPresenterState>) -> Result<(), String> {
+            guard("GET", $path)?;
             let (client, base) = current_config(&state).await?;
             let resp = client
                 .get(format!("{}{}", base, $path))
@@ -278,6 +324,7 @@ pub async fn pp_action(
     path: String,
     state: tauri::State<'_, ProPresenterState>,
 ) -> Result<(), String> {
+    guard("GET", &path)?;
     let (client, base) = current_config(&state).await?;
     let url = format!("{}/v1/{}", base, path.trim_start_matches('/'));
     let resp = client.get(&url).send().await.map_err(|e| e.to_string())?;
@@ -292,6 +339,7 @@ pub async fn pp_clear_layer(
     layer: String,
     state: tauri::State<'_, ProPresenterState>,
 ) -> Result<(), String> {
+    guard("GET", "clear/layer")?;
     let (client, base) = current_config(&state).await?;
     let resp = client
         .get(format!("{}/v1/clear/layer/{}", base, layer))
@@ -306,6 +354,7 @@ pub async fn pp_trigger_macro(
     id: String,
     state: tauri::State<'_, ProPresenterState>,
 ) -> Result<(), String> {
+    guard("GET", "macro/trigger")?;
     let (client, base) = current_config(&state).await?;
     let resp = client
         .get(format!("{}/v1/macro/{}/trigger", base, urlencoding::encode(&id)))
@@ -320,6 +369,7 @@ pub async fn pp_trigger_look(
     id: String,
     state: tauri::State<'_, ProPresenterState>,
 ) -> Result<(), String> {
+    guard("GET", "look/trigger")?;
     let (client, base) = current_config(&state).await?;
     let resp = client
         .get(format!("{}/v1/look/{}/trigger", base, urlencoding::encode(&id)))
@@ -335,6 +385,7 @@ pub async fn pp_timer_op(
     op: String, // "start" | "stop" | "reset"
     state: tauri::State<'_, ProPresenterState>,
 ) -> Result<(), String> {
+    guard("GET", "timer/start")?;
     let (client, base) = current_config(&state).await?;
     let resp = client
         .get(format!(
@@ -354,6 +405,7 @@ pub async fn pp_set_stage_message(
     message: String,
     state: tauri::State<'_, ProPresenterState>,
 ) -> Result<(), String> {
+    guard("PUT", "stage/message")?;
     let (client, base) = current_config(&state).await?;
     let resp = client
         .put(format!("{}/v1/stage/message", base))
@@ -368,6 +420,7 @@ pub async fn pp_set_stage_message(
 pub async fn pp_clear_stage_message(
     state: tauri::State<'_, ProPresenterState>,
 ) -> Result<(), String> {
+    guard("DELETE", "stage/message")?;
     let (client, base) = current_config(&state).await?;
     let resp = client
         .delete(format!("{}/v1/stage/message", base))
@@ -747,7 +800,7 @@ pub fn spawn_lobby_auto(app: tauri::AppHandle) {
             let Ok(resp) = active else { continue };
             let Ok(v) = resp.json::<serde_json::Value>().await else { continue };
             let is_dark = v.get("announcement").map(|a| a.is_null()).unwrap_or(false);
-            if !is_dark {
+            if !is_dark || guard("GET", "playlist/trigger").is_err() {
                 continue;
             }
             let _ = client
@@ -881,5 +934,27 @@ mod health_tests {
         for i in 0..50 {
             assert_eq!(g.observe(i % 2 == 0), Health::Nothing, "flapped at {i}");
         }
+    }
+}
+
+#[cfg(test)]
+mod view_only_tests {
+    use super::*;
+
+    #[test]
+    fn view_only_lets_reads_through_and_stops_everything_else() {
+        set_view_only(true);
+        for read in ["presentation/active", "/v1/status/slide", "playlists", "timers", "look/current", "stage/message", "announcement/slide_index"] {
+            assert!(guard("GET", read).is_ok(), "{read}");
+        }
+        for act in ["trigger/next", "/v1/presentation/active/next/trigger", "clear/layer/slide", "macro/abc/trigger", "timer/x/start", "transport/presentation/go_to_time/3", "playlist/a/2/trigger"] {
+            assert_eq!(guard("GET", act).unwrap_err(), VIEW_ONLY_MSG, "{act}");
+        }
+        assert!(guard("PUT", "stage/message").is_err());
+        assert!(guard("DELETE", "stage/message").is_err());
+        assert!(guard("PUT", "playlist/abc").is_err());
+        set_view_only(false);
+        assert!(guard("GET", "trigger/next").is_ok());
+        assert!(guard("PUT", "playlist/abc").is_ok());
     }
 }

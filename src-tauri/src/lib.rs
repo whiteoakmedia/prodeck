@@ -139,6 +139,7 @@ fn release_single_instance(app: tauri::AppHandle) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let loaded_settings = settings::load();
+    propresenter::set_view_only(loaded_settings.pp_view_only);
     // Crash reports first, so a panic anywhere after this is reported. Held
     // for the life of the app; dropping it flushes the queue on a clean exit.
     let _crash_reports = crashreport::init(loaded_settings.crash_reports);

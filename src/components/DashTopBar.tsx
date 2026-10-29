@@ -124,7 +124,7 @@ export function DashTopBar({
   const [timeMenu, setTimeMenu] = useState(false);
   const [now, setNow] = useState(() => Date.now());
 
-  const { connected, status } = useProDeck();
+  const { connected, status, settings } = useProDeck();
 
   // "Current item" means what is on the screens. It used to read only
   // pco.liveItemId, which moves only while somebody is driving Services LIVE —
@@ -347,6 +347,11 @@ export function DashTopBar({
           </span>
         )}
         {liveKey && <span className="pb-key">{liveKey}</span>}
+        {settings?.pp_view_only && (
+          <span className="pb-slide" title="ProPresenter is view only on this ProDeck (Settings, ProPresenter)">
+            VIEW ONLY
+          </span>
+        )}
       </div>
 
       {editing && (

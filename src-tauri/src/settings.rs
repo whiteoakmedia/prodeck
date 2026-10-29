@@ -8,6 +8,11 @@ pub struct Settings {
     pub pp_host: String,
     pub pp_port: u16,
     pub pp_auto_connect: bool,
+    /// View only: this ProDeck reads ProPresenter and never changes it (no
+    /// triggers, clears, stage messages or playlist edits), for a second
+    /// computer or a church that runs slides from Pro itself. Enforced in
+    /// propresenter.rs, so nothing in the app can slip past it.
+    pub pp_view_only: bool,
     pub audio_input: Option<String>,
     pub whisper_bin: Option<String>,
     pub whisper_model: Option<String>,
@@ -345,6 +350,7 @@ impl Default for Settings {
             pp_host: "localhost".into(),
             pp_port: 1025,
             pp_auto_connect: false,
+            pp_view_only: false,
             audio_input: None,
             whisper_bin: detect_whisper_bin(),
             whisper_model: detect_whisper_model(),
@@ -889,6 +895,9 @@ pub fn load() -> Settings {
 }
 
 pub fn save(settings: &Settings) -> Result<(), String> {
+    // Every settings change passes through here, from the booth and from
+    // browsers alike, so this is where the ProPresenter guard learns of it.
+    crate::propresenter::set_view_only(settings.pp_view_only);
     let json = serde_json::to_string_pretty(settings).map_err(|e| e.to_string())?;
     // Backed up, like every other irreplaceable file.
     write_json_atomic_backed_up(config_path(), json)

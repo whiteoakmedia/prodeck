@@ -7547,6 +7547,27 @@ select.input {
 .atem-src.pgm { border-color: var(--bad); background: var(--bad-soft); }
 .atem-src-short { font-weight: 700; font-size: 13px; }
 .atem-src-name { font-size: 11px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+/* Link dropped: the last known tally stays, greyed, while ProDeck reconnects. */
+.atem-w.stale .atem-grid, .atem-w.stale .atem-w-top, .atem-w.stale .atem-w-next { opacity: 0.55; filter: grayscale(0.6); }
+.atem-w-stale { margin: 0; }
+/* Cut and Auto beside the buttons instead of under them. */
+.atem-w-body { display: flex; flex-direction: column; gap: 8px; min-height: 0; flex: 1 1 auto; }
+.atem-w-body.side { flex-direction: row; }
+.atem-w-body.side .atem-grid { flex: 1; }
+.atem-w-actions.side { flex-direction: column; flex-wrap: nowrap; width: 88px; flex-shrink: 0; }
+.atem-w-actions.side > .btn { flex: 1; }
+/* Edit mode: arranging the tile. */
+.atem-w-edit { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.atem-w-opt { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--muted); }
+.atem-src.edit { cursor: grab; position: relative; }
+.atem-src.edit.off { opacity: 0.45; border-style: dashed; }
+.atem-src.edit.drop-before { box-shadow: -3px 0 0 var(--accent); }
+.atem-src.edit.drop-after { box-shadow: 3px 0 0 var(--accent); }
+.atem-src-tools { display: flex; gap: 2px; margin-top: 4px; }
+.atem-tool { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 5px; border: 1px solid var(--border); background: var(--panel); color: var(--muted); cursor: pointer; padding: 0; }
+.atem-tool:hover:not(:disabled) { color: var(--text); border-color: var(--accent); }
+.atem-tool:disabled { opacity: 0.35; cursor: default; }
+.atem-tool:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .obs-w { display: flex; flex-direction: column; gap: 10px; height: 100%; padding: 4px 2px; }
 .obs-w-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .obs-pill {
@@ -10350,3 +10371,6 @@ select.input {
   .set-rail-item.on { box-shadow: inset 0 -3px 0 var(--accent); }
 }
 .slide-last { color: var(--warn); font-weight: 600; }
+
+/* A fieldset only for disabling a group of controls at once (view-only Pro). */
+.fs-plain { border: 0; padding: 0; margin: 0; min-width: 0; display: contents; }

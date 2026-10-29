@@ -306,9 +306,11 @@ function demoThumb(index: number, text = THUMB_LINES[index % THUMB_LINES.length]
 
 // A pretend ATEM: Preview, Cut and Auto work, so the tile can be tried with no switcher.
 const DEMO_ATEM = {
-  program: 1,
-  preview: 2,
-  inTransition: false,
+  // Two M/Es so the tile's M/E picker can be tried.
+  buses: [
+    { program: 1, preview: 2, inTransition: false },
+    { program: 4, preview: 3, inTransition: false },
+  ],
   inputs: [
     { id: 1, name: "Camera 1 Wide", short: "CAM1", camera: true },
     { id: 2, name: "Camera 2 Pulpit", short: "CAM2", camera: true },
@@ -319,10 +321,12 @@ const DEMO_ATEM = {
   ],
 };
 function atemSnapshot() {
+  const b = DEMO_ATEM.buses[0];
   return {
-    connected: true, ready: true, product: "ATEM Television Studio HD8", me: 0, mes: 1,
-    program: DEMO_ATEM.program, preview: DEMO_ATEM.preview, inTransition: DEMO_ATEM.inTransition,
-    inputs: DEMO_ATEM.inputs, error: null,
+    connected: true, ready: true, product: "ATEM 2 M/E Production Studio", me: 0, mes: 2,
+    program: b.program, preview: b.preview, inTransition: b.inTransition, buses: DEMO_ATEM.buses,
+    inputs: DEMO_ATEM.inputs.map((i) => ({ ...i, meMask: 3 })), error: null,
+    linkSince: NOW() - 3_600_000, lastHeard: NOW(), drops: 0,
   };
 }
 
@@ -755,13 +759,17 @@ export async function demoInvoke<T>(cmd: string, args?: Record<string, unknown>)
       return out(deskSnapshot());
     case "atem_state":
       return out(atemSnapshot());
-    case "atem_set_preview":
-      DEMO_ATEM.preview = Number(args?.source ?? DEMO_ATEM.preview);
+    case "atem_set_preview": {
+      const b = DEMO_ATEM.buses[Number(args?.me ?? 0)] ?? DEMO_ATEM.buses[0];
+      b.preview = Number(args?.source ?? b.preview);
       return out(null);
+    }
     case "atem_cut":
-    case "atem_auto":
-      [DEMO_ATEM.program, DEMO_ATEM.preview] = [DEMO_ATEM.preview, DEMO_ATEM.program];
+    case "atem_auto": {
+      const b = DEMO_ATEM.buses[Number(args?.me ?? 0)] ?? DEMO_ATEM.buses[0];
+      [b.program, b.preview] = [b.preview, b.program];
       return out(null);
+    }
     case "atem_reconnect":
       return out(null);
     case "ga4_state": {

@@ -42,7 +42,8 @@ function toItems(json: Json | Json[]): Item[] {
 
 
 export function ProPresenterPage() {
-  const { connected, status } = useProDeck();
+  const { connected, status, settings } = useProDeck();
+  const viewOnly = !!settings?.pp_view_only;
   const pco = usePco();
   const [looks, setLooks] = useState<Item[]>([]);
   const [macros, setMacros] = useState<Item[]>([]);
@@ -157,6 +158,14 @@ export function ProPresenterPage() {
         </button>
       </header>
 
+      {settings?.pp_view_only && (
+        <p className="wz-note">
+          View only. This ProDeck shows what ProPresenter is doing but won't change it. Turn that off in Settings,
+          ProPresenter.
+        </p>
+      )}
+
+      <fieldset className="fs-plain" disabled={viewOnly}>
       <section className="card">
         <div className="card-head">
           <h3>Transport</h3>
@@ -206,6 +215,7 @@ export function ProPresenterPage() {
           )}
         </div>
       </section>
+      </fieldset>
 
       <section className="card">
         <div className="card-head">
@@ -215,6 +225,7 @@ export function ProPresenterPage() {
         <div className="pp-playlist">
           <PlaylistControl
             page
+            readOnly={viewOnly}
             slideSize={240}
             selectedId={playlistId}
             onSelect={(id) => {
@@ -227,6 +238,7 @@ export function ProPresenterPage() {
       </section>
 
       <div className="two-col">
+      <fieldset className="fs-plain" disabled={viewOnly}>
         <section className="card">
           <div className="card-head">
             <h3>Macros</h3>
@@ -239,7 +251,9 @@ export function ProPresenterPage() {
             actionLabel="Run"
           />
         </section>
+      </fieldset>
 
+      <fieldset className="fs-plain" disabled={viewOnly}>
         <section className="card">
           <div className="card-head">
             <h3>Props</h3>
@@ -253,9 +267,11 @@ export function ProPresenterPage() {
             secondary={{ label: "Clear", action: (id) => ppAction(`prop/${id}/clear`) }}
           />
         </section>
+      </fieldset>
       </div>
 
       <div className="two-col">
+      <fieldset className="fs-plain" disabled={viewOnly}>
         <section className="card">
           <div className="card-head">
             <h3>Messages</h3>
@@ -272,7 +288,9 @@ export function ProPresenterPage() {
             }}
           />
         </section>
+      </fieldset>
 
+      <fieldset className="fs-plain" disabled={viewOnly}>
         <section className="card">
           <div className="card-head">
             <h3>Timers</h3>
@@ -310,8 +328,10 @@ export function ProPresenterPage() {
             </div>
           )}
         </section>
+      </fieldset>
       </div>
 
+      <fieldset className="fs-plain" disabled={viewOnly}>
       <section className="card">
         <div className="card-head">
           <h3>Stage Message</h3>
@@ -334,6 +354,7 @@ export function ProPresenterPage() {
           </button>
         </div>
       </section>
+      </fieldset>
     </div>
   );
 }

@@ -86,6 +86,18 @@ const paths: Record<string, ReactNode> = {
     </>
   ),
   chevron: <path d="M6 9l6 6 6-6" />,
+  eye: (
+    <>
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  eyeOff: (
+    <>
+      <path d="M2 12s3.5-7 10-7c2 0 3.7.6 5.1 1.5M22 12s-3.5 7-10 7c-2 0-3.7-.6-5.1-1.5" />
+      <path d="M3 3l18 18" />
+    </>
+  ),
   calendar: (
     <>
       <rect x="3" y="4" width="18" height="18" rx="2" />

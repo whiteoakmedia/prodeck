@@ -403,6 +403,20 @@ The same buttons are on the edge's own emergency page at **your-edge-url/admin/�
 
   // ------------------------------------------------------------- propresenter
   {
+    id: "pp-view-only",
+    group: "ProPresenter",
+    title: "View only: watch ProPresenter without changing it",
+    aliases: ["view only", "read only propresenter", "monitor only", "don't control propresenter", "second computer", "disable slide control"],
+    body: `For a second computer, or a church that runs slides from ProPresenter itself: **Settings → ProPresenter → View only**.
+
+ProDeck then still shows everything live (the current slide, playlists, timers, stage messages, slide pictures) but never changes ProPresenter. No triggers, clears, stage messages, timer controls or playlist edits, from the booth or from any phone, and Stream Deck slide buttons stop too. The tiles show as monitors, the Clear buttons are hidden and the top bar says **VIEW ONLY**.
+
+Auto-Follow only practises while view only is on: it says where it would have moved, without moving anything.
+
+It's enforced in ProDeck's core, so nothing in the app can get past it. Untick it to take control again.`,
+    settings: "set-pp",
+  },
+  {
     id: "pp-connect",
     group: "ProPresenter",
     title: "Connecting ProPresenter",
@@ -658,10 +672,13 @@ Add the **ATEM Switcher** tile to a dashboard. It shows each source with the nam
 - **Cut** takes Preview live straight away. **Auto** uses the transition set on the switcher (mix, wipe and so on, at its rate).
 - There's no tap-to-Program on purpose, so a stray tap can't cut the room and the stream to the wrong camera.
 - On a phone, switching needs the **control** permission; everyone else sees the tile read only.
-- A switcher with more than one M/E: choose which one in Settings.
-- Stream Deck: \`/api/deck/atem-cut\`, \`/api/deck/atem-auto\` and \`/api/deck/atem-preview?n=<source number>\` (admin password).
+- **More than one M/E:** each tile picks its own (edit the dashboard, then the M/E menu on the tile). Settings picks the default. Two tiles side by side can show M/E 1 and M/E 2.
+- **Arrange the buttons:** edit the dashboard. Drag sources into your order (or use the arrows on a touch screen), tap the eye to hide one, the pencil to give it your own label, and choose whether Cut and Auto sit below, above or beside the buttons, and how many buttons per row. **Reset** puts it back. Each tile keeps its own arrangement, and a new camera on the switcher shows up at the end.
+- Stream Deck: \`/api/deck/atem-cut\`, \`/api/deck/atem-auto\` and \`/api/deck/atem-preview?n=<source number>\` (admin password). Add \`&me=2\` for M/E 2.
 
-If the tile says it can't reach the switcher, check the address, that the switcher is on, and that nothing else on the network has the same address. ProDeck keeps trying and reconnects by itself, for example after the switcher restarts.`,
+**If the link drops,** the tile keeps showing the last Program and Preview, greyed, while ProDeck reconnects, and switching waits until it's back. ProDeck retries quickly after a drop and backs off if the switcher stays silent, so a switcher that's off isn't flooded. **Settings → ATEM Switcher** shows how long the link has been up and how many times it has dropped, with **Reconnect now**.
+
+If the tile can't reach the switcher at all, check the address, that the switcher is on, and that nothing else on the network has the same address. If it says the switcher answered but sent nothing, every connection the switcher allows is in use: close ATEM Software Control on another computer.`,
     settings: "set-atem",
   },
   {
