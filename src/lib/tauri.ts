@@ -155,6 +155,11 @@ export const TALLY_PARAM: string | null =
 export const TALLY_OPTS = {
   /** light | operator | board (see lib/tally.ts). */
   view: bootParams?.get("view") ?? null,
+  /** The board's cameras (?cams=1,2,13), in order. */
+  cams: (bootParams?.get("cams") ?? "")
+    .split(",")
+    .map((x) => parseInt(x, 10))
+    .filter((n) => Number.isFinite(n)),
   /** Green on preview (default on). */
   preview: bootParams?.get("preview") !== "0",
   /** Black, not dark grey, when off air: no glow on stage. */

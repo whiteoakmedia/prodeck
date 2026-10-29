@@ -1196,6 +1196,17 @@ async fn handle_conn(
         return write_bytes(&mut stream, code, "application/json", &bytes).await;
     }
 
+    // Home-screen app for a camera tally screen (pages/Tally.tsx). The app's
+    // own manifest starts at "/", so a tally added to an iPad's Home Screen
+    // opened the main app. This one starts at the page that asked for it.
+    // It only repeats back the requester's own same-site path, so it needs
+    // no password (a manifest fetch doesn't carry one).
+    if method == "GET" && (path == "/tally.webmanifest" || path.starts_with("/tally.webmanifest?")) {
+        let query = path.split_once('?').map(|(_, q)| q).unwrap_or("");
+        let body = tally_manifest(query);
+        return write_bytes(&mut stream, 200, "application/manifest+json", body.as_bytes()).await;
+    }
+
     // Permanent invite QR: the green-room poster encodes /join with no token,
     // so rotating the crew link never kills the printed code. The 302 hands
     // the browser whatever token is current; texted ?join= copies still die
@@ -1372,6 +1383,44 @@ async fn serve_audio_mp3(mut stream: tokio::net::TcpStream, app: AppHandle) -> s
         }
     }
     Ok(())
+}
+
+/// The tally home-screen manifest for `start=<path>&name=<title>`. A start
+/// that isn't a plain path on this site falls back to the tally board.
+fn tally_manifest(query: &str) -> String {
+    let param = |k: &str| {
+        query.split('&').find_map(|pair| {
+            let (a, b) = pair.split_once('=')?;
+            (a == k).then(|| urlencoding::decode(b).map(|c| c.into_owned()).unwrap_or_default())
+        })
+    };
+    let start = param("start")
+        .filter(|s| {
+            s.starts_with("/?")
+                && s[2..].split('&').any(|p| p.starts_with("tally="))
+                && s.len() <= 1024
+                && !s.contains(['\\', '\r', '\n'])
+        })
+        .unwrap_or_else(|| "/?tally=all".to_string());
+    let name: String = param("name")
+        .map(|n| n.chars().filter(|c| !c.is_control()).take(40).collect())
+        .filter(|n: &String| !n.trim().is_empty())
+        .unwrap_or_else(|| "Tally".to_string());
+    json!({
+        "name": name,
+        "short_name": name,
+        "start_url": start,
+        "scope": "/",
+        "display": "fullscreen",
+        "orientation": "any",
+        "background_color": "#000000",
+        "theme_color": "#000000",
+        "icons": [
+            { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+            { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+        ]
+    })
+    .to_string()
 }
 
 fn content_type(path: &str) -> &'static str {
@@ -2586,6 +2635,21 @@ mod member_pp_tests {
         // Getting it right clears the record.
         clear_auth_failures(peer);
         assert!(auth_backoff(peer).is_none());
+    }
+
+    #[test]
+    fn tally_manifest_starts_at_the_tally_screen_and_nowhere_else() {
+        let m: serde_json::Value = serde_json::from_str(&super::tally_manifest("start=%2F%3Ftally%3D2%26token%3Dpw&name=Tally%20CAM2")).unwrap();
+        assert_eq!(m["start_url"], "/?tally=2&token=pw");
+        assert_eq!(m["name"], "Tally CAM2");
+        assert_eq!(m["display"], "fullscreen");
+        let m: serde_json::Value = serde_json::from_str(&super::tally_manifest("start=%2F%3Ftoken%3Dpw%26tally%3Dall")).unwrap();
+        assert_eq!(m["start_url"], "/?token=pw&tally=all", "any order of the link's options");
+        // Only this site's tally page: anything else opens the board.
+        for bad in ["start=https%3A%2F%2Fevil.example%2F", "start=%2F%2Fevil.example", "start=%2Fsettings", ""] {
+            let m: serde_json::Value = serde_json::from_str(&super::tally_manifest(bad)).unwrap();
+            assert_eq!(m["start_url"], "/?tally=all", "{bad}");
+        }
     }
 
     #[test]

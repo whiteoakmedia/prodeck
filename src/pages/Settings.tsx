@@ -3393,11 +3393,13 @@ function TallyCard({ form, atem }: { form: Settings; atem: AtemSnapshot | null }
   const [preview, setPreview] = useState(true);
   const [dim, setDim] = useState(false);
   const [view, setView] = useState<TallyView>("light");
+  // The board's cameras; null = every named camera.
+  const [boardCams, setBoardCams] = useState<number[] | null>(null);
   const [qr, setQr] = useState("");
   const [copied, setCopied] = useState(false);
   const cam = sources.find((s) => s.id === pick) ?? sources[0] ?? null;
   const board = view === "board";
-  const q = token && (board || cam) ? tallyQuery(board ? null : cam!.id, token, { preview, dim, view }) : "";
+  const q = token && (board || cam) ? tallyQuery(board ? null : cam!.id, token, { preview, dim, view, cams: boardCams ?? undefined }) : "";
   const url = q ? `${base}${q}` : "";
   const ipUrl = q && ipBase ? `${ipBase}${q}` : "";
   useEffect(() => {
@@ -3432,6 +3434,28 @@ function TallyCard({ form, atem }: { form: Settings; atem: AtemSnapshot | null }
                 <option value="board">All cameras: which one is live and which is next</option>
               </select>
             </label>
+            {board && (
+              <fieldset className="field tally-cams">
+                <legend>Cameras on the board <span className="muted">(none ticked = every named input)</span></legend>
+                {sources.map((s) => {
+                  const on = boardCams ? boardCams.includes(s.id) : false;
+                  return (
+                    <label key={s.id} className="field check">
+                      <input
+                        type="checkbox"
+                        checked={on}
+                        onChange={() => {
+                          const cur = boardCams ?? [];
+                          const next = on ? cur.filter((x) => x !== s.id) : [...cur, s.id];
+                          setBoardCams(next.length ? next : null);
+                        }}
+                      />
+                      <span>{s.name || s.short}</span>
+                    </label>
+                  );
+                })}
+              </fieldset>
+            )}
             {!board && (
               <label className="field">
                 <span>Camera</span>

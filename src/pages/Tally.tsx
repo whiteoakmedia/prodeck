@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { atemState, on, onGatewayState, TALLY_OPTS, type AtemSnapshot } from "../lib/tauri";
-import { findSource, liveAndNext, tallyOf, tallySources, tallyView, type Tally } from "../lib/tally";
+import { boardSources, cardLabel, findSource, liveAndNext, tallyOf, tallySources, tallyView, type Tally } from "../lib/tally";
 import type { AtemInput } from "../lib/tauri";
 
 // Tally screen (?tally=<camera>&token=…): a phone or tablet mounted on a
@@ -74,6 +74,7 @@ export function TallyPage({ param }: { param: string }) {
 
   const view = tallyView(TALLY_OPTS.view, param);
   const src = findSource(snap, chosen);
+  useHomeScreenApp(view === "board" ? "Tally board" : `Tally ${src?.short || src?.name || ""}`.trim());
   const known = !!snap && snap.connected && snap.ready && gateway && fails < FAILS_FOR_NO_TALLY;
   let shown: Shown = known && src ? tallyOf(snap, src.id, TALLY_OPTS.me) : "unknown";
   if (shown === "preview" && !TALLY_OPTS.preview) shown = "off";
@@ -190,7 +191,7 @@ const names = (l: AtemInput[]) => (l.length ? l.map((i) => i.name || i.short || 
 function TallyBoard({ snap, known, why }: { snap: AtemSnapshot | null; known: boolean; why: string }) {
   const me = TALLY_OPTS.me;
   const ln = liveAndNext(snap, me);
-  const cards = tallySources(snap).filter((i) => i.camera || tallyOf(snap, i.id, me) !== "off");
+  const cards = boardSources(snap, TALLY_OPTS.cams, me);
   // Fill the screen: as many columns as suit its shape, so four cameras on an
   // iPad are four big cards, not a strip of small ones.
   const [aspect, setAspect] = useState(() => window.innerWidth / Math.max(1, window.innerHeight));
@@ -205,21 +206,22 @@ function TallyBoard({ snap, known, why }: { snap: AtemSnapshot | null; known: bo
     <div className={`tally-board${known ? "" : " unknown"}`} role="status" aria-live="polite">
       <header className="tally-board-head">
         <span className="tally-board-now live">
-          <b>LIVE</b> {known ? names(ln.live) : "?"}
+          <b>LIVE</b> <span>{known ? names(ln.live) : "?"}</span>
         </span>
         <span className="tally-board-now next">
-          <b>NEXT</b> {known ? names(ln.next) : "?"}
+          <b>NEXT</b> <span>{known ? names(ln.next) : "?"}</span>
         </span>
       </header>
       {!known && <p className="tally-board-why">{why || "Waiting for the switcher"}. Don't trust these lights.</p>}
       <div className="tally-board-grid" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
         {cards.map((i) => {
           const t = known ? tallyOf(snap, i.id, me) : "unknown";
+          const l = cardLabel(i);
           return (
             <div key={i.id} className={`tally-card ${t}`}>
-              <span className="tally-card-word">{t === "program" ? "LIVE" : t === "preview" ? "NEXT" : ""}</span>
-              <strong className="tally-card-short">{i.short || i.id}</strong>
-              <span className="tally-card-name">{i.name}</span>
+              <span className="tally-card-word">{t === "program" ? "LIVE" : t === "preview" ? "NEXT" : "\u00a0"}</span>
+              <strong className="tally-card-short">{l.big}</strong>
+              {l.small && <span className="tally-card-name">{l.small}</span>}
             </div>
           );
         })}
@@ -227,6 +229,47 @@ function TallyBoard({ snap, known, why }: { snap: AtemSnapshot | null; known: bo
       </div>
     </div>
   );
+}
+
+/**
+ * Add to Home Screen should open THIS tally screen, full screen. The app's
+ * manifest starts at "/" (the main app), so on this page it's swapped for one
+ * whose start is this exact link, served by the booth (/tally.webmanifest).
+ * iPadOS also reads the apple-mobile-web-app tags; the name under the icon
+ * is the camera.
+ */
+function useHomeScreenApp(title: string) {
+  useEffect(() => {
+    const here = location.pathname + location.search;
+    let link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+    if (!link) {
+      link = document.createElement("link");
+      link.rel = "manifest";
+      document.head.appendChild(link);
+    }
+    link.href = `/tally.webmanifest?start=${encodeURIComponent(here)}&name=${encodeURIComponent(title)}`;
+    setMeta("apple-mobile-web-app-capable", "yes");
+    setMeta("mobile-web-app-capable", "yes");
+    setMeta("apple-mobile-web-app-status-bar-style", "black-translucent");
+    setMeta("apple-mobile-web-app-title", title);
+    setMeta("theme-color", "#000000");
+    // Full bleed in a Home Screen app (the CSS keeps clear of the notch and
+    // rounded corners with safe-area insets). Only here: the rest of the app
+    // doesn't expect it.
+    const vp = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
+    if (vp && !vp.content.includes("viewport-fit")) vp.content += ", viewport-fit=cover";
+    document.title = title;
+  }, [title]);
+}
+
+function setMeta(name: string, content: string) {
+  let m = document.querySelector<HTMLMetaElement>(`meta[name="${name}"]`);
+  if (!m) {
+    m = document.createElement("meta");
+    m.name = name;
+    document.head.appendChild(m);
+  }
+  m.content = content;
 }
 
 function readPick(): string {

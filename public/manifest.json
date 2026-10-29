@@ -1,7 +1,7 @@
 {
   "name": "ProDeck",
   "short_name": "ProDeck",
-  "description": "Cornerstone production crew — chat, checklists, dashboards.",
+  "description": "Production crew: chat, checklists and dashboards from the booth.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0e131b",

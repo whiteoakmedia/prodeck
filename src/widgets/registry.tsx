@@ -372,7 +372,7 @@ function AtemWidget({ widget, editing, update }: WidgetProps) {
               ))}
             </select>
           </label>
-          <button type="button" className="btn small ghost" onClick={() => update({ order: [], hidden: [], labels: {}, actions: "below", cols: 0 })}>
+          <button type="button" className="btn small ghost" onClick={() => update({ order: [], hidden: [], show: [], labels: {}, actions: "below", cols: 0 })}>
             Reset
           </button>
           <span className="muted small">Drag to reorder. Tap the eye to hide, the pencil to rename.</span>
@@ -417,7 +417,7 @@ function AtemWidget({ widget, editing, update }: WidgetProps) {
                     <Icon name="next" size={12} />
                   </button>
                   <button type="button" className="atem-tool" title={b.hidden ? "Show this source" : "Hide this source"} aria-label={b.hidden ? `Show ${b.label}` : `Hide ${b.label}`}
-                    onClick={() => update({ hidden: toggleHidden(cfg, b.id) })}>
+                    onClick={() => update(toggleHidden(cfg, b.id, b.hidden))}>
                     <Icon name={b.hidden ? "eyeOff" : "eye"} size={12} />
                   </button>
                   <button type="button" className="atem-tool" title="Rename" aria-label={`Rename ${b.label}`} onClick={() => rename(b.id, b.label)}>

@@ -21,11 +21,11 @@ const snap = (over: Partial<AtemSnapshot> = {}): AtemSnapshot => ({
 
 describe("ATEM tile", () => {
   it("puts cameras first and keeps the switcher's order within each group", () => {
-    expect(atemButtons(snap()).map((b) => b.id)).toEqual([1, 2, 3, 0, 3010]);
+    expect(atemButtons(snap(), { show: [3] }).map((b) => b.id)).toEqual([1, 2, 3, 0, 3010]);
   });
 
   it("lights exactly one Program and one Preview", () => {
-    const b = atemButtons(snap());
+    const b = atemButtons(snap(), { show: [3] });
     expect(b.filter((x) => x.program).map((x) => x.id)).toEqual([2]);
     expect(b.filter((x) => x.preview).map((x) => x.id)).toEqual([3]);
     // The same source on both (a cut with no preview change) lights both.
@@ -34,7 +34,9 @@ describe("ATEM tile", () => {
   });
 
   it("never shows a blank button", () => {
-    const blank = atemButtons(snap()).find((x) => x.id === 3)!;
+    // Unnamed counts as unused, so it's hidden; shown on purpose, it still has a label.
+    expect(atemButtons(snap()).find((x) => x.id === 3)).toBeUndefined();
+    const blank = atemButtons(snap(), { show: [3] }).find((x) => x.id === 3)!;
     expect(blank.label).toBe("Source 3");
     expect(blank.short).toBe("3");
   });
@@ -53,14 +55,14 @@ import { atemBus, moveSource, tileMe, toggleHidden, withLabel } from "../lib/ate
 
 describe("ATEM tile, arranged by the church", () => {
   it("keeps the tile's own order, and adds a new source after the placed ones", () => {
-    const ids = atemButtons(snap(), { order: [3010, 2] }).map((b) => b.id);
+    const ids = atemButtons(snap(), { order: [3010, 2], show: [3] }).map((b) => b.id);
     expect(ids).toEqual([3010, 2, 1, 3, 0]);
     // An id the switcher no longer has is skipped, not shown blank.
     expect(atemButtons(snap(), { order: [77, 1] }).map((b) => b.id)[0]).toBe(1);
   });
 
   it("hides sources, but shows them dimmed while editing", () => {
-    expect(atemButtons(snap(), { hidden: [0, 3010] }).map((b) => b.id)).toEqual([1, 2, 3]);
+    expect(atemButtons(snap(), { hidden: [0, 3010], show: [3] }).map((b) => b.id)).toEqual([1, 2, 3]);
     const all = atemButtons(snap(), { hidden: [0] }, { includeHidden: true });
     expect(all.find((b) => b.id === 0)?.hidden).toBe(true);
     expect(all).toHaveLength(5);
@@ -78,8 +80,8 @@ describe("ATEM tile, arranged by the church", () => {
     expect(moveSource([1, 2, 3, 4], 0, 2)).toEqual([2, 3, 1, 4]);
     expect(moveSource([1, 2, 3, 4], 3, 0)).toEqual([4, 1, 2, 3]);
     expect(moveSource([1, 2], 5, 0)).toEqual([1, 2]);
-    expect(toggleHidden({ hidden: [1] }, 1)).toEqual([]);
-    expect(toggleHidden({}, 4)).toEqual([4]);
+    expect(toggleHidden({ hidden: [1] }, 1, true)).toEqual({ hidden: [], show: [1] });
+    expect(toggleHidden({ show: [4] }, 4, false)).toEqual({ hidden: [4], show: [] });
   });
 });
 
@@ -114,5 +116,24 @@ describe("ATEM M/Es", () => {
   it("reads an older snapshot that only had the default M/E", () => {
     expect(atemBus(snap(), 0)).toEqual({ program: 2, preview: 3, inTransition: false });
     expect(atemBus(snap(), 1)).toEqual({ program: null, preview: null, inTransition: false });
+  });
+});
+
+import { isPlaceholder } from "../lib/atem";
+
+describe("unused inputs", () => {
+  it("knows an input marked unused", () => {
+    expect(isPlaceholder({ name: "--", short: "--" })).toBe(true);
+    expect(isPlaceholder({ name: "  ", short: "" })).toBe(true);
+    expect(isPlaceholder({ name: "", short: "12" })).toBe(true);
+    expect(isPlaceholder({ name: "Cam 3", short: "CAM3" })).toBe(false);
+    expect(isPlaceholder({ name: "", short: "CAM3" })).toBe(false);
+  });
+
+  it("hides them on the tile until someone shows one", () => {
+    const s = snap({ inputs: [...snap().inputs, { id: 5, name: "--", short: "--", camera: true }] });
+    expect(atemButtons(s).map((b) => b.id)).not.toContain(5);
+    expect(atemButtons(s, {}, { includeHidden: true }).find((b) => b.id === 5)?.hidden).toBe(true);
+    expect(atemButtons(s, { show: [5] }).map((b) => b.id)).toContain(5);
   });
 });

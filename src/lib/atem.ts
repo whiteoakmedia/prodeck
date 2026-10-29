@@ -25,6 +25,8 @@ export interface AtemTileConfig {
   /** Source ids in the tile's order. Sources not listed follow, cameras first. */
   order?: number[];
   hidden?: number[];
+  /** Unused inputs ("--") this tile shows anyway; they're hidden by default. */
+  show?: number[];
   /** Source id → the tile's own label. */
   labels?: Record<string, string>;
   actions?: AtemActionsAt;
@@ -36,6 +38,15 @@ export interface AtemBus {
   program: number | null;
   preview: number | null;
   inTransition: boolean;
+}
+
+/**
+ * An input the church hasn't named, or named "--" to mark it unused. Hidden
+ * by default everywhere: a Constellation has twenty inputs and most churches
+ * use a handful.
+ */
+export function isPlaceholder(i: { name: string; short: string }): boolean {
+  return /^[\s\-–—_.]*$/.test(i.name) && /^[\s\-–—_.\d]*$/.test(i.short.replace(/^\d+$/, ""));
 }
 
 /** The M/E this tile shows: its own choice if the switcher has it, else the default. */
@@ -69,6 +80,8 @@ export function atemButtons(
   const bus = atemBus(snap, me);
   const bit = 1 << me;
   const hidden = new Set(cfg.hidden ?? []);
+  const show = new Set(cfg.show ?? []);
+  for (const i of snap.inputs) if (isPlaceholder(i) && !show.has(i.id)) hidden.add(i.id);
   const rows = snap.inputs
     .filter((i) => i.meMask === undefined || (i.meMask & bit) !== 0)
     .map((i) => {
@@ -111,12 +124,18 @@ export function moveSource(shown: number[], from: number, to: number): number[] 
   return next;
 }
 
-/** Show or hide one source. */
-export function toggleHidden(cfg: AtemTileConfig, id: number): number[] {
+/** Show or hide one source: the config patch. `nowHidden` = how edit mode shows it now. */
+export function toggleHidden(cfg: AtemTileConfig, id: number, nowHidden: boolean): { hidden: number[]; show: number[] } {
   const h = new Set(cfg.hidden ?? []);
-  if (h.has(id)) h.delete(id);
-  else h.add(id);
-  return [...h];
+  const s = new Set(cfg.show ?? []);
+  if (nowHidden) {
+    h.delete(id);
+    s.add(id);
+  } else {
+    h.add(id);
+    s.delete(id);
+  }
+  return { hidden: [...h], show: [...s] };
 }
 
 /** Set or clear (empty text) a tile's own label for a source. */

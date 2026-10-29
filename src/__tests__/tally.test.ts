@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findSource, liveAndNext, tallyOf, tallyQuery, tallySources, tallyView } from "../lib/tally";
+import { boardSources, cardLabel, findSource, liveAndNext, tallyOf, tallyQuery, tallySources, tallyView } from "../lib/tally";
 import type { AtemSnapshot } from "../lib/tauri";
 
 /**
@@ -81,5 +81,36 @@ describe("tally views", () => {
     expect(tallyQuery(null, "pw")).toBe("/?tally=all&token=pw");
     expect(tallyQuery(2, "pw", { view: "board" })).toBe("/?tally=all&token=pw");
     expect(tallyQuery(2, "pw", { view: "operator" })).toBe("/?tally=2&token=pw&view=operator");
+  });
+});
+
+describe("the board on a real switcher", () => {
+  // Shaped like the Constellation at Cornerstone: unused inputs named "--".
+  const big = snap({
+    inputs: [
+      { id: 1, name: "Cam 1 (FOH)", short: "CAM1", camera: true },
+      { id: 5, name: "--", short: "--", camera: true },
+      { id: 10, name: "Main", short: "MAIN", camera: true },
+      { id: 13, name: "Drum Cam", short: "DRUM", camera: true },
+      { id: 3010, name: "Media Player 1", short: "MP1", camera: false },
+    ],
+    tally: { "10": 1, "5": 1, "1": 2 },
+  });
+
+  it("leaves unused inputs off the board and out of LIVE", () => {
+    expect(boardSources(big, null).map((i) => i.id)).toEqual([1, 10, 13]);
+    expect(liveAndNext(big).live.map((i) => i.name)).toEqual(["Main"]);
+    expect(tallySources(big).map((i) => i.id)).toEqual([1, 10, 13, 3010]);
+  });
+
+  it("shows just the cameras the link names, in its order", () => {
+    expect(boardSources(big, [13, 1, 99]).map((i) => i.id)).toEqual([13, 1]);
+    expect(tallyQuery(null, "pw", { cams: [13, 1] })).toBe("/?tally=all&token=pw&cams=13%2C1");
+  });
+
+  it("labels a card once when the short name is the name", () => {
+    expect(cardLabel({ id: 1, name: "Cam 1 (FOH)", short: "CAM1", camera: true })).toEqual({ big: "CAM1", small: "Cam 1 (FOH)" });
+    expect(cardLabel({ id: 4, name: "Keys", short: "Keys", camera: true })).toEqual({ big: "Keys", small: "" });
+    expect(cardLabel({ id: 4, name: "Keys", short: "", camera: true })).toEqual({ big: "Keys", small: "" });
   });
 });
