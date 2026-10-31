@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { CONSOLES, consoleLabel, consoleNeedsMidi, midiBaseForSwitch, portForSwitch } from "../lib/consoles";
+import { CONSOLES, consoleLabel, consoleNeedsMidi, isNrpnConsole, midiBaseForSwitch, portForSwitch } from "../lib/consoles";
 import { rebase } from "../lib/formRebase";
 import { NdiNotice } from "../components/NdiNotice";
 import { openExternal } from "../lib/openExternal";
@@ -749,19 +749,21 @@ export function SettingsPage() {
             {consoleNeedsMidi(form.avantis_model) && (
             <label className="field">
               <span>
-                {(form.avantis_model || "avantis") === "sq"
+                {isNrpnConsole(form.avantis_model)
                   ? "MIDI channel (desk: Utility → General → MIDI)"
                   : "Base MIDI channel (desk: Utility → Control → MIDI)"}
               </span>
-              <input className="input" type="number" min={1} max={(form.avantis_model || "avantis") === "sq" ? 16 : 12} value={form.avantis_midi_base}
-                onChange={(e) => { const n = parseInt(e.target.value); const mx = (form.avantis_model || "avantis") === "sq" ? 16 : 12; if (Number.isFinite(n)) set("avantis_midi_base", Math.min(mx, Math.max(1, n))); }} />
+              <input className="input" type="number" min={1} max={isNrpnConsole(form.avantis_model) ? 16 : 12} value={form.avantis_midi_base}
+                onChange={(e) => { const n = parseInt(e.target.value); const mx = isNrpnConsole(form.avantis_model) ? 16 : 12; if (Number.isFinite(n)) set("avantis_midi_base", Math.min(mx, Math.max(1, n))); }} />
             </label>
             )}
-            {(form.avantis_model || "avantis") === "sq" && (
+            {isNrpnConsole(form.avantis_model) && (
               <p className="hint wide">
-                SQ's MIDI protocol carries no channel names or colours, so channels show
+                The {consoleLabel(form.avantis_model)}'s MIDI protocol carries no channel names or colours, so channels show
                 as numbers here (Ch 1, Aux 3 …). Mutes and levels are read on connect,
                 so the mirror starts complete. Scenes 1–300.
+                {(form.avantis_model || "avantis") === "qu" &&
+                  " On a Qu-5D, Qu-6D or Qu-7D wired through its Dante port, turn on Control Network Bridge under Setup → Network."}
               </p>
             )}
             {(form.avantis_model || "avantis") === "x32" && (

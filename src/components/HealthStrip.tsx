@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAlerts, type Subsystem } from "../alertsStore";
 import { useProDeck } from "../store";
+import { deskHealthText } from "../lib/consoles";
 
 // D17 — the troubleshooting strip. Four traffic lights, always visible in the
 // sidebar footer; clicking one opens a card that says what the thing IS, what
@@ -45,12 +46,9 @@ export const EXPLAIN: Record<
   desk: {
     name: "Sound desk",
     page: "settings",
-    what: "Your sound console: Allen & Heath (Avantis, dLive, SQ), Behringer X32 / Midas M32, or Yamaha (CL, QL, TF). ProDeck mirrors mutes, faders, scenes and channel names.",
-    fix: {
-      ok: "Connected and mirroring.",
-      bad: "Can't reach the Avantis. Check it's powered on and its Network port is plugged into the switch; the address lives in Settings → Avantis.",
-      idle: "Mirror is off (Settings → Avantis).",
-    },
+    what: "Your sound console: Allen & Heath (Avantis, dLive, SQ, Qu-5/6/7), Behringer X32 / Midas M32, or Yamaha (CL, QL, TF). ProDeck mirrors mutes, faders, scenes and channel names.",
+    // Named for the desk actually picked: see deskHealthText.
+    fix: {},
   },
   cam: {
     name: "Stage feed",
@@ -64,9 +62,15 @@ export const EXPLAIN: Record<
   },
 };
 
+/** The one thing to try for a light, in its current state. */
+export function fixText(sub: Subsystem, deskModel: string | null | undefined): string {
+  if (sub.key === "desk") return deskHealthText(deskModel, sub.state, sub.detail === "unreachable" ? null : sub.detail);
+  return EXPLAIN[sub.key]?.fix[sub.state] ?? sub.detail;
+}
+
 export function HealthStrip() {
   const { subsystems } = useAlerts();
-  const { host } = useProDeck();
+  const { host, settings } = useProDeck();
   const [openKey, setOpenKey] = useState<string | null>(null);
   const open = subsystems.find((s) => s.key === openKey) ?? null;
   const info = open ? EXPLAIN[open.key] : null;
@@ -84,7 +88,7 @@ export function HealthStrip() {
           </div>
           <p className="muted small">{info.what}</p>
           <p className="small">
-            {info.fix[open.state] ?? open.detail}
+            {fixText(open, settings?.avantis_model)}
             {open.key === "pp" && open.state === "ok" && host ? ` (${host})` : ""}
           </p>
         </div>
