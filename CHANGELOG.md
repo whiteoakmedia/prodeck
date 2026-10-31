@@ -44,6 +44,36 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.110 — 31 October 2026
+
+### New: Allen & Heath Qu-5, Qu-6 and Qu-7
+
+Asked for through ProDeck's **Request a feature** button. Thank you, Kasey.
+
+Pick **Allen & Heath Qu-5 / Qu-6 / Qu-7** in **Settings → Connections → Sound
+Console**, type the desk's address and its MIDI channel (on the desk: Utility,
+General, MIDI). The Qu speaks the same MIDI language as the SQ, so ProDeck
+mirrors its mutes, faders and scenes the same way, reading them all when it
+connects. Like the SQ, its MIDI carries no channel names, so channels show as
+numbers. On a Qu-5D, 6D or 7D wired through its Dante port, turn on **Control
+Network Bridge** under Setup, Network.
+
+If you had a Qu set up as an SQ, switch it to the Qu choice: the Qu has fewer
+inputs and a fourth matrix, and ProDeck now reads it with the Qu's own map.
+
+This is new and hasn't met a real Qu yet, so please tell us how it goes.
+
+### Fixed
+
+- The **Sound desk** light names the console you picked. It used to say
+  "Can't reach the Avantis" whatever desk you had.
+- When the desk can't be reached, the light says why (refused, timed out and so
+  on), and reminds you that Companion or Allen & Heath MIDI Control may already
+  be holding the desk's MIDI connection. The reason also goes into the
+  diagnostics you send with a bug report.
+- ProDeck gives up on an unreachable desk after five seconds and tries again,
+  instead of waiting up to a minute.
+
 ## 0.9.109 — 27 October 2026
 
 ### New: ATEM switchers
