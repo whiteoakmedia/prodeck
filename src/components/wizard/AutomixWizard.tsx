@@ -38,6 +38,7 @@ const CONSOLES = [
   { id: "avantis", name: "Allen & Heath Avantis", port: 51325, maxBase: 12 },
   { id: "dlive", name: "Allen & Heath dLive", port: 51325, maxBase: 12 },
   { id: "sq", name: "Allen & Heath SQ", port: 51325, maxBase: 16 },
+  { id: "qu", name: "Allen & Heath Qu-5 / Qu-6 / Qu-7", port: 51325, maxBase: 16 },
   { id: "x32", name: "Behringer X32 or Midas M32", port: 10023, maxBase: 1 },
 ];
 

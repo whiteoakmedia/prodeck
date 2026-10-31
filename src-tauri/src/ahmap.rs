@@ -6,9 +6,11 @@
 //!     in the address map (how many of each channel type, at which note).
 //!   * SQ is a different protocol: EVERYTHING is NRPN (mutes included), on a
 //!     single MIDI channel, 14-bit levels, and there are no name/colour
-//!     messages at all.
+//!     messages at all. The Qu-5/6/7 speaks the same NRPN dialect with the
+//!     same addresses; it just has fewer of some channel types.
 //! Sources: dLive MIDI Over TCP/IP V2.0, Avantis MIDI TCP V1.10, SQ MIDI
-//! Protocol Issue 5 — byte sequences below are quoted from those documents.
+//! Protocol Issue 5, Qu-5/6/7 MIDI Protocol Issue 1 — byte sequences below
+//! are quoted from those documents.
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum DeskModel {
@@ -16,6 +18,8 @@ pub enum DeskModel {
     Avantis,
     DLive,
     Sq,
+    /// Qu-5 / Qu-6 / Qu-7: the SQ's NRPN dialect over its own address table.
+    Qu,
     /// Behringer X32 / Midas M32 — OSC over UDP, not MIDI over TCP.
     X32,
     /// Yamaha CL / QL / TF — RCP, plain text over TCP (yamaha.rs). Read only.
@@ -27,6 +31,7 @@ impl DeskModel {
         match s.trim().to_ascii_lowercase().as_str() {
             "dlive" => DeskModel::DLive,
             "sq" | "sq5" | "sq6" | "sq7" | "sq-5" | "sq-6" | "sq-7" => DeskModel::Sq,
+            "qu" | "qu5" | "qu6" | "qu7" | "qu-5" | "qu-6" | "qu-7" => DeskModel::Qu,
             "x32" | "m32" | "x32/m32" => DeskModel::X32,
             "yamaha" | "cl" | "ql" | "tf" | "cl/ql/tf" => DeskModel::Yamaha,
             _ => DeskModel::Avantis,
@@ -37,6 +42,7 @@ impl DeskModel {
             DeskModel::Avantis => "avantis",
             DeskModel::DLive => "dlive",
             DeskModel::Sq => "sq",
+            DeskModel::Qu => "qu",
             DeskModel::X32 => "x32",
             DeskModel::Yamaha => "yamaha",
         }
@@ -46,6 +52,7 @@ impl DeskModel {
             DeskModel::Avantis => "Avantis",
             DeskModel::DLive => "dLive",
             DeskModel::Sq => "SQ",
+            DeskModel::Qu => "Qu",
             DeskModel::X32 => "X32 / M32",
             DeskModel::Yamaha => "Yamaha",
         }
@@ -53,13 +60,13 @@ impl DeskModel {
     /// Highest base MIDI channel the desk lets you pick (1-based).
     pub fn max_base(self) -> u8 {
         match self {
-            DeskModel::Sq => 16,
+            DeskModel::Sq | DeskModel::Qu => 16,
             _ => 12, // five-channel range must fit in 16
         }
     }
     pub fn max_scene(self) -> u32 {
         match self {
-            DeskModel::Sq => 300,
+            DeskModel::Sq | DeskModel::Qu => 300,
             DeskModel::X32 => 100,
             DeskModel::Yamaha => 300,
             _ => 500,
@@ -77,19 +84,23 @@ impl DeskModel {
     }
     /// True for the A&H desks the MIDI-over-TCP mirror in avantis.rs drives.
     pub fn uses_midi(self) -> bool {
-        matches!(self, DeskModel::Avantis | DeskModel::DLive | DeskModel::Sq)
+        matches!(self, DeskModel::Avantis | DeskModel::DLive | DeskModel::Sq | DeskModel::Qu)
+    }
+    /// SQ and Qu: everything is NRPN on one channel (ahmap's SQ map section).
+    pub fn is_nrpn(self) -> bool {
+        matches!(self, DeskModel::Sq | DeskModel::Qu)
     }
     /// False where ProDeck only mirrors the desk and never writes to it.
     pub fn has_control(self) -> bool {
         self != DeskModel::Yamaha
     }
-    /// SQ has no name/colour messages in its MIDI protocol.
+    /// SQ and Qu have no name/colour messages in their MIDI protocol.
     pub fn has_names(self) -> bool {
-        self != DeskModel::Sq
+        !self.is_nrpn()
     }
-    /// Note On = mute on Avantis/dLive; on SQ a Note On can only be a softkey.
+    /// Note On = mute on Avantis/dLive; on SQ and Qu a Note On can only be a softkey.
     pub fn note_mutes(self) -> bool {
-        self != DeskModel::Sq && self.uses_midi()
+        !self.is_nrpn() && self.uses_midi()
     }
 }
 
@@ -155,7 +166,7 @@ pub fn note_map(model: DeskModel) -> &'static [NoteRange] {
         // Neither speaks the Note dialect: SQ is all-NRPN, and the X32 isn't
         // MIDI at all (OSC over UDP — see x32.rs).
         // Yamaha speaks RCP (yamaha.rs).
-        DeskModel::Sq | DeskModel::X32 | DeskModel::Yamaha => &[],
+        DeskModel::Sq | DeskModel::Qu | DeskModel::X32 | DeskModel::Yamaha => &[],
     }
 }
 
@@ -227,30 +238,55 @@ pub const SQ: &[SqRange] = &[
     s("mgrp", 8, p(0x04, 0x00), NONE),
 ];
 
+/// Qu-5/6/7 MIDI Protocol Issue 1, reference tables (Mute Parameter Numbers;
+/// Level Parameter Numbers – Inputs to LR, FX Returns to LR, Mix Sends
+/// "Output"/"Control"). Same addresses as the SQ, with 32 mono inputs, six FX
+/// returns and four matrices. Its mute table lists no groups, so none here;
+/// ST1/ST2/USB (00 20/22/24) have no ProDeck channel type yet.
+pub const QU: &[SqRange] = &[
+    s("input", 32, p(0x00, 0x00), p(0x40, 0x00)),
+    s("fxr", 6, p(0x00, 0x3C), p(0x40, 0x3C)),
+    s("main", 1, p(0x00, 0x44), p(0x4F, 0x00)), // LR
+    s("aux", 12, p(0x00, 0x45), p(0x4F, 0x01)), // "MIX1-12" in the tables
+    s("fxs", 4, p(0x00, 0x51), p(0x4F, 0x0D)),
+    s("mtx", 4, p(0x00, 0x55), p(0x4F, 0x11)),
+    s("dca", 8, p(0x02, 0x00), p(0x4F, 0x20)),
+    s("mgrp", 8, p(0x04, 0x00), NONE),
+];
+
+/// The NRPN address table for an SQ-dialect desk (empty for the rest).
+pub fn nrpn_map(model: DeskModel) -> &'static [SqRange] {
+    match model {
+        DeskModel::Sq => SQ,
+        DeskModel::Qu => QU,
+        _ => &[],
+    }
+}
+
 pub fn sq_split(param: u16) -> (u8, u8) {
     (((param >> 7) & 0x7F) as u8, (param & 0x7F) as u8)
 }
 
-pub fn sq_mute_param(id: &str) -> Option<u16> {
+pub fn sq_mute_param(model: DeskModel, id: &str) -> Option<u16> {
     let (kind, i) = split_id(id)?;
-    let rg = SQ.iter().find(|r| r.kind == kind && i <= r.count)?;
+    let rg = nrpn_map(model).iter().find(|r| r.kind == kind && i <= r.count)?;
     Some(rg.mute + (i as u16 - 1))
 }
 
-pub fn sq_level_param(id: &str) -> Option<u16> {
+pub fn sq_level_param(model: DeskModel, id: &str) -> Option<u16> {
     let (kind, i) = split_id(id)?;
-    let rg = SQ.iter().find(|r| r.kind == kind && i <= r.count && r.level != NONE)?;
+    let rg = nrpn_map(model).iter().find(|r| r.kind == kind && i <= r.count && r.level != NONE)?;
     Some(rg.level + (i as u16 - 1))
 }
 
-pub fn sq_decode_mute(param: u16) -> Option<(&'static str, u8)> {
-    SQ.iter().find_map(|r| {
+pub fn sq_decode_mute(model: DeskModel, param: u16) -> Option<(&'static str, u8)> {
+    nrpn_map(model).iter().find_map(|r| {
         (r.mute..r.mute + r.count as u16).contains(&param).then(|| (r.kind, (param - r.mute + 1) as u8))
     })
 }
 
-pub fn sq_decode_level(param: u16) -> Option<(&'static str, u8)> {
-    SQ.iter().filter(|r| r.level != NONE).find_map(|r| {
+pub fn sq_decode_level(model: DeskModel, param: u16) -> Option<(&'static str, u8)> {
+    nrpn_map(model).iter().filter(|r| r.level != NONE).find_map(|r| {
         (r.level..r.level + r.count as u16).contains(&param).then(|| (r.kind, (param - r.level + 1) as u8))
     })
 }
@@ -347,7 +383,7 @@ pub fn mute_bytes(model: DeskModel, base_nibble: u8, id: &str, muted: bool) -> O
         let vel = if muted { 0x7F } else { 0x3F };
         Some(vec![status, note, vel, status, note, 0x00])
     } else {
-        let (msb, lsb) = sq_split(sq_mute_param(id)?);
+        let (msb, lsb) = sq_split(sq_mute_param(model, id)?);
         let b = 0xB0 | (base_nibble & 0x0F);
         Some(vec![b, 0x63, msb, b, 0x62, lsb, b, 0x06, 0x00, b, 0x26, if muted { 0x01 } else { 0x00 }])
     }
@@ -361,7 +397,7 @@ pub fn fader_bytes(model: DeskModel, base_nibble: u8, id: &str, v: u8) -> Option
         let status = 0xB0 | chan;
         Some(vec![status, 0x63, note, status, 0x62, 0x17, status, 0x06, v])
     } else {
-        let (msb, lsb) = sq_split(sq_level_param(id)?);
+        let (msb, lsb) = sq_split(sq_level_param(model, id)?);
         let (vc, vf) = sq_split(sq_db_to_level(db_from_fader_u8(v)));
         let b = 0xB0 | (base_nibble & 0x0F);
         Some(vec![b, 0x63, msb, b, 0x62, lsb, b, 0x06, vc, b, 0x26, vf])
@@ -394,13 +430,13 @@ pub fn scene_bytes(base_nibble: u8, scene: u32) -> Vec<u8> {
 /// Everything to ask the desk on connect so the mirror starts knowing.
 /// Avantis: names + colours (its protocol has no mute/fader GET).
 /// dLive: names + colours, PLUS Get Mute (05 09) and Get Fader (05 0B 17).
-/// SQ: Get (60 7F) for every mute and level.
+/// SQ and Qu: Get (60 7F) for every mute and level.
 pub fn query_bytes(model: DeskModel, base_nibble: u8) -> Vec<u8> {
     let mut out = Vec::new();
     match model {
-        DeskModel::Sq => {
+        DeskModel::Sq | DeskModel::Qu => {
             let b = 0xB0 | (base_nibble & 0x0F);
-            for rg in SQ {
+            for rg in nrpn_map(model) {
                 for i in 0..rg.count as u16 {
                     let (m, l) = sq_split(rg.mute + i);
                     out.extend_from_slice(&[b, 0x63, m, b, 0x62, l, b, 0x60, 0x7F]);
@@ -581,14 +617,14 @@ mod tests {
             mute_bytes(DeskModel::Sq, 6, "mgrp:4", true),
             Some(vec![0xB6, 0x63, 0x04, 0xB6, 0x62, 0x03, 0xB6, 0x06, 0x00, 0xB6, 0x26, 0x01])
         );
-        assert_eq!(sq_decode_mute(p(0x04, 0x03)), Some(("mgrp", 4)));
-        assert_eq!(sq_decode_mute(p(0x00, 0x44)), Some(("main", 1)));
-        assert_eq!(sq_decode_mute(p(0x00, 0x2F)), Some(("input", 48)));
-        assert_eq!(sq_decode_mute(p(0x00, 0x30)), Some(("grp", 1)));
-        assert_eq!(sq_decode_mute(p(0x02, 0x07)), Some(("dca", 8)));
-        assert_eq!(sq_mute_param("input:49"), None);
+        assert_eq!(sq_decode_mute(DeskModel::Sq, p(0x04, 0x03)), Some(("mgrp", 4)));
+        assert_eq!(sq_decode_mute(DeskModel::Sq, p(0x00, 0x44)), Some(("main", 1)));
+        assert_eq!(sq_decode_mute(DeskModel::Sq, p(0x00, 0x2F)), Some(("input", 48)));
+        assert_eq!(sq_decode_mute(DeskModel::Sq, p(0x00, 0x30)), Some(("grp", 1)));
+        assert_eq!(sq_decode_mute(DeskModel::Sq, p(0x02, 0x07)), Some(("dca", 8)));
+        assert_eq!(sq_mute_param(DeskModel::Sq, "input:49"), None);
         // No stereo variants on SQ.
-        assert_eq!(sq_mute_param("sgrp:1"), None);
+        assert_eq!(sq_mute_param(DeskModel::Sq, "sgrp:1"), None);
     }
 
     #[test]
@@ -608,20 +644,20 @@ mod tests {
         assert_eq!(sq_level_to_db(p(0x7F, 0x7F)), Some(10.0));
         assert_eq!(sq_level_to_db(0), None);
         // "Grp5 to LR … B4 63 40 B4 62 34" → group level base 40:30.
-        assert_eq!(sq_level_param("grp:5"), Some(p(0x40, 0x34)));
+        assert_eq!(sq_level_param(DeskModel::Sq, "grp:5"), Some(p(0x40, 0x34)));
         // Master sends table: LR 4F 00, Aux1 4F 01, FX1Snd 4F 0D, Mtx1 4F 11, DCA1 4F 20.
-        assert_eq!(sq_level_param("main:1"), Some(p(0x4F, 0x00)));
-        assert_eq!(sq_level_param("aux:12"), Some(p(0x4F, 0x0C)));
-        assert_eq!(sq_level_param("fxs:4"), Some(p(0x4F, 0x10)));
-        assert_eq!(sq_level_param("mtx:3"), Some(p(0x4F, 0x13)));
-        assert_eq!(sq_level_param("dca:8"), Some(p(0x4F, 0x27)));
-        assert_eq!(sq_level_param("mgrp:1"), None);
-        assert_eq!(sq_decode_level(p(0x4F, 0x20)), Some(("dca", 1)));
-        assert_eq!(sq_decode_level(p(0x40, 0x3C)), Some(("fxr", 1)));
+        assert_eq!(sq_level_param(DeskModel::Sq, "main:1"), Some(p(0x4F, 0x00)));
+        assert_eq!(sq_level_param(DeskModel::Sq, "aux:12"), Some(p(0x4F, 0x0C)));
+        assert_eq!(sq_level_param(DeskModel::Sq, "fxs:4"), Some(p(0x4F, 0x10)));
+        assert_eq!(sq_level_param(DeskModel::Sq, "mtx:3"), Some(p(0x4F, 0x13)));
+        assert_eq!(sq_level_param(DeskModel::Sq, "dca:8"), Some(p(0x4F, 0x27)));
+        assert_eq!(sq_level_param(DeskModel::Sq, "mgrp:1"), None);
+        assert_eq!(sq_decode_level(DeskModel::Sq, p(0x4F, 0x20)), Some(("dca", 1)));
+        assert_eq!(sq_decode_level(DeskModel::Sq, p(0x40, 0x3C)), Some(("fxr", 1)));
         // Mute and level parameter spaces never collide.
         for rg in SQ {
             for i in 0..rg.count as u16 {
-                assert!(sq_decode_level(rg.mute + i).is_none(), "{}:{} mute param decodes as a level", rg.kind, i + 1);
+                assert!(sq_decode_level(DeskModel::Sq, rg.mute + i).is_none(), "{}:{} mute param decodes as a level", rg.kind, i + 1);
             }
         }
     }
@@ -631,6 +667,55 @@ mod tests {
         // SQ: "Scene 156, Ch3  B2 00 01 C2 1B"; dLive/Avantis use the same format.
         assert_eq!(scene_bytes(2, 156), vec![0xB2, 0x00, 0x01, 0xC2, 0x1B]);
         assert_eq!(scene_bytes(0, 7), vec![0xB0, 0x00, 0x00, 0xC0, 0x06]);
+    }
+
+    #[test]
+    fn qu_matches_its_issue1_tables() {
+        use DeskModel::Qu;
+        assert_eq!(DeskModel::parse("qu"), Qu);
+        assert_eq!(DeskModel::parse("Qu-5"), Qu);
+        assert_eq!(Qu.label(), "Qu");
+        assert!(Qu.uses_midi() && Qu.is_nrpn() && !Qu.note_mutes() && !Qu.has_names());
+        assert_eq!(Qu.max_scene(), 300);
+        // Mutes: "Ip1, Mute On, Ch1  B0 63 00 B0 62 00 B0 06 00 B0 26 01",
+        // "LR mix, Mute Off, Ch1  B0 63 00 B0 62 44 B0 06 00 B0 26 00",
+        // "Mute Grp 4, Mute On, Ch7  B6 63 04 B6 62 03 B6 06 00 B6 26 01".
+        assert_eq!(
+            mute_bytes(Qu, 0, "input:1", true),
+            Some(vec![0xB0, 0x63, 0x00, 0xB0, 0x62, 0x00, 0xB0, 0x06, 0x00, 0xB0, 0x26, 0x01])
+        );
+        assert_eq!(
+            mute_bytes(Qu, 0, "main:1", false),
+            Some(vec![0xB0, 0x63, 0x00, 0xB0, 0x62, 0x44, 0xB0, 0x06, 0x00, 0xB0, 0x26, 0x00])
+        );
+        assert_eq!(
+            mute_bytes(Qu, 6, "mgrp:4", true),
+            Some(vec![0xB6, 0x63, 0x04, 0xB6, 0x62, 0x03, 0xB6, 0x06, 0x00, 0xB6, 0x26, 0x01])
+        );
+        // 32 mono inputs; 00 20 is ST1 on the Qu, not input 33.
+        assert_eq!(sq_mute_param(Qu, "input:32"), Some(p(0x00, 0x1F)));
+        assert_eq!(sq_mute_param(Qu, "input:33"), None);
+        assert_eq!(sq_decode_mute(Qu, p(0x00, 0x20)), None);
+        assert_eq!(sq_decode_mute(Qu, p(0x00, 0x41)), Some(("fxr", 6)));
+        assert_eq!(sq_decode_mute(Qu, p(0x00, 0x58)), Some(("mtx", 4)));
+        assert_eq!(sq_decode_mute(Qu, p(0x02, 0x07)), Some(("dca", 8)));
+        assert_eq!(sq_mute_param(Qu, "grp:1"), None);
+        // Levels: "Ip1 to LR, 0dB, Ch1  B0 63 40 B0 62 00 B0 06 76 B0 26 5C",
+        // FX6Rtn to LR 40 41, Output LR 4F 00 / Mtx4 4F 14, Control DCA8 4F 27.
+        let b = fader_bytes(Qu, 0, "input:1", fader_u8_from_db(Some(0.0))).unwrap();
+        assert_eq!(&b[..6], &[0xB0, 0x63, 0x40, 0xB0, 0x62, 0x00]);
+        assert_eq!(sq_level_param(Qu, "fxr:6"), Some(p(0x40, 0x41)));
+        assert_eq!(sq_level_param(Qu, "main:1"), Some(p(0x4F, 0x00)));
+        assert_eq!(sq_level_param(Qu, "mtx:4"), Some(p(0x4F, 0x14)));
+        assert_eq!(sq_level_param(Qu, "dca:8"), Some(p(0x4F, 0x27)));
+        // Get: "LR Mute, Ch1 ... B0 60 7F" is the same shape the SQ query uses.
+        let q = query_bytes(Qu, 0);
+        assert_eq!(&q[..9], &[0xB0, 0x63, 0x00, 0xB0, 0x62, 0x00, 0xB0, 0x60, 0x7F]);
+        for rg in QU {
+            for i in 0..rg.count as u16 {
+                assert!(sq_decode_level(Qu, rg.mute + i).is_none(), "{}:{} mute param decodes as a level", rg.kind, i + 1);
+            }
+        }
     }
 
     #[test]

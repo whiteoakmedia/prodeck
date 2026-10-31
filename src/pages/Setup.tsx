@@ -1,7 +1,7 @@
 import { useAlerts } from "../alertsStore";
 import { requestWizard } from "../lib/wizards";
 import { useProDeck } from "../store";
-import { EXPLAIN } from "../components/HealthStrip";
+import { EXPLAIN, fixText } from "../components/HealthStrip";
 import { Icon } from "../components/Icon";
 import { IS_WEB } from "../lib/tauri";
 import { requestOnboarding } from "../lib/onboarding";
@@ -22,7 +22,7 @@ const LABEL: Record<string, string> = {
 
 export function Setup({ onNavigate }: { onNavigate: (p: string) => void }) {
   const { subsystems } = useAlerts();
-  const { connected } = useProDeck();
+  const { connected, settings } = useProDeck();
 
   const rows = subsystems.filter((s) => !(s.key === "cam" && s.detail === "none"));
   const greens = rows.filter((s) => s.state === "ok").length;
@@ -58,7 +58,7 @@ export function Setup({ onNavigate }: { onNavigate: (p: string) => void }) {
         {rows.map((s) => {
           const info = EXPLAIN[s.key];
           if (!info) return null;
-          const fix = info.fix[s.state] ?? s.detail;
+          const fix = fixText(s, settings?.avantis_model);
           return (
             <div key={s.key} className={`setup-row ${s.state}`}>
               <span className={`hl-dot ${s.state}`} />

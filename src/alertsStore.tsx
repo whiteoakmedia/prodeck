@@ -136,6 +136,8 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
 
   const ndi = useRef<Map<string, NdiStat>>(new Map());
   const avantisUp = useRef(false);
+  /** The backend's last desk connect failure, shown on the Sound desk light. */
+  const avantisError = useRef<string | null>(null);
   const avantisMutes = useRef<Record<string, boolean>>({});
   const avantisScene = useRef<{ scene: number | null; at: number | null }>({ scene: null, at: null });
   const tapFail = useRef<{ ts: number; message: string } | null>(null);
@@ -179,10 +181,11 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     const unAv = on<{ connected: boolean }>("avantis:status", (s) => {
       avantisUp.current = !!s.connected;
     });
-    const unAvState = on<{ connected: boolean; mutes: Record<string, boolean> }>(
+    const unAvState = on<{ connected: boolean; mutes: Record<string, boolean>; lastError?: string | null }>(
       "avantis:state",
       (s) => {
         avantisUp.current = !!s.connected;
+        avantisError.current = s.lastError ?? null;
         // Only mutes the desk has confirmed this connection — a remembered
         // mute raised "Mic 3 is muted" while the desk plainly wasn't.
         avantisMutes.current = confirmedMutes(s as any);
@@ -194,6 +197,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     avantisState()
       .then((s) => {
         avantisUp.current = !!s.connected;
+        avantisError.current = s.lastError ?? null;
         avantisMutes.current = confirmedMutes(s);
         avantisScene.current = { scene: s.scene ?? null, at: s.sceneAt ?? null };
       })
@@ -517,7 +521,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
                 key: "desk",
                 label: "Desk",
                 state: (avantisUp.current ? "ok" : "bad") as HealthState,
-                detail: avantisUp.current ? "mirroring" : "unreachable",
+                detail: avantisUp.current ? "mirroring" : avantisError.current || "unreachable",
               },
             ]
           : []),
