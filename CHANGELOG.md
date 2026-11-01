@@ -44,6 +44,34 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.113 — 1 November 2026
+
+Everything in 0.9.112, plus:
+
+### New: dashboards on a Fire TV Stick or Android TV
+
+Put any dashboard (or the camera tally board) on a TV with a Fire TV Stick or
+an Android TV box and the free **ProDeck Display** app. No links typed with a
+remote:
+
+1. Install ProDeck Display. **Settings → TV screens** shows the Fire TV steps
+   and the address to type into Downloader (the booth's address plus
+   `/tv.apk`); every release carries the app.
+2. Open it. It finds ProDeck on the network (or you type the address) and
+   shows a six-character code.
+3. In **Settings → TV screens**, check the code, choose a dashboard and press
+   **Send to TV**.
+
+From then on the TV opens that dashboard by itself, keeps the screen on,
+retries while the booth is off, and comes back after a power cut. Press
+**Menu** on its remote to pair it again or change the dashboard. A dashboard
+with **Room audio** on plays the service audio on its TVs too.
+
+### Coming: Apple TV
+
+Apple TV support is on its way: full dashboards on an Apple TV, with no extra
+computer.
+
 ## 0.9.112 — 1 November 2026
 
 Everything in 0.9.111, plus:
