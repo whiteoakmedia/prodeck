@@ -44,6 +44,36 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.115 — 1 November 2026
+
+Everything in 0.9.114, plus:
+
+### New
+
+- **Send a message to a TV.** In Messages, choose a screen as the destination:
+  All screens, or one dashboard's screens, like the green room TV. It goes
+  across those TVs in big type with a soft chime (never on the booth), and
+  comes down after three minutes or when you press Clear.
+- **Update the TV app from the booth.** Settings → TV screens lists every TV
+  with what it shows and its app version. Press Update or Update all: the TV
+  downloads the new ProDeck Display and installs it over the top, keeping its
+  screen. Someone presses Update on the TV's remote, then opens the app again.
+  TVs set up before this version need the new app installed once with
+  Downloader.
+- **Change what a TV shows from the booth:** choose a dashboard next to the TV
+  and press Show.
+- **The crew poster works any time.** Scanning it while joining is closed was
+  a dead end. Now people ask to join with a name and PIN, you approve them
+  under Crew Members, and their phone is let in straight away.
+
+### Fixed
+
+- A page to everyone reaches the crew scheduled on this week's plan, even if
+  they haven't opened ProDeck today. It used to reach only people who had
+  checked in.
+- The page composer shows who has notifications off, so you know who will
+  only see a page with ProDeck open.
+
 ## 0.9.114 — 1 November 2026
 
 Everything in 0.9.113, plus:
