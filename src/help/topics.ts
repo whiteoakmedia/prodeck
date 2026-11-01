@@ -450,6 +450,21 @@ Edit the quick buttons in the widget's edit mode — one per line.`,
 
   // ----------------------------------------------------------- planning center
   {
+    id: "analytics-services",
+    group: "Planning Center",
+    title: "Service analytics: services, practice and taps",
+    aliases: ["analytics", "service report", "reset analytics", "rehearsal tracking", "practice", "tap counts", "duplicate taps", "per service"],
+    body: `ProDeck times every plan item and records sound levels for each service, using the service times in Planning Center.
+
+**Which service it is, by the clock.** Each service has its own window: from 15 minutes before its start (pre-service slides and the countdown belong to it) until the next service's window, or the plan's length plus 45 minutes for the last one. Activity inside a window goes to that service.
+
+**Everything else is practice.** A Thursday rehearsal, a Sunday morning run-through, Monday with last week's plan still up: it all goes to that day's **Practice** report, kept out of every service. Leave Follow Pro on all week; there's nothing to reset. The **Rehearsal / Service** switch on the Service Tracking tile overrides the clock for one-off cases, and **Auto** goes back.
+
+**NFC taps** are counted only inside a service's own window, so one service can't count another's taps, and practice counts none. TapLink counts one tap per phone per minute and ignores link previews, prefetches and bots, so a phone that opens the link twice counts once.
+
+Services recorded before this change may have run on into the week: their tap counts are now clipped to three hours, but the minutes they collected stay as they were.`,
+  },
+  {
     id: "pco-connect",
     group: "Planning Center",
     title: "Connecting Planning Center",

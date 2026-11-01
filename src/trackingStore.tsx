@@ -10,6 +10,7 @@ import { useProDeck } from "./store";
 import { usePco } from "./pcoStore";
 import { IS_WEB, loadTracking, saveTracking } from "./lib/tauri";
 import { toDbfs } from "./lib/audioMeter";
+import { dayKey, slotAt } from "./lib/serviceWindow";
 
 interface ItemStat {
   title: string;
@@ -67,6 +68,12 @@ interface ServiceMeta {
   /// per-service tap query both need the real window.
   startedAt?: number;
   endedAt?: number;
+  /// The service's own window (lib/serviceWindow.ts): activity is only filed
+  /// here inside it, and NFC taps are only counted inside it. Absent on
+  /// practice buckets and on buckets recorded before windows existed.
+  windowStart?: number;
+  windowEnd?: number;
+  scheduledAt?: number;
   /// The WHOLE plan as it stood during this service, not just the items that
   /// went live. Item stats are only created when an item goes live, so without
   /// this a service where one song ran reported a one-line plan. Kept per
@@ -94,6 +101,9 @@ export interface ServiceHistory {
   /// Real wall-clock window (absent on buckets recorded before this existed).
   startedAt?: number;
   endedAt?: number;
+  /// The service's scheduled window, for counting taps (lib/serviceWindow.ts).
+  windowStart?: number;
+  windowEnd?: number;
   rows: TrackedItem[];
 }
 
@@ -105,10 +115,6 @@ const META = "_meta"; // reserved bucket key holding ServiceMeta (never an item 
 // forgotten item silently turns into a 40-hour "actual" and ruins the report.
 const MAX_STRETCH_S = 2 * 3600;
 
-// How close to the scheduled start still counts as the service itself. Pre-service
-// slides / countdown legitimately roll ~10 min out, so only work earlier than this
-// is treated as rehearsal.
-const REHEARSAL_GRACE_MS = 15 * 60 * 1000;
 
 const clampStretch = (sec: number) => Math.min(Math.max(0, sec), MAX_STRETCH_S);
 
@@ -209,15 +215,34 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setRehearsalOverride(null);
   }, [selectedPlanId, selectedServiceTimeId]);
-  const startTs = serviceTimes.find((t) => t.id === selectedServiceTimeId)?.ts ?? 0;
-  const autoRehearsal = startTs > 0 && Date.now() < startTs - REHEARSAL_GRACE_MS;
+  // Which service is on, by the clock: inside a service's window that
+  // service, anywhere else practice (lib/serviceWindow.ts). Re-evaluated on
+  // every render (the SPL tick re-renders several times a second), so the
+  // last service of the day closes by itself when its window ends instead of
+  // collecting a week of rehearsals.
+  const nowTs = Date.now();
+  const planMs = items.filter((i) => i.type !== "header").reduce((n, i) => n + (i.length || 0) * 1000, 0);
+  const slot = slotAt(
+    nowTs,
+    serviceTimes.map((t) => ({ id: t.id, ts: t.ts ?? 0 })),
+    planMs,
+    selectedServiceTimeId,
+  );
+  const autoRehearsal = slot.kind === "practice";
   const rehearsal = rehearsalOverride ?? autoRehearsal;
+  // Forced to "service" off the clock: the selected service.
+  const serviceTimeId = slot.kind === "service" ? slot.timeId : selectedServiceTimeId ?? "default";
+  const serviceWindowRef = useRef<{ start: number; end: number; scheduled: number } | null>(null);
+  serviceWindowRef.current = slot.kind === "service" && Number.isFinite(slot.window.end) && slot.window.start > 0 ? slot.window : null;
 
-  // Analytics are bucketed per plan + service time (4 services on a Sunday → 4
-  // independent buckets keyed "planId::timeId"), with rehearsals kept in their
-  // own sibling bucket so they never mix into a service's reported numbers.
+  // Analytics are bucketed per plan + service time (4 services on a Sunday →
+  // 4 independent buckets keyed "planId::timeId"). Practice gets one bucket
+  // per plan per day ("planId::practice::2026-10-29"), kept out of every
+  // service's numbers and its tap count.
   const trackKey = selectedPlanId
-    ? `${selectedPlanId}::${selectedServiceTimeId ?? "default"}${rehearsal ? "::rehearsal" : ""}`
+    ? rehearsal
+      ? `${selectedPlanId}::practice::${dayKey(nowTs)}`
+      : `${selectedPlanId}::${serviceTimeId}`
     : null;
 
   const dataRef = useRef<Data>({});
@@ -335,14 +360,21 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
     (planData as Record<string, unknown>)[META] = {
       ...prevMeta,
       planId: selectedPlanId ?? "",
-      timeId: selectedServiceTimeId ?? "default",
+      timeId: rehearsal ? "practice" : serviceTimeId,
       planTitle: metaRef.current.title,
       planDate: metaRef.current.date,
-      timeName: metaRef.current.timeName,
+      timeName: rehearsal ? "Practice" : serviceTimes.find((t) => t.id === serviceTimeId)?.name ?? metaRef.current.timeName,
       rehearsal,
       savedAt: now,
       startedAt: prevMeta?.startedAt ?? now,
       endedAt: now,
+      ...(serviceWindowRef.current && !rehearsal
+        ? {
+            windowStart: serviceWindowRef.current.start,
+            windowEnd: serviceWindowRef.current.end,
+            scheduledAt: serviceWindowRef.current.scheduled,
+          }
+        : {}),
     } satisfies ServiceMeta;
     const prev = lastLive.current;
     if (prev && planData[prev]) finalizeStretch(planData[prev], now);
@@ -518,10 +550,12 @@ export function TrackingProvider({ children }: { children: ReactNode }) {
         timeName: meta?.timeName ?? null,
         // Fall back to the key suffix so buckets saved before the flag existed
         // are still labelled correctly.
-        rehearsal: meta?.rehearsal ?? key.endsWith("::rehearsal"),
+        rehearsal: meta?.rehearsal ?? (key.endsWith("::rehearsal") || key.includes("::practice::")),
         savedAt: meta?.savedAt ?? 0,
         startedAt: meta?.startedAt,
         endedAt: meta?.endedAt ?? meta?.heartbeatAt,
+        windowStart: meta?.windowStart,
+        windowEnd: meta?.windowEnd,
         rows,
       });
     }

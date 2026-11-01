@@ -1,3 +1,4 @@
+import { tapWindow } from "../lib/serviceWindow";
 import { useCallback, useEffect, useState } from "react";
 import { StreamReportCard } from "../components/StreamReport";
 import { usePco } from "../pcoStore";
@@ -242,6 +243,14 @@ export function Report() {
   // service it was, and it made the picker look like songs were being saved.
   function labelFor(h: ServiceHistory): string {
     const [planId, timeId] = h.key.split("::");
+    // A day's practice: named by the day it happened, and which plan it was for.
+    if (timeId === "practice") {
+      const day = h.startedAt
+        ? new Date(h.startedAt).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })
+        : "Practice";
+      const forPlan = h.planDate ?? pco.plans.find((p) => p.id === planId)?.date ?? null;
+      return `${day} | PRACTICE${forPlan ? ` for ${forPlan}` : ""}`;
+    }
     const plan = pco.plans.find((p) => p.id === planId);
     let date = h.planDate ?? plan?.date ?? null;
     let time =
@@ -292,12 +301,15 @@ export function Report() {
   // Window this service occupied. Buckets recorded before startedAt existed
   // have none — taps can't be attributed to them, and we say so rather than
   // guessing a window and reporting numbers that belong to another service.
+  // Clipped to the service's own scheduled window (lib/serviceWindow.ts), so
+  // a bucket that ran on into the week can't count the next service's taps,
+  // and practice counts none.
   const serviceWindow = savedSel
     ? savedSel.startedAt && savedSel.endedAt
       ? { from: savedSel.startedAt, to: savedSel.endedAt }
       : null
-    : sel?.startedAt
-      ? { from: sel.startedAt, to: isLive ? Date.now() : sel.endedAt ?? sel.startedAt }
+    : sel
+      ? tapWindow({ ...sel, endedAt: isLive ? Date.now() : sel.endedAt ?? sel.startedAt })
       : null;
 
   // Pull taps for an unsaved service so they're visible before saving.
@@ -425,8 +437,9 @@ export function Report() {
       let taps: TapWindow | null = null;
       let tapNote: string | undefined;
       if (!serviceWindow) {
-        tapNote =
-          "No start/end time was recorded for this service, so taps can't be attributed to it.";
+        tapNote = sel.rehearsal
+          ? "Practice runs don't count taps: the people tapping are at a service."
+          : "No start/end time was recorded for this service, so taps can't be attributed to it.";
       } else {
         try {
           taps = await tapStatsRange(serviceWindow.from, serviceWindow.to);

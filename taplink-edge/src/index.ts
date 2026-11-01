@@ -1,3 +1,4 @@
+import { isRealTap, SAME_TAP_MS, tapperKey } from "./count";
 // TapLink edge: NFC discs point at GET /now, which 302s to the destination for
 // the current service moment. ProDeck pushes state via POST /api/state when a
 // slide with a tap:<keyword> note goes live. See ../TAPLINK_PLAN.md.
@@ -83,6 +84,9 @@ export class TapState {
     this.sql.exec(
       "CREATE TABLE IF NOT EXISTS taps (ts INTEGER NOT NULL, state TEXT NOT NULL)",
     );
+    // Who tapped in the last minute (salted hashes, see count.ts), so one
+    // phone's double hit counts once.
+    this.sql.exec("CREATE TABLE IF NOT EXISTS recent (k TEXT PRIMARY KEY, ts INTEGER NOT NULL)");
   }
 
   async fetch(req: Request): Promise<Response> {
@@ -91,7 +95,7 @@ export class TapState {
 
     // Public tap path — must stay fast and unauthenticated.
     if ((path === "/" || path === "/now") && (req.method === "GET" || req.method === "HEAD")) {
-      return this.handleTap();
+      return this.handleTap(req);
     }
 
     if (path.startsWith("/admin/")) {
@@ -120,12 +124,21 @@ export class TapState {
 
   // ------------------------------------------------------------------ tap
 
-  private async handleTap(): Promise<Response> {
+  private async handleTap(req: Request): Promise<Response> {
     const cfg = await this.config();
     const st = await this.liveState(cfg);
     const dest = (st && kwUrl(cfg, st.state)) || cfg.default;
     const now = Date.now();
-    this.sql.exec("INSERT INTO taps (ts, state) VALUES (?, ?)", now, st?.state ?? "default");
+    // Everyone is sent on; only real, first taps are counted.
+    if (isRealTap(req.method, req.headers)) {
+      const k = await tapperKey(req.headers.get("cf-connecting-ip") ?? "", req.headers.get("user-agent") ?? "", now);
+      const seen = this.sql.exec("SELECT ts FROM recent WHERE k = ?", k).toArray()[0] as { ts: number } | undefined;
+      if (!seen || now - Number(seen.ts) >= SAME_TAP_MS) {
+        this.sql.exec("INSERT INTO taps (ts, state) VALUES (?, ?)", now, st?.state ?? "default");
+      }
+      this.sql.exec("INSERT OR REPLACE INTO recent (k, ts) VALUES (?, ?)", k, now);
+      this.sql.exec("DELETE FROM recent WHERE ts < ?", now - SAME_TAP_MS);
+    }
     // Cheap opportunistic pruning; table stays tiny at church-tap volumes.
     this.sql.exec("DELETE FROM taps WHERE ts < ?", now - TAP_RETENTION_DAYS * 86400_000);
     return new Response(null, {
