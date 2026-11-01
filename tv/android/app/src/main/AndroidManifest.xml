@@ -34,6 +34,11 @@
         </activity>
 
         <activity
+            android:name=".ScreenChooserActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+
+        <activity
             android:name=".SetupActivity"
             android:exported="false"
             android:screenOrientation="landscape" />

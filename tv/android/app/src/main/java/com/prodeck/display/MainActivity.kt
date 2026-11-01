@@ -24,7 +24,8 @@ import android.widget.TextView
  * The dashboard, full screen, for good. ProDeck's kiosk page does the real
  * work (it reconnects and reloads after updates by itself); this keeps the
  * screen on, hides everything else, and retries if the booth isn't there
- * when the TV wakes up. Press Menu (or hold Back) to pair again.
+ * when the TV wakes up. Press Menu or the centre button to choose another
+ * screen; hold Back to pair again.
  */
 class MainActivity : Activity() {
     private lateinit var web: WebView
@@ -109,8 +110,8 @@ class MainActivity : Activity() {
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         when (keyCode) {
-            KeyEvent.KEYCODE_MENU -> {
-                repair()
+            KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+                startActivity(Intent(this, ScreenChooserActivity::class.java))
                 return true
             }
             KeyEvent.KEYCODE_BACK -> {

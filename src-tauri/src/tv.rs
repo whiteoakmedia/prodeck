@@ -67,6 +67,10 @@ pub fn hello(code: &str, name: &str, ip: &str) -> Result<(), &'static str> {
             }
             return Err("code in use");
         }
+        // A TV showing a new code (it was re-paired, or restarted) replaces
+        // its own earlier one, so the booth's list shows each TV once and a
+        // TV that re-pairs a few times isn't locked out.
+        m.retain(|_, p| p.ip != ip || p.approved.is_some());
         if m.len() >= MAX_PENDING || m.values().filter(|p| p.ip == ip).count() >= MAX_PER_IP {
             return Err("too many waiting");
         }
@@ -170,7 +174,8 @@ pub fn announce(port: u16, device_name: &str) {
         return;
     }
     let Ok(daemon) = mdns_sd::ServiceDaemon::new() else { return };
-    let instance = clean_name(if device_name.trim().is_empty() { "ProDeck" } else { device_name });
+    let named = device_name.trim().trim_end_matches(".local");
+    let instance = clean_name(if named.is_empty() { "ProDeck" } else { named });
     let host = format!("{}.local.", instance.replace(|c: char| !c.is_ascii_alphanumeric(), "-"));
     let props = [("path", "/"), ("v", env!("CARGO_PKG_VERSION"))];
     match mdns_sd::ServiceInfo::new("_prodeck._tcp.local.", &instance, &host, &ips[..], port, &props[..]) {
@@ -217,13 +222,14 @@ mod tests {
     }
 
     #[test]
-    fn one_address_cant_flood_the_list() {
-        for c in ["FLDAA2", "FLDAB2", "FLDAC2"] {
+    fn a_tv_asking_again_replaces_its_old_code() {
+        for c in ["FLDAA2", "FLDAB2", "FLDAC2", "FLDAD2"] {
             hello(c, "tv", "10.0.0.77").unwrap();
         }
-        assert_eq!(hello("FLDAD2", "tv", "10.0.0.77"), Err("too many waiting"));
-        for c in ["FLDAA2", "FLDAB2", "FLDAC2"] {
-            dismiss(c);
-        }
+        let mine: Vec<_> = pending_list().into_iter().filter(|p| p["ip"] == "10.0.0.77").collect();
+        assert_eq!(mine.len(), 1, "one entry per TV");
+        assert_eq!(mine[0]["code"], "FLDAD2");
+        assert_eq!(poll("FLDAA2", "10.0.0.77")["status"], "unknown");
+        dismiss("FLDAD2");
     }
 }
