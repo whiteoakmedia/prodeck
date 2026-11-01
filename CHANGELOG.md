@@ -44,6 +44,30 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.114 — 1 November 2026
+
+Everything in 0.9.113, plus:
+
+### New: choose the screen on the TV
+
+On a TV running ProDeck Display, press **Menu** or the remote's centre button:
+every dashboard on the booth (the one showing is marked), the camera tally
+board, an edge margin on or off for TVs that crop the picture, and connecting
+to a different ProDeck. Pick one and the TV switches; nothing to do at the
+booth. Update the app the same way you installed it (Downloader, the same
+address); the TV keeps its pairing.
+
+### Fixed
+
+- **Kiosks and TVs show the whole dashboard.** A 12-row dashboard ran off the
+  bottom of a TV, whose browser is only 540 px tall. When a dashboard can't
+  fit at a readable size, the whole layout now scales down evenly to fit,
+  still filling the width; on a TV the text stays sharp.
+- TVs paired from **Settings → TV screens** get an edge margin by default, for
+  TVs that crop the picture (overscan).
+- A TV paired again replaces its own earlier code instead of being turned away
+  after a few tries.
+
 ## 0.9.113 — 1 November 2026
 
 Everything in 0.9.112, plus:
