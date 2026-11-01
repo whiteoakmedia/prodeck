@@ -1217,7 +1217,8 @@ export interface CrewUser {
   /** Grants on top of the viewer baseline; see PERMS. */
   perms?: string[];
   /** True when an admin set pco_name by hand — the weekly heal won't touch it. */
-  pco_pinned?: boolean;
+  pco_pinned?: boolean;  /** A page reaches their locked phone (notifications on). Absent from older booths. */
+  notify?: boolean;
 }
 /** Admin edit of a crew profile. Omitted fields are left unchanged; pco_name
  *  "" unlinks (and un-pins), any other value links AND pins. */

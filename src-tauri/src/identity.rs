@@ -920,11 +920,107 @@ pub fn heal_pco_core(
     json!({ "linked": linked, "rolesFilled": roled })
 }
 
+/// Sign-ups waiting at once through the poster, before it refuses more. The
+/// poster answers the open internet (the church domain fronts the booth), so
+/// a script must not be able to bury the booth's approval list.
+const MAX_WAITING_SIGNUPS: usize = 12;
+
+/// The green-room poster: anyone may ask to join, nobody gets in until the
+/// booth approves them. The account is created waiting for approval, with a
+/// session the phone keeps; `join_status_core` tells that phone when it's
+/// been let in and hands it the crew password then, never before.
+fn ticket(s: &mut Store, name: &str, pin: &str, role: &str) -> Result<(String, String), String> {
+    let name: String = name.trim().split_whitespace().collect::<Vec<_>>().join(" ").chars().take(MAX_NAME).collect();
+    if name.chars().count() < 2 {
+        return Err("Type your name.".into());
+    }
+    if !valid_pin(pin) {
+        return Err("Your PIN must be exactly 4 digits.".into());
+    }
+    let n = norm_name(&name);
+    if s.users.iter().any(|u| norm_name(&u.name) == n) {
+        return Err(format!("\"{name}\" is already on the crew. Sign in with your PIN instead, or ask the booth to reset it."));
+    }
+    if s.users.iter().filter(|u| !u.approved).count() >= MAX_WAITING_SIGNUPS {
+        return Err("Too many people are waiting to be approved. Ask whoever is at the production computer.".into());
+    }
+    let salt = rand_hex(16);
+    let user = User {
+        id: rand_hex(8),
+        pin_hash: hash_pin(&salt, pin),
+        salt,
+        name,
+        approved: false,
+        created_ms: now_ms(),
+        last_seen_ms: 0,
+        role: role.trim().chars().take(48).collect(),
+        pco_name: String::new(),
+        nickname: String::new(),
+        pco_pinned: false,
+        perms: Vec::new(),
+    };
+    let session = rand_hex(24);
+    s.sessions.insert(session.clone(), user.id.clone());
+    let uid = user.id.clone();
+    s.users.push(user);
+    Ok((uid, session))
+}
+
+/// "waiting", "ok" (approved: the phone may come in) or "gone" (turned
+/// away, or the session is unknown).
+fn ticket_status(s: &Store, session: &str) -> &'static str {
+    let Some(uid) = s.sessions.get(session).filter(|_| !session.is_empty()) else { return "gone" };
+    match s.users.iter().find(|u| &u.id == uid) {
+        Some(u) if u.approved => "ok",
+        Some(_) => "waiting",
+        None => "gone",
+    }
+}
+
+pub fn join_ticket_core(app: &AppHandle, id_state: &IdentityState, name: String, pin: String, role: String) -> Result<serde_json::Value, String> {
+    let mut s = id_state.store.lock().unwrap_or_else(|p| p.into_inner());
+    let (_, session) = ticket(&mut s, &name, &pin, &role)?;
+    let snapshot = s.clone();
+    drop(s);
+    id_state.persist(&snapshot);
+    app.emit("identity:changed", json!({})).ok();
+    Ok(json!({ "status": "waiting", "session": session }))
+}
+
+/// `crew_password` is handed over only once the booth has approved them.
+pub fn join_status_core(id_state: &IdentityState, session: &str, crew_password: &str) -> serde_json::Value {
+    let mut s = id_state.store.lock().unwrap_or_else(|p| p.into_inner());
+    match ticket_status(&s, session) {
+        "ok" => {
+            let uid = s.sessions.get(session).cloned().unwrap_or_default();
+            let Some(u) = s.users.iter_mut().find(|u| u.id == uid) else { return json!({ "status": "gone" }) };
+            u.last_seen_ms = now_ms();
+            json!({ "status": "ok", "web_token": crew_password, "session": session, "name": u.name, "id": u.id, "role": u.role })
+        }
+        other => json!({ "status": other }),
+    }
+}
+
 // ---------------------------------------------------------------- commands
 
+/// The roster, each person marked with whether a page reaches their locked
+/// phone (`notify`), so whoever sends one can see who will only get it with
+/// ProDeck open.
+pub fn list_with_notify(id_state: &IdentityState, push: &crate::push::PushState) -> serde_json::Value {
+    let on = crate::push::notified_users(push);
+    let mut v = list_core(id_state);
+    if let Some(arr) = v.as_array_mut() {
+        for u in arr {
+            let id = u["id"].as_str().unwrap_or("").to_string();
+            u["notify"] = json!(on.contains(&id));
+        }
+    }
+    v
+}
+
 #[tauri::command]
-pub fn identity_list(identity: tauri::State<'_, IdentityState>) -> serde_json::Value {
-    list_core(identity.inner())
+pub fn identity_list(identity: tauri::State<'_, IdentityState>, push: tauri::State<'_, crate::push::PushState>) -> serde_json::Value {
+    list_with_notify(identity.inner(), push.inner())
 }
 
 #[tauri::command]
@@ -1162,5 +1258,40 @@ mod lockout_tests {
         let err = login_core(&st, "Devon Smith".to_string(), "4321".to_string()).unwrap_err();
         assert!(err.contains("too many attempts"), "{err}");
         assert!(st.lockouts.lock().unwrap().contains_key("u-devon"));
+    }
+}
+
+#[cfg(test)]
+mod ticket_tests {
+    use super::*;
+
+    #[test]
+    fn a_poster_signup_waits_until_the_booth_approves_it() {
+        let mut s = Store::default();
+        let (uid, session) = ticket(&mut s, "  Devon   Smith ", "1234", "Camera").unwrap();
+        assert_eq!(s.users[0].name, "Devon Smith");
+        assert_eq!(ticket_status(&s, &session), "waiting");
+        // Not signed in while waiting: the session resolves to nobody.
+        assert!(!s.users[0].approved);
+        s.users.iter_mut().find(|u| u.id == uid).unwrap().approved = true;
+        assert_eq!(ticket_status(&s, &session), "ok");
+        assert_eq!(ticket_status(&s, "nope"), "gone");
+        assert_eq!(ticket_status(&s, ""), "gone");
+        // Turned away = removed.
+        s.users.clear();
+        assert_eq!(ticket_status(&s, &session), "gone");
+    }
+
+    #[test]
+    fn the_poster_refuses_bad_input_duplicates_and_floods() {
+        let mut s = Store::default();
+        assert!(ticket(&mut s, "D", "1234", "").is_err());
+        assert!(ticket(&mut s, "Devon", "12a4", "").is_err());
+        ticket(&mut s, "Devon", "1234", "").unwrap();
+        assert!(ticket(&mut s, "devon", "9999", "").unwrap_err().contains("already on the crew"));
+        for i in 1..MAX_WAITING_SIGNUPS {
+            ticket(&mut s, &format!("Person {i}"), "1234", "").unwrap();
+        }
+        assert!(ticket(&mut s, "One More", "1234", "").unwrap_err().contains("Too many"));
     }
 }

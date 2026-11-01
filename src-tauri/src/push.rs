@@ -217,6 +217,12 @@ pub fn unsubscribe(push: &PushState, user_id: &str) {
     push.persist(&s);
 }
 
+/// Crew who will feel a page on a locked phone: they turned notifications on
+/// and the phone hasn't thrown that away since.
+pub fn notified_users(push: &PushState) -> std::collections::HashSet<String> {
+    push.store.lock().unwrap_or_else(|p| p.into_inner()).subs.iter().map(|s| s.user_id.clone()).collect()
+}
+
 fn subs_for(push: &PushState, user_ids: &[String]) -> Vec<Subscription> {
     push.store
         .lock()
@@ -287,8 +293,15 @@ pub fn notify(app: &AppHandle, user_ids: Vec<String>, payload: serde_json::Value
                 Ok(r) => {
                     // 404/410 mean the browser threw the subscription away —
                     // keeping it would mean pushing into the void every service.
-                    if r.status().as_u16() == 404 || r.status().as_u16() == 410 {
+                    let code = r.status().as_u16();
+                    if code == 404 || code == 410 {
                         drop_endpoint(&push, &sub.endpoint);
+                    } else if !r.status().is_success() {
+                        // Silent until now, so a page that never arrived left
+                        // nothing to find. Host only: the endpoint is a secret.
+                        let host = sub.endpoint.split('/').nth(2).unwrap_or("?").to_string();
+                        let why = r.text().await.unwrap_or_default();
+                        crate::diag::log(format!("[push] {host} refused a page: {code} {}", why.chars().take(120).collect::<String>()));
                     }
                 }
                 Err(_) => { /* transient — keep the subscription */ }

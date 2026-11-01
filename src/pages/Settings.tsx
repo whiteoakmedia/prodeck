@@ -2724,9 +2724,10 @@ function JoinWindow() {
         )}
       </div>
       <span className="hint">
-        The poster and the link only work while this is open. Crew who have
-        already joined are unaffected — their phones keep working. Open it when
-        you are signing people up, then let it close.
+        While this is open, scanning the poster lets people straight in. While
+        it's closed, the poster still works: people ask to join and wait for
+        you to approve them under Crew Members. Crew who have already joined
+        are unaffected.
       </span>
       {err && <span className="hint err">{err}</span>}
     </div>

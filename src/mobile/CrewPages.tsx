@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { pageReach, reachLine } from "../lib/pageReach";
 import { usePages } from "../pagesStore";
 import { usePco, isDeclined } from "../pcoStore";
 import { IS_WEB, identityList, checkinList, type CrewPage, type CrewUser } from "../lib/tauri";
@@ -210,6 +211,8 @@ export function CrewPageComposer({
     scope === "everyone" ? everyoneIds.length : scope === "role" ? inRole.length : picked.length;
   const othersCount = roster.length - roster.filter((u) => isHere(u.id) || isScheduled(u)).length;
 
+  const reach = reachLine(pageReach(roster, recipients));
+
   async function go() {
     setBusy(true);
     setErr("");
@@ -320,10 +323,14 @@ export function CrewPageComposer({
               >
                 <span className={`crew-check ${on ? "on" : ""}`}>{on ? "✓" : ""}</span>
                 <span className="crew-recip-name">{(u as any).nickname || u.name}</span>
-                {u.last_seen_ms > 0 && (
-                  <span className="mono-data crew-recip-seen">
-                    seen {hhmm(u.last_seen_ms)}
-                  </span>
+                {u.notify === false ? (
+                  <span className="mono-data crew-recip-seen">notifications off</span>
+                ) : (
+                  u.last_seen_ms > 0 && (
+                    <span className="mono-data crew-recip-seen">
+                      seen {hhmm(u.last_seen_ms)}
+                    </span>
+                  )
                 )}
               </button>
             );
@@ -347,6 +354,7 @@ export function CrewPageComposer({
       </div>
 
       {err && <p className="crew-join-err">{err}</p>}
+      {reach && <p className="crew-hint muted">{reach}</p>}
 
       <button
         className="crew-send-page"

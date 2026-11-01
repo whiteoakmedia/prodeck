@@ -705,6 +705,30 @@ async fn handle_conn(
             )
             .await;
         }
+        // The green-room poster while joining is closed (/join → ?joinclosed):
+        // ask to join with no password, wait for the booth to approve. Each
+        // sign-up counts against this peer's throttle like a wrong password,
+        // and identity caps how many can wait at once.
+        if cmd == "join_signup" || cmd == "join_status" {
+            let s = |k: &str| args.get(k).and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let identity = app.state::<crate::identity::IdentityState>().inner().clone();
+            let result = if cmd == "join_signup" {
+                note_auth_failure(&auth_key);
+                crate::identity::join_ticket_core(&app, &identity, s("name"), s("pin"), s("role"))
+            } else {
+                let crew_password = {
+                    let st = app.state::<SettingsState>();
+                    let cfg = st.lock().unwrap_or_else(|p| p.into_inner());
+                    if cfg.web_member_password.is_empty() { cfg.web_invite_token.clone() } else { cfg.web_member_password.clone() }
+                };
+                Ok(crate::identity::join_status_core(&identity, &s("session"), &crew_password))
+            };
+            let out = match result {
+                Ok(val) => json!({ "result": val }),
+                Err(e) => json!({ "error": e }),
+            };
+            return write_bytes(&mut stream, 200, "application/json", &serde_json::to_vec(&out).unwrap_or_default()).await;
+        }
         let Some(tier) = token_tier(&app, token) else {
             note_auth_failure(&auth_key);
             return write_bytes(&mut stream, 401, "application/json", b"{\"error\":\"unauthorized\"}")
@@ -1300,7 +1324,7 @@ async fn handle_conn(
             "/".to_string()
         } else if !open {
             crate::diag::log(format!(
-                "[join] refused — joining is closed (peer {})",
+                "[join] joining is closed, so the poster asks to join instead (peer {})",
                 stream.peer_addr().map(|a| a.ip().to_string()).unwrap_or_default()
             ));
             "/?joinclosed=1".to_string()
@@ -1966,7 +1990,8 @@ async fn dispatch(
         // Admin phones can manage the crew roster remotely.
         "identity_list" => {
             let identity = app.state::<crate::identity::IdentityState>().inner().clone();
-            Ok(crate::identity::list_core(&identity))
+            let push = app.state::<crate::push::PushState>().inner().clone();
+            Ok(crate::identity::list_with_notify(&identity, &push))
         }
         "identity_roles" => {
             let identity = app.state::<crate::identity::IdentityState>().inner().clone();
