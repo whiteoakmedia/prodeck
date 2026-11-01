@@ -1521,6 +1521,17 @@ export interface AtemSnapshot {
   lastHeard?: number | null;
   drops?: number;
 }
+/** A TV screen waiting to be paired (tv.rs). */
+export interface TvPending {
+  code: string;
+  name: string;
+  ip: string;
+  waitingSecs: number;
+}
+export const tvPending = () => invoke<TvPending[]>("tv_pending");
+/** `target`: a dashboard name, or "tally:all" for the camera tally board. */
+export const tvApprove = (code: string, target: string) => invoke<void>("tv_approve", { code, target });
+export const tvDismiss = (code: string) => invoke<void>("tv_dismiss", { code });
 export const atemState = () => invoke<AtemSnapshot>("atem_state");
 export const atemReconnect = () => invoke<void>("atem_reconnect");
 /** Admin, or a member with the control grant: these change what the room and the stream see. */

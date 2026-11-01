@@ -41,7 +41,7 @@ export const SECTIONS: SettingsSection[] = [
     id: "crew",
     label: "Crew & screens",
     blurb: "Crew accounts, scheduled pages, phones and kiosks.",
-    cards: ["set-crew", "set-schedule", "set-web", "set-kiosk", "set-tally"],
+    cards: ["set-crew", "set-schedule", "set-web", "set-kiosk", "set-tv", "set-tally"],
   },
   {
     id: "app",

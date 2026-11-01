@@ -1,0 +1,5 @@
+<resources>
+    <style name="Theme.ProDeckDisplay" parent="android:Theme.Black.NoTitleBar.Fullscreen">
+        <item name="android:windowBackground">#0E131B</item>
+    </style>
+</resources>

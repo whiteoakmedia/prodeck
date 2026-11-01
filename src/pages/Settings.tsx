@@ -95,6 +95,10 @@ import {
   atemState,
   atemReconnect,
   type AtemSnapshot,
+  tvPending,
+  tvApprove,
+  tvDismiss,
+  type TvPending,
   ndiDiscover,
   type NdiSource,
   type KeepaliveStatus,
@@ -1866,6 +1870,7 @@ export function SettingsPage() {
 
       {!IS_WEB && <Sec id="set-reliability"><ReliabilityCard /></Sec>}
       {!IS_WEB && <Sec id="set-kiosk"><KioskCard form={form} /></Sec>}
+      {!IS_WEB && <Sec id="set-tv"><TvScreensCard form={form} /></Sec>}
       {!IS_WEB && form.atem_enabled && <Sec id="set-tally"><TallyCard form={form} atem={atem} /></Sec>}
       {!IS_WEB && <Sec id="set-backup"><BackupCard /></Sec>}
       {!IS_WEB && <Sec id="set-help"><HelpCard /></Sec>}
@@ -3376,6 +3381,87 @@ function KioskCard({ form }: { form: Settings }) {
           {qr && <img src={qr} alt="Kiosk link" className="kiosk-qr" />}
         </div>
       )}
+    </section>
+  );
+}
+
+/**
+ * TV screens: a Fire TV or Android TV stick running the ProDeck Display app
+ * shows a code; it appears here, someone picks what it should show, and the
+ * TV opens it full screen from then on (tv.rs). No typing links on a remote.
+ */
+function TvScreensCard({ form }: { form: Settings }) {
+  const f = form as any;
+  const [pending, setPending] = useState<TvPending[]>([]);
+  const [dashes, setDashes] = useState<{ name: string }[]>([]);
+  const [target, setTarget] = useState<Record<string, string>>({});
+  const [msg, setMsg] = useState("");
+  useEffect(() => {
+    let alive = true;
+    const load = () => tvPending().then((p) => alive && setPending(p)).catch(() => {});
+    load();
+    const iv = setInterval(load, 3000);
+    const un = on<TvPending[]>("tv:pending", (p) => alive && p && setPending(p));
+    loadDashList()
+      .then((ds: any) => alive && setDashes(((ds ?? []) as { name: string }[]).filter((d) => d?.name)))
+      .catch(() => {});
+    return () => {
+      alive = false;
+      clearInterval(iv);
+      un.then((x) => x());
+    };
+  }, []);
+  const choice = (code: string) => target[code] ?? dashes[0]?.name ?? "";
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h3 id="set-tv">TV screens</h3>
+        <HelpLink section="phase1" />
+      </div>
+      <p className="muted small">
+        Put a dashboard on a TV with a Fire TV Stick or an Android TV box. Install the ProDeck Display app on it and open
+        it: the TV shows a code, which appears here. Check the code matches, choose what the TV should show, and press
+        <strong> Send to TV</strong>. From then on it opens that dashboard by itself.
+      </p>
+      {!f.web_enabled ? (
+        <p className="hint">Turn on <strong>Browser Access</strong> above first. TV screens connect through it.</p>
+      ) : !f.web_member_password ? (
+        <p className="hint">Set a <strong>member password</strong> in Browser Access. TV screens use it, like kiosk links.</p>
+      ) : pending.length === 0 ? (
+        <p className="muted small">No TVs waiting. Open ProDeck Display on the TV and its code shows up here.</p>
+      ) : (
+        <ul className="tv-pending">
+          {pending.map((p) => (
+            <li key={p.code}>
+              <span className="tv-code" aria-label={`Code ${p.code.split("").join(" ")}`}>{p.code}</span>
+              <span className="tv-name">
+                {p.name} <span className="muted small">{p.ip.replace(/^cf:/, "")}</span>
+              </span>
+              <select className="input small" aria-label={`What ${p.name} should show`} value={choice(p.code)}
+                onChange={(e) => setTarget((t) => ({ ...t, [p.code]: e.target.value }))}>
+                {dashes.map((d) => (
+                  <option key={d.name} value={d.name}>{d.name}</option>
+                ))}
+                {f.atem_enabled && <option value="tally:all">Camera tally board</option>}
+              </select>
+              <button type="button" className="btn small primary" disabled={!choice(p.code)}
+                onClick={() =>
+                  tvApprove(p.code, choice(p.code))
+                    .then(() => setMsg(`Sent to ${p.name}. It opens in a moment.`))
+                    .then(() => tvPending().then(setPending))
+                    .catch((e) => setMsg(String(e)))
+                }>
+                Send to TV
+              </button>
+              <button type="button" className="btn small ghost" onClick={() => tvDismiss(p.code).then(() => tvPending().then(setPending))}>
+                Not mine
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {msg && <p className="hint">{msg}</p>}
+      <p className="hint">A TV gets the member password, like a kiosk link. Changing that password disconnects every TV; open ProDeck Display on each to pair it again.</p>
     </section>
   );
 }

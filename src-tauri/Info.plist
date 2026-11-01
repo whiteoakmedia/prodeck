@@ -18,6 +18,7 @@
 		<string>_pro-dj-link._tcp</string>
 		<string>_ndi._tcp</string>
 		<string>_http._tcp</string>
+		<string>_prodeck._tcp</string>
 		<string>_netaudio-arc._udp</string>
 		<string>_netaudio-cmc._udp</string>
 		<string>_netaudio-dbc._udp</string>

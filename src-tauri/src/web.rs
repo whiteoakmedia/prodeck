@@ -421,6 +421,11 @@ pub fn start(app: AppHandle, web: WebState, port: u16) {
             }
         };
 
+        // Let TV screens find the booth by name (tv.rs).
+        {
+            let name = app.state::<SettingsState>().lock().unwrap_or_else(|p| p.into_inner()).device_name.clone();
+            crate::tv::announce(port, &name);
+        }
         while web.running.load(Ordering::Acquire) && mine(&web) {
             // Time-boxed accept so toggling off releases the port within ~1s.
             match tokio::time::timeout(Duration::from_secs(1), listener.accept()).await {
@@ -438,6 +443,7 @@ pub fn start(app: AppHandle, web: WebState, port: u16) {
 }
 
 pub fn stop(web: &WebState) {
+    crate::tv::stop_announcing();
     web.running.store(false, Ordering::Release);
     web.generation.fetch_add(1, Ordering::AcqRel);
     set_error(web, "");
@@ -536,6 +542,31 @@ async fn handle_conn(
         &stream.peer_addr().map(|a| a.ip().to_string()).unwrap_or_default(),
         &header_str,
     );
+
+    // TV screens pairing (tv.rs). No password: the TV doesn't have one yet,
+    // and only the code someone approves at the booth ever gets a link.
+    if method == "GET" && (path.starts_with("/api/tv/hello?") || path.starts_with("/api/tv/poll?")) {
+        let q = path.split_once('?').map(|(_, q)| q).unwrap_or("");
+        let param = |k: &str| {
+            q.split('&').find_map(|pair| {
+                let (a, b) = pair.split_once('=')?;
+                (a == k).then(|| urlencoding::decode(b).map(|c| c.into_owned()).unwrap_or_default())
+            })
+        };
+        let code = param("code").unwrap_or_default();
+        let body = if path.starts_with("/api/tv/hello?") {
+            match crate::tv::hello(&code, &param("name").unwrap_or_default(), &auth_key) {
+                Ok(()) => {
+                    let _ = app.emit("tv:pending", crate::tv::pending_list());
+                    json!({ "status": "waiting" })
+                }
+                Err(e) => json!({ "status": "refused", "error": e }),
+            }
+        } else {
+            crate::tv::poll(&code, &auth_key)
+        };
+        return write_bytes(&mut stream, 200, "application/json", body.to_string().as_bytes()).await;
+    }
 
     // SSE event stream.
     if method == "GET" && path.starts_with("/api/events") {

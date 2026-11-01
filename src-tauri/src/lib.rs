@@ -30,6 +30,7 @@ mod netmidi;
 mod ndi;
 mod obs;
 mod atem;
+mod tv;
 mod osc;
 mod pages;
 mod posfiles;
@@ -460,6 +461,9 @@ pub fn run() {
             atem::atem_macro_stop,
             atem::atem_macro_continue,
             atem::atem_ftb,
+            tv::tv_pending,
+            tv::tv_approve,
+            tv::tv_dismiss,
             avantis::avantis_state,
             ga4::ga4_state,
             avantis::avantis_set_mute,
