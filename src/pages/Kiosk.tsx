@@ -5,6 +5,7 @@ import "react-grid-layout/css/styles.css";
 import { useProDeck } from "../store";
 import { WIDGET_MAP } from "../widgets/registry";
 import { loadDashboards, type Dashboard as Dash } from "../lib/dashboards";
+import { kioskFit } from "../lib/kioskFit";
 
 const Grid = WidthProvider(GridLayout);
 
@@ -47,19 +48,30 @@ export function KioskPage({ name }: { name: string }) {
   // Fill the screen. A fixed 70px row left the bottom third of a TV empty
   // and made every widget small. Scale rows so the tallest column exactly
   // fills the viewport, and re-fit when the window changes.
+  // When even the shortest readable rows don't fit (a 12-row dashboard on a
+  // TV), the whole layout is scaled down evenly instead of running off the
+  // bottom (lib/kioskFit.ts).
   const [vh, setVh] = useState(() => window.innerHeight);
+  const [vw, setVw] = useState(() => window.innerWidth);
   useEffect(() => {
-    const onResize = () => setVh(window.innerHeight);
+    const onResize = () => {
+      setVh(window.innerHeight);
+      setVw(window.innerWidth);
+    };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
+  // ?safe=1: keep clear of the edges a TV crops (overscan), about 3% each side.
+  const safe = useMemo(() => new URLSearchParams(location.search).get("safe") === "1", []);
+  const safeX = safe ? Math.round(vw * 0.03) : 0;
+  const safeY = safe ? Math.round(vh * 0.035) : 0;
   const dashForFit = dashboards.find((d) => d.name.toLowerCase() === name.toLowerCase());
-  const rowHeight = useMemo(() => {
+  const fit = useMemo(() => {
     const rows = Math.max(1, ...(dashForFit?.widgets ?? []).map((w) => w.y + w.h));
-    const margin = 14;
     const pad = 14 * 2 + (connected ? 0 : 52); // page padding (+ the offline banner)
-    return Math.max(44, Math.floor((vh - pad - (rows - 1) * margin) / rows));
-  }, [vh, dashForFit, connected]);
+    return kioskFit({ vw: vw - 28 - 2 * safeX, vh, rows, reserved: pad + 2 * safeY });
+  }, [vh, vw, dashForFit, connected, safeX, safeY]);
+  const rowHeight = fit.rowHeight;
 
   // Room audio, with no tile. `startListen(true)` owns its own hidden <audio>
   // and retries on its own; the dashboard's `audio` flag is the whole switch.
@@ -149,10 +161,14 @@ export function KioskPage({ name }: { name: string }) {
   }
 
   return (
-    <div className="kiosk">
+    <div className="kiosk" style={safe ? { padding: `${14 + safeY}px ${14 + safeX}px` } : undefined}>
       {!connected && (
-        <div className="kiosk-ppbanner">ProPresenter offline — widgets are idle</div>
+        <div className="kiosk-ppbanner">ProPresenter is offline. Its tiles wait until it&apos;s back.</div>
       )}
+      <div
+        className="kiosk-canvas"
+        style={fit.scale < 1 ? { width: fit.width, transform: `scale(${fit.scale})`, transformOrigin: "top left" } : undefined}
+      >
       <Grid
         className="layout"
         layout={layout}
@@ -188,6 +204,7 @@ export function KioskPage({ name }: { name: string }) {
           );
         })}
       </Grid>
+      </div>
     </div>
   );
 }

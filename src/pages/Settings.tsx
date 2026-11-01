@@ -3399,6 +3399,9 @@ function TvScreensCard({ form }: { form: Settings }) {
   const [dashes, setDashes] = useState<{ name: string }[]>([]);
   const [target, setTarget] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState("");
+  // Many TVs crop the picture's edges (overscan); a small margin keeps every
+  // tile on screen. On by default: a margin costs little, a cut-off tile a lot.
+  const [safe, setSafe] = useState(true);
   useEffect(() => {
     let alive = true;
     const load = () => tvPending().then((p) => alive && setPending(p)).catch(() => {});
@@ -3456,7 +3459,7 @@ function TvScreensCard({ form }: { form: Settings }) {
               </select>
               <button type="button" className="btn small primary" disabled={!choice(p.code)}
                 onClick={() =>
-                  tvApprove(p.code, choice(p.code))
+                  tvApprove(p.code, choice(p.code), safe)
                     .then(() => setMsg(`Sent to ${p.name}. It opens in a moment.`))
                     .then(() => tvPending().then(setPending))
                     .catch((e) => setMsg(String(e)))
@@ -3469,6 +3472,12 @@ function TvScreensCard({ form }: { form: Settings }) {
             </li>
           ))}
         </ul>
+      )}
+      {pending.length > 0 && (
+        <label className="field check">
+          <input type="checkbox" checked={safe} onChange={(e) => setSafe(e.target.checked)} />
+          <span>Leave a margin round the edges, for TVs that crop the picture</span>
+        </label>
       )}
       {msg && <p className="hint">{msg}</p>}
       <p className="muted small">

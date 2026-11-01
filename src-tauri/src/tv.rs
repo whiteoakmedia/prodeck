@@ -130,17 +130,21 @@ pub fn tv_pending() -> Vec<Value> {
 }
 
 /// `target`: a dashboard name, or "tally:all" for the camera tally board.
+/// `safe`: keep clear of the edges a TV crops (overscan).
 #[tauri::command]
-pub fn tv_approve(code: String, target: String, settings: tauri::State<'_, crate::settings::SettingsState>) -> Result<(), String> {
+pub fn tv_approve(code: String, target: String, safe: Option<bool>, settings: tauri::State<'_, crate::settings::SettingsState>) -> Result<(), String> {
     let token = settings.lock().unwrap_or_else(|p| p.into_inner()).web_member_password.clone();
     if token.trim().is_empty() {
         return Err("Set a member password in Browser Access first. TV screens use it, like kiosk links.".into());
     }
     let enc = |s: &str| urlencoding::encode(s).into_owned();
-    let path = match target.strip_prefix("tally:") {
+    let mut path = match target.strip_prefix("tally:") {
         Some(t) => format!("/?tally={}&token={}", enc(t), enc(&token)),
         None => format!("/?kiosk={}&token={}", enc(&target), enc(&token)),
     };
+    if safe.unwrap_or(false) {
+        path.push_str("&safe=1");
+    }
     approve(&code, path)
 }
 

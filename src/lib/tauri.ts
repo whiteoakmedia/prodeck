@@ -144,7 +144,8 @@ const bootToken = bootParams?.get("token");
 if (IS_WEB && bootToken && typeof localStorage !== "undefined") {
   localStorage.setItem(TOKEN_KEY, bootToken);
 }
-export const KIOSK_DASH: string | null = IS_WEB ? bootParams?.get("kiosk") ?? null : null;
+// Demo mode too, so a kiosk layout can be checked without a booth.
+export const KIOSK_DASH: string | null = IS_WEB || IS_DEMO ? bootParams?.get("kiosk") ?? null : null;
 /**
  * Camera tally screen (?tally=<camera>&token=…): a phone or tablet on a
  * camera that goes red when it's on air. "" = not chosen yet (it asks).
@@ -1530,7 +1531,7 @@ export interface TvPending {
 }
 export const tvPending = () => invoke<TvPending[]>("tv_pending");
 /** `target`: a dashboard name, or "tally:all" for the camera tally board. */
-export const tvApprove = (code: string, target: string) => invoke<void>("tv_approve", { code, target });
+export const tvApprove = (code: string, target: string, safe = false) => invoke<void>("tv_approve", { code, target, safe });
 export const tvDismiss = (code: string) => invoke<void>("tv_dismiss", { code });
 export const atemState = () => invoke<AtemSnapshot>("atem_state");
 export const atemReconnect = () => invoke<void>("atem_reconnect");
