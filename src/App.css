@@ -1426,6 +1426,11 @@ select.input {
   padding: 12px;
   overflow: auto;
   min-height: 0;
+  /* Tiles lay themselves out by their own width (@container), so the same
+     tile works wide and short, tall and narrow, or on a phone. Width only,
+     so a tile in the phone stack still grows with its content. Unnamed on
+     purpose: older WebKit (iPads on iOS 16) drops named containers. */
+  container-type: inline-size;
 }
 .widget-empty {
   height: 100%;
@@ -1636,6 +1641,7 @@ select.input {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  flex-wrap: wrap;
 }
 .cl-count {
   font-variant-numeric: tabular-nums;
@@ -1643,6 +1649,7 @@ select.input {
 .cl-actions {
   display: flex;
   gap: 5px;
+  flex-wrap: wrap;
 }
 .w-check-items {
   flex: 1;
@@ -2792,7 +2799,9 @@ select.input {
 }
 .am-rta {
   flex: 1;
-  min-height: 50px;
+  /* Room for the smallest graph (40) plus its frequency labels (17), so in a
+     short tile the labels can't hang into the peak line below. */
+  min-height: 58px;
   display: flex;
 }
 .am-rta .rta-bars {
@@ -2845,7 +2854,7 @@ select.input {
 .rta-canvas-wrap {
   position: relative;
   flex: 1;
-  min-height: 60px;
+  min-height: 40px;
 }
 .rta-canvas {
   position: absolute;
@@ -3520,6 +3529,11 @@ select.input {
   display: flex;
   flex-direction: column;
   min-width: 0;
+}
+/* Narrow tile: the lights wrap into rows instead of squashing into slivers. */
+@container (max-width: 640px) {
+  .w-health { flex-wrap: wrap; align-content: stretch; height: auto; min-height: 100%; }
+  .hs-item { flex: 1 1 140px; min-height: 38px; padding: 6px 10px; }
 }
 .hs-label {
   font-size: 12px;
@@ -7540,7 +7554,7 @@ select.input {
 .atem-tag.pgm { background: var(--bad-soft); color: var(--bad); border: 1px solid var(--bad); }
 .atem-tag.pvw { background: var(--good-soft); color: var(--good); border: 1px solid var(--good); }
 .atem-tag.moving { background: var(--panel-2); color: var(--faint); border: 1px solid var(--border); }
-.atem-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; overflow: auto; }
+.atem-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; overflow: auto; min-height: 112px; align-content: start; }
 .atem-src { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel-2); color: inherit; cursor: pointer; text-align: left; min-height: 52px; }
 .atem-src:disabled { cursor: default; opacity: 0.85; }
 .atem-src.pvw { border-color: var(--good); background: var(--good-soft); }
@@ -7551,7 +7565,7 @@ select.input {
 .atem-w.stale .atem-grid, .atem-w.stale .atem-w-top, .atem-w.stale .atem-w-next { opacity: 0.55; filter: grayscale(0.6); }
 .atem-w-stale { margin: 0; }
 /* Cut and Auto beside the buttons instead of under them. */
-.atem-w-body { display: flex; flex-direction: column; gap: 8px; min-height: 0; flex: 1 1 auto; }
+.atem-w-body { display: flex; flex-direction: column; gap: 8px; min-height: 112px; flex: 1 1 auto; }
 .atem-w-body.side { flex-direction: row; }
 .atem-w-body.side .atem-grid { flex: 1; }
 .atem-w-actions.side { flex-direction: column; flex-wrap: nowrap; width: 88px; flex-shrink: 0; }
@@ -8093,6 +8107,15 @@ select.input {
 .w-stagecall-leader {
   color: var(--muted);
   font-size: clamp(12px, 1.2vw, 18px);
+}
+/* Narrow tile: the leader goes under the song title instead of squeezing it
+   to two letters, and type sizes follow the tile, not the screen. */
+@container (max-width: 520px) {
+  .w-stagecall-song { grid-template-columns: auto 1fr; row-gap: 0; }
+  .w-stagecall-leader { grid-column: 2; font-size: 12px; }
+  .w-stagecall-eyebrow { font-size: 12px; }
+  .w-stagecall-clock { font-size: clamp(18px, 8cqw, 30px); }
+  .w-stagecall-title { font-size: 15px; }
 }
 .w-stagecall-foot {
   margin-top: auto;
@@ -9295,6 +9318,12 @@ select.input {
   display: grid;
   grid-template-columns: repeat(13, minmax(0, 1fr));
   gap: 4px;
+}
+/* Narrow tile: two rows of six keys and "Tune off" across the bottom, instead
+   of thirteen buttons too thin to read or hit. */
+@container (max-width: 520px) {
+  .ks-keys { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .ks-key.off { grid-column: 1 / -1; }
 }
 .ks-key {
   font: inherit;
@@ -10506,3 +10535,33 @@ select.input {
 .atem-key-name { font-weight: 700; font-size: 12px; }
 .atem-key-src { font-size: 11px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .atem-w-opt.check { flex-direction: row; align-items: center; gap: 6px; }
+
+/* Widget lab (demo only, ?shots=1&lab=1). */
+.lab { padding: 16px; display: flex; flex-direction: column; gap: 24px; background: var(--bg); min-height: 100vh; overflow: auto; height: 100vh; }
+.lab-row { display: flex; flex-direction: column; gap: 8px; }
+.lab-name { font-size: 16px; margin: 0; }
+.lab-name code { font-size: 12px; color: var(--faint); }
+.lab-shapes { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+.lab-shape { display: flex; flex-direction: column; gap: 4px; }
+.lab-shape-name { font-size: 11px; color: var(--faint); }
+.lab-frame { flex: none; }
+
+/* ATEM tile, wide and short: sources on the left, keys, Preview and Cut/Auto
+   on the right, so a 12 × 3 tile doesn't crush the sources to a sliver. */
+@container (min-width: 760px) {
+  .atem-w:not(.editing) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 30%);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas: "top next" "grid keys" "grid act";
+    column-gap: 14px;
+    row-gap: 8px;
+  }
+  .atem-w:not(.editing) > .atem-w-top { grid-area: top; }
+  .atem-w:not(.editing) > .atem-w-next { grid-area: next; margin-top: 0; }
+  .atem-w:not(.editing) > .atem-w-body { grid-area: grid; min-height: 0; }
+  .atem-w:not(.editing) > .atem-w-keys { grid-area: keys; align-content: start; }
+  .atem-w:not(.editing) > .atem-w-actions { grid-area: act; }
+  .atem-w:not(.editing) > .atem-w-body .atem-grid { min-height: 0; height: 100%; }
+  .atem-w:not(.editing) > :not(.atem-w-top):not(.atem-w-next):not(.atem-w-body):not(.atem-w-keys):not(.atem-w-actions) { grid-column: 1 / -1; }
+}

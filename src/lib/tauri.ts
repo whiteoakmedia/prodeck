@@ -2,7 +2,7 @@ import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 import { listen as tauriListen, type UnlistenFn } from "@tauri-apps/api/event";
 import { IS_DEMO, IS_SHOTS, demoInvoke, demoOn } from "./demo";
 
-export { IS_DEMO, IS_SHOTS, SHOT_PAGE, SHOT_DASH, SHOT_PHONE, SHOT_TAB, SHOT_CHAT, setDemo } from "./demo";
+export { IS_DEMO, IS_SHOTS, SHOT_LAB, SHOT_PAGE, SHOT_DASH, SHOT_PHONE, SHOT_TAB, SHOT_CHAT, setDemo } from "./demo";
 
 // ---------------------------------------------------------------------------
 // Runtime mode: native Tauri (desktop) vs. plain browser (LAN web gateway).

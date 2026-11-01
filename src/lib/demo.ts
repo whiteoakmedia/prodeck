@@ -23,6 +23,8 @@ const KEY = "prodeck.demo";
 const QS = typeof location !== "undefined" ? new URLSearchParams(location.search) : null;
 export const IS_SHOTS: boolean = !!QS?.has("shots");
 export const SHOT_PAGE: string | null = QS?.get("page") ?? null;
+/** Widget lab (?shots=1&lab=1): every tile in every shape, for layout checks. */
+export const SHOT_LAB: boolean = QS?.get("lab") === "1";
 export const SHOT_DASH: number | null = QS?.get("dash") != null ? Number(QS.get("dash")) : null;
 export const SHOT_PHONE: boolean = !!QS?.has("phone");
 export const SHOT_TAB: string | null = QS?.get("tab") ?? null;
@@ -842,9 +844,12 @@ export async function demoInvoke<T>(cmd: string, args?: Record<string, unknown>)
       return out(demoThumb(Number(args?.index ?? args?.cueIndex ?? 0)));
     case "tap_edge_state":
       return out({ keyword: "give", url: "https://example.church/give", setAgo: 42, revertsIn: 172 });
-    case "tap_stats":
+    case "tap_stats": {
+      const day = new Date(NOW()).toISOString().slice(0, 10);
+      return out({ days: [{ day, state: "give", taps: 132 }, { day, state: "connect", taps: 41 }, { day, state: "groups", taps: 18 }] });
+    }
     case "tap_stats_range":
-      return out({ counts: { give: 132, connect: 41, groups: 18 }, days: 7 });
+      return out({ from: Number((args as any)?.from ?? 0), to: Number((args as any)?.to ?? 0), total: 191, keywords: [{ state: "give", taps: 132 }, { state: "connect", taps: 41 }, { state: "groups", taps: 18 }] });
     case "list_audio_inputs":
       return out(["Demo Input (2ch)", "Dante Virtual Soundcard", "Avantis USB Audio"]);
     case "playback_session":

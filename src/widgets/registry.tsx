@@ -1692,7 +1692,9 @@ function TapLinkWidget() {
     let alive = true;
     const load = () =>
       tapStats()
-        .then((s) => alive && setStats(s.days))
+        // Defensive: an edge from an older or newer TapLink must not take the
+        // whole dashboard down with a render crash.
+        .then((s) => alive && setStats(Array.isArray(s?.days) ? s.days : []))
         .catch(() => {}); // never let a stats hiccup mask the live state below
     load();
     const iv = setInterval(load, 60_000);

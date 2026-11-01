@@ -12,6 +12,7 @@ import {
   on,
   IS_DEMO,
   IS_SHOTS,
+  SHOT_LAB,
   SHOT_CHAT,
   SHOT_PAGE,
   SHOT_PHONE,
@@ -19,6 +20,7 @@ import {
   pcoOauthStatus,
 } from "./lib/tauri";
 import { KioskPage } from "./pages/Kiosk";
+import { WidgetLab } from "./pages/WidgetLab";
 import { TallyPage } from "./pages/Tally";
 import { ChatProvider, useChat } from "./chatStore";
 import { PagesProvider } from "./pagesStore";
@@ -698,7 +700,9 @@ export default function App() {
                       <ChatProvider>
                         <PagesProvider>
                          <ScheduleProvider>
-                          {KIOSK_DASH ? (
+                          {IS_SHOTS && SHOT_LAB ? (
+                            <WidgetLab />
+                          ) : KIOSK_DASH ? (
                             <KioskPage name={KIOSK_DASH} />
                           ) : IS_PHONE ? (
                             <MobileShell />
