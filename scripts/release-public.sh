@@ -228,7 +228,13 @@ ASSETS=("$OUT/ProDeck.dmg" "$OUT/ProDeck.app.tar.gz" "$OUT/latest.json")
 # The Fire TV / Android TV app (tv/android), built with tv/android/build-apk.sh.
 # Every release carries it so a booth's /tv.apk link (which points at the
 # latest release) always finds one.
+# Booths now point their TVs at THIS release's copy to update them in place
+# (tv.rs apk_url), so build it fresh whenever this Mac can.
 TV_APK="$REPO_DIR/tv/android/ProDeckDisplay.apk"
+if [ -d "${ANDROID_HOME:-$HOME/Library/Android/sdk}" ] && [ -d "${JAVA_HOME:-/opt/homebrew/opt/openjdk@17}" ]; then
+  echo "▸ Building the TV app"
+  "$REPO_DIR/tv/android/build-apk.sh" || { echo "✗ TV app build failed"; exit 1; }
+fi
 if [ -f "$TV_APK" ]; then
   ASSETS+=("$TV_APK")
 else

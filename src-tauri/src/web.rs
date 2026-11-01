@@ -740,6 +740,18 @@ async fn handle_conn(
         if tier == Tier::Admin {
             clear_auth_failures(&auth_key);
         }
+        // A paired TV checking in (tv.rs): any signed-in tier, since a TV
+        // holds the crew password. Here rather than in dispatch so the booth
+        // can list where each TV is.
+        if cmd == "tv_checkin" {
+            let s = |k: &str| args.get(k).and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let app_v = args.get("app").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
+            let can = args.get("canInstall").and_then(|v| v.as_bool()).unwrap_or(false);
+            let ip = auth_key.trim_start_matches("cf:").to_string();
+            let r = crate::tv::checkin(&s("id"), &s("name"), app_v, &s("showing"), can, &s("note"), &ip);
+            let out = json!({ "result": r });
+            return write_bytes(&mut stream, 200, "application/json", &serde_json::to_vec(&out).unwrap_or_default()).await;
+        }
         // Auto check-in lives HERE, not in dispatch: it needs the connection's
         // presence evidence (TCP peer + Cloudflare's CF-Connecting-IP), which
         // only this layer can see. Any signed-in tier may use it.

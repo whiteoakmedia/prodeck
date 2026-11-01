@@ -680,7 +680,7 @@ const ARRAY_CMDS = new Set([
   "chat_history", "page_list", "identity_roles", "discover_services",
   "invite_list", "ndi_discover_sources", "posfile_list", "tap_check_links",
   "diag_recent_log", "list_audio_inputs", "list_midi_inputs", "list_midi_outputs",
-  "load_knowledge", "assist_log_tail",
+  "load_knowledge", "assist_log_tail", "tv_pending", "tv_screens",
 ]);
 /** Commands whose callers read fields off the result. */
 const OBJECT_CMDS: Record<string, unknown> = {

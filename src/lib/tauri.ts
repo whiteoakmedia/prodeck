@@ -1536,6 +1536,12 @@ export const tvPending = () => invoke<TvPending[]>("tv_pending");
 /** `target`: a dashboard name, or "tally:all" for the camera tally board. */
 export const tvApprove = (code: string, target: string, safe = false) => invoke<void>("tv_approve", { code, target, safe });
 export const tvDismiss = (code: string) => invoke<void>("tv_dismiss", { code });
+/** TVs that have checked in, newest version information first. */
+export const tvScreens = () => invoke<import("./tvScreens").TvScreen[]>("tv_screens");
+/** Ask one TV (its id) or "all" outdated TVs to update their app. Returns how many were asked. */
+export const tvUpdate = (id: string) => invoke<number>("tv_update", { id });
+/** Change what a TV shows: a dashboard name or "tally:all". */
+export const tvShow = (id: string, target: string, safe = false) => invoke<void>("tv_show", { id, target, safe });
 export const atemState = () => invoke<AtemSnapshot>("atem_state");
 export const atemReconnect = () => invoke<void>("atem_reconnect");
 /** Admin, or a member with the control grant: these change what the room and the stream see. */

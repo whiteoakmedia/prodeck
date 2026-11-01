@@ -19,6 +19,8 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import android.widget.TextView
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 /**
  * The dashboard, full screen, for good. ProDeck's kiosk page does the real
@@ -32,6 +34,7 @@ class MainActivity : Activity() {
     private lateinit var offline: TextView
     private val handler = Handler(Looper.getMainLooper())
     private var lastBack = 0L
+    private val checkins = Executors.newSingleThreadScheduledExecutor()
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -88,6 +91,24 @@ class MainActivity : Activity() {
         })
         hideSystemBars()
         web.loadUrl(url)
+        checkins.scheduleWithFixedDelay({ checkIn() }, 5, 60, TimeUnit.SECONDS)
+    }
+
+    /** Tell the booth this TV is here, and do what it asks (Checkin.kt). Background thread. */
+    private fun checkIn() {
+        val r = Checkin.send(this) ?: return
+        val latest = r.optInt("latest")
+        val apk = r.optString("apk")
+        getSharedPreferences("display", MODE_PRIVATE).edit().putInt("latest", latest).putString("apk", apk).apply()
+        r.optString("show").takeIf { it.startsWith("/") }?.let { path ->
+            handler.post {
+                Prefs.save(this, Prefs.base(this) ?: return@post, path)
+                Prefs.url(this)?.let { web.loadUrl(it) }
+            }
+        }
+        if (r.optBoolean("update") && latest > Checkin.appVersion(this) && apk.startsWith("http")) {
+            Updater.run(this, apk, latest)
+        }
     }
 
     /** The booth isn't answering (powered off, or the TV woke first): try again every few seconds. */
@@ -139,6 +160,7 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        checkins.shutdownNow()
         handler.removeCallbacksAndMessages(null)
         if (::web.isInitialized) web.destroy()
         super.onDestroy()

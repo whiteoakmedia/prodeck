@@ -208,9 +208,9 @@ Grants take effect on their phone within a few seconds, no sign-out needed. Revo
 
 **The poster (shared link).** **Settings → Crew Members → Crew invite link** gives you a QR code and a **Print poster** button. Hang it in the booth or green room. Scanning it joins with the crew password and asks the person for a name and PIN; **you then approve them once**.
 
-The poster only works **while joining is open**: press **Open for 15 min** (or 1 hour) on the same card when you're signing people up. It closes itself. Anyone already joined is unaffected — this only gates first-time signups. If someone scans while it's closed they see *"Joining is closed right now — ask whoever is at the production computer to open joining."*
+The poster works any time. **While joining is closed** (the usual state), scanning it asks for a name and a PIN and sends a request to the booth: you'll see a banner, and the person appears under **Crew Members** waiting for approval. The moment you approve them their phone is let in, as long as they keep the page open (or scan again). **While joining is open** (press **Open for 15 min** or 1 hour on the same card, handy at a volunteer meeting) scanning lets people straight in to sign up. Anyone already joined is unaffected.
 
-> Why the window? That link hands out a real credential and a printed code has nobody to ask for a password, so time is the only honest gate. Before this, anyone anywhere could request it.
+> Why not always let people straight in? The poster has nobody to ask for a password, and the church's web address reaches it from anywhere. So while joining is closed nobody gets in until you approve them, and only a dozen requests can wait at once.
 
 **A personal invite (one person).** On the same card, **Personal invites**: type their name and role, press Create, send them the link. It's good for a week, works once, and they arrive **pre-approved** with name and role already filled in — the invite is the approval. Best for new team members you already know.`,
     settings: "set-crew",
@@ -302,7 +302,9 @@ If you type your own name and see *"that name is taken"*, the app now tries your
 - Pages arrive as a **lock-screen notification** too, if the phone allowed notifications when it joined. iPhones can only buzz from the notification — Safari has no vibration control — so the notification is the buzz on an iPhone.
 - A page the booth can no longer accept a confirmation for (the booth restarted, or it's old) shows a **Dismiss** option instead of ringing forever.
 
-**Pages not arriving?** On the phone: **More → Page notifications** must say **on**, and the app must be added to the home screen. On the booth: **Settings → Crew Members** shows the person as approved.`,
+**Who gets a page to everyone.** **This Sunday** means everyone checked in **and** everyone scheduled on this week's Planning Center plan, whether or not they've opened ProDeck today. People off the plan are left out unless you tick **Include people not here**.
+
+**Pages not arriving?** A page only reaches a locked phone if that phone turned notifications on. The composer marks those people **notifications off** and tells you before you send; they'll only see the page with ProDeck open. On the phone: **More → Page notifications** must say **on**, and the app must be added to the home screen. On the booth: **Settings → Crew Members** shows the person as approved.`,
     related: ["crew-overview", "phones-install"],
   },
 
@@ -621,6 +623,21 @@ Cameras, the sound desk and OBS all work on a kiosk. (Before 0.9.75 they didn't 
 **It fills the screen.** A kiosk scales the layout so the tallest column exactly fills the TV, whatever size it is.`,
     settings: "set-kiosk",
     related: ["gateway-passwords", "ndi"],
+  },
+  {
+    id: "tv-screens",
+    group: "Phones & kiosks",
+    title: "TV screens: a Fire TV Stick in the green room",
+    aliases: ["fire tv", "firestick", "android tv", "green room tv", "message the green room", "update the tv app", "prodeck display"],
+    body: `A Fire TV Stick or Android TV box runs **ProDeck Display**, which shows one dashboard full screen. **Settings → TV screens** has the install steps; the TV shows a code, you match it there and choose a dashboard.
+
+**Messages to a TV.** In Messages, set the destination to a screen: **All screens**, or one dashboard's screens (say **Green Room screen**). The message goes across those TVs in big type with a soft chime, and comes down after three minutes, when you send another, or when you press **Clear**. Sending to screens needs the admin password or the **Stage** permission.
+
+**Changing what a TV shows.** Under **Your TVs**, choose a dashboard and press **Show**; the TV switches within a minute. Or press **Menu** on the TV's remote and choose there.
+
+**Updating the TV app.** When a ProDeck update brings a new ProDeck Display, **Your TVs** says **Update ready**. Press **Update** (or **Update all**). The TV downloads it and asks; someone presses **Update** on the remote, then opens ProDeck Display again. Nothing is uninstalled and the TV keeps its screen. The first time, the TV asks you to allow installing apps for ProDeck Display. TVs set up before 0.9.115 need the new app installed over the top once with Downloader, and update from here after that.`,
+    settings: "set-tv",
+    related: ["kiosk", "gateway-passwords"],
   },
   {
     id: "public-url",
@@ -1057,7 +1074,7 @@ ProDeck never guesses here. If it can't see a hop, it says so and hands you the 
 
 - **Two shared passwords** decide what a phone may do. Anyone with the crew password is crew. Choose long ones; rotate the crew password if a phone is lost (it signs everyone out — send the new join link).
 - **Crew PINs are four digits.** They identify people, they don't protect anything; the passwords do. Wrong PINs lock the name for five minutes.
-- **Joining is time-gated.** The poster link only works while you've opened joining.
+- **Joining needs you.** Outside a joining window you open, the poster only lets someone ask to join; nobody gets in until you approve them.
 - **The web gateway throttles password guessing** and refuses requests from other websites.
 - **Secrets never leave the booth in the clear**: phones receive settings with every password and key removed; the diagnostics bundle is scrubbed before it's copied.
 - **A kiosk bookmark holds the crew password** and can be read off that machine. Don't put the admin password in one.

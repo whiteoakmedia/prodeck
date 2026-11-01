@@ -80,9 +80,31 @@ class ScreenChooserActivity : Activity() {
             current.getQueryParameter("kiosk")?.let { open(base, "/?kiosk=${enc(it)}&token=${enc(token)}", !safe) }
                 ?: open(base, "/?tally=all&token=${enc(token)}", !safe)
         })
+        updateRow()
         root.addView(button("Connect to a different ProDeck") { repair() })
         root.addView(button("Back to the screen") { finish() })
         (first ?: root.getChildAt(2))?.requestFocus()
+    }
+
+    /** Update ProDeck Display from here, when the booth has a newer one. */
+    private fun updateRow() {
+        val p = getSharedPreferences("display", MODE_PRIVATE)
+        val latest = p.getInt("latest", 0)
+        val apk = p.getString("apk", null)
+        val mine = Checkin.appVersion(this)
+        if (latest <= mine || apk == null) {
+            root.addView(body("ProDeck Display version $mine. ${if (latest > 0) "Up to date." else ""}".trim()))
+            return
+        }
+        val status = body(Checkin.note.ifBlank { "Version $latest is ready. Updating keeps this TV's pairing and screen. Afterwards, open ProDeck Display again." })
+        root.addView(button("Update ProDeck Display") {
+            status.text = "Downloading the update…"
+            io.execute {
+                Updater.run(this, apk, latest)
+                main.post { status.text = Checkin.note.ifBlank { "Follow the prompt on screen." } }
+            }
+        })
+        root.addView(status)
     }
 
     private fun open(base: String, path: String, safe: Boolean) {

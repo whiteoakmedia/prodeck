@@ -12,16 +12,30 @@ android {
         // Fire TV Stick (2nd gen, Fire OS 5) and every Android TV box since.
         minSdk = 22
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        // One number, shared with the booth (tv.rs reads the same file): a TV
+        // below the booth's number is offered the update.
+        versionCode = rootProject.file("VERSION").readText().trim().toInt()
+        versionName = "1.$versionCode"
+    }
+
+    // A TV only accepts an update signed with the same key as the app it
+    // has. That key lives outside the repo at ~/.prodeck/keys/
+    // prodeck-display.keystore (a copy of the debug key the first releases
+    // were signed with); without it, this Mac's debug key is used.
+    val stable = file(System.getProperty("user.home") + "/.prodeck/keys/prodeck-display.keystore")
+    signingConfigs {
+        create("stable") {
+            storeFile = stable
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            // Signed with the debug key unless a release keystore is set up
-            // (sideloaded installs don't need a store key).
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (stable.exists()) signingConfigs.getByName("stable") else signingConfigs.getByName("debug")
         }
     }
     compileOptions {

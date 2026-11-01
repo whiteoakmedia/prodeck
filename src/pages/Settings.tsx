@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { tvStatus, type TvScreen } from "../lib/tvScreens";
 import { CONSOLES, consoleLabel, consoleNeedsMidi, isNrpnConsole, midiBaseForSwitch, portForSwitch } from "../lib/consoles";
 import { rebase } from "../lib/formRebase";
 import { NdiNotice } from "../components/NdiNotice";
@@ -98,6 +99,9 @@ import {
   tvPending,
   tvApprove,
   tvDismiss,
+  tvScreens,
+  tvUpdate,
+  tvShow,
   type TvPending,
   ndiDiscover,
   type NdiSource,
@@ -3419,6 +3423,25 @@ function TvScreensCard({ form }: { form: Settings }) {
     };
   }, []);
   const choice = (code: string) => target[code] ?? dashes[0]?.name ?? "";
+  // TVs already paired: each checks in about once a minute.
+  const [screens, setScreens] = useState<TvScreen[]>([]);
+  const [showOn, setShowOn] = useState<Record<string, string>>({});
+  useEffect(() => {
+    let alive = true;
+    const load = () => tvScreens().then((l) => alive && setScreens(l)).catch(() => {});
+    load();
+    const iv = setInterval(load, 5000);
+    return () => {
+      alive = false;
+      clearInterval(iv);
+    };
+  }, []);
+  const outdated = screens.filter((s) => s.online && s.outdated && !s.updateAsked);
+  const ask = (id: string, label: string) =>
+    tvUpdate(id)
+      .then((n) => setMsg(n ? `Asked ${label} to update. Someone presses Update on the TV's remote, then opens ProDeck Display again.` : "Nothing to update."))
+      .then(() => tvScreens().then(setScreens))
+      .catch((e) => setMsg(String(e)));
   return (
     <section className="card">
       <div className="card-head">
@@ -3436,6 +3459,53 @@ function TvScreensCard({ form }: { form: Settings }) {
           <li>Install <strong>Downloader</strong> from the Fire TV app store, open it and type <code className="kiosk-url">{appUrl}</code></li>
           <li>Install and open <strong>ProDeck Display</strong>. Its code appears below within a few seconds.</li>
         </ol>
+      )}
+      {screens.length > 0 && (
+        <>
+          <div className="field-row" style={{ alignItems: "center", gap: 8 }}>
+            <strong className="small">Your TVs</strong>
+            {outdated.length > 1 && (
+              <button type="button" className="btn small primary" onClick={() => ask("all", `${outdated.length} TVs`)}>
+                Update all ({outdated.length})
+              </button>
+            )}
+          </div>
+          <ul className="tv-pending">
+            {screens.map((s) => {
+              const st = tvStatus(s);
+              const pick = showOn[s.id] ?? s.showing;
+              return (
+                <li key={s.id}>
+                  <span className="tv-name">
+                    {s.name} <span className="muted small">{s.showing || "nothing yet"}</span>
+                    <span className={`hint ${st.tone === "warn" ? "warn" : ""}`} style={{ display: "block" }}>{st.text}</span>
+                  </span>
+                  <select className="input small" aria-label={`What ${s.name} shows`} value={pick} disabled={!s.online}
+                    onChange={(e) => setShowOn((m) => ({ ...m, [s.id]: e.target.value }))}>
+                    {!dashes.some((d) => d.name === pick) && <option value={pick}>{pick || "Choose"}</option>}
+                    {dashes.map((d) => (
+                      <option key={d.name} value={d.name}>{d.name}</option>
+                    ))}
+                    {f.atem_enabled && <option value="tally:all">Camera tally board</option>}
+                  </select>
+                  <button type="button" className="btn small" disabled={!s.online || !pick || pick === s.showing}
+                    onClick={() =>
+                      tvShow(s.id, pick, safe)
+                        .then(() => setMsg(`${s.name} switches within a minute.`))
+                        .catch((e) => setMsg(String(e)))
+                    }>
+                    Show
+                  </button>
+                  {s.online && s.outdated && !s.updateAsked && (
+                    <button type="button" className="btn small primary" onClick={() => ask(s.id, s.name)}>
+                      Update
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </>
       )}
       {!f.web_enabled ? (
         <p className="hint">Turn on <strong>Browser Access</strong> above first. TV screens connect through it.</p>
@@ -3474,7 +3544,7 @@ function TvScreensCard({ form }: { form: Settings }) {
           ))}
         </ul>
       )}
-      {pending.length > 0 && (
+      {(pending.length > 0 || screens.length > 0) && (
         <label className="field check">
           <input type="checkbox" checked={safe} onChange={(e) => setSafe(e.target.checked)} />
           <span>Leave a margin round the edges, for TVs that crop the picture</span>
@@ -3484,7 +3554,14 @@ function TvScreensCard({ form }: { form: Settings }) {
       <p className="muted small">
         <strong>Service audio on a TV:</strong> turn on <strong>Room audio</strong> for that dashboard (in its top bar while
         editing). Every TV and kiosk showing it then plays what ProDeck hears (Settings, Audio input), and the TV remote sets
-        the volume. To change what a TV shows, press <strong>Menu</strong> (or the centre button) on its remote and choose another screen there.
+        the volume. To change what a TV shows, use <strong>Show</strong> above, or press <strong>Menu</strong> (or the centre button) on its remote and choose there.
+      </p>
+      <p className="muted small">
+        <strong>Updating the TV app:</strong> when a new ProDeck Display comes with an update, press <strong>Update</strong> next to a
+        TV (or Update all). The TV downloads it and asks; someone presses <strong>Update</strong> on its remote, then opens
+        ProDeck Display again. Nothing is uninstalled and the TV keeps its screen. The first time, the TV asks to allow
+        installing apps for ProDeck Display. TVs set up before version 0.9.115 don't appear in this list: install the new app
+        over the top once with Downloader, and they update from here after that.
       </p>
       <p className="hint">A TV gets the member password, like a kiosk link. Changing that password disconnects every TV; open ProDeck Display on each to pair it again.</p>
     </section>
