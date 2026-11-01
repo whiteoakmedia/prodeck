@@ -44,7 +44,49 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
-## 0.9.110 — 31 October 2026
+## 0.9.110 — 1 November 2026
+
+### New: camera tally on phones and iPads
+
+Any phone or iPad can be a tally light. **Settings → Camera tally** makes a
+link and QR code; scan it on the device. It uses the switcher's own tally, so
+a camera shown through a key or mid-transition lights correctly.
+
+- **Tally light:** one camera. The whole screen is red when it's **LIVE** and
+  green when it's **NEXT** (on Preview). Mount it on the camera.
+- **Operator:** one camera big, with what's live and next along the bottom.
+- **All cameras:** every camera on one screen, for an iPad at the director's
+  desk or side of stage. Tick which inputs count as cameras.
+
+Options: no green for next, and black instead of grey when off air so it
+doesn't glow on stage. If it can't be sure (it lost ProDeck, or ProDeck lost the
+switcher) it shows amber stripes and **NO TALLY**, never a dark screen that
+looks safe. Add it to the Home Screen and it opens straight into the tally,
+full screen. It reconnects by itself and reloads itself after ProDeck updates.
+
+### ATEM: more than one M/E, a tile you arrange, a sturdier link
+
+- Each ATEM tile picks its own M/E; Settings picks the default. Stream Deck
+  links take `&me=2`.
+- Edit the dashboard to arrange the tile: drag sources into order (arrows on a
+  touch screen), hide or rename them, put Cut and Auto below, above or beside
+  the buttons, and set buttons per row.
+- Inputs named "--" are treated as unused and hidden.
+- If the link drops, the tile keeps the last Program and Preview on screen,
+  greyed, while ProDeck reconnects. Retries back off when the switcher stays
+  silent, so its few connection slots aren't filled. Settings shows how long
+  the link has been up and how many times it dropped, with **Reconnect now**.
+- Fixed: the ATEM tile on phones and kiosks only changed after a reload or a
+  button press.
+
+### New: ProPresenter view only
+
+**Settings → ProPresenter → View only**: ProDeck shows everything ProPresenter
+is doing but never changes it. No triggers, clears, stage messages, timer
+controls or playlist edits, from the booth, any phone or Stream Deck. Tiles
+become monitors, the Clear buttons hide, the top bar says **VIEW ONLY**, and
+Auto-Follow only practises.
+
 
 ### New: Allen & Heath Qu-5, Qu-6 and Qu-7
 
