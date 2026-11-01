@@ -65,6 +65,10 @@ pub struct AvantisInner {
     pub watch: Vec<WatchRec>,
     /// Human-readable recent watchdog lines, for the snapshot/UI.
     pub watch_log: std::collections::VecDeque<String>,
+    /// Why the last attempt to reach the desk failed ("connection refused",
+    /// "timed out"…); None once connected. Shown in the health strip and
+    /// logged (on change) so a diagnostics bundle says why the desk is red.
+    pub last_error: Option<String>,
 }
 
 #[derive(Clone)]
@@ -133,6 +137,7 @@ pub fn snapshot(state: &AvantisState) -> Value {
         "watchLog": s.watch_log.iter().rev().take(20).collect::<Vec<_>>(),
         "colors": s.colors,
         "model": s.model.id(),
+        "lastError": s.last_error,
         "namesSupported": s.model.has_names(),
         "maxScene": s.model.max_scene(),
         "controlSupported": s.model.has_control(),
@@ -473,7 +478,7 @@ impl Parser {
                         false
                     }
                     0x06 => {
-                        if model == DeskModel::Sq {
+                        if model.is_nrpn() {
                             // Coarse half of a 14-bit value; the fine half (CC 26) completes it.
                             self.vc.insert(chan, val);
                             return false;
@@ -487,7 +492,7 @@ impl Parser {
                         }
                         false
                     }
-                    0x26 if model == DeskModel::Sq => {
+                    0x26 if model.is_nrpn() => {
                         // SQ: everything is NRPN on the one channel. MSB/LSB name the
                         // parameter; 06/26 carry the value. Mutes are 06 00 / 26 01|00.
                         if chan != base_nibble {
@@ -497,11 +502,11 @@ impl Parser {
                         let (Some(msb), Some(lsb)) = (msb, lsb) else { return false };
                         let param = ((msb as u16) << 7) | lsb as u16;
                         let vc = self.vc.remove(&chan).unwrap_or(0);
-                        if let Some((k, i)) = ahmap::sq_decode_mute(param) {
+                        if let Some((k, i)) = ahmap::sq_decode_mute(model, param) {
                             let mut s = st.lock().unwrap_or_else(|p| p.into_inner());
                             return apply_mute(&mut s, key(k, i), val != 0);
                         }
-                        if let Some((k, i)) = ahmap::sq_decode_level(param) {
+                        if let Some((k, i)) = ahmap::sq_decode_level(model, param) {
                             let v14 = ((vc as u16) << 7) | val as u16;
                             let v = ahmap::fader_u8_from_db(ahmap::sq_level_to_db(v14));
                             let mut s = st.lock().unwrap_or_else(|p| p.into_inner());
@@ -747,6 +752,20 @@ fn fire_softkeys(
     }
 }
 
+/// Dial the desk with a 5 s limit per address (the OS default can run past a
+/// minute, which stalls reconnects when the desk is off or unroutable).
+fn connect(host: &str, port: u16) -> std::io::Result<TcpStream> {
+    use std::net::ToSocketAddrs;
+    let mut last = std::io::Error::new(std::io::ErrorKind::NotFound, "no address for that host");
+    for addr in (host, port).to_socket_addrs()? {
+        match TcpStream::connect_timeout(&addr, Duration::from_secs(5)) {
+            Ok(s) => return Ok(s),
+            Err(e) => last = e,
+        }
+    }
+    Err(last)
+}
+
 /// Set by `avantis_reconnect`; the mirror loop clears it as it drops the link.
 static RECONNECT: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
@@ -786,11 +805,25 @@ pub fn spawn_mirror(app: AppHandle) {
                 continue;
             }
             let base_nibble = base - 1;
-            let stream = TcpStream::connect((host.as_str(), port));
-            let Ok(mut stream) = stream else {
-                set_connected(&app, &state, false);
-                std::thread::sleep(Duration::from_secs(5));
-                continue;
+            let stream = connect(&host, port);
+            let mut stream = match stream {
+                Ok(s) => s,
+                Err(e) => {
+                    let why = format!("{} at {host}:{port}: {e}", model.label());
+                    let changed = {
+                        let mut s = state.lock().unwrap_or_else(|p| p.into_inner());
+                        let changed = s.last_error.as_deref() != Some(why.as_str());
+                        s.last_error = Some(why.clone());
+                        changed
+                    };
+                    if changed {
+                        crate::diag::log(format!("[desk] can't connect to the {why}"));
+                        app.emit("avantis:state", snapshot(&state)).ok();
+                    }
+                    set_connected(&app, &state, false);
+                    std::thread::sleep(Duration::from_secs(5));
+                    continue;
+                }
             };
             stream.set_read_timeout(Some(Duration::from_millis(1000))).ok();
             // Without this a write to a desk that has stopped reading blocks
@@ -801,6 +834,9 @@ pub fn spawn_mirror(app: AppHandle) {
                 s.writer = stream.try_clone().ok();
                 s.base_nibble = base_nibble;
                 s.model = model;
+                if s.last_error.take().is_some() {
+                    crate::diag::log(format!("[desk] connected to the {} at {host}:{port}", model.label()));
+                }
             }
             set_connected(&app, &state, true);
 
@@ -1052,6 +1088,22 @@ mod parser_tests {
         assert!(!feed_all(&mut p, &[0x90, 0x30, 0x7F], DeskModel::Sq, 0, &st));
         assert_eq!(p.softkeys, vec![(0, 0x30, 0x7F)]);
         assert_eq!(st.lock().unwrap().mutes.len(), 1);
+    }
+
+    #[test]
+    fn qu_stream_lands_in_the_mirror_with_its_own_table() {
+        let st = fresh();
+        let mut p = Parser::new();
+        // Qu-5/6/7 Issue 1: "Ip1, Mute On, Ch1  B0 63 00 B0 62 00 B0 06 00 B0 26 01".
+        assert!(feed_all(&mut p, &[0xB0, 0x63, 0x00, 0xB0, 0x62, 0x00, 0xB0, 0x06, 0x00, 0xB0, 0x26, 0x01], DeskModel::Qu, 0, &st));
+        // Mtx4 mute (00 58): the Qu has a fourth matrix the SQ doesn't.
+        assert!(feed_all(&mut p, &[0xB0, 0x63, 0x00, 0xB0, 0x62, 0x58, 0xB0, 0x06, 0x00, 0xB0, 0x26, 0x01], DeskModel::Qu, 0, &st));
+        // 00 20 is ST1 on the Qu, never input 33.
+        assert!(!feed_all(&mut p, &[0xB0, 0x63, 0x00, 0xB0, 0x62, 0x20, 0xB0, 0x06, 0x00, 0xB0, 0x26, 0x01], DeskModel::Qu, 0, &st));
+        let s = st.lock().unwrap();
+        assert_eq!(s.mutes.get("input:1"), Some(&true));
+        assert_eq!(s.mutes.get("mtx:4"), Some(&true));
+        assert_eq!(s.mutes.get("input:33"), None);
     }
 
     #[test]

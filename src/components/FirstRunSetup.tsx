@@ -32,7 +32,7 @@ import { openHelp } from "../help/nav";
 import { isFreshInstall, readSetupDone, writeSetupDone, ONBOARDING_EVENT } from "../lib/onboarding";
 import { ConnectCard } from "./ConnectCard";
 import { Icon } from "./Icon";
-import { CONSOLES, OTHER_CONSOLE, consoleInfo, consoleLabel, setupChoiceFromSettings, setupFields, type SetupChoice } from "../lib/consoles";
+import { CONSOLES, OTHER_CONSOLE, consoleInfo, consoleLabel, isNrpnConsole, setupChoiceFromSettings, setupFields, type SetupChoice } from "../lib/consoles";
 
 /**
  * First-run onboarding — a full-screen, staged setup for a fresh install.
@@ -801,7 +801,7 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
                   </label>
                   {deskFields.midi && (
                     <label className="field narrow">
-                      <span>{deskModel === "sq" ? "MIDI channel" : "Base MIDI ch."}</span>
+                      <span>{isNrpnConsole(deskModel) ? "MIDI channel" : "Base MIDI ch."}</span>
                       <input className="input" type="number" min={1} max={consoleMeta.maxBase} value={deskBase}
                         onChange={(e) => { const n = parseInt(e.target.value); if (Number.isFinite(n)) setDeskBase(Math.min(consoleMeta.maxBase, Math.max(1, n))); }} />
                     </label>
@@ -821,7 +821,7 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
                     ? "Nothing to set on the console itself. ProDeck subscribes over OSC. "
                     : deskModel === "yamaha"
                       ? "Nothing to set on the console itself. ProDeck reads it over Yamaha's remote control protocol and only watches for now: it can't change anything on a Yamaha desk yet. "
-                      : `Set the desk's MIDI channel under ${deskModel === "sq" ? "Utility → General → MIDI" : "Utility → Control → MIDI"} and enter the same number here. `}
+                      : `Set the desk's MIDI channel under ${isNrpnConsole(deskModel) ? "Utility → General → MIDI" : "Utility → Control → MIDI"} and enter the same number here. `}
                   Give the desk a fixed IP (or a DHCP reservation) so this keeps working after a router restart.
                 </p>
               </>

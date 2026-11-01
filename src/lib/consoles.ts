@@ -6,7 +6,7 @@
 // (ahmap.rs DeskModel::parse). "other" is never saved: it is the setup
 // step's "my desk isn't listed" answer.
 
-export type ConsoleId = "avantis" | "dlive" | "sq" | "x32" | "yamaha";
+export type ConsoleId = "avantis" | "dlive" | "sq" | "qu" | "x32" | "yamaha";
 
 export interface ConsoleInfo {
   id: ConsoleId;
@@ -63,6 +63,19 @@ export const CONSOLES: ConsoleInfo[] = [
     control: true,
   },
   {
+    // Same MIDI protocol as the SQ (Qu-5/6/7 MIDI Protocol Issue 1), not the
+    // older Qu-16/24/32 one.
+    id: "qu",
+    name: "Qu-5 / Qu-6 / Qu-7",
+    option: "Allen & Heath Qu-5 / Qu-6 / Qu-7",
+    label: "Qu",
+    hint: "Allen & Heath · MIDI channel 1 to 16 · Utility → General → MIDI · no channel names",
+    port: 51325,
+    midi: true,
+    maxBase: 16,
+    control: true,
+  },
+  {
     id: "x32",
     name: "X32 / M32",
     option: "Behringer X32 / Midas M32",
@@ -101,6 +114,29 @@ export function consoleLabel(model: string | null | undefined): string {
 /** True when ProDeck may write to this desk (mutes, faders, names, scenes). */
 export function deskControlSupported(model: string | null | undefined): boolean {
   return (consoleInfo(model) ?? CONSOLES[0]).control;
+}
+
+/** SQ and Qu: one MIDI channel set under Utility → General → MIDI, and no channel names. */
+export function isNrpnConsole(model: string | null | undefined): boolean {
+  const id = consoleInfo(model)?.id;
+  return id === "sq" || id === "qu";
+}
+
+/**
+ * What the Sound desk light says, named for the desk actually picked. A Qu
+ * owner was told "Can't reach the Avantis". `error` is the backend's last
+ * connect failure, when there is one.
+ */
+export function deskHealthText(model: string | null | undefined, state: string, error?: string | null): string {
+  const label = consoleLabel(model);
+  if (state === "ok") return "Connected and mirroring.";
+  if (state === "idle") return "Mirror is off (Settings → Connections → Sound Console).";
+  let text = `Can't reach the ${label}. Check it's powered on and its Network port is plugged into the switch; the address lives in Settings → Connections → Sound Console.`;
+  if (consoleNeedsMidi(model)) {
+    text += " If Companion or Allen & Heath MIDI Control is also connected to the desk, close it and try again: some Allen & Heath desks take only one MIDI connection.";
+  }
+  if (error) text += ` Last attempt: ${error}.`;
+  return text;
 }
 
 /** True when the desk has a MIDI channel to match. */

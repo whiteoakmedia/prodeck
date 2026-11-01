@@ -6,6 +6,8 @@ import {
   consoleLabel,
   consoleNeedsMidi,
   deskControlSupported,
+  deskHealthText,
+  isNrpnConsole,
   midiBaseForSwitch,
   portForSwitch,
   setupChoiceFromSettings,
@@ -37,7 +39,7 @@ describe("console setup step", () => {
   });
 
   it("asks the A&H desks for a MIDI channel", () => {
-    for (const id of ["avantis", "dlive", "sq"] as const) {
+    for (const id of ["avantis", "dlive", "sq", "qu"] as const) {
       expect(setupFields(id).midi).toBe(true);
       expect(setupFields(id).port).toBe(51325);
     }
@@ -89,5 +91,42 @@ describe("console metadata", () => {
     expect(midiBaseForSwitch("avantis", 16)).toBe(12);
     expect(midiBaseForSwitch("sq", 16)).toBe(16);
     expect(midiBaseForSwitch("yamaha", 14)).toBe(14); // no MIDI: leave the saved value alone
+  });
+});
+
+/**
+ * Qu-5/6/7. Kasey at Chapel Hill picked SQ for a Qu-5 (same protocol, it was
+ * the only fit) and the desk light said "Can't reach the Avantis".
+ */
+describe("Qu-5/6/7", () => {
+  it("is its own choice, set up like an SQ", () => {
+    const qu = consoleInfo("qu")!;
+    expect(qu.label).toBe("Qu");
+    expect(qu.port).toBe(51325);
+    expect(qu.maxBase).toBe(16);
+    expect(consoleNeedsMidi("qu")).toBe(true);
+    expect(deskControlSupported("qu")).toBe(true);
+    expect(portForSwitch("qu", 51328)).toBe(51325);
+    expect(midiBaseForSwitch("qu", 16)).toBe(16);
+    expect(isNrpnConsole("qu")).toBe(true);
+    expect(isNrpnConsole("sq")).toBe(true);
+    expect(isNrpnConsole("avantis")).toBe(false);
+  });
+
+  it("names the desk actually picked when it can't be reached", () => {
+    expect(deskHealthText("qu", "bad")).toContain("Can't reach the Qu.");
+    expect(deskHealthText("sq", "bad")).toContain("Can't reach the SQ.");
+    expect(deskHealthText(undefined, "bad")).toContain("Can't reach the Avantis.");
+    expect(deskHealthText("qu", "bad")).toContain("Companion");
+    // X32 and Yamaha have no MIDI connection to share.
+    expect(deskHealthText("x32", "bad")).not.toContain("Companion");
+    expect(deskHealthText("qu", "bad", "Qu at 10.2.10.200:51325: Connection refused")).toContain(
+      "Last attempt: Qu at 10.2.10.200:51325: Connection refused.",
+    );
+    expect(deskHealthText("qu", "ok")).toBe("Connected and mirroring.");
+  });
+
+  it("follows the no dashes rule", () => {
+    for (const st of ["ok", "bad", "idle"]) expect(deskHealthText("qu", st)).not.toMatch(/[—–]/);
   });
 });
