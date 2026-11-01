@@ -989,6 +989,11 @@ export async function demoInvoke<T>(cmd: string, args?: Record<string, unknown>)
     setTimeout(() => emit("chat:confidence_clear", {}), 120);
     return out(null);
   }
+  if (cmd === "chat_clear_screens") {
+    const which = String((args as Record<string, unknown> | undefined)?.which ?? "all") || "all";
+    setTimeout(() => emit("chat:screen_clear", { channel: `screen:${which}` }), 120);
+    return out(null);
+  }
   if (WRITES.test(cmd)) return out(null);
   // Reads we don't model return the SHAPE the caller expects — a demo that
   // hands back null where an array was expected crashes the page.

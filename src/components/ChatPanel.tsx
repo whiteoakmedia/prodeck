@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useChat } from "../chatStore";
-import { IS_WEB, webWhoami, type ChatMsg, type CrewPage } from "../lib/tauri";
+import { IS_WEB, webWhoami, chatClearScreens, type ChatMsg, type CrewPage } from "../lib/tauri";
+import { loadDashboards } from "../lib/dashboards";
+import { screenChannel } from "../lib/screenMessage";
 import { usePages } from "../pagesStore";
 import { CrewPageComposer, CrewPageTracking } from "../mobile/CrewPages";
 
 // The message feed + compose row, shared by the Messages drawer (app-level)
 // and the dashboard/kiosk widget. Destinations: Team (crew chat), Stage
 // (ProPresenter stage displays, logged to the feed), Confidence (banner
-// takeover on every ConfidenceWidget).
+// takeover on every ConfidenceWidget), and a screen (full screen on the
+// kiosks and TVs showing one dashboard, or all of them).
 // First-run crew join: name + 4-digit PIN. Register creates a pending account
 // (an admin approves it); Login resumes an approved one. Functional layout —
 // the designed version lands with the mobile UI pass.
@@ -104,6 +107,15 @@ export function ChatPanel() {
   const chat = useChat();
   const [text, setText] = useState("");
   const [target, setTarget] = useState<ChatMsg["target"]>("team");
+  // Which screen a "screen" message goes to: a dashboard name, or null for
+  // every kiosk and TV.
+  const [screen, setScreen] = useState<string | null>(null);
+  const [dashNames, setDashNames] = useState<string[]>([]);
+  useEffect(() => {
+    loadDashboards()
+      .then((d) => setDashNames((d ?? []).map((x) => x.name).filter(Boolean)))
+      .catch(() => {});
+  }, []);
   const [err, setErr] = useState("");
   const listRef = useRef<HTMLDivElement | null>(null);
   // Members only get Team; the gateway enforces this server-side — hiding the
@@ -132,7 +144,7 @@ export function ChatPanel() {
   async function send() {
     setErr("");
     try {
-      await chat.send(text, target);
+      await chat.send(text, target, target === "screen" ? screenChannel(screen) : "team");
       setText("");
     } catch (e) {
       setErr(String(e));
@@ -175,13 +187,28 @@ export function ChatPanel() {
         {!isMember && (
           <select
             className="input w-chat-dest"
-            value={target}
-            onChange={(e) => setTarget(e.target.value as ChatMsg["target"])}
+            value={target === "screen" ? screenChannel(screen) : target}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v.startsWith("screen:")) {
+                const which = v.slice(7);
+                setScreen(which === "all" ? null : which);
+                setTarget("screen");
+              } else setTarget(v as ChatMsg["target"]);
+            }}
             title="Destination"
           >
             <option value="team">Team</option>
             <option value="stage">Stage</option>
             <option value="confidence">Confidence</option>
+            <optgroup label="Kiosks and TV screens">
+              <option value="screen:all">All screens</option>
+              {dashNames.map((n) => (
+                <option key={n} value={screenChannel(n)}>
+                  {n} screen
+                </option>
+              ))}
+            </optgroup>
           </select>
         )}
         <input
@@ -192,7 +219,9 @@ export function ChatPanel() {
               ? "Message the crew…"
               : target === "stage"
                 ? "Text for the stage displays…"
-                : "Banner for confidence screens…"
+                : target === "screen"
+                  ? `Message for ${screen ? `the ${screen} screen` : "every screen"}…`
+                  : "Banner for confidence screens…"
           }
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
@@ -209,6 +238,15 @@ export function ChatPanel() {
             onClick={() => setComposing(true)}
           >
             Page
+          </button>
+        )}
+        {!isMember && target === "screen" && (
+          <button
+            className="btn small ghost"
+            title="Take the message off the screen"
+            onClick={() => chatClearScreens(screen ?? "all").catch(() => {})}
+          >
+            Clear
           </button>
         )}
         {!isMember && target === "confidence" && (

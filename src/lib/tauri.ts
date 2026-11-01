@@ -1079,7 +1079,7 @@ export interface ChatMsg {
   id: number;
   from: string;
   text: string;
-  target: "team" | "confidence" | "stage";
+  target: "team" | "confidence" | "stage" | "screen";
   /** "team" or "role:<Role Name>". Filing, not privacy — see chat.rs. */
   channel: string;
   ts: number;
@@ -1318,6 +1318,8 @@ export const identityApprove = (id: string, approved: boolean) =>
 export const identityRemove = (id: string) => invoke<void>("identity_remove", { id });
 export const chatHistory = () => invoke<ChatMsg[]>("chat_history");
 export const chatClearConfidence = () => invoke<void>("chat_clear_confidence");
+/** Take a message off the screens: "all" or a dashboard name. */
+export const chatClearScreens = (which: string) => invoke<void>("chat_clear_screens", { which });
 // Access tier of this client's token. Desktop is always admin; web clients ask
 // the gateway (member tokens get team-chat-only, no control surfaces).
 /** The grantable capabilities, in display order. Mirrors identity::PERMS. */

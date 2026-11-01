@@ -512,6 +512,14 @@ pub fn approved_users(id_state: &IdentityState) -> Vec<(String, String)> {
         .collect()
 }
 
+/// Crew on this week's plan. The booth mirrors each person's Planning Center
+/// position onto their account every week and clears it when they drop off
+/// the plan (App.tsx), so a position means "scheduled this week".
+pub fn scheduled_ids(id_state: &IdentityState) -> std::collections::HashSet<String> {
+    let s = id_state.store.lock().unwrap_or_else(|p| p.into_inner());
+    s.users.iter().filter(|u| u.approved && !u.role.trim().is_empty()).map(|u| u.id.clone()).collect()
+}
+
 pub fn set_role_core(
     app: &AppHandle,
     id_state: &IdentityState,

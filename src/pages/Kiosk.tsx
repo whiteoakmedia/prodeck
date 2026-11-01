@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { ScreenMessage } from "../components/ScreenMessage";
 import { startListen, stopListen } from "../lib/listen";
 import GridLayout, { WidthProvider, type Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
@@ -162,6 +163,7 @@ export function KioskPage({ name }: { name: string }) {
 
   return (
     <div className="kiosk" style={safe ? { padding: `${14 + safeY}px ${14 + safeX}px` } : undefined}>
+      <ScreenMessage dashboard={dash?.name ?? name} />
       {!connected && (
         <div className="kiosk-ppbanner">ProPresenter is offline. Its tiles wait until it&apos;s back.</div>
       )}

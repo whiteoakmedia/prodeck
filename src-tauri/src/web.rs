@@ -68,6 +68,7 @@ const FORWARD_EVENTS: &[&str] = &[
     "routing:changed",
     "keysend:state",
     "chat:confidence_clear",
+    "chat:screen_clear",
     "identity:changed",
 ];
 
@@ -1720,7 +1721,7 @@ pub(crate) fn member_cmd_ok(cmd: &str) -> bool {
 pub(crate) fn perm_for_cmd(cmd: &str) -> Option<&'static str> {
     match cmd {
         "page_send" | "page_rebuzz" => Some("page"),
-        "pp_set_stage_message" | "pp_clear_stage_message" | "chat_clear_confidence" => Some("stage"),
+        "pp_set_stage_message" | "pp_clear_stage_message" | "chat_clear_confidence" | "chat_clear_screens" => Some("stage"),
         "pp_action" | "pp_clear_layer" | "pp_put" | "pp_delete" | "pp_timer_op"
         | "pp_trigger_look" | "pp_trigger_macro" | "pp_trigger_next" | "pp_trigger_previous"
         | "avantis_set_mute" | "avantis_set_fader" | "avantis_set_name" | "avantis_recall_scene"
@@ -2146,6 +2147,10 @@ async fn dispatch(
         }
         "chat_clear_confidence" => {
             crate::chat::clear_confidence_core(app);
+            Ok(Value::Null)
+        }
+        "chat_clear_screens" => {
+            crate::chat::clear_screens_core(app, &s("which").unwrap_or_default());
             Ok(Value::Null)
         }
         // Admin-only by default: neither name is in the member allowlist, so a

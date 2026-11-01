@@ -425,6 +425,7 @@ pub fn run() {
             chat::chat_send,
             chat::chat_history,
             chat::chat_clear_confidence,
+            chat::chat_clear_screens,
             // Pages (priority channel + read receipts)
             pages::page_send,
             pages::page_ack,

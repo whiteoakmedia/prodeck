@@ -6,6 +6,9 @@
 //   "confidence" — takes over ConfidenceWidget instances as a big banner
 //   "stage"      — record-only: the frontend also fires the existing
 //                  pp_set_stage_message; this keeps an audit line in the feed
+//   "screen"     — full screen on kiosks and TV screens: channel
+//                  "screen:all", or "screen:<dashboard>" for the screens
+//                  showing that dashboard (the green room TV)
 // Sender names are labels, not identities: the booth uses device_name, web
 // clients pick a name stored in their browser.
 
@@ -27,7 +30,7 @@ pub struct ChatMsg {
     pub id: u64,
     pub from: String,
     pub text: String,
-    pub target: String, // "team" | "confidence" | "stage"
+    pub target: String, // "team" | "confidence" | "stage" | "screen"
     /// Which conversation this belongs to: "team", or "role:<Role Name>".
     ///
     /// NOT a privacy boundary. Every browser's event stream authenticates with
@@ -80,6 +83,13 @@ fn now_ms() -> u64 {
 /// always belong to the team feed regardless of which channel was open on the
 /// phone, so the caller's channel is ignored for those targets.
 fn normalize_channel(target: &str, channel: &str) -> Result<String, String> {
+    // Screens are addressed by the dashboard they show, so the green room TV
+    // can be told something without every kiosk in the building hearing it.
+    if target == "screen" {
+        let which = channel.trim().strip_prefix("screen:").unwrap_or("all").trim();
+        let which = if which.is_empty() { "all" } else { which };
+        return Ok(format!("screen:{}", which.chars().take(64).collect::<String>()));
+    }
     if target != "team" {
         return Ok("team".to_string());
     }
@@ -115,7 +125,7 @@ pub fn send_core(
     if text.is_empty() {
         return Err("empty message".into());
     }
-    if !matches!(target.as_str(), "team" | "confidence" | "stage") {
+    if !matches!(target.as_str(), "team" | "confidence" | "stage" | "screen") {
         return Err(format!("unknown target \"{target}\""));
     }
     let channel = normalize_channel(&target, &channel)?;
@@ -196,6 +206,12 @@ pub fn clear_confidence_core(app: &AppHandle) {
     app.emit("chat:confidence_clear", json!({})).ok();
 }
 
+/// Take a message off the screens: `which` is "all" or a dashboard name.
+pub fn clear_screens_core(app: &AppHandle, which: &str) {
+    let which = if which.trim().is_empty() { "all" } else { which.trim() };
+    app.emit("chat:screen_clear", json!({ "channel": format!("screen:{which}") })).ok();
+}
+
 // ---------------------------------------------------------------- commands
 
 #[tauri::command]
@@ -223,6 +239,11 @@ pub fn chat_history(chat: tauri::State<'_, ChatState>) -> Vec<ChatMsg> {
 #[tauri::command]
 pub fn chat_clear_confidence(app: AppHandle) {
     clear_confidence_core(&app);
+}
+
+#[tauri::command]
+pub fn chat_clear_screens(which: String, app: AppHandle) {
+    clear_screens_core(&app, &which);
 }
 
 #[cfg(test)]
@@ -270,6 +291,14 @@ mod tests {
         }
         let up = recent_team(&chat, 3);
         assert_eq!(up.iter().map(|m| m.id).collect::<Vec<_>>(), vec![8, 9, 10]);
+    }
+
+    #[test]
+    fn screen_messages_are_addressed_by_dashboard() {
+        assert_eq!(normalize_channel("screen", "screen:Green Room").unwrap(), "screen:Green Room");
+        assert_eq!(normalize_channel("screen", "").unwrap(), "screen:all");
+        assert_eq!(normalize_channel("screen", "screen:  ").unwrap(), "screen:all");
+        assert_eq!(normalize_channel("screen", "team").unwrap(), "screen:all");
     }
 
     #[test]

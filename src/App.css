@@ -10576,3 +10576,47 @@ select.input {
 .tv-pending li { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel-2); }
 .tv-code { font-family: var(--mono); font-size: 20px; font-weight: 800; letter-spacing: 0.15em; }
 .tv-name { flex: 1 1 140px; min-width: 0; }
+
+/* A crew message across a kiosk or TV screen (components/ScreenMessage.tsx).
+   Read from across a green room: huge type, the dashboard dimmed behind it,
+   and room left at the edges for TVs that crop the picture. */
+.screen-msg {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5vh 5vw;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  animation: screen-msg-in 260ms ease-out;
+}
+.screen-msg-card {
+  max-width: 100%;
+  padding: 4vh 5vw;
+  border-radius: 20px;
+  background: var(--accent);
+  color: #fff;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+}
+.screen-msg-text {
+  font-weight: 800;
+  line-height: 1.08;
+  font-size: clamp(36px, 9vmin, 140px);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.screen-msg-from {
+  margin-top: 2.5vh;
+  font-weight: 600;
+  opacity: 0.85;
+  font-size: clamp(16px, 3vmin, 40px);
+}
+@keyframes screen-msg-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .screen-msg { animation: none; }
+}

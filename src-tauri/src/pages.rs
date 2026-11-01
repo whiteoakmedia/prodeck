@@ -119,15 +119,17 @@ pub fn send_core(
     // "waiting" row.
     let roster = crate::identity::approved_users(identity);
     let recipients: Vec<Recipient> = if recipient_ids.is_empty() {
-        // A broadcast goes only to people IN THE BUILDING (checked in for the
-        // current service). Paging every account meant everyone at home got
-        // Sunday-morning buzzes. Naming someone explicitly still always
-        // delivers — that is how "where are you?" and the call-time nudge
-        // reach people who are NOT here.
+        // A broadcast goes to this Sunday's crew: anyone checked in for the
+        // current service, and anyone scheduled on this week's plan whether
+        // or not they've opened ProDeck today (that's who a page is for).
+        // Paging every account meant everyone at home got Sunday-morning
+        // buzzes, so people off the plan are left out. Naming someone
+        // explicitly still always delivers.
         let here = crate::checkin::arrived_ids(app, &app.state::<crate::checkin::CheckinState>());
+        let scheduled = crate::identity::scheduled_ids(identity);
         roster
             .into_iter()
-            .filter(|(id, _)| here.contains(id))
+            .filter(|(id, _)| here.contains(id) || scheduled.contains(id))
             .map(|(id, name)| Recipient { id, name })
             .collect()
     } else {
@@ -139,7 +141,7 @@ pub fn send_core(
     };
     if recipients.is_empty() {
         return Err(if recipient_ids.is_empty() {
-            "nobody is checked in, so a page to \"everyone here\" has no one to reach — pick people by name to page them anyway".into()
+            "nobody is checked in or on this week's plan, so a page to everyone has no one to reach. Pick people by name to page them anyway".into()
         } else {
             "no approved crew to page — approve someone under Settings → Crew".into()
         });
