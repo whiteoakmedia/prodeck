@@ -44,6 +44,34 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.112 — 1 November 2026
+
+Everything in 0.9.111, plus:
+
+### New: ProPresenter Macros tile
+
+Add **ProPresenter Macros** to a dashboard: every macro in ProPresenter as a
+button, in the colour you gave it in Pro. Tap to run it (it flashes, since Pro
+doesn't report when a macro finishes). Edit the dashboard to reorder or hide
+them; new macros made in Pro appear within a minute. Running needs the control
+permission on a phone, and is off while ProPresenter is view only.
+
+### Fixed: tiles in any shape
+
+Every tile now lays itself out by its own size, so the same tile works wide
+and short, tall and narrow, small, or on a phone:
+
+- **System Health** wraps into rows instead of squashing five lights into
+  slivers.
+- **ATEM Switcher**, wide and short: sources on the left, keys, Preview and
+  Cut/Auto on the right. Small tiles no longer crush the sources.
+- **Song Key → Waves**: two rows of six keys when narrow.
+- **Keys to the Stage**: the leader goes under the song title when narrow.
+- **SPL + RTA**: frequency labels no longer run into the peak reading.
+- **Checklist**: its buttons wrap instead of running off the edge.
+- The **TapLink** tile could take the whole dashboard down if its tap counts
+  came back in an unexpected shape.
+
 ## 0.9.111 — 1 November 2026
 
 Everything in 0.9.110, plus:
