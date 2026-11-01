@@ -3471,6 +3471,11 @@ function TvScreensCard({ form }: { form: Settings }) {
         </ul>
       )}
       {msg && <p className="hint">{msg}</p>}
+      <p className="muted small">
+        <strong>Service audio on a TV:</strong> turn on <strong>Room audio</strong> for that dashboard (in its top bar while
+        editing). Every TV and kiosk showing it then plays what ProDeck hears (Settings, Audio input), and the TV remote sets
+        the volume. To change what a TV shows, press <strong>Menu</strong> on its remote and pair it again.
+      </p>
       <p className="hint">A TV gets the member password, like a kiosk link. Changing that password disconnects every TV; open ProDeck Display on each to pair it again.</p>
     </section>
   );

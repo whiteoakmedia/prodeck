@@ -48,8 +48,11 @@ class MainActivity : Activity() {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.databaseEnabled = true
-            // A TV in the lobby must never start playing sound on its own.
-            settings.mediaPlaybackRequiresUserGesture = true
+            // Sound is the dashboard's call, not the TV's: a dashboard with Room
+            // audio on plays the service audio on its kiosks (Kiosk.tsx), and a
+            // TV on the wall has nobody there to press play. Every other tile
+            // keeps its sound muted, as on any kiosk.
+            settings.mediaPlaybackRequiresUserGesture = false
             settings.cacheMode = WebSettings.LOAD_DEFAULT
             settings.useWideViewPort = true
             settings.loadWithOverviewMode = true
