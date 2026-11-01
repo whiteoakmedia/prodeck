@@ -14,7 +14,9 @@ import { CrewDash } from "./CrewDash";
 import { CREW_ID_KEY, CREW_SESSION_KEY, useChat } from "../chatStore";
 import { listVisibleFor, useChecklists } from "../checklistStore";
 import { usePco } from "../pcoStore";
-import { IS_WEB, clearWebToken, identityWhoami, onGatewayState } from "../lib/tauri";
+import { IS_WEB, atemState, clearWebToken, identityWhoami, onGatewayState } from "../lib/tauri";
+import { offersTally, readTallyMode, writeTallyMode } from "../lib/tallyMode";
+import { TallyPage } from "../pages/Tally";
 import { disablePush, enablePush, pushState, type PushStatus } from "../lib/pushClient";
 import { listenSnapshot, onListen, stopListen } from "../lib/listen";
 import { onTrack, seekTrack, skipTrack, stopTrack, toggleTrack, trackSnapshot } from "../lib/trackPlayer";
@@ -70,6 +72,14 @@ export function MobileShell() {
     .overdue()
     .filter((c) => listVisibleFor(c, myArrival.position, isAdmin)).length;
 
+  // "Use as tally light": the whole phone becomes the camera's tally until
+  // Back to ProDeck. Remembered, so a reload on a mounted phone stays a tally.
+  const [tally, setTally] = useState(() => IS_WEB && readTallyMode());
+  const tallyOn = (on: boolean) => {
+    writeTallyMode(on);
+    setTally(on);
+  };
+
   // Install onboarding comes first on a fresh device: on iOS, push simply does
   // not work until the app is on the Home Screen, so asking someone to sign in
   // first buys them a silent morning.
@@ -89,6 +99,10 @@ export function MobileShell() {
   // volunteer scanning the poster while the booth was dark hit a sign-in
   // screen that could never work and the EdgeJoin card was dead code (audit
   // finding). Signed-in phones keep the cached-checklist escape hatch.
+  // Ahead of the offline screen: a tally that loses the booth must say so
+  // itself ("Can't reach ProDeck"), in place, and come back on its own.
+  if (tally) return <TallyPage param="" onExit={() => tallyOn(false)} />;
+
   if (IS_WEB && !boothUp && (chat.auth !== "in" || tab !== "checklist")) {
     return (
       <div className="crew">
@@ -139,6 +153,7 @@ export function MobileShell() {
               <span className="crew-guide-line">Find the fault — what the booth already checked, then where to walk</span>
               <span className="crew-guide-go">Start →</span>
             </button>
+            <TallyCard onStart={() => tallyOn(true)} />
             <PushCard />
             {/* In-app sounds: chat chime + vibration while the app is open.
                 Pages always ring regardless — they're the emergency channel. */}
@@ -223,6 +238,33 @@ export function MobileShell() {
 // Notifications. States the actual reason push isn't available rather than a
 // bare "off" — on iOS the browser reports "denied" when the real problem is
 // that the app isn't on the Home Screen yet, which is unguessable.
+/** Offered only when the booth has a switcher to read cameras from. */
+function TallyCard({ onStart }: { onStart: () => void }) {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    atemState()
+      .then((s) => alive && setShow(offersTally(s)))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+  if (!show) return null;
+  return (
+    <button className="crew-card edge crew-guide" onClick={onStart}>
+      <span className="mono" style={{ color: "var(--accent-hi)" }}>
+        Tally light
+      </span>
+      <span className="crew-guide-line">
+        Turn this phone into the tally for your camera: red when it's live, green when it's next.
+        Tap the screen for Back to ProDeck.
+      </span>
+      <span className="crew-guide-go">Use as tally light →</span>
+    </button>
+  );
+}
+
 function PushCard() {
   const [state, setState] = useState<PushStatus>("off");
   const [busy, setBusy] = useState(false);

@@ -21,7 +21,13 @@ const PICK_KEY = "prodeck.tallyCamera";
 
 type Shown = Tally | "unknown";
 
-export function TallyPage({ param }: { param: string }) {
+/**
+ * `onExit` = shown inside the crew app ("Use as tally light" on a phone):
+ * the operator view, a way back to ProDeck, and none of the link-only
+ * behaviour (no rewriting the address, no Home Screen tally app).
+ */
+export function TallyPage({ param, onExit }: { param: string; onExit?: () => void }) {
+  const inApp = !!onExit;
   const [snap, setSnap] = useState<AtemSnapshot | null>(null);
   const [fails, setFails] = useState(0);
   const [gateway, setGateway] = useState(true);
@@ -72,9 +78,10 @@ export function TallyPage({ param }: { param: string }) {
 
   useWakeLock();
 
-  const view = tallyView(TALLY_OPTS.view, param);
+  // In the app the camera operator also wants what is live and next.
+  const view = inApp ? "operator" : tallyView(TALLY_OPTS.view, param);
   const src = findSource(snap, chosen);
-  useHomeScreenApp(view === "board" ? "Tally board" : `Tally ${src?.short || src?.name || ""}`.trim());
+  useHomeScreenApp(view === "board" ? "Tally board" : `Tally ${src?.short || src?.name || ""}`.trim(), !inApp);
   const known = !!snap && snap.connected && snap.ready && gateway && fails < FAILS_FOR_NO_TALLY;
   let shown: Shown = known && src ? tallyOf(snap, src.id, TALLY_OPTS.me) : "unknown";
   if (shown === "preview" && !TALLY_OPTS.preview) shown = "off";
@@ -101,9 +108,13 @@ export function TallyPage({ param }: { param: string }) {
     } catch {
       /* private window: it asks again next time */
     }
-    const u = new URL(location.href);
-    u.searchParams.set("tally", v);
-    history.replaceState(null, "", u.toString());
+    // A tally link remembers its camera in the address. Not in the app: a
+    // ?tally= address would reopen as a bare tally link with no way back.
+    if (!inApp) {
+      const u = new URL(location.href);
+      u.searchParams.set("tally", v);
+      history.replaceState(null, "", u.toString());
+    }
     setPicking(false);
   };
 
@@ -116,6 +127,8 @@ export function TallyPage({ param }: { param: string }) {
         : "";
 
   if (view === "board") return <TallyBoard snap={snap} known={known} why={why} />;
+
+  const name = src?.name || src?.short || (chosen ? `Camera ${chosen}` : "Camera");
 
   // No camera chosen, or it isn't on this switcher (renamed, or a new one).
   if ((snap && !src) || picking) {
@@ -133,11 +146,20 @@ export function TallyPage({ param }: { param: string }) {
           ))}
         </div>
         {list.length === 0 && <p>Waiting for the switcher…</p>}
+        {picking && (
+          <button type="button" className="tally-info-btn" onClick={() => setPicking(false)}>
+            Keep {name}
+          </button>
+        )}
+        {onExit && (
+          <button type="button" className="tally-info-btn" onClick={onExit}>
+            Back to ProDeck
+          </button>
+        )}
       </div>
     );
   }
 
-  const name = src?.name || src?.short || (chosen ? `Camera ${chosen}` : "Camera");
   const word = shown === "program" ? "LIVE" : shown === "preview" ? "NEXT" : shown === "off" ? "" : "NO TALLY";
   const ln = liveAndNext(snap, TALLY_OPTS.me);
 
@@ -175,6 +197,11 @@ export function TallyPage({ param }: { param: string }) {
           <button type="button" className="tally-info-btn" onClick={() => setPicking(true)}>
             Change camera
           </button>
+          {onExit && (
+            <button type="button" className="tally-info-btn" onClick={onExit}>
+              Back to ProDeck
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -238,8 +265,9 @@ function TallyBoard({ snap, known, why }: { snap: AtemSnapshot | null; known: bo
  * iPadOS also reads the apple-mobile-web-app tags; the name under the icon
  * is the camera.
  */
-function useHomeScreenApp(title: string) {
+function useHomeScreenApp(title: string, enabled = true) {
   useEffect(() => {
+    if (!enabled) return;
     const here = location.pathname + location.search;
     let link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
     if (!link) {
@@ -259,7 +287,7 @@ function useHomeScreenApp(title: string) {
     const vp = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
     if (vp && !vp.content.includes("viewport-fit")) vp.content += ", viewport-fit=cover";
     document.title = title;
-  }, [title]);
+  }, [title, enabled]);
 }
 
 function setMeta(name: string, content: string) {
