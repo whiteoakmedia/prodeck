@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { atemState, on, onGatewayState, TALLY_OPTS, type AtemSnapshot } from "../lib/tauri";
 import { boardSources, cardLabel, findSource, liveAndNext, tallyOf, tallySources, tallyView, type Tally } from "../lib/tally";
 import type { AtemInput } from "../lib/tauri";
+import { NowTalking, TalkButton } from "../mobile/CrewComms";
 
 // Tally screen (?tally=<camera>&token=…): a phone or tablet mounted on a
 // camera, full screen red when that camera is on air and green when it's
@@ -177,6 +178,9 @@ export function TallyPage({ param, onExit }: { param: string; onExit?: () => voi
       {word && <div className="tally-word">{word}</div>}
       <div className="tally-name">{name}</div>
       {shown === "unknown" && <div className="tally-why">{why}. Don't trust this light.</div>}
+      {/* A camera operator on comms talks from the tally itself. */}
+      {inApp && <NowTalking className="tally-talking" />}
+      {inApp && <TalkButton className="tally-talk" label="Talk" />}
       {view === "operator" && known && (
         <div className="tally-strip">
           <span className="tally-strip-cell live">

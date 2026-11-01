@@ -9,13 +9,18 @@
 // The BOOTH DESKTOP is hard-silenced: its output feeds the house mix, so a
 // chat chime would play over the room. Every function here no-ops when not a
 // web client — this is policy, not a preference, and no toggle overrides it.
+//
+// A phone in tally mode is silent and still too: it sits on a camera, where a
+// chime reaches the camera's microphone and a buzz shakes the shot. Pages
+// still reach it, as a strip across the tally (CrewPageTakeover).
 
 import { IS_WEB } from "./tauri";
+import { readTallyMode } from "./tallyMode";
 
 let ctx: AudioContext | null = null;
 
 function ensureCtx(): AudioContext | null {
-  if (!IS_WEB) return null;
+  if (!IS_WEB || readTallyMode()) return null;
   try {
     if (!ctx) ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
     if (ctx.state === "suspended") ctx.resume().catch(() => {});
@@ -80,6 +85,7 @@ export function pageTone() {
  *  it didn't (every iPhone — WebKit has no Vibration API). */
 export function buzz(pattern: number | number[]): boolean {
   if (!IS_WEB) return false;
+  if (readTallyMode() && pattern !== 0) return false;
   try {
     return (navigator as any).vibrate?.(pattern) === true;
   } catch {

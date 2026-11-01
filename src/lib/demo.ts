@@ -782,6 +782,18 @@ export async function demoInvoke<T>(cmd: string, args?: Record<string, unknown>)
       return out(deskSnapshot());
     case "atem_state":
       return out(atemSnapshot());
+    // Comms: a sample crew on the lines, so the screens can be seen without
+    // phones. No audio in the demo.
+    case "intercom_join":
+      DEMO_COMMS.members[0].listen = (args?.listen as string[]) ?? ["All"];
+      return out({ me: "demo-me", roster: DEMO_COMMS });
+    case "intercom_talk":
+      DEMO_COMMS.members[0].talk = (args?.channel as string | null) ?? null;
+      emit("intercom:roster", DEMO_COMMS);
+      return out({ ok: true });
+    case "intercom_leave":
+    case "intercom_signal":
+      return out({ ok: true });
     case "atem_set_preview": {
       const b = DEMO_ATEM.buses[Number(args?.me ?? 0)] ?? DEMO_ATEM.buses[0];
       b.preview = Number(args?.source ?? b.preview);
@@ -1010,6 +1022,16 @@ function recLive() {
   const levels = channelLevels();
   return { recording: true, id: "demo", dir: "/Volumes/Recording SSD/ProDeck Recordings/Sunday Morning", secs, channels: 64, withSignal: levels.filter((l) => l > -60).length, freeGb: 1716.4, hoursLeft: 51.8, dropped: 0, levels, error: null };
 }
+
+const DEMO_COMMS = {
+  channels: ["All", "Cameras", "Stage", "Booth"],
+  members: [
+    { id: "demo-me", name: "You", listen: ["All"], talk: null as string | null },
+    { id: "demo-ann", name: "Ann Lee", listen: ["All", "Cameras"], talk: "Cameras" as string | null },
+    { id: "demo-marcus", name: "Marcus Hill", listen: ["All", "Booth"], talk: null as string | null },
+    { id: "demo-jean", name: "Jean Park", listen: ["All", "Stage"], talk: null as string | null },
+  ],
+};
 
 type Handler = (payload: unknown) => void;
 const handlers = new Map<string, Set<Handler>>();

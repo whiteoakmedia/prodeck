@@ -10620,3 +10620,71 @@ select.input {
 @media (prefers-reduced-motion: reduce) {
   .screen-msg { animation: none; }
 }
+
+/* A page on a tally phone: a strip across the top, so the tally stays in view
+   and the operator confirms without losing the shot (CrewPageTakeover). Amber,
+   never red or green: those colours belong to the tally. */
+.tally-page-strip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 10px;
+  background: #f5a524;
+  color: #1a1200;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+.tally-page-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+.tally-page-text .mono { font-size: 12px; opacity: 0.8; }
+.tally-page-text strong { font-size: 17px; line-height: 1.25; overflow-wrap: anywhere; }
+.tally-page-err { font-size: 12px; }
+.tally-page-ok {
+  flex: none;
+  min-height: 48px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 10px;
+  background: #1a1200;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* Comms on the tally phone: who's talking and a Talk button, clear of the
+   LIVE / NEXT strip. Neutral colours: red and green belong to the tally. */
+.tally .tally-talking {
+  position: absolute;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  left: 12px;
+  right: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+}
+.tally .crew-talk.tally-talk {
+  position: absolute;
+  right: 16px;
+  bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: #111;
+  font-size: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+.tally .crew-talk.tally-talk.on { background: #f5a524; color: #1a1200; }

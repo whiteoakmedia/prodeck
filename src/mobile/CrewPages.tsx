@@ -5,6 +5,7 @@ import { usePco, isDeclined } from "../pcoStore";
 import { IS_WEB, identityList, checkinList, type CrewPage, type CrewUser } from "../lib/tauri";
 import { CREW_SESSION_KEY } from "../chatStore";
 import { buzz, pageTone, PAGE_BUZZ_STAGES, patternMs } from "../lib/sound";
+import { useTallyMode } from "../lib/tallyMode";
 
 // S06a / S06b / S07a — pages (design/mobile/README.md).
 
@@ -57,7 +58,10 @@ export function CrewPageTakeover() {
   // screen, mid-service, with no UI to stop it and no possible ack. Force-quit
   // was the only way out.
   const canAck = IS_WEB && !!localStorage.getItem(CREW_SESSION_KEY);
-  const ringing = !!incoming && canAck;
+  // On a tally phone the page is a strip across the top: the operator keeps
+  // the tally in view, and nothing rings (sound.ts keeps a tally phone silent).
+  const tally = useTallyMode();
+  const ringing = !!incoming && canAck && !tally;
   useTick(ringing);
   // A page RINGS while it's on screen — siren tone + (Android) heavy buzz
   // every 1.8s until confirmed. Deliberately ignores the chat sound toggle:
@@ -94,6 +98,25 @@ export function CrewPageTakeover() {
   }, [incoming?.id, ringing]);
 
   if (!incoming || !canAck) return null;
+  if (tally) {
+    return (
+      <div className="tally-page-strip" role="alert">
+        <div className="tally-page-text">
+          <span className="mono">Page from {incoming.from.split(/\s+/)[0] || "the booth"}</span>
+          <strong>{incoming.body}</strong>
+          {error && <span className="tally-page-err">{error}</span>}
+        </div>
+        <button
+          type="button"
+          className="tally-page-ok"
+          disabled={acking}
+          onClick={() => (fatal ? dismiss(incoming.id) : ack(incoming.id).catch(() => {}))}
+        >
+          {acking ? "Sending…" : fatal ? "Dismiss" : "Got it"}
+        </button>
+      </div>
+    );
+  }
   return (
     <div className="crew-takeover">
       <div className="crew-takeover-head">

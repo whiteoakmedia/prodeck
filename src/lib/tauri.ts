@@ -1138,6 +1138,27 @@ export const pageSendAs = (
 ) => invoke<CrewPage>("page_send", { session, body, recipients, buzz });
 export const pageAck = (session: string, pageId: number) =>
   invoke<PageReceipt>("page_ack", { session, pageId });
+
+// Intercom (src-tauri/src/intercom.rs, src/lib/intercom.ts). Every call acts
+// as the session's own person; the booth only keeps the roster and relays
+// connection set-up between phones. Audio never passes through it.
+export interface IntercomMember {
+  id: string;
+  name: string;
+  listen: string[];
+  talk: string | null;
+}
+export interface IntercomRoster {
+  channels: string[];
+  members: IntercomMember[];
+}
+export const intercomJoin = (session: string, listen: string[]) =>
+  invoke<{ me: string; roster: IntercomRoster }>("intercom_join", { session, listen });
+export const intercomLeave = (session: string) => invoke<unknown>("intercom_leave", { session });
+export const intercomTalk = (session: string, channel: string | null) =>
+  invoke<unknown>("intercom_talk", { session, channel });
+export const intercomSignal = (session: string, to: string, data: unknown) =>
+  invoke<unknown>("intercom_signal", { session, to, data });
 export const pageRebuzz = (pageId: number) =>
   invoke<{ buzzed: number }>("page_rebuzz", { pageId });
 export const pageList = () => invoke<CrewPage[]>("page_list");

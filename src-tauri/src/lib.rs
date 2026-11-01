@@ -21,6 +21,7 @@ mod crashreport;
 mod discovery;
 mod edge;
 mod identity;
+mod intercom;
 mod ga4;
 mod gemini;
 mod follow;

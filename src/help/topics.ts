@@ -746,8 +746,28 @@ Options: turn off green for next, or make the screen black when off air so it do
 
 For a permanent install: add it to the Home Screen, set Auto-Lock to Never (iPhone and iPad) or the longest screen timeout (Android), lock it with Guided Access or App pinning, and keep it plugged in on the church wifi. Tap the screen to see which camera it is or to change it.
 
-The link carries the member password. Changing that password stops every tally link, so rescan them.`,
+The link carries the member password. Changing that password stops every tally link, so rescan them.
+
+**From a crew phone, no link needed.** A volunteer signed in to ProDeck can open **More → Tally light**, pick their camera from the switcher's list, and the phone becomes the operator view. It stays a tally through reloads until they tap the screen and choose **Back to ProDeck**. While it's a tally the phone makes no sound and doesn't vibrate, so nothing reaches the camera's microphone or shakes the shot. A page shows as an amber strip across the top with **Got it**, and the tally stays in view. If they're on comms, a **Talk** button sits in the corner.`,
     settings: "set-tally",
+  },
+  {
+    id: "comms",
+    group: "Crew",
+    title: "Comms: talking to the crew from phones",
+    aliases: ["comms", "intercom", "headset", "talk to the crew", "push to talk", "party line", "clearcom", "radio"],
+    body: `Comms turns crew phones and iPads into a hold to talk intercom. On a phone: **More → Comms → Join comms**, allow the microphone, pick the line to talk on, and hold the big button while you speak. There are four lines: **All**, **Cameras**, **Stage** and **Booth**. Choose which ones you listen to; everyone hears All unless they turn it off. A chip at the top of every screen shows who's talking and has its own **Talk** button.
+
+Phones talk straight to each other over the church Wi-Fi, so the delay is a fraction of a second. ProDeck only connects them, and the booth computer never plays comms: it can't reach the house.
+
+What it needs:
+
+- **The secure address.** Phones only allow the microphone on an https address, so open ProDeck from your public address. On the plain local address, Join comms explains this instead of starting.
+- **Phones that can reach each other.** A guest network that keeps devices apart lets each phone reach the booth but not each other, and nobody hears anything. Use the staff network.
+- **The app open, screen on.** A locked iPhone stops a web app's sound and microphone. Comms suits people at a post with the phone in view, like a camera operator using the phone as a tally. Use earbuds so the phone's speaker doesn't feed back into its mic.
+
+Up to 16 people can be on comms at once.`,
+    related: ["atem-tally", "pages", "public-url"],
   },
   {
     id: "obs",

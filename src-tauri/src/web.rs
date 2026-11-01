@@ -53,6 +53,10 @@ const FORWARD_EVENTS: &[&str] = &[
     // Pages must reach phones or the whole feature is booth-only.
     "page:new",
     "page:receipt",
+    // Intercom: who is on and talking, and the set-up messages two phones
+    // pass through the booth to connect (src-tauri/src/intercom.rs).
+    "intercom:roster",
+    "intercom:signal",
     "checkin:changed",
     "posfiles:changed",
     // Without these the OBS tile froze at whatever it read on page load, and a
@@ -135,6 +139,8 @@ enum Tier {
 const ONE_SHOT: &[&str] = &[
     "page:new",
     "page:receipt",
+    // A replayed connection offer would restart a call that already exists.
+    "intercom:signal",
     "chat:message",
     "tap:pushed",
     "tap:error",
@@ -1687,6 +1693,9 @@ pub(crate) fn member_cmd_ok(cmd: &str) -> bool {
             // Confirming a page is exactly what a member is for; page_list is
             // read-only and lets a phone recover a page it missed while asleep.
             | "page_ack" | "page_list" | "posfile_list"
+            // Comms is for every crew phone; each call acts only as the
+            // session's own person (intercom.rs).
+            | "intercom_join" | "intercom_leave" | "intercom_talk" | "intercom_signal" | "intercom_roster"
             // Every crew phone must be able to register for push — that is the
             // whole point of a member device.
             | "push_public_key" | "push_subscribe" | "push_unsubscribe"
@@ -1880,6 +1889,13 @@ async fn dispatch(
             let pages = app.state::<crate::pages::PagesState>().inner().clone();
             let r = crate::pages::ack_core(app, &pages, &identity, page_id, &s("session"))?;
             Ok(serde_json::to_value(r).unwrap_or(Value::Null))
+        }
+        "intercom_join" | "intercom_leave" | "intercom_talk" | "intercom_signal" | "intercom_roster" => {
+            let session = args.get("session").and_then(|v| v.as_str()).unwrap_or("");
+            let identity = app.state::<crate::identity::IdentityState>().inner().clone();
+            let who = crate::identity::session_user(&identity, session)
+                .ok_or("sign in first: comms is tied to your crew name")?;
+            crate::intercom::handle(app, cmd, who, args)
         }
         "page_rebuzz" => {
             let page_id = args.get("pageId").and_then(|v| v.as_u64()).unwrap_or(0);
@@ -2684,6 +2700,7 @@ mod member_pp_tests {
             "get_settings", "load_dashboards", "load_pco_data", "load_checklists",
             "load_routing", "load_tracking", "chat_history", "web_whoami", "pp_get",
             "page_ack", "page_list", "posfile_list", "checkin_set", "checkin_list",
+            "intercom_join", "intercom_leave", "intercom_talk", "intercom_signal", "intercom_roster",
             "checklist_toggle", "ga4_state",
             // The three tiles that were silently broken on every kiosk.
             "obs_state", "atem_state", "avantis_state",

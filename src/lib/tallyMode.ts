@@ -3,9 +3,11 @@
 // restarting: a phone clipped to a camera is never touched mid-service, so it
 // must come back as a tally, not as the Home tab.
 
+import { useEffect, useState } from "react";
 import type { AtemSnapshot } from "./tauri";
 
 export const TALLY_MODE_KEY = "prodeck.tallyMode";
+const CHANGED = "prodeck-tally-mode";
 
 export function readTallyMode(store: Pick<Storage, "getItem"> | null = safeStorage()): boolean {
   try {
@@ -22,6 +24,18 @@ export function writeTallyMode(on: boolean, store: Pick<Storage, "setItem" | "re
   } catch {
     /* private window: tally lasts until the page is closed */
   }
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(CHANGED));
+}
+
+/** Live tally mode, for code outside the phone shell (the page takeover). */
+export function useTallyMode(): boolean {
+  const [on, setOn] = useState(() => readTallyMode());
+  useEffect(() => {
+    const f = () => setOn(readTallyMode());
+    window.addEventListener(CHANGED, f);
+    return () => window.removeEventListener(CHANGED, f);
+  }, []);
+  return on;
 }
 
 /**

@@ -17,6 +17,7 @@ import { usePco } from "../pcoStore";
 import { IS_WEB, atemState, clearWebToken, identityWhoami, onGatewayState } from "../lib/tauri";
 import { offersTally, readTallyMode, writeTallyMode } from "../lib/tallyMode";
 import { TallyPage } from "../pages/Tally";
+import { CommsChip, CrewComms } from "./CrewComms";
 import { disablePush, enablePush, pushState, type PushStatus } from "../lib/pushClient";
 import { listenSnapshot, onListen, stopListen } from "../lib/listen";
 import { onTrack, seekTrack, skipTrack, stopTrack, toggleTrack, trackSnapshot } from "../lib/trackPlayer";
@@ -31,6 +32,8 @@ export function MobileShell() {
   // "No sound?" is reached from Home (and More), not a sixth tab: the nav is
   // five tabs by design and this is an occasional screen, not a daily one.
   const [walk, setWalk] = useState(IS_SHOTS && SHOT_TAB === "walk");
+  // Comms is a More screen too; the chip above every tab brings it back.
+  const [comms, setComms] = useState(false);
   const [onboarding, setOnboarding] = useState(() => IS_WEB && shouldOnboard());
   const chat = useChat();
   // The overdue dot only counts lists this phone can actually see — an alert
@@ -129,6 +132,15 @@ export function MobileShell() {
   return (
     <div className="crew">
       <div className="crew-chip-stack">
+        <CommsChip
+          hidden={tab === "more" && comms && !walk && !leader}
+          onOpen={() => {
+            setTab("more");
+            setLeader(false);
+            setWalk(false);
+            setComms(true);
+          }}
+        />
         <ListenChip />
       </div>
       <main className="crew-main">
@@ -143,7 +155,8 @@ export function MobileShell() {
         {tab === "dashboards" && <CrewDash />}
         {tab === "more" && leader && <CrewLeader />}
         {tab === "more" && !leader && walk && <CrewWalk onBack={() => setWalk(false)} />}
-        {tab === "more" && !leader && !walk && (
+        {tab === "more" && !leader && !walk && comms && <CrewComms onBack={() => setComms(false)} />}
+        {tab === "more" && !leader && !walk && !comms && (
           <div className="crew-page">
             <h1 className="crew-title">More</h1>
             <button className="crew-card edge crew-guide" onClick={() => setWalk(true)}>
@@ -152,6 +165,13 @@ export function MobileShell() {
               </span>
               <span className="crew-guide-line">Find the fault — what the booth already checked, then where to walk</span>
               <span className="crew-guide-go">Start →</span>
+            </button>
+            <button className="crew-card edge crew-guide" onClick={() => setComms(true)}>
+              <span className="mono" style={{ color: "var(--accent-hi)" }}>
+                Comms
+              </span>
+              <span className="crew-guide-line">Hold to talk to the crew on a line: All, Cameras, Stage or Booth</span>
+              <span className="crew-guide-go">Open comms →</span>
             </button>
             <TallyCard onStart={() => tallyOn(true)} />
             <PushCard />
@@ -228,6 +248,7 @@ export function MobileShell() {
         onSelect={(t) => {
           setLeader(false); // leaving More closes the leader board
           setWalk(false); // and any tab tap leaves the troubleshooter
+          setComms(false); // and the comms screen (comms itself keeps running)
           setTab(t);
         }}
       />
