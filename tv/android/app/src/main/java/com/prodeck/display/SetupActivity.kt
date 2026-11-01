@@ -142,7 +142,8 @@ class SetupActivity : Activity() {
             setText(Prefs.base(this@SetupActivity)?.removePrefix("http://") ?: "")
             hint = "172.16.80.12:8088"
             textSize = 24f
-            setTextColor(Color.WHITE)
+            // The TV's text box is light: dark text, so the address can be read.
+            setTextColor(Color.parseColor("#111111"))
             setHintTextColor(Color.parseColor("#6F7E93"))
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
             isSingleLine = true
@@ -183,6 +184,10 @@ class SetupActivity : Activity() {
                 main.post { if (polling) status.text = "Can't reach ProDeck at ${base.removePrefix("http://")}. Check Browser Access is on, and that this TV is on the same network." }
                 return@execute
             }
+            if (hello.optString("status") == "old") {
+                main.post { if (polling) status.text = "That ProDeck is too old for TV screens. Update ProDeck on the booth computer (Settings, Software Update), then try again." }
+                return@execute
+            }
             if (hello.optString("status") == "refused") {
                 main.post { if (polling) status.text = "ProDeck didn't accept this TV (${hello.optString("error")}). Try again in a minute." }
                 return@execute
@@ -209,13 +214,29 @@ class SetupActivity : Activity() {
         finish()
     }
 
-    private fun get(url: String): JSONObject? = try {
-        val c = URL(url).openConnection() as HttpURLConnection
-        c.connectTimeout = 4000
-        c.readTimeout = 6000
-        c.inputStream.bufferedReader().use { JSONObject(it.readText()) }.also { c.disconnect() }
-    } catch (_: Exception) {
-        null
+    /** null = couldn't reach it; {"status":"old"} = a ProDeck answered but has no TV screens yet. */
+    private fun get(url: String): JSONObject? {
+        val c = try {
+            (URL(url).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 4000
+                readTimeout = 6000
+            }
+        } catch (_: Exception) {
+            return null
+        }
+        return try {
+            val code = c.responseCode
+            val text = (if (code < 400) c.inputStream else c.errorStream)?.bufferedReader()?.use { it.readText() } ?: ""
+            try {
+                JSONObject(text)
+            } catch (_: Exception) {
+                JSONObject().put("status", "old")
+            }
+        } catch (_: Exception) {
+            null
+        } finally {
+            c.disconnect()
+        }
     }
 
     /** Six characters a person can read off a TV across a room: no 0/O or 1/I. */
