@@ -543,6 +543,14 @@ async fn handle_conn(
         &header_str,
     );
 
+    // The Fire TV / Android TV app, for typing into Downloader on the TV:
+    // "<booth address>/tv.apk". Every release carries the newest one.
+    if method == "GET" && (path == "/tv.apk" || path == "/tv") {
+        let hdr = "HTTP/1.1 302 Found\r\nLocation: https://github.com/whiteoakmedia/prodeck/releases/latest/download/ProDeckDisplay.apk\r\nCache-Control: no-store\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+        stream.write_all(hdr.as_bytes()).await?;
+        return Ok(());
+    }
+
     // TV screens pairing (tv.rs). No password: the TV doesn't have one yet,
     // and only the code someone approves at the booth ever gets a link.
     if method == "GET" && (path.starts_with("/api/tv/hello?") || path.starts_with("/api/tv/poll?")) {

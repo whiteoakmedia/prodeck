@@ -3392,6 +3392,9 @@ function KioskCard({ form }: { form: Settings }) {
  */
 function TvScreensCard({ form }: { form: Settings }) {
   const f = form as any;
+  const lan = useLanAddress();
+  // Downloader on a Fire TV is happiest with a plain address it can type.
+  const appUrl = `${(ipBaseUrl(lan, f.web_port) ?? lanBaseUrl(f.public_url, lan, f.device_name, f.web_port)).replace(/^https?:\/\//, "")}/tv.apk`;
   const [pending, setPending] = useState<TvPending[]>([]);
   const [dashes, setDashes] = useState<{ name: string }[]>([]);
   const [target, setTarget] = useState<Record<string, string>>({});
@@ -3423,6 +3426,13 @@ function TvScreensCard({ form }: { form: Settings }) {
         it: the TV shows a code, which appears here. Check the code matches, choose what the TV should show, and press
         <strong> Send to TV</strong>. From then on it opens that dashboard by itself.
       </p>
+      {f.web_enabled && (
+        <ol className="kiosk-steps muted small">
+          <li><strong>Once per Fire TV:</strong> Settings, My Fire TV, About: click the device name seven times. Then Developer Options, Install unknown apps: allow Downloader.</li>
+          <li>Install <strong>Downloader</strong> from the Fire TV app store, open it and type <code className="kiosk-url">{appUrl}</code></li>
+          <li>Install and open <strong>ProDeck Display</strong>. Its code appears below within a few seconds.</li>
+        </ol>
+      )}
       {!f.web_enabled ? (
         <p className="hint">Turn on <strong>Browser Access</strong> above first. TV screens connect through it.</p>
       ) : !f.web_member_password ? (

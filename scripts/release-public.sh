@@ -225,6 +225,15 @@ fi
 echo "▸ Publishing $TAG"
 ASSETS=("$OUT/ProDeck.dmg" "$OUT/ProDeck.app.tar.gz" "$OUT/latest.json")
 [ -n "$WIN_EXE" ] && ASSETS+=("$WIN_EXE")
+# The Fire TV / Android TV app (tv/android), built with tv/android/build-apk.sh.
+# Every release carries it so a booth's /tv.apk link (which points at the
+# latest release) always finds one.
+TV_APK="$REPO_DIR/tv/android/ProDeckDisplay.apk"
+if [ -f "$TV_APK" ]; then
+  ASSETS+=("$TV_APK")
+else
+  echo "▸ No tv/android/ProDeckDisplay.apk: this release won't carry the TV app (run tv/android/build-apk.sh)"
+fi
 BODY="${NOTES:-ProDeck $TAG}
 
 ## Install
