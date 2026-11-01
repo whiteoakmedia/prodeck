@@ -137,3 +137,32 @@ describe("unused inputs", () => {
     expect(atemButtons(s, { show: [5] }).map((b) => b.id)).toContain(5);
   });
 });
+
+import { dskLabel, macroButtons } from "../lib/atem";
+
+describe("keys and macros", () => {
+  const s = snap({
+    dsks: [{ index: 0, onAir: true, inTransition: false, tie: false, fill: 2, key: 2 }],
+    macros: [
+      { index: 0, name: "Walk-in", description: "" },
+      { index: 4, name: "", description: "" },
+      { index: 2, name: "Sermon", description: "Cam 2" },
+    ],
+    macroRunning: 2,
+  });
+
+  it("names a key by what it keys", () => {
+    expect(dskLabel(s, 0)).toEqual({ name: "DSK 1", source: "Camera 2" });
+    expect(dskLabel(s, 3)).toEqual({ name: "DSK 4", source: "" });
+  });
+
+  it("lists macros in the tile's order, names the unnamed, marks the running one", () => {
+    const b = macroButtons(s, { order: [2] });
+    expect(b.map((m) => m.index)).toEqual([2, 0, 4]);
+    expect(b.find((m) => m.index === 4)?.name).toBe("Macro 5");
+    expect(b.find((m) => m.running)?.index).toBe(2);
+    expect(macroButtons(s, { hidden: [0] }).map((m) => m.index)).toEqual([0, 4, 2].filter((i) => i !== 0));
+    expect(macroButtons(s, { hidden: [0] }, { includeHidden: true })).toHaveLength(3);
+    expect(macroButtons(null)).toEqual([]);
+  });
+});

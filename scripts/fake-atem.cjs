@@ -1,6 +1,7 @@
 // A fake Blackmagic ATEM for testing clients without hardware.
 // Speaks the UDP transport (hello, session ids, acks, resends, pings) and the handful of commands
-// ProDeck uses: _ver _pin _top InPr PrgI PrvI TrPs TlSr InCm, and accepts CPgI CPvI DCut DAut.
+// ProDeck uses: _ver _pin _top InPr PrgI PrvI TrPs TlSr DskB DskP DskS MPrp MRPr FtbS InCm,
+// and accepts CPgI CPvI DCut DAut CDsL DDsA CDsT MAct FtbA.
 //   node scripts/fake-atem.cjs [--port 9910] [--drop 0.0] [--quiet]
 // Writes one JSON line per notable event to stdout ({ev: ...}) so a test can assert on it.
 const dgram = require('dgram');
@@ -73,6 +74,21 @@ function tlSr() {
   });
   return cmd('TlSr', d);
 }
+// Two downstream keys, two macros (slots 1 and 3; slot 2 empty), Fade to Black.
+const dsks = [{ on: false, tie: false, fill: 4, key: 4 }, { on: false, tie: false, fill: 3010, key: 3011 }];
+const MACROS = [[0, 'Walk-in'], [2, 'Sermon look']];
+let macroRunning = null;
+let ftbBlack = false;
+const dskB = (i) => { const d = Buffer.alloc(8); d.writeUInt8(i, 0); d.writeUInt16BE(dsks[i].fill, 2); d.writeUInt16BE(dsks[i].key, 4); return cmd('DskB', d); };
+const dskP = (i) => { const d = Buffer.alloc(16); d.writeUInt8(i, 0); d.writeUInt8(dsks[i].tie ? 1 : 0, 1); d.writeUInt8(25, 2); return cmd('DskP', d); };
+const dskS = (i) => { const d = Buffer.alloc(8); d.writeUInt8(i, 0); d.writeUInt8(dsks[i].on ? 1 : 0, 1); return cmd('DskS', d); };
+function mPrp(index, name) {
+  const n = Buffer.from(name, 'utf8');
+  const d = Buffer.alloc(8 + n.length); d.writeUInt16BE(index, 0); d.writeUInt8(1, 2); d.writeUInt16BE(n.length, 4); n.copy(d, 8);
+  return cmd('MPrp', d);
+}
+const mRPr = () => { const d = Buffer.alloc(4); d.writeUInt8(macroRunning === null ? 0 : 1, 0); d.writeUInt16BE(macroRunning ?? 0xffff, 2); return cmd('MRPr', d); };
+const ftbS = () => { const d = Buffer.alloc(4); d.writeUInt8(0, 0); d.writeUInt8(ftbBlack ? 1 : 0, 1); return cmd('FtbS', d); };
 function header(flags, len, session, ackId = 0, packetId = 0) {
   const b = Buffer.alloc(12);
   b.writeUInt16BE((flags << 11) | len, 0);
@@ -99,6 +115,7 @@ function dump() {
   sendData([cmd('_ver', ver), cmd('_pin', pin), cmd('_top', top)]);
   sendData(INPUTS.map(inPr));
   sendData([prgI(), prvI(), trPs(), tlSr()]);
+  sendData([dskB(0), dskB(1), dskP(0), dskP(1), dskS(0), dskS(1), ...MACROS.map(([i, n]) => mPrp(i, n)), mRPr(), ftbS()]);
   sendData([cmd('InCm', Buffer.alloc(4))]);
 }
 
@@ -150,6 +167,15 @@ sock.on('message', (msg, r) => {
       if (name === 'CPgI') { state.program = d.readUInt16BE(2); changes.push(prgI(), tlSr()); }
       else if (name === 'CPvI') { state.preview = d.readUInt16BE(2); changes.push(prvI(), tlSr()); }
       else if (name === 'DCut') { [state.program, state.preview] = [state.preview, state.program]; changes.push(prgI(), prvI(), tlSr()); }
+      else if (name === 'CDsL') { const i = d.readUInt8(0); if (dsks[i]) { dsks[i].on = d.readUInt8(1) === 1; changes.push(dskS(i)); } }
+      else if (name === 'DDsA') { const i = d.readUInt8(0); if (dsks[i]) { dsks[i].on = !dsks[i].on; changes.push(dskS(i)); } }
+      else if (name === 'CDsT') { const i = d.readUInt8(0); if (dsks[i]) { dsks[i].tie = d.readUInt8(1) === 1; changes.push(dskP(i)); } }
+      else if (name === 'MAct') {
+        const idx = d.readUInt16BE(0); const act = d.readUInt8(2);
+        if (act === 0 && MACROS.some(([i]) => i === idx)) { macroRunning = idx; changes.push(mRPr()); setTimeout(() => { macroRunning = null; sendData([mRPr()]); }, 400); }
+        else if (act === 1) { macroRunning = null; changes.push(mRPr()); }
+      }
+      else if (name === 'FtbA') { ftbBlack = !ftbBlack; changes.push(ftbS()); }
       else if (name === 'DAut') {
         state.inTransition = true; changes.push(trPs(), tlSr());
         setTimeout(() => { [state.program, state.preview] = [state.preview, state.program]; state.inTransition = false; sendData([prgI(), prvI(), trPs(), tlSr()]); log({ ev: 'state', ...state }); }, 400);

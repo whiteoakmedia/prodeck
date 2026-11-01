@@ -32,6 +32,10 @@ export interface AtemTileConfig {
   actions?: AtemActionsAt;
   /** Buttons per row. 0 or absent = as many as fit. */
   cols?: number;
+  /** Downstream key buttons on the tile (default: on when the switcher has keys). */
+  keys?: boolean;
+  /** A Fade to Black button (default on). */
+  ftb?: boolean;
 }
 
 export interface AtemBus {
@@ -145,4 +149,40 @@ export function withLabel(cfg: AtemTileConfig, id: number, text: string): Record
   if (t) labels[String(id)] = t;
   else delete labels[String(id)];
   return labels;
+}
+
+/** "DSK 1" with what it keys, from its fill source: "DSK 2 · Media Player 1". */
+export function dskLabel(snap: AtemSnapshot | null, index: number): { name: string; source: string } {
+  const k = snap?.dsks?.[index];
+  const src = k?.fill != null ? snap?.inputs.find((i) => i.id === k.fill) : undefined;
+  return { name: `DSK ${index + 1}`, source: src ? src.name || src.short : "" };
+}
+
+export interface MacroTileConfig {
+  /** Macro slots in the tile's order; ones not listed follow, by slot. */
+  order?: number[];
+  hidden?: number[];
+}
+
+/** The macros a Macros tile shows, in its order. */
+export function macroButtons(
+  snap: AtemSnapshot | null,
+  cfg: MacroTileConfig = {},
+  opts: { includeHidden?: boolean } = {},
+): { index: number; name: string; description: string; running: boolean; hidden: boolean }[] {
+  const list = snap?.macros ?? [];
+  const hidden = new Set(cfg.hidden ?? []);
+  const by = new Map(list.map((m) => [m.index, m]));
+  const placed = (cfg.order ?? []).filter((i) => by.has(i));
+  const set = new Set(placed);
+  const ordered = [...placed.map((i) => by.get(i)!), ...list.filter((m) => !set.has(m.index))];
+  return ordered
+    .map((m) => ({
+      index: m.index,
+      name: m.name.trim() || `Macro ${m.index + 1}`,
+      description: m.description,
+      running: snap?.macroRunning === m.index,
+      hidden: hidden.has(m.index),
+    }))
+    .filter((m) => opts.includeHidden || !m.hidden);
 }

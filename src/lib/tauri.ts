@@ -1506,6 +1506,14 @@ export interface AtemSnapshot {
   buses?: { program: number | null; preview: number | null; inTransition: boolean }[];
   inputs: AtemInput[];
   error: string | null;
+  /** Downstream keyers, by index (0-based). */
+  dsks?: { index: number; onAir: boolean; inTransition: boolean; tie: boolean; fill: number | null; key: number | null }[];
+  /** Used macro slots (0-based index). */
+  macros?: { index: number; name: string; description: string }[];
+  macroRunning?: number | null;
+  macroWaiting?: boolean;
+  /** Fade to Black, by M/E. */
+  ftb?: { black: boolean; inTransition: boolean }[];
   /** The switcher's own tally by source id: 1 on air, 2 preview, 3 both. Only lit sources. */
   tally?: Record<string, number>;
   /** Link health: this session's start and the switcher's last packet (epoch ms), drops since ProDeck started. */
@@ -1519,4 +1527,13 @@ export const atemReconnect = () => invoke<void>("atem_reconnect");
 /** `me` 0-based; absent = the M/E chosen in Settings. */
 export const atemCut = (me?: number) => invoke<void>("atem_cut", { me: me ?? null });
 export const atemAuto = (me?: number) => invoke<void>("atem_auto", { me: me ?? null });
+/** Downstream key `index` (0-based) on or off at once; `on` absent = toggle. */
+export const atemDskOnAir = (index: number, on?: boolean) => invoke<void>("atem_dsk_on_air", { index, on: on ?? null });
+/** Downstream key on or off with its own transition. */
+export const atemDskAuto = (index: number) => invoke<void>("atem_dsk_auto", { index });
+export const atemMacroRun = (index: number) => invoke<void>("atem_macro_run", { index });
+export const atemMacroStop = () => invoke<void>("atem_macro_stop");
+export const atemMacroContinue = () => invoke<void>("atem_macro_continue");
+/** Fade to Black, or back from it. */
+export const atemFtb = (me?: number) => invoke<void>("atem_ftb", { me: me ?? null });
 export const atemSetPreview = (source: number, me?: number) => invoke<void>("atem_set_preview", { source, me: me ?? null });

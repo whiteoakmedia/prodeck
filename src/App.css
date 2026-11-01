@@ -10497,3 +10497,12 @@ select.input {
 .tally-card-name { font-size: min(12cqh, 7.5cqw); line-height: 1.15; max-width: 100%; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
 .tally-cams { border: 0; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 2px 12px; }
 .tally-cams legend { padding: 0; margin-bottom: 4px; font-size: 12px; }
+/* ATEM keys and Fade to Black: lit red while on air, like the switcher. */
+.atem-w-keys { display: flex; flex-wrap: wrap; gap: 6px; }
+.atem-key { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 84px; flex: 1 1 84px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel-2); color: inherit; cursor: pointer; text-align: left; }
+.atem-key:disabled { cursor: default; opacity: 0.85; }
+.atem-key.on { border-color: var(--bad); background: var(--bad-soft); }
+.atem-key.moving { border-style: dashed; }
+.atem-key-name { font-weight: 700; font-size: 12px; }
+.atem-key-src { font-size: 11px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.atem-w-opt.check { flex-direction: row; align-items: center; gap: 6px; }

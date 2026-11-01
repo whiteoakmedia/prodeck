@@ -828,6 +828,38 @@ async fn handle_conn(
                 if n == 0 { Err("add &n=<source number>".into()) }
                 else { dispatch(&app, "atem_set_preview", &atem_deck_args(&qp, json!({"source": n})), Tier::Admin, None).await }
             }
+            // Downstream keys count from 1 like the switcher's panel: &n=1.
+            // &on=1 or &on=0 sets it; without it, it toggles.
+            "atem-dsk" => {
+                if n == 0 { Err("add &n=<downstream key number>".into()) }
+                else {
+                    let mut a = json!({"index": n - 1});
+                    if let Some(on) = qp("on") { a["on"] = json!(on == "1" || on == "true"); }
+                    dispatch(&app, "atem_dsk_on_air", &a, Tier::Admin, None).await
+                }
+            }
+            "atem-dsk-auto" => {
+                if n == 0 { Err("add &n=<downstream key number>".into()) }
+                else { dispatch(&app, "atem_dsk_auto", &json!({"index": n - 1}), Tier::Admin, None).await }
+            }
+            // A macro by its number on the switcher (&n=3) or its name (&text=Sermon).
+            "atem-macro" => {
+                let index = if n > 0 {
+                    Some(n - 1)
+                } else if !text.trim().is_empty() {
+                    let st = app.state::<crate::atem::AtemState>();
+                    let s = st.lock().unwrap_or_else(|p| p.into_inner());
+                    s.macros.values().find(|m| m.name.eq_ignore_ascii_case(text.trim())).map(|m| m.index as u64)
+                } else {
+                    None
+                };
+                match index {
+                    Some(i) => dispatch(&app, "atem_macro_run", &json!({"index": i}), Tier::Admin, None).await,
+                    None => Err("add &n=<macro number> or &text=<macro name>".into()),
+                }
+            }
+            "atem-macro-stop" => dispatch(&app, "atem_macro_stop", &json!({}), Tier::Admin, None).await,
+            "atem-ftb" => dispatch(&app, "atem_ftb", &atem_deck_args(&qp, json!({})), Tier::Admin, None).await,
             "avantis-scene" => {
                 if n == 0 { Err("add &n=<scene number>".into()) }
                 else { dispatch(&app, "avantis_recall_scene", &json!({"scene": n}), Tier::Admin, None).await }
@@ -1631,7 +1663,8 @@ pub(crate) fn perm_for_cmd(cmd: &str) -> Option<&'static str> {
         | "avantis_set_mute" | "avantis_set_fader" | "avantis_set_name" | "avantis_recall_scene"
         | "avantis_reconnect" | "obs_reconnect"
         | "obs_set_scene" | "atem_cut" | "atem_auto" | "atem_set_preview" | "atem_set_program"
-        | "atem_reconnect" | "pco_live_action" | "midi_send_key" | "osc_send_key" | "keysend_request"
+        | "atem_reconnect" | "atem_dsk_on_air" | "atem_dsk_auto" | "atem_dsk_tie" | "atem_macro_run"
+        | "atem_macro_stop" | "atem_macro_continue" | "atem_ftb" | "pco_live_action" | "midi_send_key" | "osc_send_key" | "keysend_request"
         | "music_control" => Some("control"),
         "tap_override" => Some("tap"),
         "identity_list" | "identity_approve" | "identity_remove" | "identity_set_role"
@@ -1931,6 +1964,23 @@ async fn dispatch(
         // it changes what the room and the stream see.
         "atem_cut" => crate::atem::atem_cut(atem_me_arg(args), app.state::<crate::atem::AtemState>()).map(|_| Value::Null),
         "atem_auto" => crate::atem::atem_auto(atem_me_arg(args), app.state::<crate::atem::AtemState>()).map(|_| Value::Null),
+        "atem_dsk_on_air" | "atem_dsk_auto" | "atem_dsk_tie" => {
+            let index = args.get("index").and_then(|v| v.as_u64()).and_then(|v| u8::try_from(v).ok()).ok_or("index required")?;
+            let st = app.state::<crate::atem::AtemState>();
+            match cmd {
+                "atem_dsk_on_air" => crate::atem::atem_dsk_on_air(index, args.get("on").and_then(|v| v.as_bool()), st),
+                "atem_dsk_auto" => crate::atem::atem_dsk_auto(index, st),
+                _ => crate::atem::atem_dsk_tie(index, args.get("tie").and_then(|v| v.as_bool()).unwrap_or(false), st),
+            }
+            .map(|_| Value::Null)
+        }
+        "atem_macro_run" => {
+            let index = args.get("index").and_then(|v| v.as_u64()).and_then(|v| u16::try_from(v).ok()).ok_or("index required")?;
+            crate::atem::atem_macro_run(index, app.state::<crate::atem::AtemState>()).map(|_| Value::Null)
+        }
+        "atem_macro_stop" => crate::atem::atem_macro_stop(app.state::<crate::atem::AtemState>()).map(|_| Value::Null),
+        "atem_macro_continue" => crate::atem::atem_macro_continue(app.state::<crate::atem::AtemState>()).map(|_| Value::Null),
+        "atem_ftb" => crate::atem::atem_ftb(atem_me_arg(args), app.state::<crate::atem::AtemState>()).map(|_| Value::Null),
         "atem_set_preview" | "atem_set_program" => {
             let source = args
                 .get("source")
@@ -2608,6 +2658,7 @@ mod member_pp_tests {
             "update_settings", "pp_action", "pp_set_stage_message", "pp_clear_stage_message",
             "avantis_set_mute", "avantis_set_fader", "avantis_recall_scene",
             "obs_set_scene", "atem_cut", "atem_auto", "atem_set_preview", "atem_set_program",
+            "atem_dsk_on_air", "atem_dsk_auto", "atem_macro_run", "atem_macro_stop", "atem_ftb",
             "pco_live_action", "tap_override", "crew_join_open",
             "save_dashboards", "identity_approve", "identity_remove", "web_start",
             "backup_export", "backup_import", "diag_bundle", "page_send",

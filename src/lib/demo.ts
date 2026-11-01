@@ -306,6 +306,17 @@ function demoThumb(index: number, text = THUMB_LINES[index % THUMB_LINES.length]
 
 // A pretend ATEM: Preview, Cut and Auto work, so the tile can be tried with no switcher.
 const DEMO_ATEM = {
+  dsks: [
+    { index: 0, onAir: false, inTransition: false, tie: false, fill: 4, key: 4 },
+    { index: 1, onAir: true, inTransition: false, tie: false, fill: 3010, key: 3010 },
+  ],
+  macros: [
+    { index: 0, name: "Walk-in", description: "" },
+    { index: 2, name: "Sermon look", description: "Cam 2 with lower third" },
+    { index: 5, name: "Worship wide", description: "" },
+  ],
+  macroRunning: null as number | null,
+  ftb: [{ black: false, inTransition: false }],
   // Two M/Es so the tile's M/E picker can be tried.
   buses: [
     { program: 1, preview: 2, inTransition: false },
@@ -329,6 +340,7 @@ function atemSnapshot() {
     connected: true, ready: true, product: "ATEM 2 M/E Production Studio", me: 0, mes: 2,
     program: b.program, preview: b.preview, inTransition: b.inTransition, buses: DEMO_ATEM.buses,
     inputs: DEMO_ATEM.inputs.map((i) => ({ ...i, meMask: 3 })), error: null,
+    dsks: DEMO_ATEM.dsks, macros: DEMO_ATEM.macros, macroRunning: DEMO_ATEM.macroRunning, macroWaiting: false, ftb: DEMO_ATEM.ftb,
     linkSince: NOW() - 3_600_000, lastHeard: NOW(), drops: 0,
   };
 }
@@ -773,6 +785,22 @@ export async function demoInvoke<T>(cmd: string, args?: Record<string, unknown>)
       [b.program, b.preview] = [b.preview, b.program];
       return out(null);
     }
+    case "atem_dsk_on_air":
+    case "atem_dsk_auto": {
+      const k = DEMO_ATEM.dsks[Number(args?.index ?? 0)];
+      if (k) k.onAir = typeof args?.on === "boolean" ? (args.on as boolean) : !k.onAir;
+      return out(null);
+    }
+    case "atem_macro_run":
+      DEMO_ATEM.macroRunning = Number(args?.index ?? 0);
+      setTimeout(() => (DEMO_ATEM.macroRunning = null), 1500);
+      return out(null);
+    case "atem_macro_stop":
+      DEMO_ATEM.macroRunning = null;
+      return out(null);
+    case "atem_ftb":
+      DEMO_ATEM.ftb[0].black = !DEMO_ATEM.ftb[0].black;
+      return out(null);
     case "atem_reconnect":
       return out(null);
     case "ga4_state": {

@@ -12,7 +12,7 @@ import {
 } from "react";
 import { useProDeck } from "../store";
 import { usePerms } from "../lib/perms";
-import { atemBus, atemButtons, atemName, moveSource, tileMe, toggleHidden, withLabel, type AtemActionsAt, type AtemTileConfig } from "../lib/atem";
+import { atemBus, atemButtons, atemName, dskLabel, macroButtons, moveSource, tileMe, toggleHidden, withLabel, type AtemActionsAt, type AtemTileConfig, type MacroTileConfig } from "../lib/atem";
 import { useProControl } from "../lib/proControl";
 import { SlideThumb } from "../components/SlideThumb";
 import {
@@ -64,6 +64,11 @@ import {
   atemCut,
   atemAuto,
   atemSetPreview,
+  atemDskAuto,
+  atemFtb,
+  atemMacroRun,
+  atemMacroStop,
+  atemMacroContinue,
   type AtemSnapshot,
   type NdiSource,
   type TapEdgeState,
@@ -372,6 +377,16 @@ function AtemWidget({ widget, editing, update }: WidgetProps) {
               ))}
             </select>
           </label>
+          {(snap.dsks?.length ?? 0) > 0 && (
+            <label className="atem-w-opt check">
+              <input type="checkbox" checked={cfg.keys !== false} onChange={(e) => update({ keys: e.target.checked })} />
+              <span>Key buttons</span>
+            </label>
+          )}
+          <label className="atem-w-opt check">
+            <input type="checkbox" checked={cfg.ftb !== false} onChange={(e) => update({ ftb: e.target.checked })} />
+            <span>Fade to Black</span>
+          </label>
           <button type="button" className="btn small ghost" onClick={() => update({ order: [], hidden: [], show: [], labels: {}, actions: "below", cols: 0 })}>
             Reset
           </button>
@@ -444,12 +459,145 @@ function AtemWidget({ widget, editing, update }: WidgetProps) {
         </div>
         {at === "side" && actions}
       </div>
+      {!editing && ((cfg.keys !== false && (snap.dsks?.length ?? 0) > 0) || cfg.ftb !== false) && (
+        <div className="atem-w-keys" role="group" aria-label="Keys and Fade to Black">
+          {cfg.keys !== false &&
+            (snap.dsks ?? []).map((k) => {
+              const l = dskLabel(snap, k.index);
+              return (
+                <button
+                  key={k.index}
+                  type="button"
+                  className={`atem-key${k.onAir ? " on" : ""}${k.inTransition ? " moving" : ""}`}
+                  aria-pressed={k.onAir}
+                  title={`${l.name}${l.source ? ` (${l.source})` : ""}: ${k.onAir ? "on air, tap to take it off" : "off, tap to put it on air"} with its transition`}
+                  disabled={!live || busy}
+                  onClick={() => act(() => atemDskAuto(k.index))}
+                >
+                  <span className="atem-key-name">{l.name}</span>
+                  {l.source && <span className="atem-key-src">{l.source}</span>}
+                </button>
+              );
+            })}
+          {cfg.ftb !== false && (
+            <button
+              type="button"
+              className={`atem-key ftb${snap.ftb?.[me]?.black ? " on" : ""}${snap.ftb?.[me]?.inTransition ? " moving" : ""}`}
+              aria-pressed={!!snap.ftb?.[me]?.black}
+              title={snap.ftb?.[me]?.black ? "Fade to Black is on: the output is black. Tap to fade back." : "Fade the output to black"}
+              disabled={!live || busy}
+              onClick={async () => {
+                if (!snap.ftb?.[me]?.black && !(await askConfirm("Fade the room and the stream to black?"))) return;
+                act(() => atemFtb(me));
+              }}
+            >
+              <span className="atem-key-name">FTB</span>
+              <span className="atem-key-src">{snap.ftb?.[me]?.black ? "Black" : "Fade to Black"}</span>
+            </button>
+          )}
+        </div>
+      )}
       <div className="atem-w-next">
         <span className="atem-tag pvw">PREVIEW</span>
         <strong className="atem-next-name">{atemName(snap, bus.preview, cfg)}</strong>
       </div>
       {at === "below" && actions}
       {!canSwitch && !editing && <p className="muted small">View only. Switching needs the control permission.</p>}
+      {err && <p className="hint">{err}</p>}
+    </div>
+  );
+}
+
+/**
+ * The switcher's own macros, one button each: the church builds the looks on
+ * the ATEM ("Sermon look", "Walk-in loop") and the crew run them from here
+ * or a Stream Deck. Edit the dashboard to reorder or hide them.
+ */
+function AtemMacrosWidget({ widget, editing, update }: WidgetProps) {
+  const { settings } = useProDeck();
+  const { can } = usePerms();
+  const canRun = can("control");
+  const [snap, setSnap] = useState<AtemSnapshot | null>(null);
+  const [err, setErr] = useState("");
+  const cfg = (widget.config ?? {}) as MacroTileConfig;
+  useEffect(() => {
+    let stop = false;
+    atemState()
+      .then((s) => !stop && setSnap(s))
+      .catch(() => {});
+    const un = on<AtemSnapshot>("atem:state", (s) => !stop && setSnap(s));
+    return () => {
+      stop = true;
+      un.then((f) => f());
+    };
+  }, []);
+  const shown = macroButtons(snap, cfg, { includeHidden: editing });
+  const dnd = useDragReorder((_g, from, to) => update({ order: moveSource(shown.map((m) => m.index), from, to) }), "x");
+
+  if (settings && !settings.atem_enabled) return <NeedsAtem />;
+  if (!snap) return <div className="widget-empty">Connecting to the switcher…</div>;
+  if (!snap.connected && !(snap.macros?.length)) {
+    return <NeedsAtem offline hint={snap.error ?? "Can't reach the switcher. Reconnecting…"} />;
+  }
+  const live = canRun && snap.connected && snap.ready && !editing;
+  const run = (f: () => Promise<void>) => {
+    setErr("");
+    f()
+      .then(() => atemState().then(setSnap))
+      .catch((e) => setErr(String(e)));
+  };
+  const stopEv = (e: { stopPropagation: () => void }) => e.stopPropagation();
+  if ((snap.macros?.length ?? 0) === 0) {
+    return <div className="widget-empty">No macros on the switcher yet. Record them in ATEM Software Control and they appear here.</div>;
+  }
+  return (
+    <div className={`atem-w${snap.connected ? "" : " stale"}`}>
+      {snap.macroRunning != null && (
+        <div className="atem-w-top">
+          <span className="atem-tag moving">{snap.macroWaiting ? "WAITING" : "RUNNING"}</span>
+          <strong className="atem-now">{shown.find((m) => m.running)?.name ?? `Macro ${snap.macroRunning + 1}`}</strong>
+          {canRun && snap.macroWaiting && (
+            <button type="button" className="btn small primary" onClick={() => run(atemMacroContinue)}>Continue</button>
+          )}
+          {canRun && (
+            <button type="button" className="btn small" onClick={() => run(atemMacroStop)}>Stop</button>
+          )}
+        </div>
+      )}
+      {editing && <p className="muted small" onMouseDown={stopEv}>Drag to reorder. Tap the eye to hide a macro.</p>}
+      <div className="atem-grid" role="group" aria-label="Macros">
+        {shown.map((m, i) =>
+          editing ? (
+            <div key={m.index} className={`atem-src edit${m.hidden ? " off" : ""} ${dnd.dropClass("mac", i)}`} {...dnd.rowProps("mac", i)} onMouseDown={stopEv}>
+              <span className="atem-src-short">{m.name}</span>
+              <span className="atem-src-tools">
+                <button type="button" className="atem-tool" title={m.hidden ? "Show this macro" : "Hide this macro"} aria-label={m.hidden ? `Show ${m.name}` : `Hide ${m.name}`}
+                  onClick={() => {
+                    const h = new Set(cfg.hidden ?? []);
+                    if (h.has(m.index)) h.delete(m.index);
+                    else h.add(m.index);
+                    update({ hidden: [...h] });
+                  }}>
+                  <Icon name={m.hidden ? "eyeOff" : "eye"} size={12} />
+                </button>
+              </span>
+            </div>
+          ) : (
+            <button
+              key={m.index}
+              type="button"
+              className={`atem-src${m.running ? " pvw" : ""}`}
+              title={m.description || `Run macro ${m.index + 1}`}
+              disabled={!live}
+              onClick={() => run(() => atemMacroRun(m.index))}
+            >
+              <span className="atem-src-short">{m.name}</span>
+              {m.description && <span className="atem-src-name">{m.description}</span>}
+            </button>
+          ),
+        )}
+      </div>
+      {!canRun && !editing && <p className="muted small">View only. Running macros needs the control permission.</p>}
       {err && <p className="hint">{err}</p>}
     </div>
   );
@@ -4070,6 +4218,7 @@ export const WIDGETS: WidgetDef[] = [
   // Video & Switcher
   { type: "obs", label: "OBS — Live & Scene", group: "Video", w: 4, h: 3, component: ObsWidget },
   { type: "atem", label: "ATEM Switcher", group: "Video", w: 5, h: 5, component: AtemWidget },
+  { type: "atem-macros", label: "ATEM Macros", group: "Video", w: 4, h: 4, component: AtemMacrosWidget },
   { type: "video_input", label: "Stage Feed (NDI)", group: "Video", w: 4, h: 4, component: VideoInputWidget },
   { type: "church_online", label: "Church Online", group: "Video", w: 4, h: 4, component: ChurchOnlineWidget },
   { type: "stream_monitor", label: "Stream Monitor (Resi)", group: "Video", w: 5, h: 5, component: StreamMonitorWidget },

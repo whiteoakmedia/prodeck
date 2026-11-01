@@ -4,7 +4,8 @@
 //! what's on Preview, and take it*. So that is all this does. Program and
 //! Preview tally on every M/E, the input names the switcher already has, Cut
 //! and Auto, and picking the Preview source. No keyers, macros, audio or
-//! media pool. Each ATEM tile picks its own M/E; Settings picks the default
+//! media pool. Downstream keys (on air, auto, tie), Fade to Black and the
+//! switcher's own macros (run, stop) too. Each ATEM tile picks its own M/E; Settings picks the default
 //! (and the one Stream Deck drives unless a link says &me=).
 //!
 //! Off until a church ticks it on and types the switcher's address
@@ -81,6 +82,31 @@ pub struct MeState {
     pub in_transition: bool,
 }
 
+/// One downstream keyer.
+#[derive(Clone, Default, Debug, PartialEq)]
+pub struct Dsk {
+    pub on_air: bool,
+    pub in_transition: bool,
+    pub tie: bool,
+    pub fill: Option<u16>,
+    pub key: Option<u16>,
+}
+
+/// A macro stored on the switcher (only used slots are kept).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Macro {
+    pub index: u16,
+    pub name: String,
+    pub description: String,
+}
+
+/// Fade to Black on one M/E.
+#[derive(Clone, Copy, Default, Debug, PartialEq)]
+pub struct Ftb {
+    pub black: bool,
+    pub in_transition: bool,
+}
+
 /// Switchers have 1 to 4 M/Es. A byte claiming more is ignored, never allocated.
 pub const MAX_MES: usize = 8;
 
@@ -100,6 +126,15 @@ pub struct AtemInner {
     /// It already allows for keys, transitions and every M/E, which is what
     /// a camera operator's tally light must show. Empty until it sends one.
     pub tally: std::collections::BTreeMap<u16, u8>,
+    /// Downstream keyers by index, as the switcher reports them.
+    pub dsks: Vec<Dsk>,
+    /// Used macro slots, by index.
+    pub macros: std::collections::BTreeMap<u16, Macro>,
+    /// The macro running now, if any, and whether it's waiting for Continue.
+    pub macro_running: Option<u16>,
+    pub macro_waiting: bool,
+    /// Fade to Black by M/E.
+    pub ftb: Vec<Ftb>,
     /// The address this state came from, so a new switcher starts clean.
     pub host: String,
     /// Link health for Settings: when this session connected and when the
@@ -124,6 +159,14 @@ impl AtemInner {
             self.buses.resize(i + 1, MeState::default());
         }
         Some(&mut self.buses[i])
+    }
+
+    fn dsk_mut(&mut self, i: u8) -> &mut Dsk {
+        let i = (i as usize).min(7);
+        if self.dsks.len() <= i {
+            self.dsks.resize(i + 1, Dsk::default());
+        }
+        &mut self.dsks[i]
     }
 
     pub fn bus(&self, me: u8) -> MeState {
@@ -177,6 +220,11 @@ pub fn snapshot(state: &AtemState) -> Value {
         "inTransition": cur.in_transition,
         "buses": buses,
         // Source id → 1 on air, 2 preview, 3 both. Only sources that are lit.
+        "dsks": s.dsks.iter().enumerate().map(|(i, k)| json!({ "index": i, "onAir": k.on_air, "inTransition": k.in_transition, "tie": k.tie, "fill": k.fill, "key": k.key })).collect::<Vec<_>>(),
+        "macros": s.macros.values().map(|m| json!({ "index": m.index, "name": m.name, "description": m.description })).collect::<Vec<_>>(),
+        "macroRunning": s.macro_running,
+        "macroWaiting": s.macro_waiting,
+        "ftb": s.ftb.iter().map(|f| json!({ "black": f.black, "inTransition": f.in_transition })).collect::<Vec<_>>(),
         "tally": s.tally.iter().filter(|(_, f)| **f != 0).map(|(k, v)| (k.to_string(), json!(v))).collect::<serde_json::Map<String, Value>>(),
         "inputs": inputs,
         "error": s.error,
@@ -260,6 +308,27 @@ pub fn cmd_preview(me: u8, source: u16) -> Vec<u8> {
 pub fn cmd_program(me: u8, source: u16) -> Vec<u8> {
     let s = source.to_be_bytes();
     command(b"CPgI", &[me, 0, s[0], s[1]])
+}
+/// Downstream key straight on or off air.
+pub fn cmd_dsk_on_air(index: u8, on: bool) -> Vec<u8> {
+    command(b"CDsL", &[index, on as u8, 0, 0])
+}
+/// Downstream key on or off with its own transition.
+pub fn cmd_dsk_auto(index: u8) -> Vec<u8> {
+    command(b"DDsA", &[index, 0, 0, 0])
+}
+/// Downstream key tied to the next transition.
+pub fn cmd_dsk_tie(index: u8, tie: bool) -> Vec<u8> {
+    command(b"CDsT", &[index, tie as u8, 0, 0])
+}
+/// Macro actions: 0 run, 1 stop (index 0xFFFF), 4 continue.
+pub fn cmd_macro(index: u16, action: u8) -> Vec<u8> {
+    let i = index.to_be_bytes();
+    command(b"MAct", &[i[0], i[1], action, 0])
+}
+/// Fade to Black on an M/E (toggles: into black, or back out).
+pub fn cmd_ftb(me: u8) -> Vec<u8> {
+    command(b"FtbA", &[me, 0, 0, 0])
 }
 
 /// Split a packet's payload into (name, data). Stops at the first malformed
@@ -353,6 +422,72 @@ pub fn apply(s: &mut AtemInner, name: &[u8; 4], d: &[u8]) -> bool {
             }
             s.tally = t;
             true
+        }
+        // Downstream keyer state: index, on air, in transition, auto, frames left.
+        b"DskS" if d.len() >= 3 => {
+            let (on, tr) = (d[1] != 0, d[2] != 0);
+            let k = s.dsk_mut(d[0]);
+            let changed = k.on_air != on || k.in_transition != tr;
+            k.on_air = on;
+            k.in_transition = tr;
+            changed
+        }
+        // Downstream keyer properties: index, tie, …
+        b"DskP" if d.len() >= 2 => {
+            let tie = d[1] != 0;
+            let k = s.dsk_mut(d[0]);
+            let changed = k.tie != tie;
+            k.tie = tie;
+            changed
+        }
+        // Downstream keyer sources: index, pad, u16 fill, u16 key.
+        b"DskB" if d.len() >= 6 => {
+            let (fill, key) = (u16::from_be_bytes([d[2], d[3]]), u16::from_be_bytes([d[4], d[5]]));
+            let k = s.dsk_mut(d[0]);
+            let changed = k.fill != Some(fill) || k.key != Some(key);
+            k.fill = Some(fill);
+            k.key = Some(key);
+            changed
+        }
+        // Macro properties: u16 index, used, unsupported ops, u16 name length,
+        // u16 description length, name, description.
+        b"MPrp" if d.len() >= 8 => {
+            let index = u16::from_be_bytes([d[0], d[1]]);
+            let used = d[2] != 0;
+            let nl = u16::from_be_bytes([d[4], d[5]]) as usize;
+            let dl = u16::from_be_bytes([d[6], d[7]]) as usize;
+            let name = d.get(8..8 + nl).map(|b| String::from_utf8_lossy(b).trim_end_matches('\0').trim().to_string()).unwrap_or_default();
+            let description = d.get(8 + nl..8 + nl + dl).map(|b| String::from_utf8_lossy(b).trim_end_matches('\0').trim().to_string()).unwrap_or_default();
+            if !used {
+                return s.macros.remove(&index).is_some();
+            }
+            let m = Macro { index, name, description };
+            if s.macros.get(&index) == Some(&m) {
+                return false;
+            }
+            s.macros.insert(index, m);
+            true
+        }
+        // Macro run status: flags (1 running, 2 waiting), loop, u16 index.
+        b"MRPr" if d.len() >= 4 => {
+            let running = d[0] & 1 != 0;
+            let waiting = d[0] & 2 != 0;
+            let now = running.then(|| u16::from_be_bytes([d[2], d[3]]));
+            let changed = s.macro_running != now || s.macro_waiting != waiting;
+            s.macro_running = now;
+            s.macro_waiting = waiting;
+            changed
+        }
+        // Fade to Black state: M/E, fully black, in transition, frames left.
+        b"FtbS" if d.len() >= 3 => {
+            let me = (d[0] as usize).min(MAX_MES - 1);
+            if s.ftb.len() <= me {
+                s.ftb.resize(me + 1, Ftb::default());
+            }
+            let f = Ftb { black: d[1] != 0, in_transition: d[2] != 0 };
+            let changed = s.ftb[me] != f;
+            s.ftb[me] = f;
+            changed
         }
         b"InCm" => {
             s.ready = true;
@@ -534,6 +669,10 @@ pub async fn run_link(
             s.inputs.clear();
             s.buses.clear();
             s.tally.clear();
+            s.dsks.clear();
+            s.macros.clear();
+            s.ftb.clear();
+            s.macro_running = None;
             s.product.clear();
             s.mes = 0;
             s.host = host.to_string();
@@ -721,6 +860,68 @@ pub fn atem_set_preview(source: u16, me: Option<u8>, state: tauri::State<'_, Ate
     send(st, cmd_preview(me, source))
 }
 
+fn check_dsk(state: &AtemState, index: u8) -> Result<(), String> {
+    let s = state.lock().unwrap_or_else(|p| p.into_inner());
+    if (index as usize) < s.dsks.len() {
+        Ok(())
+    } else {
+        Err(format!("This switcher has {} downstream key{}.", s.dsks.len(), if s.dsks.len() == 1 { "" } else { "s" }))
+    }
+}
+
+/// Downstream key `index` (0-based) on or off air at once; `on` absent = the opposite of now.
+#[tauri::command]
+pub fn atem_dsk_on_air(index: u8, on: Option<bool>, state: tauri::State<'_, AtemState>) -> Result<(), String> {
+    let st = state.inner();
+    check_dsk(st, index)?;
+    let on = on.unwrap_or_else(|| !st.lock().unwrap_or_else(|p| p.into_inner()).dsks[index as usize].on_air);
+    send(st, cmd_dsk_on_air(index, on))
+}
+
+/// Downstream key on or off with the key's own transition.
+#[tauri::command]
+pub fn atem_dsk_auto(index: u8, state: tauri::State<'_, AtemState>) -> Result<(), String> {
+    let st = state.inner();
+    check_dsk(st, index)?;
+    send(st, cmd_dsk_auto(index))
+}
+
+#[tauri::command]
+pub fn atem_dsk_tie(index: u8, tie: bool, state: tauri::State<'_, AtemState>) -> Result<(), String> {
+    let st = state.inner();
+    check_dsk(st, index)?;
+    send(st, cmd_dsk_tie(index, tie))
+}
+
+/// Run one of the switcher's macros (0-based slot).
+#[tauri::command]
+pub fn atem_macro_run(index: u16, state: tauri::State<'_, AtemState>) -> Result<(), String> {
+    let st = state.inner();
+    if !st.lock().unwrap_or_else(|p| p.into_inner()).macros.contains_key(&index) {
+        return Err("There's no macro in that slot on the switcher.".into());
+    }
+    send(st, cmd_macro(index, 0))
+}
+
+/// Stop the running macro.
+#[tauri::command]
+pub fn atem_macro_stop(state: tauri::State<'_, AtemState>) -> Result<(), String> {
+    send(state.inner(), cmd_macro(0xFFFF, 1))
+}
+
+/// A macro waiting at a user wait goes on.
+#[tauri::command]
+pub fn atem_macro_continue(state: tauri::State<'_, AtemState>) -> Result<(), String> {
+    send(state.inner(), cmd_macro(0xFFFF, 4))
+}
+
+/// Fade to Black (or back) on an M/E; default M/E if absent.
+#[tauri::command]
+pub fn atem_ftb(me: Option<u8>, state: tauri::State<'_, AtemState>) -> Result<(), String> {
+    let st = state.inner();
+    send(st, cmd_ftb(resolve_me(st, me)?))
+}
+
 /// Straight to Program, no transition. The tile doesn't offer this (a stray
 /// tap would cut live); it's here for Stream Deck and the deck routes.
 #[tauri::command]
@@ -890,6 +1091,50 @@ mod tests {
     }
 
     #[test]
+    fn keys_macros_and_fade_to_black_follow_the_switcher() {
+        let mut s = AtemInner::default();
+        assert!(apply(&mut s, b"DskB", &[1, 0, 0, 15, 0, 16]));
+        assert_eq!(s.dsks.len(), 2, "keyer 2 reported first still makes room for 1");
+        assert_eq!((s.dsks[1].fill, s.dsks[1].key), (Some(15), Some(16)));
+        assert!(apply(&mut s, b"DskS", &[1, 1, 0, 0, 0, 0, 0, 0]));
+        assert!(s.dsks[1].on_air);
+        assert!(!apply(&mut s, b"DskS", &[1, 1, 0, 0, 0, 0, 0, 0]), "unchanged isn't news");
+        assert!(apply(&mut s, b"DskP", &[1, 1, 25, 0]));
+        assert!(s.dsks[1].tie);
+
+        // Macro 3 "Sermon look" with a description.
+        let mut m = vec![0, 3, 1, 0, 0, 11, 0, 5];
+        m.extend_from_slice(b"Sermon lookCam 2");
+        assert!(apply(&mut s, b"MPrp", &m));
+        assert_eq!(s.macros[&3].name, "Sermon look");
+        assert_eq!(s.macros[&3].description, "Cam 2");
+        // An emptied slot disappears.
+        assert!(apply(&mut s, b"MPrp", &[0, 3, 0, 0, 0, 0, 0, 0]));
+        assert!(s.macros.is_empty());
+        // A name length past the data is cut short, not a panic.
+        assert!(apply(&mut s, b"MPrp", &[0, 4, 1, 0, 0, 99, 0, 0, b'X']));
+        assert_eq!(s.macros[&4].name, "");
+        assert!(apply(&mut s, b"MRPr", &[1, 0, 0, 4]));
+        assert_eq!((s.macro_running, s.macro_waiting), (Some(4), false));
+        assert!(apply(&mut s, b"MRPr", &[0, 0, 0, 0]));
+        assert_eq!(s.macro_running, None);
+
+        assert!(apply(&mut s, b"FtbS", &[0, 1, 0, 0]));
+        assert!(s.ftb[0].black);
+        assert!(!apply(&mut s, b"FtbS", &[0]), "short is ignored");
+    }
+
+    #[test]
+    fn key_macro_and_fade_commands_match_the_reference_layout() {
+        assert_eq!(cmd_dsk_on_air(1, true), vec![0, 12, 0, 0, b'C', b'D', b's', b'L', 1, 1, 0, 0]);
+        assert_eq!(cmd_dsk_auto(0), vec![0, 12, 0, 0, b'D', b'D', b's', b'A', 0, 0, 0, 0]);
+        assert_eq!(cmd_dsk_tie(0, true), vec![0, 12, 0, 0, b'C', b'D', b's', b'T', 0, 1, 0, 0]);
+        assert_eq!(cmd_macro(3, 0), vec![0, 12, 0, 0, b'M', b'A', b'c', b't', 0, 3, 0, 0]);
+        assert_eq!(cmd_macro(0xFFFF, 1), vec![0, 12, 0, 0, b'M', b'A', b'c', b't', 0xFF, 0xFF, 1, 0]);
+        assert_eq!(cmd_ftb(1), vec![0, 12, 0, 0, b'F', b't', b'b', b'A', 1, 0, 0, 0]);
+    }
+
+    #[test]
     fn retries_back_off_but_not_forever() {
         assert_eq!(retry_delay(0), Duration::from_secs(1));
         assert_eq!(retry_delay(1), Duration::from_secs(2));
@@ -963,6 +1208,20 @@ mod tests {
         wait_for(&state, "tally after the cut", |s| s.tally.get(&4) == Some(&1) && s.tally.get(&1) == Some(&2)).await;
         send(&state, cmd_auto(me)).unwrap();
         wait_for(&state, "the auto transition", |s| s.bus(0).program == Some(1) && !s.bus(0).in_transition).await;
+        // Keys, macros and Fade to Black, the way the switcher reports them.
+        wait_for(&state, "the keys and macros", |s| s.dsks.len() == 2 && s.macros.len() == 2).await;
+        assert_eq!(state.lock().unwrap().macros[&2].name, "Sermon look");
+        send(&state, cmd_dsk_on_air(1, true)).unwrap();
+        wait_for(&state, "DSK 2 on air", |s| s.dsks[1].on_air).await;
+        send(&state, cmd_dsk_auto(1)).unwrap();
+        wait_for(&state, "DSK 2 off again", |s| !s.dsks[1].on_air).await;
+        send(&state, cmd_macro(2, 0)).unwrap();
+        wait_for(&state, "the macro running", |s| s.macro_running == Some(2)).await;
+        wait_for(&state, "the macro done", |s| s.macro_running.is_none()).await;
+        send(&state, cmd_ftb(0)).unwrap();
+        wait_for(&state, "fade to black", |s| s.ftb.first().map(|f| f.black) == Some(true)).await;
+        send(&state, cmd_ftb(0)).unwrap();
+        wait_for(&state, "back from black", |s| s.ftb.first().map(|f| f.black) == Some(false)).await;
         send(&state, cmd_program(me, 3)).unwrap();
         wait_for(&state, "program 3", |s| s.bus(0).program == Some(3)).await;
 
