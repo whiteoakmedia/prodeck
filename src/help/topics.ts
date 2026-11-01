@@ -403,6 +403,18 @@ The same buttons are on the edge's own emergency page at **your-edge-url/admin/â
 
   // ------------------------------------------------------------- propresenter
   {
+    id: "pp-macros",
+    group: "ProPresenter",
+    title: "ProPresenter macros on a dashboard",
+    aliases: ["macros", "propresenter macros", "pro macros", "run a macro", "macro buttons"],
+    body: `Add the **ProPresenter Macros** tile to a dashboard. It shows every macro in ProPresenter as a button, in the colour you gave it in Pro, so it matches what the operator sees there. Tap one to run it.
+
+- Edit the dashboard to drag them into your order or hide the ones nobody uses here. New macros made in Pro appear by themselves within a minute.
+- On a phone, running a macro needs the **control** permission. With **View only** on (Settings, ProPresenter) the buttons show but don't run.
+- ProPresenter doesn't report when a macro finishes, so a button just flashes when it runs.`,
+    settings: "set-pp",
+  },
+  {
     id: "pp-view-only",
     group: "ProPresenter",
     title: "View only: watch ProPresenter without changing it",

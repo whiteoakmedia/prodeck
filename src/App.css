@@ -10565,3 +10565,9 @@ select.input {
   .atem-w:not(.editing) > .atem-w-body .atem-grid { min-height: 0; height: 100%; }
   .atem-w:not(.editing) > :not(.atem-w-top):not(.atem-w-next):not(.atem-w-body):not(.atem-w-keys):not(.atem-w-actions) { grid-column: 1 / -1; }
 }
+/* ProPresenter Macros tile: buttons in each macro's own Pro colour. */
+.pm-w { display: flex; flex-direction: column; gap: 8px; height: 100%; }
+.pm-grid { min-height: 0; flex: 1 1 auto; }
+.pm-btn { min-height: 46px; justify-content: center; }
+.pm-btn:disabled { opacity: 0.75; }
+.pm-flash { outline: 3px solid var(--text); outline-offset: -3px; }

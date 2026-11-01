@@ -14,6 +14,7 @@ import { useProDeck } from "../store";
 import { usePerms } from "../lib/perms";
 import { atemBus, atemButtons, atemName, dskLabel, macroButtons, moveSource, tileMe, toggleHidden, withLabel, type AtemActionsAt, type AtemTileConfig, type MacroTileConfig } from "../lib/atem";
 import { useProControl } from "../lib/proControl";
+import { parseProMacros, proMacroButtons, textOn, type ProMacro, type ProMacroTileConfig } from "../lib/proMacros";
 import { SlideThumb } from "../components/SlideThumb";
 import {
   activePresentation,
@@ -47,6 +48,7 @@ import {
   ppClearLayer,
   ppClearStageMessage,
   ppGet,
+  ppTriggerMacro,
   ppSetStageMessage,
   ppTimerOp,
   startAudioCapture,
@@ -598,6 +600,95 @@ function AtemMacrosWidget({ widget, editing, update }: WidgetProps) {
         )}
       </div>
       {!canRun && !editing && <p className="muted small">View only. Running macros needs the control permission.</p>}
+      {err && <p className="hint">{err}</p>}
+    </div>
+  );
+}
+
+/**
+ * ProPresenter 7 macros, one button each, in the colour given them in Pro.
+ * Tap to run (needs control on a phone; off in view-only mode). Edit the
+ * dashboard to reorder or hide them. Pro doesn't say when a macro finishes,
+ * so a run just flashes.
+ */
+function ProMacrosWidget({ widget, editing, update }: WidgetProps) {
+  const { connected } = useProDeck();
+  const { canControl, viewOnly } = useProControl();
+  const [list, setList] = useState<ProMacro[] | null>(null);
+  const [err, setErr] = useState("");
+  const [flash, setFlash] = useState<string | null>(null);
+  const cfg = (widget.config ?? {}) as ProMacroTileConfig;
+  useEffect(() => {
+    if (!connected) return;
+    let alive = true;
+    const load = () =>
+      ppGet("macros")
+        .then((j) => alive && setList(parseProMacros(j)))
+        .catch(() => alive && setList((l) => l ?? []));
+    load();
+    // Macros are edited in Pro now and then; a slow re-read picks them up.
+    const iv = setInterval(load, 60_000);
+    return () => {
+      alive = false;
+      clearInterval(iv);
+    };
+  }, [connected]);
+  const shown = proMacroButtons(list ?? [], cfg, { includeHidden: editing });
+  const dnd = useDragReorder((_g, from, to) => update({ order: moveTo(shown.map((m) => m.uuid), from, to) }), "x");
+
+  if (!connected) return <Disconnected />;
+  if (list === null) return <div className="widget-empty">Reading macros…</div>;
+  if (list.length === 0) return <div className="widget-empty">No macros in ProPresenter yet.</div>;
+  const run = (m: ProMacro) => {
+    if (!canControl || editing) return;
+    setErr("");
+    ppTriggerMacro(m.uuid)
+      .then(() => {
+        setFlash(m.uuid);
+        setTimeout(() => setFlash((f) => (f === m.uuid ? null : f)), 700);
+      })
+      .catch((e) => setErr(String(e)));
+  };
+  const stopEv = (e: { stopPropagation: () => void }) => e.stopPropagation();
+  return (
+    <div className="pm-w">
+      {editing && <p className="muted small" onMouseDown={stopEv}>Drag to reorder. Tap the eye to hide a macro.</p>}
+      <div className="atem-grid pm-grid" role="group" aria-label="ProPresenter macros">
+        {shown.map((m, i) => {
+          const style = m.color ? { background: m.color, borderColor: m.color, color: textOn(m.color) } : undefined;
+          return editing ? (
+            <div key={m.uuid} className={`atem-src edit${m.hidden ? " off" : ""} ${dnd.dropClass("pm", i)}`} style={style} {...dnd.rowProps("pm", i)} onMouseDown={stopEv}>
+              <span className="atem-src-short">{m.name}</span>
+              <span className="atem-src-tools">
+                <button type="button" className="atem-tool" title={m.hidden ? "Show this macro" : "Hide this macro"} aria-label={m.hidden ? `Show ${m.name}` : `Hide ${m.name}`}
+                  onClick={() => {
+                    const h = new Set(cfg.hidden ?? []);
+                    if (h.has(m.uuid)) h.delete(m.uuid);
+                    else h.add(m.uuid);
+                    update({ hidden: [...h] });
+                  }}>
+                  <Icon name={m.hidden ? "eyeOff" : "eye"} size={12} />
+                </button>
+              </span>
+            </div>
+          ) : (
+            <button
+              key={m.uuid}
+              type="button"
+              className={`atem-src pm-btn${flash === m.uuid ? " pm-flash" : ""}`}
+              style={style}
+              title={canControl ? `Run "${m.name}" in ProPresenter` : viewOnly ? "ProPresenter is view only on this ProDeck" : "Running macros needs the control permission"}
+              disabled={!canControl}
+              onClick={() => run(m)}
+            >
+              <span className="atem-src-short">{m.name}</span>
+            </button>
+          );
+        })}
+      </div>
+      {!canControl && !editing && (
+        <p className="muted small">{viewOnly ? "View only: ProPresenter is view only on this ProDeck." : "View only. Running macros needs the control permission."}</p>
+      )}
       {err && <p className="hint">{err}</p>}
     </div>
   );
@@ -4221,6 +4312,7 @@ export const WIDGETS: WidgetDef[] = [
   { type: "obs", label: "OBS — Live & Scene", group: "Video", w: 4, h: 3, component: ObsWidget },
   { type: "atem", label: "ATEM Switcher", group: "Video", w: 5, h: 5, component: AtemWidget },
   { type: "atem-macros", label: "ATEM Macros", group: "Video", w: 4, h: 4, component: AtemMacrosWidget },
+  { type: "pro_macros", label: "ProPresenter Macros", group: "ProPresenter", w: 4, h: 4, component: ProMacrosWidget },
   { type: "video_input", label: "Stage Feed (NDI)", group: "Video", w: 4, h: 4, component: VideoInputWidget },
   { type: "church_online", label: "Church Online", group: "Video", w: 4, h: 4, component: ChurchOnlineWidget },
   { type: "stream_monitor", label: "Stream Monitor (Resi)", group: "Video", w: 5, h: 5, component: StreamMonitorWidget },

@@ -570,7 +570,13 @@ function ppLibrary(path: string): unknown {
   const named = (names: string[], prefix: string) => names.map((name, index) => ({ id: { uuid: `${prefix}-${index}`, name, index } }));
   if (path === "looks") return named(["Default", "Worship", "Sermon", "Announcements"], "look");
   if (path === "look/current") return { id: { uuid: "look-1", name: "Worship", index: 1 } };
-  if (path === "macros") return named(["Walk-in", "Worship Start", "Sermon", "Response", "Dismissal", "Clear to Logo"], "macro");
+  if (path === "macros") {
+    const colors = [[0.2, 0.45, 0.9], [0.55, 0.3, 0.85], [0.95, 0.75, 0.2], [0.2, 0.7, 0.45], [0.85, 0.3, 0.3], [0.5, 0.5, 0.5]];
+    return named(["Walk-in", "Worship Start", "Sermon", "Response", "Dismissal", "Clear to Logo"], "macro").map((m, i) => ({
+      ...m,
+      color: { red: colors[i][0], green: colors[i][1], blue: colors[i][2], alpha: 1 },
+    }));
+  }
   if (path === "props") return named(["Lower Third", "Logo Bug", "Countdown Frame"], "prop");
   if (path === "messages") return named(["Parent Pickup", "Car Lights On", "Welcome Guests"], "msg");
   if (path === "timers") return named(["Service Countdown", "Sermon Clock", "Walk-in"], "timer");
