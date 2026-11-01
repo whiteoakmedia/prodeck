@@ -44,6 +44,39 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.111 — 1 November 2026
+
+Everything in 0.9.110, plus:
+
+### New: ATEM downstream keys, Fade to Black and macros
+
+- The ATEM tile has a button for each downstream key, lit red while it's on
+  air and named by what it keys; tap to take it on or off with its own
+  transition. **FTB** asks before fading to black and stays lit while the
+  output is black. Turn either off per tile in edit mode.
+- The new **ATEM Macros** tile lists the macros recorded on the switcher. Tap
+  one to run it; it lights while running, with **Stop** and **Continue**.
+  Reorder or hide them in edit mode.
+- Stream Deck: `/api/deck/atem-dsk?n=1` (toggle, or `&on=1`/`&on=0`),
+  `/api/deck/atem-dsk-auto?n=1`, `/api/deck/atem-macro?n=3` or
+  `?text=Sermon look`, `/api/deck/atem-macro-stop`, `/api/deck/atem-ftb`.
+
+### Fixed: service analytics and tap counts
+
+- Which service it is is decided by the clock: each service runs from 15
+  minutes before its start to the next service's window (or the plan's length
+  plus 45 minutes for the last one). The last service of the day used to keep
+  recording until a new plan was picked, often for days, collecting every
+  rehearsal in between.
+- Everything outside a service is that day's **Practice** report, kept out of
+  every service. Leave Follow Pro on all week; nothing needs resetting.
+- NFC taps count only inside a service's own window and never during practice,
+  so one report can't count another service's taps. TapLink counts one tap per
+  phone per minute and ignores link previews, prefetches and bots (redeploy
+  your TapLink worker to get this part).
+- Reports recorded before this keep their minutes; their tap counts are capped
+  at three hours.
+
 ## 0.9.110 — 1 November 2026
 
 ### New: camera tally on phones and iPads
