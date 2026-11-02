@@ -113,6 +113,42 @@ export async function secureBase(base: string): Promise<string> {
   return base;
 }
 
+/**
+ * Page notifications. The booth's page has no way to reach the phone's own
+ * notifications, so the app gets the phone's push token here and hands it to
+ * the page as it opens (#crewpush=, read by the booth's lib/pushClient.ts),
+ * which registers it once you're signed in. What's handed over:
+ * "apns:<token>", "denied", or "prompt" (never asked; the page's Turn on
+ * button comes back here with ?notify to ask). Android needs a push project
+ * of its own first, so nothing is handed over there yet.
+ */
+export async function pushToken(ask: boolean): Promise<string> {
+  if (Capacitor.getPlatform() !== "ios") return "";
+  try {
+    const { PushNotifications: P } = await import("@capacitor/push-notifications");
+    let perm = (await P.checkPermissions()).receive;
+    if (ask && perm !== "granted" && perm !== "denied") perm = (await P.requestPermissions()).receive;
+    if (perm === "denied") return "denied";
+    if (perm !== "granted") return "prompt";
+    return await new Promise<string>((resolve) => {
+      const handles: Promise<{ remove: () => Promise<void> }>[] = [];
+      let settled = false;
+      const done = (v: string) => {
+        if (settled) return;
+        settled = true;
+        handles.forEach((h) => void h.then((x) => x.remove()));
+        resolve(v);
+      };
+      handles.push(P.addListener("registration", (t) => done(`apns:${t.value}`)));
+      handles.push(P.addListener("registrationError", () => done("")));
+      void P.register();
+      setTimeout(() => done(""), 8000);
+    });
+  } catch {
+    return "";
+  }
+}
+
 const KEY = "prodeck.crewChurches";
 
 export function loadChurches(): Church[] {

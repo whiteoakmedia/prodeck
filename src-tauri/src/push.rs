@@ -41,6 +41,27 @@ pub struct Subscription {
     pub created_ms: u64,
 }
 
+/// A phone running the ProDeck Crew app. Apple only takes notifications for
+/// the app signed with White Oak's key, so these go out through the
+/// prodeck-push relay (push-edge/) instead of straight from here. Keyed by
+/// token, not person: someone's phone and iPad both ring.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AppSub {
+    pub user_id: String,
+    /// "apns" today; "fcm" once Android has a push project.
+    pub platform: String,
+    pub token: String,
+    pub created_ms: u64,
+}
+
+/// A person's app devices kept at most: an old phone traded in keeps its token
+/// until Apple calls it dead, which can take a while.
+const MAX_APPS_PER_PERSON: usize = 3;
+
+fn relay_url() -> String {
+    std::env::var("PRODECK_PUSH_RELAY").unwrap_or_else(|_| "https://prodeck-push.taplink-edge.workers.dev".into())
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 struct Store {
     /// Raw 32-byte P-256 scalar, base64url. Leaves the booth ONLY to the
@@ -51,6 +72,8 @@ struct Store {
     /// the browser needs, and the only half that leaves the machine.
     vapid_public: String,
     subs: Vec<Subscription>,
+    #[serde(default)]
+    apps: Vec<AppSub>,
 }
 
 #[derive(Default)]
@@ -214,13 +237,51 @@ pub fn subscribe(
 pub fn unsubscribe(push: &PushState, user_id: &str) {
     let mut s = push.store.lock().unwrap_or_else(|p| p.into_inner());
     s.subs.retain(|x| x.user_id != user_id);
+    s.apps.retain(|x| x.user_id != user_id);
+    push.persist(&s);
+}
+
+/// Register a phone running the ProDeck Crew app. The same phone signing in
+/// as someone else moves to them.
+pub fn subscribe_app(push: &PushState, user_id: String, platform: String, token: String) -> Result<(), String> {
+    if platform != "apns" {
+        return Err("this phone's notifications aren't supported yet".into());
+    }
+    if !(64..=200).contains(&token.len()) || !token.chars().all(|c| c.is_ascii_hexdigit()) {
+        return Err("that isn't a push token".into());
+    }
+    let mut s = push.store.lock().unwrap_or_else(|p| p.into_inner());
+    s.apps.retain(|x| x.token != token);
+    s.apps.push(AppSub { user_id: user_id.clone(), platform, token, created_ms: now_ms() });
+    // Newest last, so the oldest of this person's devices go first.
+    let mine = s.apps.iter().filter(|x| x.user_id == user_id).count();
+    if mine > MAX_APPS_PER_PERSON {
+        let mut extra = mine - MAX_APPS_PER_PERSON;
+        s.apps.retain(|x| {
+            if extra > 0 && x.user_id == user_id {
+                extra -= 1;
+                false
+            } else {
+                true
+            }
+        });
+    }
+    push.persist(&s);
+    Ok(())
+}
+
+/// Stop one app phone, and only if it belongs to this person.
+pub fn unsubscribe_app(push: &PushState, user_id: &str, token: &str) {
+    let mut s = push.store.lock().unwrap_or_else(|p| p.into_inner());
+    s.apps.retain(|x| !(x.token == token && x.user_id == user_id));
     push.persist(&s);
 }
 
 /// Crew who will feel a page on a locked phone: they turned notifications on
 /// and the phone hasn't thrown that away since.
 pub fn notified_users(push: &PushState) -> std::collections::HashSet<String> {
-    push.store.lock().unwrap_or_else(|p| p.into_inner()).subs.iter().map(|s| s.user_id.clone()).collect()
+    let s = push.store.lock().unwrap_or_else(|p| p.into_inner());
+    s.subs.iter().map(|x| x.user_id.clone()).chain(s.apps.iter().map(|x| x.user_id.clone())).collect()
 }
 
 fn subs_for(push: &PushState, user_ids: &[String]) -> Vec<Subscription> {
@@ -232,6 +293,56 @@ fn subs_for(push: &PushState, user_ids: &[String]) -> Vec<Subscription> {
         .filter(|s| user_ids.iter().any(|id| id == &s.user_id))
         .cloned()
         .collect()
+}
+
+fn apps_for(push: &PushState, user_ids: &[String]) -> Vec<AppSub> {
+    push.store
+        .lock()
+        .unwrap_or_else(|p| p.into_inner())
+        .apps
+        .iter()
+        .filter(|s| user_ids.iter().any(|id| id == &s.user_id))
+        .cloned()
+        .collect()
+}
+
+/// What the relay is asked to send: the notification's words only. Nothing
+/// about the church or the person goes with it.
+fn relay_body(apps: &[AppSub], payload: &serde_json::Value) -> serde_json::Value {
+    let text = |k: &str| payload.get(k).and_then(|v| v.as_str()).unwrap_or("").to_string();
+    json!({
+        "to": apps.iter().map(|a| json!({ "p": a.platform, "t": a.token })).collect::<Vec<_>>(),
+        "title": text("title"),
+        "body": text("body"),
+        "tag": text("tag"),
+        "page": payload.get("page").and_then(|v| v.as_bool()).unwrap_or(false),
+    })
+}
+
+async fn send_apps(client: &reqwest::Client, push: &PushState, apps: &[AppSub], payload: &serde_json::Value) {
+    let r = client.post(format!("{}/v1/send", relay_url())).json(&relay_body(apps, payload)).send().await;
+    match r {
+        Ok(r) if r.status().is_success() => {
+            let v: serde_json::Value = r.json().await.unwrap_or_default();
+            let dead: Vec<String> = v
+                .get("dead")
+                .and_then(|d| d.as_array())
+                .map(|d| d.iter().filter_map(|x| x.as_str().map(String::from)).collect())
+                .unwrap_or_default();
+            if !dead.is_empty() {
+                // The app was deleted from those phones; stop sending to them.
+                let mut s = push.store.lock().unwrap_or_else(|p| p.into_inner());
+                s.apps.retain(|x| !dead.contains(&x.token));
+                push.persist(&s);
+            }
+        }
+        Ok(r) => {
+            let code = r.status().as_u16();
+            let why = r.text().await.unwrap_or_default();
+            crate::diag::log(format!("[push] the app push relay refused a page: {code} {}", why.chars().take(120).collect::<String>()));
+        }
+        Err(e) => crate::diag::log(format!("[push] couldn't reach the app push relay: {e}")),
+    }
 }
 
 fn drop_endpoint(push: &PushState, endpoint: &str) {
@@ -251,7 +362,8 @@ pub fn notify(app: &AppHandle, user_ids: Vec<String>, payload: serde_json::Value
             s.vapid_private.clone()
         };
         let targets = subs_for(&push, &user_ids);
-        if targets.is_empty() {
+        let apps = apps_for(&push, &user_ids);
+        if targets.is_empty() && apps.is_empty() {
             return;
         }
         let body = serde_json::to_vec(&payload).unwrap_or_default();
@@ -259,6 +371,9 @@ pub fn notify(app: &AppHandle, user_ids: Vec<String>, payload: serde_json::Value
             .timeout(std::time::Duration::from_secs(10))
             .build();
         let Ok(client) = client else { return };
+        if !apps.is_empty() {
+            send_apps(&client, &push, &apps, &payload).await;
+        }
 
         for sub in targets {
             let info = SubscriptionInfo::new(
@@ -353,6 +468,45 @@ mod tests {
 
         // Neither may carry base64 padding — pushManager.subscribe rejects it.
         assert!(!private.contains('=') && !public.contains('='));
+    }
+
+    fn tok(c: char) -> String {
+        std::iter::repeat(c).take(64).collect()
+    }
+
+    // An app phone moves with whoever signs in on it, a person's oldest
+    // devices fall off past the cap, and only real tokens get in.
+    #[test]
+    fn app_phones_are_kept_per_token_and_capped_per_person() {
+        let push: PushState = Arc::new(PushInner::default());
+        subscribe_app(&push, "a".into(), "apns".into(), tok('1')).unwrap();
+        subscribe_app(&push, "b".into(), "apns".into(), tok('1')).unwrap();
+        assert_eq!(apps_for(&push, &["a".into()]).len(), 0);
+        assert_eq!(apps_for(&push, &["b".into()]).len(), 1);
+
+        for c in ['2', '3', '4'] {
+            subscribe_app(&push, "b".into(), "apns".into(), tok(c)).unwrap();
+        }
+        let left: Vec<String> = apps_for(&push, &["b".into()]).into_iter().map(|x| x.token).collect();
+        assert_eq!(left, vec![tok('2'), tok('3'), tok('4')]);
+
+        assert!(subscribe_app(&push, "b".into(), "apns".into(), "not a token".into()).is_err());
+        assert!(subscribe_app(&push, "b".into(), "fcm".into(), tok('5')).is_err());
+
+        unsubscribe_app(&push, "a", &tok('2'));
+        assert_eq!(apps_for(&push, &["b".into()]).len(), 3, "only your own phone");
+        unsubscribe_app(&push, "b", &tok('2'));
+        assert_eq!(apps_for(&push, &["b".into()]).len(), 2);
+        assert!(notified_users(&push).contains("b"));
+    }
+
+    #[test]
+    fn relay_gets_the_words_and_tokens_only() {
+        let apps = vec![AppSub { user_id: "u1".into(), platform: "apns".into(), token: tok('a'), created_ms: 0 }];
+        let body = relay_body(&apps, &json!({ "title": "ProDeck · Page", "body": "Zach: mics", "tag": "page-1", "page": true, "pageId": "p1", "url": "/" }));
+        assert_eq!(body["to"][0]["t"], tok('a'));
+        assert_eq!(body["page"], true);
+        assert!(body.get("pageId").is_none() && body.to_string().find("u1").is_none());
     }
 
     // The private half must be loadable by the signer we actually sign with.

@@ -3,7 +3,7 @@ import mark from "./mark.svg";
 import { Intro } from "./Intro";
 import { readLink, type LinkAction } from "./links";
 import { forget, parseTarget, remember, shortName, type Church, type Target } from "./connect";
-import { checkBooth, findBooths, isNative, loadChurches, saveChurches, scanCode, secureBase, type Found } from "./native";
+import { checkBooth, findBooths, isNative, loadChurches, pushToken, saveChurches, scanCode, secureBase, type Found } from "./native";
 
 // ProDeck Crew: find your church's booth, then open its crew app.
 // (design/CREW_APP.md)
@@ -16,15 +16,18 @@ type Screen =
   | { kind: "checking"; target: Target; name: string }
   | { kind: "open"; church: Church; url: string };
 
+const params = typeof location !== "undefined" ? new URLSearchParams(location.search) : new URLSearchParams();
 /** The booth's Switch church button comes back here with ?home=1. */
-const asked = typeof location !== "undefined" && new URLSearchParams(location.search).has("home");
+const asked = params.has("home");
+/** The booth's Turn on notifications button comes back here with ?notify=1. */
+const askNotify = params.has("notify");
 
 export function App() {
   const [churches, setChurches] = useState<Church[]>(() => loadChurches());
   const [screen, setScreen] = useState<Screen>({ kind: "home" });
   const [err, setErr] = useState("");
   // The intro plays once per launch, not when coming back from a church.
-  const [intro, setIntro] = useState(!asked);
+  const [intro, setIntro] = useState(!asked && !askNotify);
   // A link that opened the app (links.ts), acted on once the intro is done.
   const [link, setLink] = useState<LinkAction>(null);
   useEffect(() => {
@@ -53,7 +56,7 @@ export function App() {
       return; // the link decides where to go (below)
     }
     if (isNative() && !asked && churches.length > 0) {
-      openChurch(churches[0]);
+      void openChurch(churches[0]);
       return;
     }
     setIntro(false);
@@ -71,17 +74,26 @@ export function App() {
     go({ kind: "checking", target: t, name: name || shortName(t.base) });
   };
 
-  const openChurch = (c: Church, path = "/") => {
+  const openChurch = async (c: Church, path = "/", ask = false) => {
     const next = remember(churches, { ...c, lastMs: Date.now() });
     setChurches(next);
     saveChurches(next);
     const url = `${c.base}${path}`;
     if (isNative()) {
-      window.location.href = url;
+      // A fresh token each time: the phone can change it.
+      const push = await pushToken(ask);
+      window.location.href = push ? `${url}#crewpush=${encodeURIComponent(push)}` : url;
       return;
     }
     go({ kind: "open", church: c, url });
   };
+
+  // Back from the booth's Turn on notifications button: ask the phone, then
+  // straight back to that church.
+  useEffect(() => {
+    if (askNotify && churches[0]) void openChurch(churches[0], "/", true);
+    else if (askNotify) setIntro(false);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // The crew app's own demo, built into this app (npm run demo): a pretend
   // Sunday with no booth, for the curious and for App Review.

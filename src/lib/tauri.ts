@@ -1248,6 +1248,11 @@ export const pushSubscribe = (
 ) => invoke<{ ok: boolean }>("push_subscribe", { session, endpoint, p256dh, auth });
 export const pushUnsubscribe = (session: string) =>
   invoke<{ ok: boolean }>("push_unsubscribe", { session });
+/** The ProDeck Crew app's own push token (lib/crewApp.ts appPush). */
+export const pushAppSubscribe = (session: string, platform: string, token: string) =>
+  invoke<{ ok: boolean }>("push_app_subscribe", { session, platform, token });
+export const pushAppUnsubscribe = (session: string, token: string) =>
+  invoke<{ ok: boolean }>("push_app_unsubscribe", { session, token });
 
 // Crew check-in. Idempotent booth-side: the first arrival time wins, and a new
 // service clears last week's arrivals.

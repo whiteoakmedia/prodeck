@@ -75,3 +75,12 @@ describe("Add to Home Screen carries the sign-in", () => {
     expect(homeScreenManifestHref("", "inv", false)).toBe("/manifest.json");
   });
 });
+
+describe("the notifications step inside the ProDeck Crew app", () => {
+  it("names the app and lets the app check again when blocked", () => {
+    const s = notifyStep("denied", { ...base, app: true })!;
+    expect(s.body).toMatch(/ProDeck Crew/);
+    expect(s.action).toBe("enable");
+    expect(s.button).toBe("Check again");
+  });
+});

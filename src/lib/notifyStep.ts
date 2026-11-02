@@ -19,7 +19,7 @@ export const SNOOZE_MS = 12 * 60 * 60 * 1000;
 
 export function notifyStep(
   status: PushStatus,
-  o: { ios: boolean; secureUrl: string; snoozedUntil: number; now: number },
+  o: { ios: boolean; secureUrl: string; snoozedUntil: number; now: number; app?: boolean },
 ): NotifyStep | null {
   if (status === "on" || status === "unsupported") return null;
   if (o.now < o.snoozedUntil) return null;
@@ -39,6 +39,16 @@ export function notifyStep(
         button: "Show me how",
       };
     case "denied":
+      // In the ProDeck Crew app the app checks again: the page can't.
+      if (o.app)
+        return {
+          title: "Notifications are blocked",
+          body: o.ios
+            ? "Open the iPhone's Settings, tap Notifications, then ProDeck Crew, and turn on Allow Notifications. Then come back and tap Check again."
+            : "Open your phone's Settings, find ProDeck Crew under Notifications, and allow them. Then come back and tap Check again.",
+          action: "enable",
+          button: "Check again",
+        };
       return {
         title: "Notifications are blocked",
         body: o.ios

@@ -47,7 +47,7 @@ describe("crew app: finding the booth", () => {
   });
 });
 
-import { crewAppHome } from "../lib/crewApp";
+import { crewAppHome, readAppPush } from "../lib/crewApp";
 
 describe("crew app: back to the churches list", () => {
   it("goes to the app's own page, which differs on iPhone and Android", () => {
@@ -91,5 +91,25 @@ describe("crew app: links that open it", () => {
     for (const bad of ["prodeckcrew://connect", "prodeckcrew://wipe", "https://evil.example/demo", "nonsense"]) {
       expect(readLink(bad)).toBeNull();
     }
+  });
+});
+
+describe("crew app: page notifications handed over by the app", () => {
+  const tok = "ab".repeat(32);
+  it("takes the token from the address and leaves the rest of it alone", () => {
+    expect(readAppPush(`#crewpush=apns%3A${tok}`, "")).toEqual({ value: `apns:${tok}`, rest: "" });
+    expect(readAppPush(`#crewpush=denied&x=1`, "")).toEqual({ value: "denied", rest: "#x=1" });
+    expect(readAppPush(`#x=1&crewpush=prompt`, "")).toEqual({ value: "prompt", rest: "#x=1" });
+  });
+  it("keeps what it was told before when the address says nothing", () => {
+    expect(readAppPush("", `apns:${tok}`)).toEqual({ value: `apns:${tok}`, rest: "" });
+    expect(readAppPush("#plan", "denied")).toEqual({ value: "denied", rest: "#plan" });
+  });
+  it("ignores anything that isn't a token or an answer", () => {
+    expect(readAppPush("#crewpush=apns%3Azz", "x").value).toBe("");
+    expect(readAppPush("#crewpush=%E0%A4%A", "x").value).toBe("");
+  });
+  it("asks the app for notifications at its own page", () => {
+    expect(crewAppHome("Mozilla/5.0 (iPhone) ProDeckCrew/0.1", "notify")).toBe("capacitor://localhost/?notify=1");
   });
 });

@@ -1800,6 +1800,7 @@ pub(crate) fn member_cmd_ok(cmd: &str) -> bool {
             // Every crew phone must be able to register for push — that is the
             // whole point of a member device.
             | "push_public_key" | "push_subscribe" | "push_unsubscribe"
+            | "push_app_subscribe" | "push_app_unsubscribe"
             // Checking in is a member action by definition.
             | "checkin_set" | "checkin_list"
             // Ticking your own checklist item is a member action.
@@ -2044,6 +2045,21 @@ async fn dispatch(
             if let Some((user_id, _)) = crate::identity::session_user(&identity, &s("session")) {
                 let push = app.state::<crate::push::PushState>().inner().clone();
                 crate::push::unsubscribe(&push, &user_id);
+            }
+            Ok(json!({ "ok": true }))
+        }
+        // The ProDeck Crew app's push token, handed over by the app on open.
+        // Same rule: always the session's own person.
+        "push_app_subscribe" | "push_app_unsubscribe" => {
+            let s = |k: &str| args.get(k).and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let identity = app.state::<crate::identity::IdentityState>().inner().clone();
+            let (user_id, _) = crate::identity::session_user(&identity, &s("session"))
+                .ok_or("sign in first: pages are sent to your crew account")?;
+            let push = app.state::<crate::push::PushState>().inner().clone();
+            if cmd == "push_app_subscribe" {
+                crate::push::subscribe_app(&push, user_id, s("platform"), s("token"))?;
+            } else {
+                crate::push::unsubscribe_app(&push, &user_id, &s("token"));
             }
             Ok(json!({ "ok": true }))
         }

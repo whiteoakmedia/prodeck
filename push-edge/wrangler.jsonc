@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Page notifications for the ProDeck Crew phone app. Every church's booth
+  // sends its pages here and this hands them to Apple, signed with White
+  // Oak's push key, which can't ship inside a booth. See src/index.ts.
+  //
+  // Set once (Zach types these; never commit them):
+  //   npx wrangler secret put APNS_KEY      (the whole AuthKey_XXXXXXXXXX.p8, BEGIN to END)
+  //   npx wrangler secret put APNS_KEY_ID   (the 10 characters in that file's name)
+  "name": "prodeck-push",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-01",
+  "vars": {
+    "APNS_TEAM": "2B77WL3HZ6",
+    "APNS_TOPIC": "app.prodeck.crew"
+  },
+  // Cloudflare's rate limits only count over 10 or 60 seconds.
+  "ratelimits": [
+    { "name": "SENDS", "namespace_id": "4301", "simple": { "limit": 60, "period": 60 } },
+    { "name": "PHONES", "namespace_id": "4302", "simple": { "limit": 12, "period": 60 } }
+  ],
+  "observability": { "enabled": true }
+}

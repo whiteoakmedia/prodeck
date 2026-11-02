@@ -391,6 +391,11 @@ function PushCard() {
       "Add ProDeck to your Home Screen first. iPhones send no notifications to a browser tab.",
     unsupported: "This browser can't do push notifications.",
   };
+  // The ProDeck Crew app: no browser, and the phone's own Settings.
+  if (IN_CREW_APP) {
+    copy.denied = "Notifications are off for ProDeck Crew. Turn them on in the phone's Settings, under Notifications, then tap the switch.";
+    copy.unsupported = "Pages can't buzz this phone yet. Keep ProDeck Crew open during the service and pages still show.";
+  }
 
   return (
     <div className="crew-card edge">
@@ -399,7 +404,7 @@ function PushCard() {
           <div className="crew-buzz-title">Page notifications</div>
           <div className="crew-buzz-sub">{copy[state]}</div>
         </div>
-        {(state === "on" || state === "off") && (
+        {(state === "on" || state === "off" || (IN_CREW_APP && state === "denied")) && (
           <button
             className={`crew-toggle ${state === "on" ? "on" : ""}`}
             role="switch"

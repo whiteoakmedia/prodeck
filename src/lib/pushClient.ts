@@ -1,5 +1,6 @@
-import { IS_WEB, pushPublicKey, pushSubscribe, pushUnsubscribe } from "./tauri";
+import { IS_WEB, pushAppSubscribe, pushAppUnsubscribe, pushPublicKey, pushSubscribe, pushUnsubscribe } from "./tauri";
 import { CREW_SESSION_KEY } from "../chatStore";
+import { appPush, crewAppHome, IN_CREW_APP } from "./crewApp";
 
 // Web push registration, phone side.
 //
@@ -32,7 +33,51 @@ const isStandalone = () =>
   (typeof navigator !== "undefined" &&
     (navigator as unknown as { standalone?: boolean }).standalone === true);
 
+// ---- Inside the ProDeck Crew app
+// Web push doesn't exist in an app's web view. The app gets the phone's own
+// push token and hands it over as this page opens (crewApp.ts appPush); the
+// booth sends pages to it through White Oak's relay (push.rs). Allowing
+// notifications in the app is the consent, so once you're signed in it's
+// registered without another tap, unless you turned pages off here.
+
+const APP_OFF_KEY = "prodeck.appPushOff";
+/** Registered this page load, as session|token, so it isn't sent every read. */
+let appSent = "";
+
+const ls = (k: string) => {
+  try {
+    return localStorage.getItem(k) ?? "";
+  } catch {
+    return "";
+  }
+};
+
+async function appState(): Promise<PushStatus> {
+  if (!appPush) return "unsupported";
+  if (appPush === "denied") return "denied";
+  if (appPush === "prompt" || ls(APP_OFF_KEY) === "1") return "off";
+  const session = ls(CREW_SESSION_KEY);
+  if (!session) return "off";
+  const mark = `${session}|${appPush}`;
+  if (appSent !== mark) {
+    try {
+      await pushAppSubscribe(session, "apns", appPush.slice("apns:".length));
+    } catch {
+      return "unsupported"; // a booth from before the app could get pages
+    }
+    appSent = mark;
+  }
+  return "on";
+}
+
+/** The app asks the phone; this page can't. Back here once it has. */
+function askTheApp(): Promise<PushStatus> {
+  location.href = crewAppHome(undefined, "notify");
+  return new Promise(() => {}); // the page is going away
+}
+
 export async function pushState(): Promise<PushStatus> {
+  if (IN_CREW_APP) return appState();
   if (!IS_WEB) return "unsupported";
   if (typeof window === "undefined") return "unsupported";
   if (!window.isSecureContext) return "insecure";
@@ -57,6 +102,16 @@ function urlB64ToBytes(b64: string): Uint8Array {
 
 /** Ask for permission and register this device against the crew identity. */
 export async function enablePush(): Promise<PushStatus> {
+  if (IN_CREW_APP) {
+    try {
+      localStorage.removeItem(APP_OFF_KEY);
+    } catch {
+      /* private storage */
+    }
+    // Never asked, or blocked and maybe allowed in Settings since.
+    if (appPush === "prompt" || appPush === "denied") return askTheApp();
+    return appState();
+  }
   const state = await pushState();
   if (state === "on") return "on";
   if (state !== "off") return state; // nothing to ask for — surface the reason
@@ -91,6 +146,18 @@ export async function enablePush(): Promise<PushStatus> {
 }
 
 export async function disablePush(): Promise<PushStatus> {
+  if (IN_CREW_APP) {
+    try {
+      localStorage.setItem(APP_OFF_KEY, "1");
+    } catch {
+      /* private storage */
+    }
+    appSent = "";
+    if (appPush.startsWith("apns:")) {
+      await pushAppUnsubscribe(ls(CREW_SESSION_KEY), appPush.slice("apns:".length)).catch(() => {});
+    }
+    return "off";
+  }
   try {
     const reg = await navigator.serviceWorker.getRegistration();
     const sub = await reg?.pushManager.getSubscription();
