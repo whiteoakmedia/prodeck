@@ -1893,9 +1893,9 @@ async fn dispatch(
         "intercom_join" | "intercom_leave" | "intercom_talk" | "intercom_signal" | "intercom_roster" => {
             let session = args.get("session").and_then(|v| v.as_str()).unwrap_or("");
             let identity = app.state::<crate::identity::IdentityState>().inner().clone();
-            let who = crate::identity::session_user(&identity, session)
+            let (_, name) = crate::identity::session_user(&identity, session)
                 .ok_or("sign in first: comms is tied to your crew name")?;
-            crate::intercom::handle(app, cmd, who, args)
+            crate::intercom::handle(app, cmd, session, &name, args)
         }
         "page_rebuzz" => {
             let page_id = args.get("pageId").and_then(|v| v.as_u64()).unwrap_or(0);

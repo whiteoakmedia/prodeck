@@ -59,6 +59,14 @@ export function NowTalking({ className = "" }: { className?: string }) {
   );
 }
 
+/** What a connection is doing, in words, so "I can't hear" can be told apart from "never connected". */
+function linkWord(st: string | undefined): string {
+  if (st === "connected") return "";
+  if (st === "failed") return " (can't connect, retrying)";
+  if (st === "disconnected") return " (dropped, reconnecting)";
+  return " (connecting)";
+}
+
 export function CrewComms({ onBack }: { onBack: () => void }) {
   const c = useComms();
   const blocker = joinBlocker();
@@ -142,7 +150,7 @@ export function CrewComms({ onBack }: { onBack: () => void }) {
               {others.map((m) => (
                 <span key={m.id} className={c.linked.includes(m.id) ? "" : "muted"}>
                   {m.name}
-                  {c.linked.includes(m.id) ? "" : " (connecting)"}
+                  {linkWord(c.links[m.id])}
                 </span>
               ))}
             </div>

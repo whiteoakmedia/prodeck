@@ -5,7 +5,9 @@
 // passes the connection set-up messages along. Every phone on comms connects
 // to every other one (a mesh, fine for a crew of a dozen) and sends its mic
 // only while the Talk button is held. What you HEAR is decided here: someone
-// talking on a line you listen to is unmuted, everyone else stays muted.
+// talking on a line you listen to is switched on, everyone else stays off.
+// That is done on the incoming track, never by muting the audio element:
+// Safari can refuse to unmute an element without a tap, which is silence.
 //
 // Like listen.ts this is a module-level singleton, so comms keeps running
 // while the phone moves between tabs or into tally mode.
@@ -50,6 +52,8 @@ export interface CommsSnapshot {
   talking: boolean;
   /** People connected to this phone right now (audio path up). */
   linked: string[];
+  /** Each connection's state by device id, for the comms screen. */
+  links: Record<string, string>;
 }
 
 // ---------------------------------------------------------------- pure rules
@@ -97,6 +101,8 @@ export function cannotJoin(env: { isWeb: boolean; boothScreen: boolean; secure: 
 interface Peer {
   pc: RTCPeerConnection;
   audio: HTMLAudioElement;
+  /** Their voice. Enabled only while they talk on a line this phone hears. */
+  track: MediaStreamTrack | null;
   /** ICE candidates that arrived before the other side's description. */
   pending: RTCIceCandidateInit[];
 }
@@ -110,6 +116,7 @@ let snap: CommsSnapshot = {
   talkOn: readStr(TALK_KEY, "All"),
   talking: false,
   linked: [],
+  links: {},
 };
 const subs = new Set<() => void>();
 const peers = new Map<string, Peer>();
@@ -190,7 +197,7 @@ export async function leaveComms() {
   mic?.getTracks().forEach((t) => t.stop());
   mic = null;
   const was = snap.state;
-  set({ state: "off", talking: false, linked: [], roster: { channels: [], members: [] } });
+  set({ state: "off", talking: false, linked: [], links: {}, roster: { channels: [], members: [] } });
   if (was !== "off") await intercomLeave(session()).catch(() => {});
 }
 
@@ -247,8 +254,8 @@ function applyRoster(r: IntercomRoster) {
 function applyAudible() {
   const hear = audibleIds(snap.roster.members, snap.me, snap.listen);
   for (const [id, p] of peers) {
-    p.audio.muted = !hear.includes(id);
-    if (!p.audio.muted) p.audio.play().catch(() => {});
+    if (p.track) p.track.enabled = hear.includes(id);
+    if (p.audio.paused && p.audio.srcObject) p.audio.play().catch(() => {});
   }
 }
 
@@ -261,15 +268,17 @@ function newPeer(id: string): Peer {
   const audio = new Audio();
   audio.autoplay = true;
   audio.setAttribute("playsinline", "");
-  audio.muted = true;
   // In the page, not floating: Safari is more willing to play a call's audio
   // from an element that is actually in the document.
   audio.style.display = "none";
   document.body.appendChild(audio);
-  const peer: Peer = { pc, audio, pending: [] };
+  const peer: Peer = { pc, audio, track: null, pending: [] };
   mic?.getAudioTracks().forEach((t) => pc.addTrack(t, mic!));
   pc.ontrack = (e) => {
+    peer.track = e.track;
+    e.track.enabled = false; // silent until they talk on a line we hear
     audio.srcObject = e.streams[0] ?? new MediaStream([e.track]);
+    audio.play().catch(() => {});
     applyAudible();
   };
   pc.onicecandidate = (e) => {
@@ -280,7 +289,7 @@ function newPeer(id: string): Peer {
     const linked = new Set(snap.linked);
     if (st === "connected") linked.add(id);
     else linked.delete(id);
-    set({ linked: [...linked] });
+    set({ linked: [...linked], links: { ...snap.links, [id]: st } });
     // The offering side redials a connection that failed; the roster decides
     // whether the other person is still there to dial.
     if (st === "failed") {
@@ -289,6 +298,7 @@ function newPeer(id: string): Peer {
     }
   };
   peers.set(id, peer);
+  set({ links: { ...snap.links, [id]: "new" } });
   return peer;
 }
 
@@ -300,7 +310,10 @@ function closePeer(id: string) {
   p.pc.close();
   p.audio.srcObject = null;
   p.audio.remove();
-  set({ linked: snap.linked.filter((x) => x !== id) });
+  const links = { ...snap.links };
+  // A failure stays on screen until the redial replaces it.
+  if (links[id] !== "failed") delete links[id];
+  set({ linked: snap.linked.filter((x) => x !== id), links });
 }
 
 async function offerTo(id: string) {

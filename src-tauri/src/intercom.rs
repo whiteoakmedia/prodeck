@@ -7,10 +7,13 @@
 // what the Wi-Fi adds, and means the booth Mac can never put comms into the
 // house: there is nothing here that makes a sound.
 //
-// Membership is tied to the crew session, never to an id the phone supplies,
-// so a phone can only ever join, talk or send set-up messages as itself. A
-// phone that stops checking in (locked, walked off the Wi-Fi) drops off the
-// roster after STALE_MS.
+// Membership is per DEVICE, keyed by its crew session and never by an id the
+// phone supplies, so a phone can only ever join, talk or send set-up messages
+// as itself. Per device, not per person: the director on a phone and an iPad
+// is two devices, and keyed by person they collapsed into one entry with
+// nobody to call. Each device gets a random public id; the session never
+// leaves the booth. A phone that stops checking in (locked, walked off the
+// Wi-Fi) drops off the roster after STALE_MS.
 
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -30,6 +33,10 @@ pub const MAX_MEMBERS: usize = 16;
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct Member {
+    /// The device's crew session. Booth only: it is the device's password.
+    #[serde(skip)]
+    pub key: String,
+    /// Random, public: what other phones address set-up messages to.
     pub id: String,
     pub name: String,
     pub listen: Vec<String>,
@@ -47,39 +54,47 @@ fn known(ch: &str) -> bool {
 
 /// Add or refresh a member. Unknown channels are dropped, not an error: a
 /// phone from an older or newer ProDeck may name lines this booth lacks.
-pub fn join(members: &mut Vec<Member>, id: &str, name: &str, listen: &[String], now: u64) -> Result<(), String> {
+pub fn join(
+    members: &mut Vec<Member>,
+    key: &str,
+    name: &str,
+    listen: &[String],
+    now: u64,
+    new_id: impl FnOnce() -> String,
+) -> Result<String, String> {
     let listen: Vec<String> = CHANNELS
         .iter()
         .filter(|c| listen.iter().any(|l| l == *c))
         .map(|c| c.to_string())
         .collect();
-    if let Some(m) = members.iter_mut().find(|m| m.id == id) {
+    if let Some(m) = members.iter_mut().find(|m| m.key == key) {
         m.name = name.to_string();
         m.listen = listen;
         m.seen_ms = now;
-        return Ok(());
+        return Ok(m.id.clone());
     }
     if members.len() >= MAX_MEMBERS {
-        return Err(format!("comms is full ({MAX_MEMBERS} people). Someone has to leave first"));
+        return Err(format!("comms is full ({MAX_MEMBERS} devices). Someone has to leave first"));
     }
-    members.push(Member { id: id.to_string(), name: name.to_string(), listen, talk: None, seen_ms: now });
-    Ok(())
+    let id = new_id();
+    members.push(Member { key: key.to_string(), id: id.clone(), name: name.to_string(), listen, talk: None, seen_ms: now });
+    Ok(id)
 }
 
-pub fn leave(members: &mut Vec<Member>, id: &str) -> bool {
+pub fn leave(members: &mut Vec<Member>, key: &str) -> bool {
     let before = members.len();
-    members.retain(|m| m.id != id);
+    members.retain(|m| m.key != key);
     members.len() != before
 }
 
 /// Start (Some) or stop (None) talking. Only on a real line, only as a member.
-pub fn talk(members: &mut [Member], id: &str, channel: Option<&str>, now: u64) -> Result<(), String> {
+pub fn talk(members: &mut [Member], key: &str, channel: Option<&str>, now: u64) -> Result<(), String> {
     if let Some(c) = channel {
         if !known(c) {
             return Err(format!("there is no {c} line"));
         }
     }
-    let m = members.iter_mut().find(|m| m.id == id).ok_or("join comms first")?;
+    let m = members.iter_mut().find(|m| m.key == key).ok_or("join comms first")?;
     m.talk = channel.map(|c| c.to_string());
     m.seen_ms = now;
     Ok(())
@@ -92,21 +107,20 @@ pub fn prune(members: &mut Vec<Member>, now: u64) -> bool {
     members.len() != before
 }
 
-/// A set-up message may only pass between two people who are both on comms.
-pub fn may_signal(members: &[Member], from: &str, to: &str, data: &Value) -> Result<(), String> {
-    if from == to {
+/// A set-up message may only pass between two devices that are both on
+/// comms. Returns the sender's public id.
+pub fn may_signal(members: &[Member], from_key: &str, to: &str, data: &Value) -> Result<String, String> {
+    let from = members.iter().find(|m| m.key == from_key).ok_or("join comms first")?;
+    if from.id == to {
         return Err("can't connect to yourself".into());
     }
-    if !members.iter().any(|m| m.id == from) {
-        return Err("join comms first".into());
-    }
     if !members.iter().any(|m| m.id == to) {
-        return Err("that person has left comms".into());
+        return Err("that device has left comms".into());
     }
     if data.to_string().len() > MAX_SIGNAL {
         return Err("set-up message too large".into());
     }
-    Ok(())
+    Ok(from.id.clone())
 }
 
 fn now_ms() -> u64 {
@@ -121,10 +135,10 @@ fn emit_roster(app: &AppHandle, members: &[Member]) {
     app.emit("intercom:roster", roster_json(members)).ok();
 }
 
-/// Everything the gateway routes here. `who` is (user id, name) from the
-/// crew session, already resolved by the caller.
-pub fn handle(app: &AppHandle, cmd: &str, who: (String, String), args: &Value) -> Result<Value, String> {
-    let (id, name) = who;
+/// Everything the gateway routes here. `session` was already checked to be a
+/// signed-in crew device and `name` is its person.
+pub fn handle(app: &AppHandle, cmd: &str, session: &str, name: &str, args: &Value) -> Result<Value, String> {
+    let key = session;
     let now = now_ms();
     let mut g = MEMBERS.lock().unwrap_or_else(|p| p.into_inner());
     let pruned = prune(&mut g, now);
@@ -136,7 +150,7 @@ pub fn handle(app: &AppHandle, cmd: &str, who: (String, String), args: &Value) -
                 .map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect())
                 .unwrap_or_default();
             let was = g.clone();
-            join(&mut g, &id, &name, &listen, now)?;
+            let id = join(&mut g, key, name, &listen, now, || uuid::Uuid::new_v4().simple().to_string()[..12].to_string())?;
             // A heartbeat that changes nothing must not wake every phone.
             if pruned || strip_seen(&was) != strip_seen(&g) {
                 emit_roster(app, &g);
@@ -144,22 +158,22 @@ pub fn handle(app: &AppHandle, cmd: &str, who: (String, String), args: &Value) -
             return Ok(json!({ "me": id, "roster": roster_json(&g) }));
         }
         "intercom_leave" => {
-            if leave(&mut g, &id) || pruned {
+            if leave(&mut g, key) || pruned {
                 emit_roster(app, &g);
             }
             json!({ "ok": true })
         }
         "intercom_talk" => {
             let ch = args.get("channel").and_then(|v| v.as_str());
-            talk(&mut g, &id, ch, now)?;
+            talk(&mut g, key, ch, now)?;
             emit_roster(app, &g);
             return Ok(json!({ "ok": true }));
         }
         "intercom_signal" => {
             let to = args.get("to").and_then(|v| v.as_str()).unwrap_or("");
             let data = args.get("data").cloned().unwrap_or(Value::Null);
-            may_signal(&g, &id, to, &data)?;
-            app.emit("intercom:signal", json!({ "from": id, "to": to, "data": data })).ok();
+            let from = may_signal(&g, key, to, &data)?;
+            app.emit("intercom:signal", json!({ "from": from, "to": to, "data": data })).ok();
             json!({ "ok": true })
         }
         "intercom_roster" => roster_json(&g),
@@ -185,38 +199,64 @@ mod tests {
     fn s(v: &[&str]) -> Vec<String> {
         v.iter().map(|x| x.to_string()).collect()
     }
+    fn j(m: &mut Vec<Member>, key: &str, listen: &[&str], now: u64) -> Result<String, String> {
+        // Like the real ids: nothing derived from the session.
+        static N: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+        join(m, key, "Sam", &s(listen), now, || format!("dev{}", N.fetch_add(1, std::sync::atomic::Ordering::Relaxed)))
+    }
 
     #[test]
     fn join_keeps_only_real_lines_and_refreshes_in_place() {
         let mut m = Vec::new();
-        join(&mut m, "u1", "Sam", &s(&["All", "Nope", "Cameras"]), 1).unwrap();
+        let id = j(&mut m, "sess1", &["All", "Nope", "Cameras"], 1).unwrap();
         assert_eq!(m[0].listen, s(&["All", "Cameras"]));
-        join(&mut m, "u1", "Sam", &s(&["Stage"]), 2).unwrap();
-        assert_eq!(m.len(), 1, "a heartbeat must not add a second Sam");
+        let again = j(&mut m, "sess1", &["Stage"], 2).unwrap();
+        assert_eq!(m.len(), 1, "a heartbeat must not add a second entry");
+        assert_eq!(again, id, "the device keeps its public id");
         assert_eq!(m[0].listen, s(&["Stage"]));
         assert_eq!(m[0].seen_ms, 2);
+    }
+
+    // The director on a phone and an iPad, both signed in as themselves:
+    // keyed by person they were one entry and could never call each other.
+    #[test]
+    fn two_devices_of_one_person_are_two_members() {
+        let mut m = Vec::new();
+        let a = j(&mut m, "phone", &["All"], 0).unwrap();
+        let b = j(&mut m, "ipad", &["All"], 0).unwrap();
+        assert_ne!(a, b);
+        assert_eq!(m.len(), 2);
+        assert_eq!(may_signal(&m, "phone", &b, &json!({})).unwrap(), a);
+    }
+
+    #[test]
+    fn the_session_never_appears_in_the_roster() {
+        let mut m = Vec::new();
+        j(&mut m, "secret-session", &["All"], 0).unwrap();
+        let out = roster_json(&m).to_string();
+        assert!(!out.contains("secret-session"), "{out}");
     }
 
     #[test]
     fn talking_needs_membership_and_a_real_line() {
         let mut m = Vec::new();
-        assert!(talk(&mut m, "u1", Some("All"), 1).is_err(), "not on comms yet");
-        join(&mut m, "u1", "Sam", &s(&["All"]), 1).unwrap();
-        assert!(talk(&mut m, "u1", Some("Lobby"), 2).is_err());
-        talk(&mut m, "u1", Some("Cameras"), 2).unwrap();
+        assert!(talk(&mut m, "sess1", Some("All"), 1).is_err(), "not on comms yet");
+        j(&mut m, "sess1", &["All"], 1).unwrap();
+        assert!(talk(&mut m, "sess1", Some("Lobby"), 2).is_err());
+        talk(&mut m, "sess1", Some("Cameras"), 2).unwrap();
         assert_eq!(m[0].talk.as_deref(), Some("Cameras"));
-        talk(&mut m, "u1", None, 3).unwrap();
+        talk(&mut m, "sess1", None, 3).unwrap();
         assert_eq!(m[0].talk, None);
     }
 
     #[test]
     fn silent_phones_drop_off() {
         let mut m = Vec::new();
-        join(&mut m, "u1", "Sam", &s(&["All"]), 0).unwrap();
-        join(&mut m, "u2", "Jo", &s(&["All"]), 40_000).unwrap();
+        j(&mut m, "s1", &["All"], 0).unwrap();
+        j(&mut m, "s2", &["All"], 40_000).unwrap();
         assert!(prune(&mut m, STALE_MS));
-        assert_eq!(m.iter().map(|x| x.id.as_str()).collect::<Vec<_>>(), vec!["u2"]);
-        assert!(!prune(&mut m, STALE_MS + 1), "Jo checked in recently");
+        assert_eq!(m.iter().map(|x| x.key.as_str()).collect::<Vec<_>>(), vec!["s2"]);
+        assert!(!prune(&mut m, STALE_MS + 1), "s2 checked in recently");
     }
 
     // The booth relays set-up messages between phones; it must not become a
@@ -224,24 +264,24 @@ mod tests {
     #[test]
     fn set_up_messages_only_pass_between_members() {
         let mut m = Vec::new();
-        join(&mut m, "u1", "Sam", &s(&["All"]), 0).unwrap();
+        let a = j(&mut m, "s1", &["All"], 0).unwrap();
         let d = json!({ "sdp": "x" });
-        assert!(may_signal(&m, "u1", "u2", &d).is_err(), "u2 isn't on comms");
-        join(&mut m, "u2", "Jo", &s(&["All"]), 0).unwrap();
-        assert!(may_signal(&m, "u1", "u2", &d).is_ok());
-        assert!(may_signal(&m, "u3", "u2", &d).is_err(), "u3 isn't on comms");
-        assert!(may_signal(&m, "u1", "u1", &d).is_err());
+        assert!(may_signal(&m, "s1", "nobody", &d).is_err(), "nobody isn't on comms");
+        let b = j(&mut m, "s2", &["All"], 0).unwrap();
+        assert!(may_signal(&m, "s1", &b, &d).is_ok());
+        assert!(may_signal(&m, "s3", &b, &d).is_err(), "s3 isn't on comms");
+        assert!(may_signal(&m, "s1", &a, &d).is_err());
         let big = json!({ "sdp": "x".repeat(MAX_SIGNAL) });
-        assert!(may_signal(&m, "u1", "u2", &big).is_err());
+        assert!(may_signal(&m, "s1", &b, &big).is_err());
     }
 
     #[test]
     fn comms_has_a_ceiling() {
         let mut m = Vec::new();
         for i in 0..MAX_MEMBERS {
-            join(&mut m, &format!("u{i}"), "x", &s(&["All"]), 0).unwrap();
+            j(&mut m, &format!("s{i}"), &["All"], 0).unwrap();
         }
-        assert!(join(&mut m, "late", "x", &s(&["All"]), 0).is_err());
-        assert!(join(&mut m, "u0", "x", &s(&["All"]), 1).is_ok(), "someone already on can still check in");
+        assert!(j(&mut m, "late", &["All"], 0).is_err());
+        assert!(j(&mut m, "s0", &["All"], 1).is_ok(), "a device already on can still check in");
     }
 }
