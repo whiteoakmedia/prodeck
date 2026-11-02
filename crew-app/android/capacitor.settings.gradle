@@ -7,3 +7,6 @@ project(':capacitor-barcode-scanner').projectDir = new File('../node_modules/@ca
 
 include ':capacitor-status-bar'
 project(':capacitor-status-bar').projectDir = new File('../node_modules/@capacitor/status-bar/android')
+
+include ':mhaberler-capacitor-zeroconf-nsd'
+project(':mhaberler-capacitor-zeroconf-nsd').projectDir = new File('../node_modules/@mhaberler/capacitor-zeroconf-nsd/android')

@@ -29,20 +29,59 @@ export async function scanCode(): Promise<string | null> {
   }
 }
 
-/** Look for booths on this Wi-Fi for a few seconds. */
+const SEARCH_MS = 4000;
+
+/**
+ * Look for booths on this Wi-Fi for a few seconds. The booth announces every
+ * address it has, including a Dante network the phone can't reach, so each
+ * one is tried and the first that answers is used.
+ */
 export async function findBooths(): Promise<Found[]> {
   if (!isNative()) {
     // Preview: the booth on this computer, so the flow can be tried end to end.
     await new Promise((r) => setTimeout(r, 1200));
     return [{ name: "This computer (preview)", base: `http://127.0.0.1:${DEFAULT_PORT}` }];
   }
-  return [];
+  const { ZeroConf } = await import("@mhaberler/capacitor-zeroconf-nsd");
+  const req = { type: "_prodeck._tcp.", domain: "local." };
+  const seen = new Map<string, { name: string; ips: string[]; port: number }>();
+  try {
+    await ZeroConf.watch(req, (r) => {
+      const svc = r?.service;
+      if (!svc || r.action === "removed") return;
+      const ips = (svc.ipv4Addresses ?? []).filter(Boolean);
+      if (ips.length) seen.set(svc.name, { name: svc.name, ips, port: svc.port || DEFAULT_PORT });
+    });
+    await new Promise((r) => setTimeout(r, SEARCH_MS));
+  } catch {
+    /* no Wi-Fi, or the search wasn't allowed */
+  } finally {
+    await ZeroConf.unwatch(req).catch(() => {});
+  }
+  const out: Found[] = [];
+  for (const b of seen.values()) {
+    for (const ip of orderAddresses(b.ips)) {
+      const base = `http://${ip}:${b.port}`;
+      // Short: an address on a network the phone isn't on just never answers.
+      if ((await checkBooth(base, 2500)).ok) {
+        out.push({ name: b.name, base });
+        break;
+      }
+    }
+  }
+  return out;
+}
+
+/** Usual Wi-Fi ranges first (192.168, then 10), so the phone's network is tried before a Dante one. */
+export function orderAddresses(ips: string[]): string[] {
+  const rank = (ip: string) => (ip.startsWith("192.168.") ? 0 : ip.startsWith("10.") ? 1 : ip.startsWith("172.") ? 2 : 3);
+  return [...new Set(ips)].sort((a, b) => rank(a) - rank(b));
 }
 
 /** Is there a ProDeck booth at this address? Its app manifest says so. */
-export async function checkBooth(base: string): Promise<{ ok: true } | { ok: false; why: string }> {
+export async function checkBooth(base: string, timeoutMs = 6000): Promise<{ ok: true } | { ok: false; why: string }> {
   const ctl = new AbortController();
-  const t = setTimeout(() => ctl.abort(), 6000);
+  const t = setTimeout(() => ctl.abort(), timeoutMs);
   try {
     const r = await fetch(`${base}/manifest.json`, { signal: ctl.signal, cache: "no-store" });
     if (!r.ok) return { ok: false, why: "Something answered at that address, but it isn't a ProDeck booth." };
