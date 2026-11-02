@@ -56,6 +56,12 @@ export interface CommsSnapshot {
   linked: string[];
   /** Each connection's state by device id, for the comms screen. */
   links: Record<string, string>;
+  /**
+   * Devices a call to has already timed out at least once. Almost always one
+   * phone on cellular (or a guest network): the booth still connects them, so
+   * comms looks joined, but the two phones can't reach each other.
+   */
+  unreachable: string[];
 }
 
 // ---------------------------------------------------------------- pure rules
@@ -129,6 +135,7 @@ let snap: CommsSnapshot = {
   talking: false,
   linked: [],
   links: {},
+  unreachable: [],
 };
 const subs = new Set<() => void>();
 const peers = new Map<string, Peer>();
@@ -223,7 +230,7 @@ export async function leaveComms() {
   mic?.getTracks().forEach((t) => t.stop());
   mic = null;
   const was = snap.state;
-  set({ state: "off", talking: false, linked: [], links: {}, roster: { channels: [], members: [] } });
+  set({ state: "off", talking: false, linked: [], links: {}, unreachable: [], roster: { channels: [], members: [] } });
   if (was !== "off") await intercomLeave(session()).catch(() => {});
 }
 
@@ -263,6 +270,7 @@ function checkDials() {
     if (p.pc.connectionState !== "connected" && now - p.created > DIAL_TIMEOUT_MS) {
       closePeer(id);
       closed = true;
+      if (!snap.unreachable.includes(id)) set({ unreachable: [...snap.unreachable, id] });
     }
   }
   if (closed) applyRoster(snap.roster);
@@ -333,7 +341,11 @@ function newPeer(id: string): Peer {
     const linked = new Set(snap.linked);
     if (st === "connected") linked.add(id);
     else linked.delete(id);
-    set({ linked: [...linked], links: { ...snap.links, [id]: st } });
+    set({
+      linked: [...linked],
+      links: { ...snap.links, [id]: st },
+      unreachable: st === "connected" ? snap.unreachable.filter((x) => x !== id) : snap.unreachable,
+    });
     // The offering side redials a connection that failed; the roster decides
     // whether the other person is still there to dial.
     if (st === "failed") {

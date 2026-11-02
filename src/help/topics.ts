@@ -763,7 +763,7 @@ Phones talk straight to each other over the church Wi-Fi, so the delay is a frac
 What it needs:
 
 - **The secure address.** Phones only allow the microphone on an https address, so open ProDeck from your public address. On the plain local address, Join comms explains this instead of starting.
-- **Phones that can reach each other.** A guest network that keeps devices apart lets each phone reach the booth but not each other, and nobody hears anything. Use the staff network.
+- **Phones on the church Wi-Fi.** A phone on cellular still joins (the public address reaches the booth from anywhere), but it can't reach the other phones, so nobody hears it. A guest network that keeps devices apart does the same. Use the staff network. **On comms** says **can't reach** next to anyone this happens with.
 - **The app open, screen on.** A locked iPhone stops a web app's sound and microphone. Comms suits people at a post with the phone in view, like a camera operator using the phone as a tally. Use earbuds so the phone's speaker doesn't feed back into its mic.
 
 Up to 16 people can be on comms at once.`,

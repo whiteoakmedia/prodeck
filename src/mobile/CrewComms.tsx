@@ -60,8 +60,9 @@ export function NowTalking({ className = "" }: { className?: string }) {
 }
 
 /** What a connection is doing, in words, so "I can't hear" can be told apart from "never connected". */
-function linkWord(st: string | undefined): string {
+function linkWord(st: string | undefined, unreachable: boolean): string {
   if (st === "connected") return "";
+  if (unreachable) return " (can't reach: are you both on the church Wi-Fi, not cellular?)";
   if (st === "failed") return " (can't connect, retrying)";
   if (st === "disconnected") return " (dropped, reconnecting)";
   return " (connecting)";
@@ -150,7 +151,7 @@ export function CrewComms({ onBack }: { onBack: () => void }) {
               {others.map((m) => (
                 <span key={m.id} className={c.linked.includes(m.id) ? "" : "muted"}>
                   {m.name}
-                  {linkWord(c.links[m.id])}
+                  {linkWord(c.links[m.id], c.unreachable.includes(m.id))}
                 </span>
               ))}
             </div>
