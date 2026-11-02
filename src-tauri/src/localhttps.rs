@@ -870,7 +870,7 @@ mod tests {
 
     #[test]
     fn only_church_network_addresses_count() {
-        for ip in ["10.0.0.5", "172.16.0.20", "172.31.255.1", "192.168.1.20"] {
+        for ip in ["10.0.0.5", "172.20.4.20", "172.31.255.1", "192.168.1.20"] {
             assert!(is_private(ip), "{ip}");
         }
         for ip in ["172.15.0.1", "172.32.0.1", "8.8.8.8", "127.0.0.1", "169.254.1.1", "100.64.0.1", "nonsense"] {
@@ -882,12 +882,12 @@ mod tests {
     // are on the default route's one, unless someone picked.
     #[test]
     fn the_name_points_where_phones_are() {
-        let all = vec!["172.16.0.20".to_string(), "192.168.1.20".to_string()];
+        let all = vec!["172.20.4.20".to_string(), "192.168.1.20".to_string()];
         assert_eq!(pick_ip("", Some("192.168.1.20"), &all).as_deref(), Some("192.168.1.20"));
-        assert_eq!(pick_ip("172.16.0.20", Some("192.168.1.20"), &all).as_deref(), Some("172.16.0.20"));
+        assert_eq!(pick_ip("172.20.4.20", Some("192.168.1.20"), &all).as_deref(), Some("172.20.4.20"));
         // A choice that's gone (new network) falls back rather than pointing nowhere.
         assert_eq!(pick_ip("10.1.1.1", Some("192.168.1.20"), &all).as_deref(), Some("192.168.1.20"));
-        assert_eq!(pick_ip("", None, &all).as_deref(), Some("172.16.0.20"));
+        assert_eq!(pick_ip("", None, &all).as_deref(), Some("172.20.4.20"));
         assert_eq!(pick_ip("", None, &[]), None);
     }
 

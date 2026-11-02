@@ -5,7 +5,7 @@
  * notifications on https. A booth that only lives on the church network has
  * plain http, so neither works there. This hands each booth a name,
  * <name>.local.prodeck.live, pointing at the booth's address on its own
- * network (172.16.0.20 and the like), and answers the booth's certificate
+ * network (172.20.4.20 and the like), and answers the booth's certificate
  * challenge so it can get a real Let's Encrypt certificate for that name.
  * Phones on the church Wi-Fi then reach the booth over https directly: no
  * traffic comes through here or through Cloudflare, only the name lookup.

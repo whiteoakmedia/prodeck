@@ -30,7 +30,7 @@ describe("secure local address names", () => {
   // Only addresses inside a building: otherwise prodeck.live becomes free DNS
   // for anyone, pointing anywhere.
   it("only ever points at a church network address", () => {
-    for (const ip of ["10.0.0.5", "172.16.0.20", "172.31.1.1", "192.168.1.20"]) expect(isPrivateIPv4(ip)).toBe(true);
+    for (const ip of ["10.0.0.5", "172.20.4.20", "172.31.1.1", "192.168.1.20"]) expect(isPrivateIPv4(ip)).toBe(true);
     for (const ip of ["8.8.8.8", "172.32.0.1", "127.0.0.1", "169.254.0.1", "192.168.1.256", "1.2.3", "::1"])
       expect(isPrivateIPv4(ip)).toBe(false);
   });

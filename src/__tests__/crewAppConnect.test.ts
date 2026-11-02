@@ -63,10 +63,10 @@ import { orderAddresses } from "../../crew-app/src/native";
 describe("crew app: booths found on the Wi-Fi", () => {
   // The booth also announces its Dante network, which the phone isn't on.
   it("tries the usual Wi-Fi ranges first, each address once", () => {
-    expect(orderAddresses(["172.16.0.243", "192.168.1.20", "10.0.0.5", "192.168.1.20"])).toEqual([
+    expect(orderAddresses(["172.20.4.40", "192.168.1.20", "10.0.0.5", "192.168.1.20"])).toEqual([
       "192.168.1.20",
       "10.0.0.5",
-      "172.16.0.243",
+      "172.20.4.40",
     ]);
   });
 });
