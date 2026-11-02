@@ -142,11 +142,11 @@ limitations section first. Nothing that moves the desk starts on its own.
 
 ## Contact
 
-Zach Green — zach@whiteoakmedia.io
+White Oak Media, zach@whiteoakmedia.io
 
 ## Maintainers
 
-- **ProDeck** — [@whiteoakmedia](https://github.com/whiteoakmedia) (Zach Green)
+- **ProDeck** — [@whiteoakmedia](https://github.com/whiteoakmedia) (White Oak Media)
 - **Windows** — [@jpeters0](https://github.com/jpeters0) (Peterson), who wrote
   the Windows build tooling, CI and the [WINDOWS.md](WINDOWS.md) validation
   checklist, and who has Windows booth hardware to test them on. He also found

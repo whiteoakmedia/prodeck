@@ -1945,7 +1945,7 @@ export function SettingsPage() {
       <img
         className="settings-credit-lockup"
         src={lockupHorizontal}
-        alt="ProDeck — by Zach Green"
+        alt="ProDeck by White Oak Media"
       />
     </div>
   );

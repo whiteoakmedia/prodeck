@@ -96,7 +96,7 @@ export function PosterJoin() {
   return (
     <div className="web-login">
       <div className="web-login-card">
-        <img className="login-lockup" src={lockupStacked} alt="ProDeck — by Zach Green" />
+        <img className="login-lockup" src={lockupStacked} alt="ProDeck by White Oak Media" />
         {ticket ? (
           <>
             <h2 style={{ margin: "4px 0 0" }}>Thanks, {ticket.name.split(" ")[0]}</h2>

@@ -646,7 +646,7 @@ function WebGate({ children }: { children: ReactNode }) {
   return (
     <div className="web-login">
       <form className="web-login-card" onSubmit={submit}>
-        <img className="login-lockup" src={lockupStacked} alt="ProDeck — by Zach Green" />
+        <img className="login-lockup" src={lockupStacked} alt="ProDeck by White Oak Media" />
         {/* "view & control" oversold the member tier — most phones sign in
             with the crew password and get a viewer + chat + check-in. */}
         <p className="muted">
