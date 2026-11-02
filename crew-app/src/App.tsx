@@ -3,7 +3,7 @@ import mark from "./mark.svg";
 import { Intro } from "./Intro";
 import { readLink, type LinkAction } from "./links";
 import { forget, parseTarget, remember, shortName, type Church, type Target } from "./connect";
-import { checkBooth, findBooths, isNative, loadChurches, saveChurches, scanCode, type Found } from "./native";
+import { checkBooth, findBooths, isNative, loadChurches, saveChurches, scanCode, secureBase, type Found } from "./native";
 
 // ProDeck Crew: find your church's booth, then open its crew app.
 // (design/CREW_APP.md)
@@ -134,7 +134,7 @@ export function App() {
           target={screen.target}
           name={screen.name}
           onBack={() => go({ kind: "home" })}
-          onReady={() => openChurch({ base: screen.target.base, name: screen.name, lastMs: Date.now() }, screen.target.open)}
+          onReady={(base) => openChurch({ base, name: screen.name, lastMs: Date.now() }, screen.target.open)}
         />
       )}
     </div>
@@ -349,16 +349,18 @@ function TypeIn({ onBack, onGo, err }: { onBack: () => void; onGo: (v: string) =
   );
 }
 
-function Checking({ target, name, onBack, onReady }: { target: Target; name: string; onBack: () => void; onReady: () => void }) {
+function Checking({ target, name, onBack, onReady }: { target: Target; name: string; onBack: () => void; onReady: (base: string) => void }) {
   const [why, setWhy] = useState("");
   const [round, setRound] = useState(0);
   useEffect(() => {
     let alive = true;
     setWhy("");
-    checkBooth(target.base).then((r) => {
+    checkBooth(target.base).then(async (r) => {
       if (!alive) return;
-      if (r.ok) onReady();
-      else setWhy(r.why);
+      if (!r.ok) return setWhy(r.why);
+      // Prefer the booth's secure address when this phone can reach it.
+      const base = await secureBase(target.base);
+      if (alive) onReady(base);
     });
     return () => {
       alive = false;

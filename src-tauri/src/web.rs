@@ -1346,6 +1346,21 @@ async fn handle_conn(
     // opened it to a password prompt they were never given. This manifest's
     // start carries the gateway token (`hs`, and a personal invite as `hsi`),
     // which the app applies only when it has none yet (lib/tauri.ts).
+    // The ProDeck Crew app asks, before anyone signs in, whether this booth
+    // has a secure address (the church's public one, else the secure local
+    // one): inside the app, plain http gets no microphone, so comms needs it.
+    // Only https addresses, and nothing secret: these are the addresses the
+    // booth already puts on its posters and links.
+    if method == "GET" && path == "/api/origin" {
+        let (public, local) = {
+            let st = app.state::<SettingsState>();
+            let g = st.lock().unwrap_or_else(|p| p.into_inner());
+            (g.public_url.trim().to_string(), g.local_url.trim().to_string())
+        };
+        let secure = secure_origin(&public, &local);
+        let body = json!({ "secure": secure }).to_string();
+        return write_bytes(&mut stream, 200, "application/json", body.as_bytes()).await;
+    }
     if method == "GET" && (path == "/app.webmanifest" || path.starts_with("/app.webmanifest?")) {
         let query = path.split_once('?').map(|(_, q)| q).unwrap_or("");
         let body = app_manifest(query);
@@ -1537,6 +1552,17 @@ async fn serve_audio_mp3(mut stream: tokio::net::TcpStream, app: AppHandle) -> s
 
 /// The tally home-screen manifest for `start=<path>&name=<title>`. A start
 /// that isn't a plain path on this site falls back to the tally board.
+/// The booth's secure address for the crew app: the public one, else the
+/// secure local one, and only if it's https. "" = none.
+fn secure_origin(public: &str, local: &str) -> String {
+    [public, local]
+        .iter()
+        .map(|u| u.trim().trim_end_matches('/'))
+        .find(|u| u.starts_with("https://") && u.len() > "https://".len())
+        .unwrap_or("")
+        .to_string()
+}
+
 /// The crew app's home-screen manifest for `hs=<token>[&hsi=<invite>]`.
 /// Tokens are echoed only if they look like tokens; anything else starts at
 /// plain "/", the same as the static manifest.
@@ -2892,7 +2918,16 @@ mod member_pp_tests {
     }
 
     #[test]
-    fn app_manifest_carries_the_sign_in_only_when_it_looks_like_one() {
+    fn the_crew_app_is_told_only_an_https_address() {
+        assert_eq!(super::secure_origin("https://booth.example.org/", ""), "https://booth.example.org");
+        assert_eq!(super::secure_origin("", "https://x.local.prodeck.live"), "https://x.local.prodeck.live");
+        assert_eq!(super::secure_origin("https://a.org", "https://b.local.prodeck.live"), "https://a.org");
+        assert_eq!(super::secure_origin("http://plain.example.org", ""), "");
+        assert_eq!(super::secure_origin("", ""), "");
+    }
+
+    #[test]
+        fn app_manifest_carries_the_sign_in_only_when_it_looks_like_one() {
         let m: serde_json::Value = serde_json::from_str(&super::app_manifest("hs=abcDEF123_-xyz")).unwrap();
         assert_eq!(m["start_url"], "/?hs=abcDEF123_-xyz");
         let m: serde_json::Value = serde_json::from_str(&super::app_manifest("hs=abcdefgh123&hsi=invite12345")).unwrap();

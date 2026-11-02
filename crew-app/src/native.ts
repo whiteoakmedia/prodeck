@@ -95,6 +95,24 @@ export async function checkBooth(base: string, timeoutMs = 6000): Promise<{ ok: 
   }
 }
 
+/**
+ * The booth's secure address, if it has one and this phone can reach it.
+ * Inside the app a plain http page gets no microphone, so comms needs https:
+ * the church's public address or its secure local one (localhttps.rs). If a
+ * web filter blocks it, the plain address still works for everything else.
+ */
+export async function secureBase(base: string): Promise<string> {
+  if (base.startsWith("https://")) return base;
+  try {
+    const r = await fetch(`${base}/api/origin`, { cache: "no-store" });
+    const secure = ((await r.json()) as { secure?: string })?.secure ?? "";
+    if (/^https:\/\/[^/]+$/.test(secure) && (await checkBooth(secure, 4000)).ok) return secure;
+  } catch {
+    /* an older booth without /api/origin: plain it is */
+  }
+  return base;
+}
+
 const KEY = "prodeck.crewChurches";
 
 export function loadChurches(): Church[] {
