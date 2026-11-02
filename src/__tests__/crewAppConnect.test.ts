@@ -16,14 +16,16 @@ describe("crew app: finding the booth", () => {
     expect(parseTarget("http://192.168.1.20:8088/?join=tok")?.open).toBe("/?join=tok");
   });
 
-  it("gives a typed church-network address the gateway's port", () => {
-    expect(parseTarget("192.168.1.20")).toEqual({ base: "http://192.168.1.20:8088", open: "/" });
+  // Volunteers never have the booth's password: a bare address goes through
+  // the poster's door (in if joining is open, else ask to join).
+  it("gives a typed church-network address the gateway's port, through /join", () => {
+    expect(parseTarget("192.168.1.20")).toEqual({ base: "http://192.168.1.20:8088", open: "/join" });
     expect(parseTarget("Booth-Mac.local")?.base).toBe("http://booth-mac.local:8088");
     expect(parseTarget("192.168.1.20:9000")?.base).toBe("http://192.168.1.20:9000");
   });
 
   it("knows a secure local address is https", () => {
-    expect(parseTarget("stjohns.local.prodeck.live")).toEqual({ base: "https://stjohns.local.prodeck.live", open: "/" });
+    expect(parseTarget("stjohns.local.prodeck.live")).toEqual({ base: "https://stjohns.local.prodeck.live", open: "/join" });
   });
 
   it("refuses things that aren't a booth address", () => {

@@ -17,7 +17,12 @@ export interface Church {
 export interface Target {
   /** The booth's origin. */
   base: string;
-  /** Where to open first: the scanned link's path (keeps ?join=/?invite=), else "/". */
+  /**
+   * Where to open first: the scanned link's path (keeps ?join=/?invite=). A
+   * bare address opens the poster's /join, never the password screen: the
+   * booth lets them in if joining is open, and otherwise asks to join with a
+   * name and PIN.
+   */
   open: string;
 }
 
@@ -57,10 +62,11 @@ export function parseTarget(input: string): Target | null {
     const v = u.searchParams.get(k);
     if (v) keep.set(k, v);
   }
-  // The poster's /join hands out the crew link through the booth itself.
-  const path = u.pathname === "/join" ? "/join" : "/";
   const q = keep.toString();
-  return { base: u.origin, open: `${path}${q ? `?${q}` : ""}` };
+  // A link that carries its own way in (an invite, the crew link, a kiosk or
+  // tally token) keeps it. Anything else goes through /join.
+  if (q) return { base: u.origin, open: `/?${q}` };
+  return { base: u.origin, open: "/join" };
 }
 
 /** "192.168.1.20:8088" or "stjohns.local.prodeck.live", for showing in a list. */
