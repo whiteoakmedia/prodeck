@@ -35,6 +35,8 @@ import {
 } from "./tauri";
 
 const HEARTBEAT_MS = 15_000;
+/** A connection that isn't up by now is redialled. */
+const DIAL_TIMEOUT_MS = 12_000;
 const LISTEN_KEY = "prodeck.commsListen";
 const TALK_KEY = "prodeck.commsTalk";
 export const DEFAULT_LISTEN = ["All"];
@@ -105,7 +107,17 @@ interface Peer {
   track: MediaStreamTrack | null;
   /** ICE candidates that arrived before the other side's description. */
   pending: RTCIceCandidateInit[];
+  created: number;
 }
+
+type Signal = { from: string; to: string; data: SignalData };
+/**
+ * Set-up messages that arrive while joining. The phone already on comms dials
+ * the moment the booth announces a newcomer, which can be before the
+ * newcomer's own join has come back with its id. Dropping that offer left the
+ * pair with no call and nothing to retry it.
+ */
+let early: Signal[] = [];
 
 let snap: CommsSnapshot = {
   state: "off",
@@ -122,6 +134,7 @@ const subs = new Set<() => void>();
 const peers = new Map<string, Peer>();
 let mic: MediaStream | null = null;
 let beat: ReturnType<typeof setInterval> | null = null;
+let dials: ReturnType<typeof setInterval> | null = null;
 let unsubs: (() => void)[] = [];
 
 function set(p: Partial<CommsSnapshot>) {
@@ -174,22 +187,35 @@ export async function joinComms() {
     return set({ state: "off", err: "The microphone was blocked. Allow it for this site in the phone's settings, then try again." });
   }
   unsubs.push(await on<IntercomRoster>("intercom:roster", (r) => r && applyRoster(r)));
-  unsubs.push(await on<{ from: string; to: string; data: SignalData }>("intercom:signal", (m) => m && m.to === snap.me && onSignal(m.from, m.data)));
+  early = [];
+  unsubs.push(
+    await on<Signal>("intercom:signal", (m) => {
+      if (!m) return;
+      if (snap.state === "joining") early.push(m);
+      else if (m.to === snap.me) void onSignal(m.from, m.data);
+    }),
+  );
   try {
     const r = await intercomJoin(session(), snap.listen);
     set({ state: "on", me: r.me });
     applyRoster(r.roster);
+    const held = early.filter((m) => m.to === r.me);
+    early = [];
+    for (const m of held) await onSignal(m.from, m.data);
   } catch (e) {
     await leaveComms();
     return set({ err: `Couldn't join comms: ${String((e as Error)?.message ?? e)}` });
   }
   beat = setInterval(heartbeat, HEARTBEAT_MS);
+  dials = setInterval(checkDials, 3_000);
   document.addEventListener("visibilitychange", onVisible);
 }
 
 export async function leaveComms() {
   if (beat) clearInterval(beat);
   beat = null;
+  if (dials) clearInterval(dials);
+  dials = null;
   document.removeEventListener("visibilitychange", onVisible);
   unsubs.forEach((u) => u());
   unsubs = [];
@@ -222,6 +248,24 @@ export function setListening(line: string, on: boolean) {
   set({ listen });
   applyAudible();
   if (snap.state === "on") intercomJoin(session(), listen).catch(() => {});
+}
+
+/**
+ * Redial anything that never came up: a lost offer or answer otherwise leaves
+ * a pair silent for good. Closing both ends is safe: the offering side dials
+ * again from the roster, and a fresh offer replaces whatever the other side had.
+ */
+function checkDials() {
+  if (snap.state !== "on") return;
+  const now = Date.now();
+  let closed = false;
+  for (const [id, p] of peers) {
+    if (p.pc.connectionState !== "connected" && now - p.created > DIAL_TIMEOUT_MS) {
+      closePeer(id);
+      closed = true;
+    }
+  }
+  if (closed) applyRoster(snap.roster);
 }
 
 function heartbeat() {
@@ -272,7 +316,7 @@ function newPeer(id: string): Peer {
   // from an element that is actually in the document.
   audio.style.display = "none";
   document.body.appendChild(audio);
-  const peer: Peer = { pc, audio, track: null, pending: [] };
+  const peer: Peer = { pc, audio, track: null, pending: [], created: Date.now() };
   mic?.getAudioTracks().forEach((t) => pc.addTrack(t, mic!));
   pc.ontrack = (e) => {
     peer.track = e.track;
