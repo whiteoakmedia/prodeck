@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  What ProDeck needs under the hardened runtime, which Developer ID
+  notarization requires (scripts/macsign.sh signs with this file). Each one
+  is something the app really does; nothing broader.
+-->
+<plist version="1.0">
+<dict>
+	<!-- Audio input: the SPL meter, Auto-Follow, multitrack recording (Dante Virtual Soundcard, USB). -->
+	<key>com.apple.security.device.audio-input</key>
+	<true/>
+	<!-- Walk-in music and Messages: AppleScript to Music and Spotify. -->
+	<key>com.apple.security.automation.apple-events</key>
+	<true/>
+	<!-- NDI: the stage feed loads Vizrt's libndi at runtime (ndi.rs), which is signed by them, not us. -->
+	<key>com.apple.security.cs.disable-library-validation</key>
+	<true/>
+</dict>
+</plist>

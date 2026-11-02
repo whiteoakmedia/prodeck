@@ -113,9 +113,24 @@ BUILT_V="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/
 [ "$BUILT_V" = "$VERSION" ] || { echo "✗ built $BUILT_V but tauri.conf.json says $VERSION"; exit 1; }
 echo "  ✓ $ARCHS · system libraries only · v$BUILT_V"
 
-echo "▸ Signing (ad-hoc, no hardened runtime — opens on any Mac after one Open Anyway)"
-codesign --force --deep --sign - "$APP"
-codesign --verify --deep --strict "$APP"
+# Developer ID + notarization (scripts/macsign.sh): opens like any app, and
+# keeps one identity so macOS remembers ProDeck's permissions across updates.
+# ADHOC=1 is the old fallback (Open Anyway on every Mac); never the default.
+source "$REPO_DIR/scripts/macsign.sh"
+NOTARIZED=0
+if [ "${ADHOC:-0}" = "1" ]; then
+  echo "▸ Signing (ad-hoc, ADHOC=1: every Mac will need Open Anyway)"
+  codesign --force --deep --sign - "$APP"
+  codesign --verify --deep --strict "$APP"
+else
+  [ -n "$(devid_identity)" ] && notary_ready || {
+    echo "✗ Developer ID signing isn't set up on this Mac. Run scripts/apple-signing.sh check (or ADHOC=1 to ship unsigned)."; exit 1; }
+  echo "▸ Signing with Developer ID and notarizing"
+  sign_app "$APP"
+  notarize "$APP"
+  gatekeeper_ok "$APP" || { echo "✗ Gatekeeper doesn't accept the signed app"; spctl -a -vvv -t exec "$APP"; exit 1; }
+  NOTARIZED=1
+fi
 
 rm -rf "$OUT"; mkdir -p "$OUT"
 
@@ -154,6 +169,10 @@ echo "▸ DMG"
 STAGING="$(mktemp -d)"; cp -R "$APP" "$STAGING/"; ln -s /Applications "$STAGING/Applications"
 hdiutil create -volname "ProDeck" -srcfolder "$STAGING" -ov -format UDZO "$OUT/ProDeck.dmg" >/dev/null
 rm -rf "$STAGING"
+if [ "$NOTARIZED" = "1" ]; then
+  sign_dmg "$OUT/ProDeck.dmg"
+  notarize "$OUT/ProDeck.dmg"
+fi
 
 WIN_EXE=""; WIN_SIG=""
 if [ -n "$WIN_BRANCH" ]; then
@@ -244,7 +263,7 @@ BODY="${NOTES:-ProDeck $TAG}
 
 ## Install
 1. Download **ProDeck.dmg**, open it, drag **ProDeck** to Applications.
-2. First open only (macOS 15 and later): double-click → **System Settings → Privacy & Security** → **Open Anyway**.
+$( [ "$NOTARIZED" = "1" ] && echo "2. Open it. ProDeck is signed and notarized by Apple, so it opens like any other app." || echo "2. First open only (macOS 15 and later): double-click → **System Settings → Privacy & Security** → **Open Anyway**." )
 
 Runs on Intel and Apple Silicon (macOS 10.15+, tested on macOS 27). Installed copies update themselves from this release automatically.
 $WIN_BODY"
