@@ -47,19 +47,17 @@ prodeck.live also runs Cornerstone's crew app (crew-edge fronts the zone).
 
 1. Cloudflare dashboard → My Profile → API Tokens → Create Token → **Edit zone
    DNS** template, Zone Resources: **prodeck.live** only. Copy it.
-2. Cloudflare dashboard → prodeck.live → Overview → copy the **Zone ID** into
-   `local-edge/wrangler.jsonc` (`ZONE_ID`). It isn't a secret.
-3. In `local-edge/`:
+2. In `local-edge/` (the Worker finds prodeck.live's zone id with the token):
    ```
    npm install
+   npx wrangler deploy
    npx wrangler secret put CF_API_TOKEN     (paste the token)
    npx wrangler secret put ADMIN_TOKEN      (any long random string; keep it)
-   npx wrangler deploy
    ```
    It deploys as `prodeck-local` on the account's workers.dev subdomain
    (`https://prodeck-local.taplink-edge.workers.dev`), which is what the app
    calls.
-4. Free a name by hand (a church that left, a name that shouldn't exist):
+3. Free a name by hand (a church that left, a name that shouldn't exist):
    ```
    curl -X POST https://prodeck-local.taplink-edge.workers.dev/v1/admin/release \
      -H "Authorization: Bearer <ADMIN_TOKEN>" -d '{"name":"thename"}'

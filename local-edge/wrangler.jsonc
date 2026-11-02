@@ -16,15 +16,16 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-07-01",
   "vars": {
-    // The prodeck.live zone id (Cloudflare dashboard, prodeck.live, Overview).
+    // The prodeck.live zone id. Empty = looked up by name with the API token.
     "ZONE_ID": "",
     "BASE": "local.prodeck.live"
   },
   "durable_objects": { "bindings": [{ "name": "REGISTRY", "class_name": "Registry" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Registry"] }],
   // Per visitor: claiming is rare, checking a name is a keystroke away.
+  // (Cloudflare's rate limits only count over 10 or 60 seconds.)
   "ratelimits": [
-    { "name": "CLAIMS", "namespace_id": "4201", "simple": { "limit": 5, "period": 3600 } },
+    { "name": "CLAIMS", "namespace_id": "4201", "simple": { "limit": 2, "period": 60 } },
     { "name": "CALLS", "namespace_id": "4202", "simple": { "limit": 60, "period": 60 } }
   ],
   "observability": { "enabled": true }

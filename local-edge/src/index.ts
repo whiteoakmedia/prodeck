@@ -91,7 +91,7 @@ export default {
     const route = routes[`${req.method} ${url.pathname}`];
     if (!route) return fail(404, "Not found.");
     if (route === "claim" && !(await env.CLAIMS.limit({ key: who })).success)
-      return fail(429, "Too many names claimed from here. Try again in an hour.");
+      return fail(429, "Too many names claimed from here. Try again in a minute.");
     return registry.fetch(`https://do/${route}`, { method: "POST", body: JSON.stringify(await body(req)) });
   },
 };
@@ -138,10 +138,31 @@ export class Registry {
     return `${name}.${this.env.BASE}`;
   }
 
+  private zoneId = "";
+
+  /**
+   * The zone's id: ZONE_ID if set, else looked up once by name with the API
+   * token (the zone is the base minus its first label: prodeck.live), so
+   * setting this up is just the token.
+   */
+  private async zone(): Promise<string> {
+    if (this.env.ZONE_ID) return this.env.ZONE_ID;
+    if (this.zoneId) return this.zoneId;
+    const zoneName = this.env.BASE.split(".").slice(1).join(".");
+    const r = await fetch(`https://api.cloudflare.com/client/v4/zones?name=${encodeURIComponent(zoneName)}`, {
+      headers: { Authorization: `Bearer ${this.env.CF_API_TOKEN}` },
+    });
+    const out = (await r.json().catch(() => ({}))) as { result?: { id: string; name: string }[] };
+    const id = out.result?.find((z) => z.name === zoneName)?.id ?? "";
+    if (!id) throw new Error(`The API token can't see the ${zoneName} zone.`);
+    this.zoneId = id;
+    return id;
+  }
+
   /** Cloudflare's DNS API, for this zone only. */
   private async dns(method: string, path: string, payload?: unknown): Promise<{ id?: string }> {
-    if (!this.env.CF_API_TOKEN || !this.env.ZONE_ID) throw new Error("This service isn't set up yet.");
-    const r = await fetch(`https://api.cloudflare.com/client/v4/zones/${this.env.ZONE_ID}/dns_records${path}`, {
+    if (!this.env.CF_API_TOKEN) throw new Error("This service isn't set up yet.");
+    const r = await fetch(`https://api.cloudflare.com/client/v4/zones/${await this.zone()}/dns_records${path}`, {
       method,
       headers: { Authorization: `Bearer ${this.env.CF_API_TOKEN}`, "Content-Type": "application/json" },
       body: payload ? JSON.stringify(payload) : undefined,
