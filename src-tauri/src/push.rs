@@ -152,6 +152,11 @@ impl PushInner {
     }
 
     fn persist(&self, s: &Store) {
+        // Tests build their own stores; writing one would replace the
+        // booth's real keys and every phone's subscription (it did once).
+        if cfg!(test) {
+            return;
+        }
         let _ = crate::settings::write_json_atomic_backed_up(
             store_path(),
             serde_json::to_string_pretty(s).unwrap_or_default(),

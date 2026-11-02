@@ -90,7 +90,44 @@ export async function pushState(): Promise<PushStatus> {
   if (Notification.permission === "denied") return "denied";
   const reg = await navigator.serviceWorker.getRegistration();
   const sub = await reg?.pushManager.getSubscription();
-  return sub ? "on" : "off";
+  if (!reg || !sub) return "off";
+  await healSubscription(reg, sub).catch(() => {});
+  return "on";
+}
+
+/** Does this subscription belong to the booth's current key? */
+export function sameKey(subKey: ArrayBuffer | null | undefined, boothKey: string): boolean {
+  if (!subKey || !boothKey) return false;
+  const a = new Uint8Array(subKey);
+  const b = urlB64ToBytes(boothKey);
+  return a.length === b.length && a.every((x, i) => x === b[i]);
+}
+
+let healed = false;
+
+/**
+ * The phone can believe pages are on while the booth has forgotten it: the
+ * booth's keys were replaced (2 November 2026, a test overwrote them), or its
+ * list was lost. Nothing failed anywhere you'd see; pages just stopped
+ * reaching locked phones. So once per visit, with notifications already
+ * allowed, the phone checks its subscription against the booth's key, makes
+ * a new one if they differ (no prompt: permission is already granted), and
+ * hands it to the booth again.
+ */
+async function healSubscription(reg: ServiceWorkerRegistration, sub: PushSubscription): Promise<void> {
+  if (healed) return;
+  const session = ls(CREW_SESSION_KEY);
+  if (!session) return; // not signed in yet; try again next read
+  healed = true;
+  const { key } = await pushPublicKey();
+  if (!key) return;
+  let current = sub;
+  if (!sameKey(sub.options?.applicationServerKey, key)) {
+    await sub.unsubscribe().catch(() => false);
+    current = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToBytes(key) });
+  }
+  const json = current.toJSON() as { endpoint?: string; keys?: Record<string, string> };
+  await pushSubscribe(session, json.endpoint ?? "", json.keys?.p256dh ?? "", json.keys?.auth ?? "");
 }
 
 // base64url → Uint8Array, the format pushManager.subscribe demands.
