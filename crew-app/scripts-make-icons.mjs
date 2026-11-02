@@ -18,6 +18,8 @@ async function onDark(size, markSize, file) {
 await onDark(1024, 600, "assets/icon-only.png");
 await canvas(1024, CLEAR).composite([{ input: await markPng(560), gravity: "center" }]).png().toFile("assets/icon-foreground.png");
 await canvas(1024, BG).png().toFile("assets/icon-background.png");
-await onDark(2732, 520, "assets/splash.png");
-await onDark(2732, 520, "assets/splash-dark.png");
+// Launch screens are plain ProDeck dark: the app's intro (src/Intro.tsx)
+// brings the mark in, and a finished mark here would flash before it.
+await canvas(2732, BG).png().toFile("assets/splash.png");
+await canvas(2732, BG).png().toFile("assets/splash-dark.png");
 console.log("icon sources written to assets/");

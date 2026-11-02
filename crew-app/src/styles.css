@@ -151,3 +151,57 @@ h2 { margin: 0; font-size: 1.25rem; font-weight: 600; }
   font-size: 0.75rem;
   font-weight: 600;
 }
+
+/* The loading intro (Intro.tsx): the mark's blocks come together. Each block
+   moves around its own centre (transform-box: fill-box), from apart and
+   tilted to home, with a slight overshoot; the blue square lands last. */
+.intro {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: var(--bg);
+  z-index: 10;
+  animation: intro-out 0.32s ease-in 1.38s forwards;
+}
+.intro-mark { width: 112px; height: 112px; overflow: visible; }
+.blk {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation: 0.62s cubic-bezier(0.2, 0.9, 0.25, 1.12) forwards;
+}
+.blk-tall { animation-name: blk-tall; animation-delay: 0.08s; }
+.blk-low { animation-name: blk-low; animation-delay: 0.2s; }
+.blk-blue { animation-name: blk-blue; animation-delay: 0.36s; animation-duration: 0.7s; }
+@keyframes blk-tall {
+  from { opacity: 0; transform: translate(-46px, 6px) rotate(-10deg); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes blk-low {
+  from { opacity: 0; transform: translate(18px, 44px) rotate(8deg); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes blk-blue {
+  0% { opacity: 0; transform: translate(40px, -44px) rotate(14deg) scale(0.6); }
+  70% { opacity: 1; transform: translate(0, 0) rotate(-2deg) scale(1.06); }
+  100% { opacity: 1; transform: none; }
+}
+.intro-name {
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  opacity: 0;
+  transform: translateY(6px);
+  animation: intro-name 0.4s ease-out 0.86s forwards;
+}
+@keyframes intro-name { to { opacity: 1; transform: none; } }
+@keyframes intro-out { to { opacity: 0; transform: scale(1.02); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .blk, .intro-name { animation: none; opacity: 1; transform: none; }
+  .intro { animation: intro-out 0.25s ease-in 0.45s forwards; }
+}

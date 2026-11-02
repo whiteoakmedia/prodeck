@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+ shows the app icon on its launch screen unless told
+     otherwise. Nothing here: the app's intro brings the mark in. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@android:color/transparent" />
+</shape>

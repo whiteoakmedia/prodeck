@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import mark from "./mark.svg";
+import { Intro } from "./Intro";
 import { forget, parseTarget, remember, shortName, type Church, type Target } from "./connect";
 import { checkBooth, findBooths, isNative, loadChurches, saveChurches, scanCode, type Found } from "./native";
 
@@ -21,13 +22,19 @@ export function App() {
   const [churches, setChurches] = useState<Church[]>(() => loadChurches());
   const [screen, setScreen] = useState<Screen>({ kind: "home" });
   const [err, setErr] = useState("");
+  // The intro plays once per launch, not when coming back from a church.
+  const [intro, setIntro] = useState(!asked);
 
-  // Opening the app goes straight to the church you used last; the churches
-  // list is for switching. (On a phone only: the preview stays on the list.)
-  useEffect(() => {
-    if (!isNative() || asked || churches.length === 0) return;
-    openChurch(churches[0]);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Opening the app goes straight to the church you used last, once the intro
+  // has played; the churches list is for switching. (On a phone only: the
+  // preview stays on the list.)
+  const introDone = () => {
+    if (isNative() && !asked && churches.length > 0) {
+      openChurch(churches[0]);
+      return;
+    }
+    setIntro(false);
+  };
 
   const go = (s: Screen) => {
     setErr("");
@@ -64,6 +71,7 @@ export function App() {
     go({ kind: "open", church: { base: "", name: "Demo", lastMs: 0 }, url });
   };
 
+  if (intro) return <Intro onDone={introDone} />;
   if (screen.kind === "open") return <Opened url={screen.url} church={screen.church} onBack={() => go({ kind: "home" })} />;
 
   return (
