@@ -134,9 +134,20 @@ export function ProDeckProvider({ children }: { children: ReactNode }) {
   useEffect(() => setCrashReportsEnabled(settings?.crash_reports !== false && settings != null), [settings]);
   // Keep the module-level PUBLIC_URL in sync with the configured public
   // origin, so QR/join links and the edge fallback use the operator's domain.
+  // The secure local address (localhttps.rs) stands in when there's no
+  // public one, so phones get https on the church Wi-Fi.
   useEffect(() => {
-    if (settings?.public_url) setPublicUrl(settings.public_url);
-  }, [settings?.public_url]);
+    const secure = settings?.public_url || settings?.local_url;
+    if (secure) setPublicUrl(secure);
+  }, [settings?.public_url, settings?.local_url]);
+  // The booth writes local_url itself when the secure address comes up.
+  useEffect(() => {
+    if (IS_WEB) return;
+    const un = on("settings:changed", () => void refreshSettings());
+    return () => {
+      un.then((f) => f());
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [connectError, setConnectError] = useState("");
   // Retries since the last success. Drives ppConnecting below.
   const [ppFails, setPpFails] = useState(0);

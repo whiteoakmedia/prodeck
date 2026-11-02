@@ -28,5 +28,7 @@ changes here on request branches; Zach merges.
 - The browser build (`IS_WEB`) serves phones and kiosks on the church network. Desktop-only
   features check `IS_WEB`.
 - **prodeck.live is Zach's private instance for his own church.** Never link to it, point code at
-  it, or treat it as a product site.
+  it, or treat it as a product site. The one exception is secure local addresses: the app may use
+  `<name>.local.prodeck.live` names handed out by the `local-edge/` Worker (design/LOCAL_HTTPS.md).
+  Nothing else under prodeck.live.
 - Anything a user sees: plain words, no dashes, at most one exclamation mark.

@@ -755,6 +755,27 @@ The link carries the member password. Changing that password stops every tally l
     settings: "set-tally",
   },
   {
+    id: "secure-local",
+    group: "Phones & kiosks",
+    title: "A secure address for phones, with nothing to set up",
+    aliases: ["https", "secure address", "local.prodeck.live", "certificate", "microphone blocked", "notifications don't work", "no domain", "ssl"],
+    body: `Phones only allow comms, a camera station's microphone and page notifications on a secure (https) address. A booth that only lives on the church network has a plain one, so none of those work until it has a secure address.
+
+**Claim one in Settings → Crew & screens → Secure local address.** Pick a name (your church's, say), check it's free, and press **Claim this address**. In about a minute this computer has **https://yourname.local.prodeck.live**, and every crew link, the poster and camera tally codes use it. It keeps working by itself: if the computer's address on the network changes, the name follows, and the certificate renews on its own.
+
+How it works: the name points at this computer's address *inside* your building, and the booth gets its own certificate for it from Let's Encrypt. Phones on the church Wi-Fi talk to the booth directly; nothing goes through the internet except looking up the name. From outside the building the name leads nowhere.
+
+If phones can't open it:
+
+- They must be on the church Wi-Fi, not cellular or a guest network.
+- Some web filters (Cisco Umbrella, OpenDNS, some routers) block names that point inside the network. Allow **local.prodeck.live** in yours.
+- If the computer is on two networks (Wi-Fi and a Dante network), pick the one phones are on in the card.
+
+Already have your own public address (a domain with a tunnel)? Links use that, and you don't need this. **Give this address back** frees the name.`,
+    settings: "set-local",
+    related: ["comms", "phones-install", "public-url"],
+  },
+  {
     id: "comms",
     group: "Crew",
     title: "Comms: talking to the crew from phones",
@@ -765,7 +786,7 @@ Phones talk straight to each other over the church Wi-Fi, so the delay is a frac
 
 What it needs:
 
-- **The secure address.** Phones only allow the microphone on an https address, so open ProDeck from your public address. On the plain local address, Join comms explains this instead of starting.
+- **A secure address.** Phones only allow the microphone on https. Claim a **secure local address** in Settings (it takes a minute, nothing to set up), or use your own public address. On the plain local address, Join comms explains this instead of starting.
 - **Phones on the church Wi-Fi.** A phone on cellular still joins (the public address reaches the booth from anywhere), but it can't reach the other phones, so nobody hears it. A guest network that keeps devices apart does the same. Use the staff network. **On comms** says **can't reach** next to anyone this happens with.
 - **The app open, screen on.** A locked iPhone stops a web app's sound and microphone. Comms suits people at a post with the phone in view, like a camera operator using the phone as a tally. Use earbuds so the phone's speaker doesn't feed back into its mic.
 

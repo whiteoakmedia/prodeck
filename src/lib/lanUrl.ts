@@ -12,6 +12,15 @@ import { IS_WEB, lanAddress, type LanAddress } from "./tauri";
 /** "Mac.localdomain" → "Mac.local" (used only until the booth answers). */
 export const hostLabel = (name: string): string => `${(name || "").trim().split(".")[0] || "this-computer"}.local`;
 
+/**
+ * The secure address phones should use, if there is one: the church's own
+ * public address, else the secure local address the booth serves
+ * (localhttps.rs). "" = neither, so links fall back to the plain .local one.
+ */
+export function secureBase(s: { public_url?: string; local_url?: string } | null | undefined): string {
+  return (s?.public_url ?? "").trim() || (s?.local_url ?? "").trim();
+}
+
 /** The main address: the church's own domain if set, else this computer's .local name. */
 export function lanBaseUrl(publicUrl: string | undefined, lan: LanAddress | null, deviceName: string, port: number): string {
   const pub = (publicUrl ?? "").trim().replace(/\/+$/, "");

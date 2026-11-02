@@ -10710,3 +10710,9 @@ select.input {
   border-radius: 8px;
   text-align: right;
 }
+
+/* Secure local address card (SecureLocalCard.tsx): the name and its fixed suffix. */
+.local-name-row { display: flex; align-items: center; gap: 6px; }
+.local-name-row .input { flex: 1; min-width: 0; }
+.local-suffix { color: var(--muted); font-family: var(--mono, ui-monospace, monospace); font-size: 13px; white-space: nowrap; }
+.local-name-bad { color: var(--warn); }

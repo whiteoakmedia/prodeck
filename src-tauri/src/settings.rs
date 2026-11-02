@@ -100,6 +100,23 @@ pub struct Settings {
     /// push stays off and links use the LAN address.
     #[serde(default)]
     pub public_url: String,
+    /// Secure local address (localhttps.rs): the name this booth claimed under
+    /// local.prodeck.live, e.g. "stjohns". Empty = none claimed.
+    #[serde(default)]
+    pub local_name: String,
+    /// The claim's secret, which proves the name is this booth's. Booth only:
+    /// never sent to a browser, never changeable from one.
+    #[serde(default)]
+    pub local_secret: String,
+    /// The address phones reach this computer at, when it has several (Wi-Fi
+    /// and a Dante network, say). Empty = the one on the default route.
+    #[serde(default)]
+    pub local_ip: String,
+    /// Written by the booth while it serves the secure local address, e.g.
+    /// "https://stjohns.local.prodeck.live". Links and QR codes use it when
+    /// there's no public_url. Empty = not serving.
+    #[serde(default)]
+    pub local_url: String,
     pub gemini_api_key: Option<String>,
     /// "Ask ProDeck" troubleshooter (design/TROUBLESHOOTER.md). Secret; the
     /// gateway strips it and pins it on browser round-trips.
@@ -344,6 +361,10 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             public_url: String::new(),
+            local_name: String::new(),
+            local_secret: String::new(),
+            local_ip: String::new(),
+            local_url: String::new(),
             crew_join_until_ms: 0,
             crew_roles: default_crew_roles(),
             avantis_watch_user: String::new(),
@@ -920,6 +941,14 @@ pub fn update_settings(
 ) -> Result<(), String> {
     let to_save = {
         let mut s = state.lock().unwrap_or_else(|p| p.into_inner());
+        let mut settings = settings;
+        // The secure local address is written by the booth itself
+        // (localhttps.rs) while the Settings page is open: a save from a form
+        // loaded earlier must not put back a stale claim or address. The
+        // address override is the one part the page sets.
+        settings.local_name = s.local_name.clone();
+        settings.local_secret = s.local_secret.clone();
+        settings.local_url = s.local_url.clone();
         *s = settings;
         s.clone()
     };

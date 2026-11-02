@@ -3,6 +3,7 @@ import { enablePush, pushState, type PushStatus } from "../lib/pushClient";
 import { notifyStep, secureLink, SNOOZE_MS } from "../lib/notifyStep";
 import { getWebToken } from "../lib/tauri";
 import { useProDeck } from "../store";
+import { secureBase } from "../lib/lanUrl";
 
 // Onboarding's last step, on Home until page notifications are on
 // (lib/notifyStep.ts says what to show for each state).
@@ -37,7 +38,7 @@ export function CrewNotifyStep({ onShowInstall }: { onShowInstall: () => void })
   }, []);
 
   if (!status) return null;
-  const secureUrl = secureLink(settings?.public_url ?? "", getWebToken());
+  const secureUrl = secureLink(secureBase(settings), getWebToken());
   const step = notifyStep(status, { ios: isIos(), secureUrl, snoozedUntil, now: Date.now() });
   if (!step) return null;
 

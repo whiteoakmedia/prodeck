@@ -32,6 +32,7 @@ export const ANCHOR_TOPIC: Record<string, string> = {
   "set-reliability": "keep-running",
   "set-kiosk": "kiosk",
   "set-comms": "comms",
+  "set-local": "secure-local",
   "set-backup": "backup",
   "set-help": "report-problem",
 };

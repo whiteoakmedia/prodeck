@@ -784,6 +784,11 @@ export async function demoInvoke<T>(cmd: string, args?: Record<string, unknown>)
       return out(deskSnapshot());
     case "atem_state":
       return out(atemSnapshot());
+    // Secure local address: unclaimed, with every name free.
+    case "local_https_status":
+      return out({ phase: "off", name: "", host: "", url: "", ip: "192.168.1.20", ips: ["192.168.1.20"], port: 0, expires_ms: 0, error: "", detail: "" });
+    case "local_https_check":
+      return out({ ok: true, available: true, problem: "" });
     // Comms: a sample crew on the lines, so the screens can be seen without
     // phones. No audio in the demo.
     case "intercom_join":

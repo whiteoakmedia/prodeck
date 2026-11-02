@@ -249,8 +249,29 @@ fn throttle_key(peer: &str, headers: &str) -> String {
         if let Some(ip) = cf.filter(|ip| !ip.is_empty() && ip.len() <= 64) {
             return format!("cf:{ip}");
         }
+        // The secure local address's https front (localhttps.rs) is on
+        // loopback too, and names the phone it's passing along.
+        if let Some(ip) = front_peer(headers) {
+            return ip.to_string();
+        }
     }
     peer.to_string()
+}
+
+/// The phone behind the secure local address's https front: its
+/// X-ProDeck-Peer header. Only meaningful from loopback (the caller checks),
+/// and the front strips any copy a phone sent itself. Cloudflare's header
+/// wins over it, so a visitor through the tunnel can't pose as a phone in the
+/// building by sending one.
+fn front_peer(headers: &str) -> Option<std::net::IpAddr> {
+    let has_cf = headers.lines().any(|l| l.split_once(':').map(|(k, _)| k.trim().eq_ignore_ascii_case("cf-connecting-ip")).unwrap_or(false));
+    if has_cf {
+        return None;
+    }
+    headers.lines().find_map(|l| {
+        let (k, v) = l.split_once(':')?;
+        k.trim().eq_ignore_ascii_case("x-prodeck-peer").then(|| v.trim().parse().ok()).flatten()
+    })
 }
 
 /// For the camera (MJPEG) ports in ndi.rs: any valid gateway token, behind the
@@ -785,9 +806,14 @@ async fn handle_conn(
                 let net = crate::checkin::ClientNet {
                     peer_private: stream
                         .peer_addr()
-                        .map(|a| match a.ip() {
-                            std::net::IpAddr::V4(v4) => v4.is_private(),
-                            std::net::IpAddr::V6(_) => false,
+                        .map(|a| {
+                            // Through the secure local address's front, the
+                            // phone is the one it names, not loopback.
+                            let ip = if a.ip().is_loopback() { front_peer(&header_str).unwrap_or(a.ip()) } else { a.ip() };
+                            match ip {
+                                std::net::IpAddr::V4(v4) => v4.is_private(),
+                                std::net::IpAddr::V6(_) => false,
+                            }
                         })
                         .unwrap_or(false),
                     cf_ip: header_str.lines().find_map(|l| {
@@ -1876,6 +1902,8 @@ async fn dispatch(
             // network and was the one secret still going out in the clear —
             // any member-tier phone could read it straight out of get_settings.
             set.obs_password = String::new();
+            // Proves the secure local name is this booth's (localhttps.rs).
+            set.local_secret = String::new();
             // NOTE: pco_app_id is deliberately NOT redacted here. It is the
             // username half of the pair (the secret is what protects it), and
             // the Planning Center page uses its presence to decide whether
@@ -2382,6 +2410,12 @@ async fn dispatch(
                 // a binary the booth executes. A browser admin must not be
                 // able to point either somewhere else.
                 new.public_url = g.public_url.clone();
+                // The secure local address is the booth's own business: its
+                // claim, its secret and what it serves.
+                new.local_name = g.local_name.clone();
+                new.local_secret = g.local_secret.clone();
+                new.local_ip = g.local_ip.clone();
+                new.local_url = g.local_url.clone();
                 new.whisper_bin = g.whisper_bin.clone();
                 new.whisper_model = g.whisper_model.clone();
                 *g = new;
@@ -2888,6 +2922,16 @@ mod member_pp_tests {
         // Header name is case-insensitive; an empty value falls back to the peer.
         assert_eq!(throttle_key("127.0.0.1", "cf-connecting-ip: 203.0.113.5\r\n"), "cf:203.0.113.5");
         assert_eq!(throttle_key("127.0.0.1", "CF-Connecting-IP: \r\n"), "127.0.0.1");
+        // The secure local address's front names the phone...
+        assert_eq!(throttle_key("127.0.0.1", "X-ProDeck-Peer: 192.168.1.50\r\n"), "192.168.1.50");
+        // ...but only from loopback, and never over Cloudflare's own header.
+        assert_eq!(throttle_key("192.168.1.9", "X-ProDeck-Peer: 192.168.1.50\r\n"), "192.168.1.9");
+        assert_eq!(
+            throttle_key("127.0.0.1", "CF-Connecting-IP: 198.51.100.7\r\nX-ProDeck-Peer: 192.168.1.50\r\n"),
+            "cf:198.51.100.7"
+        );
+        assert_eq!(super::front_peer("CF-Connecting-IP: 198.51.100.7\r\nX-ProDeck-Peer: 10.0.0.2\r\n"), None);
+        assert_eq!(throttle_key("127.0.0.1", "X-ProDeck-Peer: not-an-ip\r\n"), "127.0.0.1");
     }
 
     #[test]

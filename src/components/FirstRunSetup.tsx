@@ -27,7 +27,7 @@ import { requestSettingsJump } from "../lib/settingsJump";
 import { STARTER_CHECKLISTS, addStarterChecklists } from "../lib/checklistTemplates";
 import { keepaliveStatus, keepaliveInstall, setDemo, crewJoinOpen, crewJoinState, openPrintHtml, lanAddress, type KeepaliveStatus } from "../lib/tauri";
 import { joinPosterHtml } from "../lib/joinPoster";
-import { lanBaseUrl } from "../lib/lanUrl";
+import { lanBaseUrl, secureBase } from "../lib/lanUrl";
 import { openHelp } from "../help/nav";
 import { isFreshInstall, readSetupDone, writeSetupDone, ONBOARDING_EVENT } from "../lib/onboarding";
 import { ConnectCard } from "./ConnectCard";
@@ -147,7 +147,7 @@ function randomToken(bytes = 12): string {
 }
 /** Where phones on the church network reach this Mac. */
 async function lanBase(s: Settings): Promise<string> {
-  const pub = (s as any).public_url?.trim?.() as string | undefined;
+  const pub = secureBase(s as any);
   if (pub) return pub.replace(/\/+$/, "");
   if (PUBLIC_URL) return PUBLIC_URL.replace(/\/+$/, "");
   const lan = await lanAddress().catch(() => null);

@@ -307,6 +307,10 @@ export interface Settings {
   pp_view_only: boolean;
   /** Crew comms on phones, iPads and tally stations (off by default). */
   comms_enabled: boolean;
+  /** Secure local address (localhttps.rs): claimed name, address override, and what it serves. */
+  local_name: string;
+  local_ip: string;
+  local_url: string;
   audio_input: string | null;
   whisper_bin: string | null;
   whisper_model: string | null;
@@ -1173,6 +1177,28 @@ export interface IntercomRoster {
   channels: string[];
   members: IntercomMember[];
 }
+// Secure local address (src-tauri/src/localhttps.rs). Booth only.
+export interface LocalHttpsStatus {
+  /** off | claimed | addressing | certifying | serving | error */
+  phase: string;
+  name: string;
+  host: string;
+  url: string;
+  ip: string;
+  ips: string[];
+  port: number;
+  expires_ms: number;
+  error: string;
+  detail: string;
+}
+export const localHttpsStatus = () => invoke<LocalHttpsStatus>("local_https_status");
+export const localHttpsCheck = (name: string) =>
+  invoke<{ ok?: boolean; available?: boolean; problem?: string; error?: string }>("local_https_check", { name });
+export const localHttpsClaim = (name: string) => invoke<LocalHttpsStatus>("local_https_claim", { name });
+export const localHttpsRetry = () => invoke<LocalHttpsStatus>("local_https_retry");
+export const localHttpsSetIp = (ip: string) => invoke<LocalHttpsStatus>("local_https_set_ip", { ip });
+export const localHttpsRelease = () => invoke<LocalHttpsStatus>("local_https_release");
+
 /** A crew device ({session}) or a camera station on a tally link ({station, stationName}). */
 export interface CommsWho {
   session?: string;

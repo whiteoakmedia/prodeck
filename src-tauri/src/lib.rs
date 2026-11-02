@@ -13,6 +13,7 @@ mod backup;
 mod diag;
 mod keepalive;
 mod lan;
+mod localhttps;
 mod chat;
 mod checkin;
 mod chop;
@@ -268,6 +269,9 @@ pub fn run() {
             x32::spawn_mirror(app.handle().clone());
             yamaha::spawn_mirror(app.handle().clone());
             edge::spawn_edge_push(app.handle().clone());
+            // Secure local address (claimed in Settings): keeps the name
+            // pointed here and the certificate fresh.
+            localhttps::spawn(app.handle().clone());
             ga4::spawn_ga4_poll(app.handle().clone());
             propresenter::spawn_lobby_auto(app.handle().clone());
             propresenter::spawn_announcement_poll(app.handle().clone());
@@ -465,6 +469,12 @@ pub fn run() {
             tv::tv_pending,
             tv::tv_approve,
             tv::tv_screens,
+            localhttps::local_https_status,
+            localhttps::local_https_check,
+            localhttps::local_https_claim,
+            localhttps::local_https_retry,
+            localhttps::local_https_set_ip,
+            localhttps::local_https_release,
             tv::tv_update,
             tv::tv_show,
             tv::tv_dismiss,

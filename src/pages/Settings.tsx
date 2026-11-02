@@ -11,7 +11,7 @@ import { ANCHOR_TOPIC, openHelp } from "../help/nav";
 import { consumeSettingsJump, SETTINGS_JUMP_EVENT } from "../lib/settingsJump";
 import { SECTIONS, cardMatches, isDirty, sectionOf } from "../lib/settingsSections";
 import { setSettingsDirty } from "../lib/settingsDirty";
-import { ipBaseUrl, lanBaseUrl, useLanAddress } from "../lib/lanUrl";
+import { ipBaseUrl, lanBaseUrl, secureBase, useLanAddress } from "../lib/lanUrl";
 import { useProDeck } from "../store";
 import { openFeedback } from "../lib/feedback";
 import { useChop } from "../chopStore";
@@ -114,6 +114,7 @@ import {
 import { relaunch } from "@tauri-apps/plugin-process";
 import lockupHorizontal from "../assets/prodeck-lockup-horizontal-color.svg";
 import { askConfirm } from "../lib/dialogs";
+import { SecureLocalCard } from "../components/SecureLocalCard";
 import QRCode from "qrcode";
 import { loadDashboards as loadDashList } from "../lib/dashboards";
 import { useSchedules } from "../scheduleStore";
@@ -1871,6 +1872,7 @@ export function SettingsPage() {
           </section>
         )}
       </Sec>
+      {!IS_WEB && <Sec id="set-local"><SecureLocalCard form={form} /></Sec>}
 
       {!IS_WEB && <Sec id="set-reliability"><ReliabilityCard /></Sec>}
       {!IS_WEB && <Sec id="set-kiosk"><KioskCard form={form} /></Sec>}
@@ -1898,9 +1900,9 @@ export function SettingsPage() {
                 <li>
                   Phones only allow the microphone on a secure (https) address, so crew must open ProDeck from your
                   public address.{" "}
-                  {(form as any).public_url?.trim()
-                    ? <>Yours is <code>{(form as any).public_url}</code>.</>
-                    : <strong>Set your public address in Browser Access first.</strong>}
+                  {secureBase(form as any)
+                    ? <>Yours is <code>{secureBase(form as any)}</code>.</>
+                    : <strong>Claim a secure local address (below Browser Access) or set a public address first.</strong>}
                 </li>
                 <li>Use the staff Wi-Fi. A phone on cellular or a guest network can join but can't reach the others.</li>
                 <li>Earbuds or a headset, and the app open with the screen on. A locked iPhone stops comms.</li>
@@ -3362,8 +3364,8 @@ function KioskCard({ form }: { form: Settings }) {
   const f = form as any;
   const token = f.web_member_password || "";
   const lan = useLanAddress();
-  const base = lanBaseUrl(f.public_url, lan, f.device_name, f.web_port);
-  const ipBase = (f.public_url ?? "").trim() ? null : ipBaseUrl(lan, f.web_port);
+  const base = lanBaseUrl(secureBase(f), lan, f.device_name, f.web_port);
+  const ipBase = secureBase(f) ? null : ipBaseUrl(lan, f.web_port);
   const q = name && token ? `/?kiosk=${encodeURIComponent(name)}&token=${encodeURIComponent(token)}` : "";
   const url = q ? `${base}${q}` : "";
   const ipUrl = q && ipBase ? `${ipBase}${q}` : "";
@@ -3432,7 +3434,7 @@ function TvScreensCard({ form }: { form: Settings }) {
   const f = form as any;
   const lan = useLanAddress();
   // Downloader on a Fire TV is happiest with a plain address it can type.
-  const appUrl = `${(ipBaseUrl(lan, f.web_port) ?? lanBaseUrl(f.public_url, lan, f.device_name, f.web_port)).replace(/^https?:\/\//, "")}/tv.apk`;
+  const appUrl = `${(ipBaseUrl(lan, f.web_port) ?? lanBaseUrl(secureBase(f), lan, f.device_name, f.web_port)).replace(/^https?:\/\//, "")}/tv.apk`;
   const [pending, setPending] = useState<TvPending[]>([]);
   const [dashes, setDashes] = useState<{ name: string }[]>([]);
   const [target, setTarget] = useState<Record<string, string>>({});
@@ -3609,8 +3611,8 @@ function TallyCard({ form, atem }: { form: Settings; atem: AtemSnapshot | null }
   const f = form as any;
   const token = f.web_member_password || "";
   const lan = useLanAddress();
-  const base = lanBaseUrl(f.public_url, lan, f.device_name, f.web_port);
-  const ipBase = (f.public_url ?? "").trim() ? null : ipBaseUrl(lan, f.web_port);
+  const base = lanBaseUrl(secureBase(f), lan, f.device_name, f.web_port);
+  const ipBase = secureBase(f) ? null : ipBaseUrl(lan, f.web_port);
   const sources = tallySources(atem);
   const [pick, setPick] = useState<number | null>(null);
   const [preview, setPreview] = useState(true);
@@ -3730,10 +3732,10 @@ function TallyCard({ form, atem }: { form: Settings; atem: AtemSnapshot | null }
                 <ul style={{ margin: 0 }}>
                   <li>Plug a headset into the iPad (wired or Bluetooth) so the operator hears comms and the room doesn't.</li>
                   <li>Tap the tally once after setting it up and choose Join comms, then allow the microphone.</li>
-                  {!(f.public_url ?? "").trim() && (
+                  {!secureBase(f) && (
                     <li>
-                      <strong>Set your public address in Browser Access first.</strong> This code opens the local address,
-                      and iPads only allow the microphone on a secure (https) one.
+                      <strong>Claim a secure local address first</strong> (Settings, Crew &amp; screens). This code opens
+                      the plain local address, and iPads only allow the microphone on a secure (https) one.
                     </li>
                   )}
                 </ul>

@@ -2397,7 +2397,7 @@ function CrewQrWidget() {
   // it is the LAN origin — both baked a wrong QR into a widget meant to be
   // shown forever. Fall back to the page origin so it is never empty.
   const { settings } = useProDeck();
-  const base = settings?.public_url?.trim() || PUBLIC_URL || (typeof location !== "undefined" ? location.origin : "");
+  const base = settings?.public_url?.trim() || settings?.local_url?.trim() || PUBLIC_URL || (typeof location !== "undefined" ? location.origin : "");
   useEffect(() => {
     if (!base) return;
     import("qrcode")
