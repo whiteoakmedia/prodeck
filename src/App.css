@@ -10730,3 +10730,6 @@ select.input {
   background: var(--accent-soft);
   box-shadow: inset 0 0 0 1px var(--accent-line);
 }
+
+/* Inside the ProDeck Crew app, before sign-in (BackToChurches.tsx). */
+.back-to-churches { display: block; margin: 16px auto 0; font-size: 14px; }

@@ -1,3 +1,4 @@
+import { BackToChurches } from "./BackToChurches";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { CREW_SESSION_KEY, realInvoke, setWebToken } from "../lib/tauri";
 import { JOIN_TICKET_KEY, joinFormProblem, joinPollMs, type JoinStatus } from "../lib/posterJoin";
@@ -148,6 +149,7 @@ export function PosterJoin() {
           </form>
         )}
       </div>
+      <BackToChurches />
     </div>
   );
 }

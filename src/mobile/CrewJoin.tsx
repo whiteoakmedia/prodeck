@@ -1,3 +1,4 @@
+import { BackToChurches } from "../components/BackToChurches";
 import { useEffect, useState } from "react";
 import { useChat } from "../chatStore";
 import { productionRoster, usePco } from "../pcoStore";
@@ -297,6 +298,7 @@ export function CrewJoin() {
       )}
 
       {err && <p className="crew-join-err">{err}</p>}
+      <BackToChurches />
     </div>
   );
 }

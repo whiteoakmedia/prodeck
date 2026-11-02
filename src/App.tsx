@@ -34,6 +34,7 @@ import { GiftCredit } from "./components/GiftCredit";
 import { crewLayout, readLayoutPref, switchLayout } from "./lib/layout";
 import { syncHomeScreenManifest } from "./lib/homeScreen";
 import { IN_CREW_APP } from "./lib/crewApp";
+import { BackToChurches } from "./components/BackToChurches";
 import { SoundcheckWatch } from "./components/SoundcheckWatch";
 import { SetupWizards } from "./components/wizard/SetupWizards";
 import { isFreshInstall } from "./lib/onboarding";
@@ -668,6 +669,7 @@ function WebGate({ children }: { children: ReactNode }) {
         </button>
         {err && <p className="error">{err}</p>}
       </form>
+      <BackToChurches />
     </div>
   );
 }
