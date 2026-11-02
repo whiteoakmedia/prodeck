@@ -101,7 +101,7 @@ export function CrewChat() {
 
       <div className="crew-msgs" ref={listRef}>
         {shown.length === 0 && (
-          <p className="crew-hint muted">No messages yet — say something.</p>
+          <p className="crew-hint muted">No messages yet. Say something.</p>
         )}
         {shown.map((m) => (
           <div key={m.id}>

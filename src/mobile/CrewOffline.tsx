@@ -385,7 +385,7 @@ export function CrewOffline({ onCached }: { onCached: () => void }) {
       <img className="crew-mark dim" src={markWhite} alt="" aria-hidden />
       <h1 className="crew-onboard-title">Command Center offline</h1>
       <p className="crew-onboard-sub">
-        The plan, charts, chat, and your checklist still work — pages and
+        The plan, charts, chat, and your checklist still work; pages and
         check-in return with the booth.
       </p>
       <div className="crew-caution">
@@ -488,7 +488,7 @@ export function CrewOffline({ onCached }: { onCached: () => void }) {
             </details>
           )}
           <p className="crew-hint muted" style={{ marginTop: 8 }}>
-            Live from Planning Center — tap a song for its chart.
+            Live from Planning Center. Tap a song for its chart.
           </p>
         </div>
       )}
@@ -503,7 +503,7 @@ export function CrewOffline({ onCached }: { onCached: () => void }) {
       <EdgeChat />
       {tried && !edge && (
         <p className="crew-hint muted">
-          The week's plan wasn't reachable either — check your connection.
+          The week's plan wasn't reachable either. Check your connection.
         </p>
       )}
     </div>

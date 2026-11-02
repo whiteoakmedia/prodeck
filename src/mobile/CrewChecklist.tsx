@@ -161,7 +161,7 @@ export function CrewChecklist() {
                   if (!t) return "tells the booth";
                   return m.ts
                     ? `Expected ${dayClock(t)} · tells the booth`
-                    : `Expected ${dayClock(t)} (service start — you're not on this week's plan) · tells the booth`;
+                    : `Expected ${dayClock(t)} (service start, since you're not on this week's plan) · tells the booth`;
                 })()}
               </div>
             </div>
@@ -208,7 +208,7 @@ export function CrewChecklist() {
             ? "No checklists set up at the booth yet."
             : myRole
               ? `Nothing for "${myRole}" this week.`
-              : "No role set for you yet — ask the booth to assign your position."}
+              : "You're not on this week's plan in Planning Center, so there's no position checklist for you."}
         </p>
       )}
 

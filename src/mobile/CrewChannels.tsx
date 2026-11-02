@@ -130,13 +130,13 @@ export function CrewChannels({
 
         {channels.length === 1 && (
           <p className="crew-hint muted">
-            Role channels appear as crew are given roles at the booth — or when
+            Role channels appear as crew are given roles at the booth, or when
             they pick their name off the plan when joining.
           </p>
         )}
 
         <p className="crew-hint muted">
-          Channels aren't private — every crew device can read all of them.
+          Channels aren't private: every crew device can read all of them.
         </p>
       </div>
     </div>

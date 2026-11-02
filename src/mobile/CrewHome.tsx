@@ -306,7 +306,7 @@ export function CrewHome({ onGoChecklist, onGoWalk }: { onGoChecklist?: () => vo
             Setlist
           </span>
           <span className="crew-guide-line">
-            {songCount} song{songCount === 1 ? "" : "s"} — keys, leaders &amp; charts
+            {songCount} song{songCount === 1 ? "" : "s"}: keys, leaders &amp; charts
           </span>
           <span className="crew-guide-go">Open →</span>
         </button>
@@ -400,7 +400,7 @@ export function CrewHome({ onGoChecklist, onGoWalk }: { onGoChecklist?: () => vo
               />
             ) : (
               <p className="crew-hint muted crew-viewer-note">
-                This file type can't be shown inside the app. Tap Open to view it — you'll
+                This file type can't be shown inside the app. Tap Open to view it; you'll
                 come back with your phone's Back gesture.
               </p>
             )}
@@ -453,7 +453,7 @@ export function CrewHome({ onGoChecklist, onGoWalk }: { onGoChecklist?: () => vo
           <span className="mono" style={{ color: "var(--accent-hi)" }}>
             No sound?
           </span>
-          <span className="crew-guide-line">Tap the person or channel — see what the booth checked, then where to walk</span>
+          <span className="crew-guide-line">Tap the person or channel to see what the booth checked, then where to walk</span>
           <span className="crew-guide-go">Start →</span>
         </button>
       )}

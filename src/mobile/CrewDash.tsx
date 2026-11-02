@@ -66,7 +66,7 @@ export function CrewDash() {
           {audioRunning && !quiet
             ? `peak ${Math.round(splPeak)} dB SPL`
             : audioRunning
-              ? "Room is quiet — the meter wakes with the console."
+              ? "Room is quiet. The meter wakes with the console."
               : "The booth isn't measuring right now."}
         </div>
       </div>
@@ -134,7 +134,7 @@ export function CrewDash() {
       </div>
 
       <p className="crew-hint muted">
-        Camera feeds stay on the booth network — they aren't sent outside the building.
+        Camera feeds stay on the booth network. They aren't sent outside the building.
       </p>
     </div>
   );

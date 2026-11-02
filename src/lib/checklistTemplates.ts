@@ -136,7 +136,7 @@ export function missingStarterChecklists(existing: Checklist[]): StarterChecklis
 function toItem(it: StarterItem): ChItem {
   return {
     id: uid(),
-    text: it.note ? `${it.text} — ${it.note}` : it.text,
+    text: it.note ? `${it.text}. ${it.note}` : it.text,
     done: false,
   };
 }

@@ -95,7 +95,7 @@ export function CrewJoin() {
         chat.forgetDevice();
         setName("");
         setPin("");
-        setErr("That account no longer exists at the booth — register again below.");
+        setErr("That account no longer exists at the booth. Join again below.");
         return;
       }
       setErr(msg);
@@ -151,7 +151,7 @@ export function CrewJoin() {
               Waiting for booth
             </span>
           </div>
-          <p className="crew-wait-title">You're all set — waiting for the booth</p>
+          <p className="crew-wait-title">You're all set. Waiting for the booth</p>
           <p className="crew-wait-body">
             {pendingAt ? `Requested ${pendingAt}. ` : ""}
             {canPoll
@@ -196,7 +196,7 @@ export function CrewJoin() {
 
       {mode === "register" && inviteReady && (
         <p className="crew-join-help">
-          You're invited{role ? ` as ${role}` : ""} — already approved. Just
+          You're invited{role ? ` as ${role}` : ""} and already approved. Just
           pick a 4-digit PIN below and you're in.
         </p>
       )}
@@ -252,7 +252,7 @@ export function CrewJoin() {
       <p className="crew-join-help">
         {mode === "unlock"
           ? "Enter your 4-digit PIN"
-          : "Pick a 4-digit PIN — you'll use it to unlock on this phone"}
+          : "Pick a 4 digit PIN. You'll use it to unlock on this phone"}
       </p>
 
       <Keypad

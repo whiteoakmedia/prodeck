@@ -48,11 +48,11 @@ export function CrewLeader() {
         pco.team.find((m) => m.name.toLowerCase() === who.toLowerCase())?.position ?? "";
       const inv = await inviteCreate(who, role);
       const url = `${PUBLIC_URL}/?invite=${inv.token}`;
-      const text = `Join the ProDeck crew, ${who.split(" ")[0]}! Tap, add to your Home Screen, pick a PIN — you're already approved: ${url}`;
+      const text = `Join the ProDeck crew, ${who.split(" ")[0]}! Tap, add to your Home Screen, pick a PIN. You're already approved: ${url}`;
       if (navigator.share) await navigator.share({ text });
       else {
         await navigator.clipboard?.writeText(url);
-        setInviteMsg("Link copied — text it to them.");
+        setInviteMsg("Link copied. Text it to them.");
       }
       setInviteWho("");
     } catch (e) {
@@ -132,7 +132,7 @@ export function CrewLeader() {
 
       {crew.length === 0 && (
         <p className="crew-hint muted">
-          No approved crew yet — approve people under Settings → Crew, and give each one a role.
+          No approved crew yet. Approve people under Settings, Crew Members, and give each one a role.
         </p>
       )}
 
@@ -228,7 +228,7 @@ export function CrewLeader() {
       </div>
       {inviteMsg && <p className="crew-hint muted">{inviteMsg}</p>}
       <p className="crew-hint muted">
-        Pre-approved one-time link: they tap it, install, pick a PIN — no
+        Pre-approved one-time link: they tap it, install, pick a PIN, no
         password, no waiting.
       </p>
 
@@ -237,7 +237,7 @@ export function CrewLeader() {
           onClose={() => setNudge(null)}
           preset={{
             recipientId: nudge.id,
-            body: `${nudge.name} — checking in, are you on your way?`,
+            body: `${nudge.name}, checking in: are you on your way?`,
           }}
         />
       )}

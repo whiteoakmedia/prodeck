@@ -68,7 +68,7 @@ export function ChartSheet({
         setTargetKey(itemKey || dd.chartKey || "");
         if (!dd.chordChart && !dd.lyrics)
           setErr(
-            "No chart found for this song — no uploaded chart PDF and no chord text in Planning Center. Attach the MultiTracks chart to the song in PCO, or paste chords into the arrangement's chord editor, and it'll show here.",
+            "No chart for this song yet. Ask the worship leader to add one in Planning Center. Attach the MultiTracks chart to the song in PCO, or paste chords into the arrangement's chord editor, and it'll show here.",
           );
         else if (!dd.chordChart) setTab("lyrics");
       })

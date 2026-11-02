@@ -147,7 +147,7 @@ export function CrewPageTakeover() {
         <>
           <p className="crew-takeover-hint err">
             {error}
-            {fatal ? "" : " — try again."}
+            {fatal ? "" : " Try again."}
           </p>
           {fatal && (
             <button className="btn small ghost" onClick={() => dismiss(incoming.id)}>
@@ -303,7 +303,7 @@ export function CrewPageComposer({
         <div className="crew-recips">
           {roles.length === 0 ? (
             <p className="crew-hint muted">
-              No roles set yet — give people a role under Settings → Crew.
+              No roles set yet. Give people a role under Settings, Crew Members.
             </p>
           ) : (
             roles.map((r) => {
@@ -331,7 +331,7 @@ export function CrewPageComposer({
         <div className="crew-recips">
           {universe.length === 0 && (
             <p className="crew-hint muted">
-              No approved crew yet — approve someone under Settings → Crew.
+              No approved crew yet. Approve someone under Settings, Crew Members.
             </p>
           )}
           {universe.map((u) => {

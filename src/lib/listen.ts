@@ -39,7 +39,7 @@ function ensureEl(): HTMLAudioElement {
     el.preload = "none";
     const bounce = () => {
       if (kioskRetry) scheduleRetry();
-      else if (state !== "idle") set("idle", "stream ended — tap Listen to reconnect");
+      else if (state !== "idle") set("idle", "Stream ended. Tap Listen to reconnect");
     };
     el.addEventListener("error", bounce);
     el.addEventListener("stalled", bounce);

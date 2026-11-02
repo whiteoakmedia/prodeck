@@ -181,7 +181,7 @@ export function MobileShell() {
               <span className="mono" style={{ color: "var(--accent-hi)" }}>
                 No sound?
               </span>
-              <span className="crew-guide-line">Find the fault — what the booth already checked, then where to walk</span>
+              <span className="crew-guide-line">Find the fault: what the booth already checked, then where to walk</span>
               <span className="crew-guide-go">Start →</span>
             </button>
             {commsOn && (
@@ -384,11 +384,11 @@ function PushCard() {
     on: "Pages will buzz this phone even when ProDeck is closed.",
     off: "Turn on so pages reach you when your phone is in your pocket.",
     denied:
-      "This browser is refusing notifications for ProDeck — that also happens if the permission pop-up was dismissed. Allow notifications for this site in your browser settings, then come back.",
+      "This browser is refusing notifications for ProDeck. That also happens if the permission pop-up was dismissed. Allow notifications for this site in your browser settings, then come back.",
     insecure:
-      "Not available over a plain http:// address — this lights up once the booth's secure address is live.",
+      "Not available on this plain (http) address. Open ProDeck from the booth's secure address to turn them on.",
     "needs-install":
-      "Add ProDeck to your Home Screen first — iOS sends no notifications to a browser tab.",
+      "Add ProDeck to your Home Screen first. iPhones send no notifications to a browser tab.",
     unsupported: "This browser can't do push notifications.",
   };
 
