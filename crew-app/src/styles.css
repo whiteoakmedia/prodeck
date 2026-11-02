@@ -1,0 +1,153 @@
+/* ProDeck Crew shell. Colours and type from design/mobile/README.md, the same
+   tokens as the crew web app (src/mobile/tokens.css), so the hand-off from
+   these screens to the booth's crew app doesn't change look. */
+
+:root {
+  --bg: #0e131b;
+  --panel: #161d28;
+  --panel-sunk: #131a24;
+  --panel-raised: #1b2430;
+  --border-mid: #2b3849;
+  --text: #eef3fa;
+  --text-soft: #c9d6e6;
+  --muted: #92a2b6;
+  --dim: #6d7f95;
+  --accent: #5b8def;
+  --accent-hi: #79a4f6;
+  --warn: #f0b429;
+  --danger: #e0645b;
+  --font-sans: "IBM Plex Sans", -apple-system, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+.mono { font-family: var(--font-mono); }
+
+.app { min-height: 100%; display: flex; flex-direction: column; }
+.screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: max(20px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
+  max-width: 520px;
+  width: 100%;
+  margin: 0 auto;
+}
+.screen.center { justify-content: center; text-align: center; }
+
+.mark { width: 64px; height: 64px; margin: 0 auto 4px; }
+.title { margin: 0; font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; }
+.sub { margin: 0 auto; max-width: 30ch; color: var(--text-soft); line-height: 1.45; }
+.hint { color: var(--muted); font-size: 0.875rem; line-height: 1.4; margin: 0; }
+.err { color: var(--warn); font-size: 0.875rem; margin: 0; }
+h2 { margin: 0; font-size: 1.25rem; font-weight: 600; }
+
+.actions { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+.btn {
+  min-height: 56px;
+  border-radius: 18px;
+  border: none;
+  background: var(--panel-raised);
+  box-shadow: inset 0 0 0 1px var(--border-mid);
+  font-size: 1rem;
+  font-weight: 600;
+}
+.btn.primary { background: var(--accent); color: #0e131b; box-shadow: none; }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.link { background: none; border: none; color: var(--accent-hi); font-weight: 600; min-height: 44px; }
+
+.bar { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.back { background: none; border: none; font-size: 2rem; line-height: 1; width: 44px; height: 44px; color: var(--accent-hi); }
+
+.list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; text-align: left; }
+.church { display: flex; align-items: stretch; gap: 6px; }
+.church-open {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: none;
+  background: var(--panel);
+  text-align: left;
+}
+.church-name { font-weight: 600; font-size: 1.0625rem; }
+.church-addr { color: var(--muted); font-size: 0.8125rem; }
+.church-forget { width: 44px; border: none; border-radius: 16px; background: var(--panel-sunk); color: var(--dim); }
+
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 0.875rem; color: var(--muted); }
+/* 16px and up, or iPhone zooms the page when you tap in. */
+.input {
+  min-height: 52px;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: none;
+  background: var(--panel-sunk);
+  box-shadow: inset 0 0 0 1px var(--border-mid);
+  color: var(--text);
+  font: inherit;
+  font-size: 1rem;
+}
+.input:focus { outline: none; box-shadow: inset 0 0 0 1.5px var(--accent); }
+
+.viewfinder {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 24px;
+  background: #05080c;
+  display: grid;
+  place-items: center;
+  color: var(--dim);
+  font-size: 0.9375rem;
+  margin: 8px 0;
+}
+.viewfinder p { margin: 0; padding: 0 24px; text-align: center; }
+.corner { position: absolute; width: 36px; height: 36px; border: 3px solid var(--accent); }
+.corner.tl { top: 22%; left: 22%; border-right: none; border-bottom: none; border-radius: 10px 0 0 0; }
+.corner.tr { top: 22%; right: 22%; border-left: none; border-bottom: none; border-radius: 0 10px 0 0; }
+.corner.bl { bottom: 22%; left: 22%; border-right: none; border-top: none; border-radius: 0 0 0 10px; }
+.corner.br { bottom: 22%; right: 22%; border-left: none; border-top: none; border-radius: 0 0 10px 0; }
+
+.searching, .empty { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; margin-top: 40px; }
+.empty .btn { width: 100%; }
+.pulse {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.pulse.big { width: 22px; height: 22px; margin: 0 auto 8px; }
+@keyframes pulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+/* Preview only: the booth's crew app in place of the native web view. */
+.opened { position: fixed; inset: 0; background: var(--bg); }
+.booth-frame { width: 100%; height: 100%; border: 0; }
+.switch {
+  position: fixed;
+  left: 10px;
+  bottom: calc(86px + env(safe-area-inset-bottom));
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-mid);
+  background: rgba(22, 29, 40, 0.92);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
