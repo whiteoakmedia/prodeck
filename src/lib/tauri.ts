@@ -1428,8 +1428,41 @@ export function on<T = unknown>(
     set.add(h);
     return Promise.resolve((() => set!.delete(h)) as UnlistenFn);
   }
-  return tauriListen<T>(event, (e) => cb(e.payload));
+  // Tauri's unlisten first runs the webview's unregisterListener script, which
+  // reads listeners[eventId].handlerId and throws when that entry isn't there:
+  // the same unlisten called twice, or a quick mount and unmount that unlistens
+  // before the webview defined the entry. It's async, so the throw surfaced as an
+  // unhandled rejection (Sentry) and the Rust side unlisten was skipped, leaking
+  // the listener. So: unlisten at most once, never reject, retry once a moment
+  // later, and stop calling `cb` as soon as unlisten is asked for.
+  let live = true;
+  return tauriListen<T>(event, (e) => {
+    if (live) cb(e.payload);
+  }).then((real): UnlistenFn => {
+    let done = false;
+    const attempt = (): Promise<boolean> => {
+      try {
+        return Promise.resolve(real() as unknown).then(
+          () => true,
+          () => false,
+        );
+      } catch {
+        return Promise.resolve(false);
+      }
+    };
+    return () => {
+      if (done) return;
+      done = true;
+      live = false;
+      void attempt().then((ok) => {
+        if (!ok) setTimeout(() => void attempt(), UNLISTEN_RETRY_MS);
+      });
+    };
+  });
 }
+
+/** Wait before the one retry of a Tauri unlisten that failed. */
+export const UNLISTEN_RETRY_MS = 100;
 
 // ---- Reliability / diagnostics / backup / help (desktop only) ----
 export interface KeepaliveStatus {
