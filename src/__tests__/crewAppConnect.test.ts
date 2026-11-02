@@ -70,3 +70,26 @@ describe("crew app: booths found on the Wi-Fi", () => {
     ]);
   });
 });
+
+import { readLink } from "../../crew-app/src/links";
+
+describe("crew app: links that open it", () => {
+  it("connects to the booth a link names", () => {
+    expect(readLink("prodeckcrew://connect?to=https%3A%2F%2Fbooth.stjohns.org%2Fjoin")).toEqual({
+      kind: "connect",
+      to: "https://booth.stjohns.org/join",
+    });
+    expect(readLink("prodeckcrew://connect?to=192.168.1.20")).toEqual({ kind: "connect", to: "192.168.1.20" });
+  });
+
+  it("opens the demo or the churches list", () => {
+    expect(readLink("prodeckcrew://demo")).toEqual({ kind: "demo" });
+    expect(readLink("prodeckcrew://home")).toEqual({ kind: "home" });
+  });
+
+  it("ignores anything else", () => {
+    for (const bad of ["prodeckcrew://connect", "prodeckcrew://wipe", "https://evil.example/demo", "nonsense"]) {
+      expect(readLink(bad)).toBeNull();
+    }
+  });
+});

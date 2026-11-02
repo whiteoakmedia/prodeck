@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import mark from "./mark.svg";
 import { Intro } from "./Intro";
+import { readLink, type LinkAction } from "./links";
 import { forget, parseTarget, remember, shortName, type Church, type Target } from "./connect";
 import { checkBooth, findBooths, isNative, loadChurches, saveChurches, scanCode, type Found } from "./native";
 
@@ -24,11 +25,33 @@ export function App() {
   const [err, setErr] = useState("");
   // The intro plays once per launch, not when coming back from a church.
   const [intro, setIntro] = useState(!asked);
+  // A link that opened the app (links.ts), acted on once the intro is done.
+  const [link, setLink] = useState<LinkAction>(null);
+  useEffect(() => {
+    if (!isNative()) {
+      // Preview: ?link=prodeckcrew://… stands in for opening a link.
+      const l = new URLSearchParams(location.search).get("link");
+      if (l) setLink(readLink(l));
+      return;
+    }
+    let off: (() => void) | undefined;
+    import("@capacitor/app").then(async ({ App: Cap }) => {
+      const launch = await Cap.getLaunchUrl().catch(() => undefined);
+      if (launch?.url) setLink(readLink(launch.url));
+      const h = await Cap.addListener("appUrlOpen", (e) => setLink(readLink(e.url)));
+      off = () => void h.remove();
+    });
+    return () => off?.();
+  }, []);
 
   // Opening the app goes straight to the church you used last, once the intro
   // has played; the churches list is for switching. (On a phone only: the
   // preview stays on the list.)
   const introDone = () => {
+    if (link) {
+      setIntro(false);
+      return; // the link decides where to go (below)
+    }
     if (isNative() && !asked && churches.length > 0) {
       openChurch(churches[0]);
       return;
@@ -70,6 +93,16 @@ export function App() {
     }
     go({ kind: "open", church: { base: "", name: "Demo", lastMs: 0 }, url });
   };
+
+  // Act on a link once the intro has played.
+  useEffect(() => {
+    if (intro || !link) return;
+    const l = link;
+    setLink(null);
+    if (l.kind === "demo") openDemo();
+    else if (l.kind === "home") go({ kind: "home" });
+    else tryInput(l.to);
+  }, [intro, link]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (intro) return <Intro onDone={introDone} />;
   if (screen.kind === "open") return <Opened url={screen.url} church={screen.church} onBack={() => go({ kind: "home" })} />;

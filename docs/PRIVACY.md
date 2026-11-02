@@ -1,6 +1,6 @@
 # ProDeck privacy notice
 
-Effective 27 October 2026 (ProDeck 0.9.109). ProDeck is a free app from White Oak Media, contact zach@whiteoakmedia.io.
+Effective 2 November 2026 (ProDeck 0.9.116 and ProDeck Crew 1.0). ProDeck is a free app from White Oak Media, contact zach@whiteoakmedia.io.
 
 **The short version:** ProDeck runs on your church's own computer. It has no accounts with us and no tracking. It does send us crash reports when something breaks, and an anonymous count once a day that one copy is in use, with nothing that identifies your church or anyone in it, and you can turn either off. Almost everything it handles stays on that computer and your church network. The few things that leave it are listed below, and most go only to services your church chose and signed in to itself.
 
@@ -33,6 +33,17 @@ These run only when your church turns them on and connects its own account. Each
 ## Recordings and data on the computer
 
 Multitrack recordings, service reports, settings and crew accounts are stored on the booth computer, or on the drive you choose for recordings. They're never uploaded by ProDeck. Your church decides who can use that computer and how long to keep them.
+
+## The ProDeck Crew phone app
+
+ProDeck Crew (iPhone, iPad and Android) connects a volunteer to their church's own ProDeck booth. It has no account with White Oak Media and sends White Oak Media nothing: no analytics, no tracking, no advertising.
+
+- **On the phone:** the list of churches you've connected to (each booth's address and name), and, from the booth's crew app, your crew sign-in on that phone.
+- **To your church's booth:** what you do in the crew app goes to the ProDeck computer your church runs, on its own network: your name and PIN when you join, chat messages, check-ins, checklist ticks, and confirmations of pages. Your church's production leaders can see these. White Oak Media can't.
+- **Camera:** used only to scan your church's crew code. Images never leave the phone.
+- **Local network:** used only to find your church's booth on the Wi-Fi and connect to it.
+- **Microphone:** used only while you talk on crew comms, if your church turns comms on. Your voice goes straight to the other crew phones on the church network.
+- **Deleting your account:** in the app, **More → Delete my account** removes your crew account from your church's booth: your sign-in, PIN and notifications. It doesn't change Planning Center. To remove everything else your church holds, ask your church's production leader.
 
 ## Children
 
