@@ -558,6 +558,12 @@ fn tls_config() -> Result<Arc<rustls::ServerConfig>, String> {
 /// real one added. Returns None if it isn't an HTTP request head.
 pub fn rewrite_head(head: &[u8], peer: &str) -> Option<Vec<u8>> {
     let text = std::str::from_utf8(head).ok()?;
+    // The gateway reads headers line by line on any newline, so a bare LF
+    // could hide a second header inside one this front thinks it read. Refuse
+    // anything that isn't plain CRLF.
+    if text.replace("\r\n", "").contains(['\n', '\r']) {
+        return None;
+    }
     let mut lines = text.split("\r\n");
     let first = lines.next()?;
     if !first.contains(" HTTP/1.") {
@@ -565,9 +571,10 @@ pub fn rewrite_head(head: &[u8], peer: &str) -> Option<Vec<u8>> {
     }
     let mut out = format!("{first}\r\nX-ProDeck-Peer: {peer}\r\n");
     for l in lines {
-        let lower = l.to_ascii_lowercase();
-        // A phone must not be able to claim to be somewhere else.
-        if lower.starts_with("x-prodeck-peer:") || lower.starts_with("cf-connecting-ip:") {
+        // A phone must not be able to claim to be somewhere else. Matched on
+        // the trimmed name, the way the gateway reads it ("CF-Connecting-IP :").
+        let name = l.split_once(':').map(|(k, _)| k.trim().to_ascii_lowercase()).unwrap_or_default();
+        if name == "x-prodeck-peer" || name == "cf-connecting-ip" {
             continue;
         }
         out.push_str(l);
@@ -952,6 +959,12 @@ mod tests {
         assert!(out.contains("Content-Length: 2\r\n"));
         assert!(out.ends_with("\r\n\r\n") && !out.ends_with("\r\n\r\n\r\n"), "{out:?}");
         assert!(rewrite_head(b"\x16\x03\x01 not http\r\n\r\n", "1.1.1.1").is_none());
+        // Smuggling attempts the gateway would read as a Cloudflare header.
+        let bare_lf = b"GET / HTTP/1.1\r\nX-A: b\nCF-Connecting-IP: 9.9.9.9\r\n\r\n";
+        assert!(rewrite_head(bare_lf, "192.168.1.50").is_none(), "a bare LF must be refused");
+        let spaced = b"GET / HTTP/1.1\r\nCF-Connecting-IP : 9.9.9.9\r\nx-prodeck-peer\t: 1.1.1.1\r\n\r\n";
+        let out = String::from_utf8(rewrite_head(spaced, "192.168.1.50").unwrap()).unwrap();
+        assert!(!out.contains("9.9.9.9") && !out.contains("1.1.1.1"), "{out}");
     }
 
     #[test]

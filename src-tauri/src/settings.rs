@@ -944,11 +944,12 @@ pub fn update_settings(
         let mut settings = settings;
         // The secure local address is written by the booth itself
         // (localhttps.rs) while the Settings page is open: a save from a form
-        // loaded earlier must not put back a stale claim or address. The
-        // address override is the one part the page sets.
+        // loaded earlier must not put back a stale claim or address.
         settings.local_name = s.local_name.clone();
         settings.local_secret = s.local_secret.clone();
         settings.local_url = s.local_url.clone();
+        // Chosen in the Secure local address card, which saves it itself.
+        settings.local_ip = s.local_ip.clone();
         *s = settings;
         s.clone()
     };
