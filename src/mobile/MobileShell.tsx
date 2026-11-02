@@ -396,6 +396,7 @@ function PushCard() {
   };
   // The ProDeck Crew app: no browser, and the phone's own Settings.
   if (IN_CREW_APP) {
+    copy.on = "Pages will buzz this phone even when ProDeck Crew is closed.";
     copy.denied = "Notifications are off for ProDeck Crew. Turn them on in the phone's Settings, under Notifications, then tap the switch.";
     copy.unsupported = "Pages can't buzz this phone yet. Keep ProDeck Crew open during the service and pages still show.";
   }

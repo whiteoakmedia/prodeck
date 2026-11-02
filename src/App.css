@@ -10441,7 +10441,9 @@ select.input {
   position: absolute;
   left: 16px;
   right: 16px;
-  bottom: 16px;
+  /* Clear of the iPhone's home bar, where a tap swipes the app away. */
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: space-between;
