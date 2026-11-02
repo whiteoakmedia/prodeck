@@ -87,9 +87,19 @@ fn status() -> Status {
 }
 
 fn dir() -> PathBuf {
-    let mut d = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
-    d.push("ProDeck");
-    d.push("local-https");
+    // Overridable so the live test (below) never touches the booth's own files.
+    let mut d = match std::env::var("PRODECK_LOCAL_HTTPS_DIR") {
+        Ok(p) if !p.is_empty() => PathBuf::from(p),
+        _ => {
+            let mut d = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
+            d.push("ProDeck");
+            d.push("local-https");
+            d
+        }
+    };
+    if d.as_os_str().is_empty() {
+        d = PathBuf::from(".");
+    }
     let _ = std::fs::create_dir_all(&d);
     d
 }
@@ -364,6 +374,10 @@ async fn issue(app: &AppHandle, name: &str, secret: &str, host: &str) -> Result<
         s.phase = "certifying".into();
         s.detail = "Getting a certificate from Let's Encrypt (about a minute)".into();
     });
+    issue_cert(name, secret, host).await
+}
+
+async fn issue_cert(name: &str, secret: &str, host: &str) -> Result<(), String> {
     let mut acme = Acme::new().await?;
     acme.ensure_account().await?;
     let thumb = thumbprint(&jwk(&acme.acct.key));
@@ -944,5 +958,95 @@ mod tests {
     fn address_without_port_on_443() {
         assert_eq!(url_for("a.local.prodeck.live", 443), "https://a.local.prodeck.live");
         assert_eq!(url_for("a.local.prodeck.live", 8443), "https://a.local.prodeck.live:8443");
+    }
+
+    // A phone's https request goes through the front and arrives at the
+    // gateway as plain HTTP, with the phone named and a forged name dropped,
+    // and the gateway's answer comes back over TLS.
+    #[tokio::test]
+    async fn the_front_passes_a_request_through_over_tls() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let provider = Arc::new(rustls::crypto::ring::default_provider());
+        let key = rcgen::KeyPair::generate().unwrap();
+        let cert = rcgen::CertificateParams::new(vec!["localhost".to_string()]).unwrap().self_signed(&key).unwrap();
+        let cert_der = cert.der().clone();
+        let server = rustls::ServerConfig::builder_with_provider(provider.clone())
+            .with_safe_default_protocol_versions()
+            .unwrap()
+            .with_no_client_auth()
+            .with_single_cert(
+                vec![cert_der.clone()],
+                rustls::pki_types::PrivateKeyDer::try_from(key.serialize_der()).unwrap(),
+            )
+            .unwrap();
+
+        // Stand-in gateway: records the head it got, answers once.
+        let gw = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let gw_port = gw.local_addr().unwrap().port();
+        let got = tokio::spawn(async move {
+            let (mut s, _) = gw.accept().await.unwrap();
+            let mut buf = vec![0u8; 4096];
+            let n = s.read(&mut buf).await.unwrap();
+            s.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok").await.unwrap();
+            String::from_utf8_lossy(&buf[..n]).to_string()
+        });
+
+        let front = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let front_port = front.local_addr().unwrap().port();
+        let acceptor = tokio_rustls::TlsAcceptor::from(Arc::new(server));
+        tokio::spawn(async move {
+            let (tcp, peer) = front.accept().await.unwrap();
+            serve_one(acceptor, tcp, peer, gw_port).await;
+        });
+
+        let mut roots = rustls::RootCertStore::empty();
+        roots.add(cert_der).unwrap();
+        let client = rustls::ClientConfig::builder_with_provider(provider)
+            .with_safe_default_protocol_versions()
+            .unwrap()
+            .with_root_certificates(roots)
+            .with_no_client_auth();
+        let tcp = tokio::net::TcpStream::connect(("127.0.0.1", front_port)).await.unwrap();
+        let mut tls = tokio_rustls::TlsConnector::from(Arc::new(client))
+            .connect(rustls::pki_types::ServerName::try_from("localhost").unwrap(), tcp)
+            .await
+            .unwrap();
+        tls.write_all(b"GET /api/events HTTP/1.1\r\nHost: localhost\r\nX-ProDeck-Peer: 6.6.6.6\r\n\r\n").await.unwrap();
+        let mut answer = String::new();
+        let _ = tls.read_to_string(&mut answer).await;
+
+        let head = got.await.unwrap();
+        assert!(head.starts_with("GET /api/events HTTP/1.1\r\nX-ProDeck-Peer: 127.0.0.1\r\n"), "{head}");
+        assert!(!head.contains("6.6.6.6"), "a forged peer must not get through: {head}");
+        assert!(answer.ends_with("ok"), "the gateway's answer comes back: {answer}");
+    }
+
+    /// The whole path for real: claim a throwaway name from the deployed
+    /// Worker, point it at a made-up private address, get a certificate from
+    /// Let's Encrypt's STAGING service, check it, give the name back. Network
+    /// and a deployed Worker needed, so it only runs when asked:
+    ///   PRODECK_LOCAL_HTTPS_DIR=/tmp/x PRODECK_ACME_DIRECTORY=https://acme-staging-v02.api.letsencrypt.org/directory \
+    ///     cargo test live_issue -- --ignored --nocapture
+    #[tokio::test]
+    #[ignore]
+    async fn live_issue_against_staging() {
+        assert!(acme_directory().contains("staging"), "set PRODECK_ACME_DIRECTORY to Let's Encrypt staging");
+        assert!(std::env::var("PRODECK_LOCAL_HTTPS_DIR").is_ok(), "set PRODECK_LOCAL_HTTPS_DIR to a scratch folder");
+        let name = format!("prodeck-test-{}", &uuid::Uuid::new_v4().simple().to_string()[..8]);
+        let host = format!("{name}.{BASE}");
+        let claim = edge_call(reqwest::Method::POST, "/v1/claim", json!({ "name": name })).await.expect("claim");
+        let secret = claim["secret"].as_str().unwrap().to_string();
+        let result = async {
+            edge_call(reqwest::Method::POST, "/v1/address", json!({ "name": name, "secret": secret, "ip": "192.168.77.7" })).await?;
+            issue_cert(&name, &secret, &host).await
+        }
+        .await;
+        let _ = edge_call(reqwest::Method::POST, "/v1/release", json!({ "name": name, "secret": secret })).await;
+        result.expect("issue");
+        let pem = std::fs::read_to_string(dir().join("cert.pem")).unwrap();
+        let (nb, na) = cert_validity(&pem).expect("dates");
+        println!("issued {host}: valid {} days", (na - nb) / 86_400);
+        assert!(na > nb && !needs_renewal(Some((nb, na)), (now_ms() / 1000) as i64));
+        assert!(tls_config().is_ok(), "the certificate and key load into the https front");
     }
 }
