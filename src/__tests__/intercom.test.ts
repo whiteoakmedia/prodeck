@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { audibleIds, cannotJoin, reconcile, shouldOffer, talkers } from "../lib/intercom";
+import { audibleIds, cannotJoin, reconcile, shouldOffer, talkers, talkLabel } from "../lib/intercom";
 import type { IntercomMember } from "../lib/tauri";
 
 const m = (id: string, name: string, talk: string | null = null, listen = ["All"]): IntercomMember => ({ id, name, talk, listen });
@@ -46,5 +46,17 @@ describe("intercom rules", () => {
     // Plain LAN http: browsers withhold the microphone.
     expect(cannotJoin({ ...ok, secure: false })).toMatch(/https/);
     expect(cannotJoin({ ...ok, hasMic: false })).toMatch(/https/);
+  });
+
+  // Open mic turns every Talk button into a mute switch; it must always be
+  // obvious whether the line can hear you.
+  it("labels the Talk button for hold to talk and open mic", () => {
+    expect(talkLabel({ openMic: false, talking: false, line: "All" })).toBe("Hold to talk on All");
+    expect(talkLabel({ openMic: false, talking: true, line: "All" })).toBe("Talking on All");
+    expect(talkLabel({ openMic: false, talking: true, line: "All", short: "Talk" })).toBe("Talk");
+    expect(talkLabel({ openMic: true, talking: true, line: "Cameras" })).toBe("Live on Cameras. Tap to mute");
+    expect(talkLabel({ openMic: true, talking: false, line: "Cameras" })).toBe("Muted. Tap to talk on Cameras");
+    expect(talkLabel({ openMic: true, talking: true, line: "All", short: "Talk" })).toBe("Mute");
+    expect(talkLabel({ openMic: true, talking: false, line: "All", short: "Talk" })).toBe("Unmute");
   });
 });

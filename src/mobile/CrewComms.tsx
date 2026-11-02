@@ -6,8 +6,11 @@ import {
   leaveComms,
   onComms,
   setListening,
+  setOpenMic,
   setTalkLine,
   talk,
+  talkLabel,
+  toggleMute,
   talkers,
   type CommsSnapshot,
 } from "../lib/intercom";
@@ -18,10 +21,29 @@ export function useComms(): CommsSnapshot {
   return useSyncExternalStore(onComms, commsSnapshot, commsSnapshot);
 }
 
-/** Hold to talk. Pointer events cover touch, pen and mouse; letting go anywhere stops it. */
+/**
+ * Hold to talk, or with open mic on, a tap to mute and unmute. Pointer events
+ * cover touch, pen and mouse; letting go anywhere stops a hold.
+ */
 export function TalkButton({ className = "", label }: { className?: string; label?: string }) {
   const c = useComms();
   if (c.state !== "on") return null;
+  if (c.openMic) {
+    const text = talkLabel({ openMic: true, talking: c.talking, line: c.talkOn, short: label });
+    return (
+      <button
+        type="button"
+        className={`crew-talk ${c.talking ? "on" : ""} ${className}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          toggleMute();
+        }}
+        aria-pressed={c.talking}
+      >
+        {text}
+      </button>
+    );
+  }
   const stop = () => talk(false);
   return (
     <button
@@ -39,7 +61,7 @@ export function TalkButton({ className = "", label }: { className?: string; labe
       onContextMenu={(e) => e.preventDefault()}
       aria-pressed={c.talking}
     >
-      {label ?? (c.talking ? `Talking on ${c.talkOn}` : `Hold to talk on ${c.talkOn}`)}
+      {talkLabel({ openMic: false, talking: c.talking, line: c.talkOn, short: label })}
     </button>
   );
 }
@@ -121,6 +143,23 @@ export function CrewComms({ onBack }: { onBack: () => void }) {
               ))}
             </div>
             <TalkButton className="big" />
+            <div className="crew-comms-listen" style={{ marginTop: 10 }}>
+              <span>
+                Open mic
+                <span className="crew-hint" style={{ display: "block" }}>
+                  Talk without holding, until you turn it off. Starts muted: tap the button to talk.
+                </span>
+              </span>
+              <button
+                className={`crew-toggle ${c.openMic ? "on" : ""}`}
+                role="switch"
+                aria-checked={c.openMic}
+                aria-label="Open mic"
+                onClick={() => setOpenMic(!c.openMic)}
+              >
+                <span className="crew-toggle-knob" />
+              </button>
+            </div>
           </div>
 
           <div className="crew-card edge">

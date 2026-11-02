@@ -39,6 +39,7 @@ const HEARTBEAT_MS = 15_000;
 const DIAL_TIMEOUT_MS = 12_000;
 const LISTEN_KEY = "prodeck.commsListen";
 const TALK_KEY = "prodeck.commsTalk";
+const OPEN_KEY = "prodeck.commsOpenMic";
 export const DEFAULT_LISTEN = ["All"];
 
 export type CommsState = "off" | "joining" | "on";
@@ -51,6 +52,13 @@ export interface CommsSnapshot {
   listen: string[];
   /** The line the Talk button talks on. */
   talkOn: string;
+  /**
+   * Open mic: talking without holding the button, until it's turned off. The
+   * big button becomes Mute. Remembered, but every join starts muted: a mic
+   * that opened by itself when the app came back could put a private word on
+   * the line in the middle of the sermon.
+   */
+  openMic: boolean;
   talking: boolean;
   /** People connected to this phone right now (audio path up). */
   linked: string[];
@@ -95,6 +103,19 @@ export function talkers(members: IntercomMember[], me: string): { name: string; 
     .map((m) => ({ name: m.id === me ? "You" : m.name.split(/\s+/)[0] || m.name, line: m.talk as string, me: m.id === me }));
 }
 
+/**
+ * What the Talk button says. `short` is the chip and tally button, where
+ * "Talk" (hold) or Mute / Unmute (open mic) has to fit.
+ */
+export function talkLabel(o: { openMic: boolean; talking: boolean; line: string; short?: string }): string {
+  if (o.openMic) {
+    if (o.short) return o.talking ? "Mute" : "Unmute";
+    return o.talking ? `Live on ${o.line}. Tap to mute` : `Muted. Tap to talk on ${o.line}`;
+  }
+  if (o.short) return o.short;
+  return o.talking ? `Talking on ${o.line}` : `Hold to talk on ${o.line}`;
+}
+
 /** Why comms can't start on this device, or "" if it can. */
 export function cannotJoin(env: { isWeb: boolean; boothScreen: boolean; secure: boolean; hasMic: boolean; signedIn: boolean }): string {
   if (!env.isWeb || env.boothScreen) return "Comms runs on phones and tablets, never on the booth computer.";
@@ -132,6 +153,7 @@ let snap: CommsSnapshot = {
   roster: { channels: [], members: [] },
   listen: readList(LISTEN_KEY, DEFAULT_LISTEN),
   talkOn: readStr(TALK_KEY, "All"),
+  openMic: readStr(OPEN_KEY, "") === "1",
   talking: false,
   linked: [],
   links: {},
@@ -242,6 +264,18 @@ export function talk(on: boolean) {
   intercomTalk(session(), on ? snap.talkOn : null).catch(() => {});
 }
 
+/** Open mic on or off. Turning it on starts muted; turning it off closes the mic. */
+export function setOpenMic(on: boolean) {
+  writeStr(OPEN_KEY, on ? "1" : "");
+  set({ openMic: on });
+  if (!on) talk(false);
+}
+
+/** Open mic's Mute button: the mic is either live on your line or closed. */
+export function toggleMute() {
+  talk(!snap.talking);
+}
+
 export function setTalkLine(line: string) {
   writeStr(TALK_KEY, line);
   set({ talkOn: line });
@@ -278,7 +312,15 @@ function checkDials() {
 
 function heartbeat() {
   intercomJoin(session(), snap.listen)
-    .then((r) => applyRoster(r.roster))
+    .then((r) => {
+      applyRoster(r.roster);
+      // An open mic outlives the booth's memory of it (a booth restart, a
+      // phone that dropped off and rejoined). Say it again, or everyone else
+      // switches this phone off while it is still talking.
+      const mine = r.roster.members.find((m) => m.id === snap.me);
+      const want = snap.talking ? snap.talkOn : null;
+      if (mine && (mine.talk ?? null) !== want) intercomTalk(session(), want).catch(() => {});
+    })
     .catch(() => {});
 }
 

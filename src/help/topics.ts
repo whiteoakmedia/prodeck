@@ -756,7 +756,7 @@ The link carries the member password. Changing that password stops every tally l
     group: "Crew",
     title: "Comms: talking to the crew from phones",
     aliases: ["comms", "intercom", "headset", "talk to the crew", "push to talk", "party line", "clearcom", "radio"],
-    body: `Comms turns crew phones and iPads into a hold to talk intercom. On a phone: **More → Comms → Join comms**, allow the microphone, pick the line to talk on, and hold the big button while you speak. There are four lines: **All**, **Cameras**, **Stage** and **Booth**. Choose which ones you listen to; everyone hears All unless they turn it off. A chip at the top of every screen shows who's talking and has its own **Talk** button.
+    body: `Comms turns crew phones and iPads into a hold to talk intercom. On a phone: **More → Comms → Join comms**, allow the microphone, pick the line to talk on, and hold the big button while you speak. There are four lines: **All**, **Cameras**, **Stage** and **Booth**. Choose which ones you listen to; everyone hears All unless they turn it off. A chip at the top of every screen shows who's talking and has its own **Talk** button. For hands-free comms, turn on **Open mic**: you talk without holding anything until you turn it off, and the big button (and the chip's) becomes **Mute** and **Unmute**. Open mic always starts muted when you join, so a mic never opens by itself.
 
 Phones talk straight to each other over the church Wi-Fi, so the delay is a fraction of a second. ProDeck only connects them, and the booth computer never plays comms: it can't reach the house.
 
