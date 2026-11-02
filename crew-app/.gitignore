@@ -1,2 +1,4 @@
 node_modules/
 dist/
+ios/build/
+public/demo/

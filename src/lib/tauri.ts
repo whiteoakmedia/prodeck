@@ -1161,6 +1161,8 @@ export const pageSendAs = (
   recipients: string[],
   buzz: boolean,
 ) => invoke<CrewPage>("page_send", { session, body, recipients, buzz });
+/** Delete the signed-in volunteer's own crew account at the booth. */
+export const identityDeleteSelf = (session: string) => invoke<unknown>("identity_delete_self", { session });
 export const pageAck = (session: string, pageId: number) =>
   invoke<PageReceipt>("page_ack", { session, pageId });
 

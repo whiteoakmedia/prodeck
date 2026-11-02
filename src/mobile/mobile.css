@@ -1318,3 +1318,7 @@
 .crew .crew-notify-step .crew-btn { max-width: none; }
 .crew .crew-notify-step .crew-link { align-self: center; }
 .crew .crew-comms-rejoin { padding: 8px 14px; color: var(--text); font-size: 0.75rem; font-weight: 700; }
+
+/* Delete my account (More). */
+.crew .crew-delete { color: var(--danger); }
+.crew .crew-delete-yes { background: var(--danger); color: #1a0806; border: none; }

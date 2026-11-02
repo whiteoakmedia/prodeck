@@ -5,14 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 5180 --strictPort",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && npm run demo && vite build",
     "android": "vite build && npx cap sync android && npx cap run android",
-    "ios": "vite build && npx cap sync ios && npx cap open ios"
+    "ios": "vite build && npx cap sync ios && npx cap open ios",
+    "demo": "cd .. && npx vite build --base=./ --outDir crew-app/public/demo --emptyOutDir"
   },
   "dependencies": {
     "@capacitor/android": "^8.6.0",
     "@capacitor/barcode-scanner": "^3.1.3",
     "@capacitor/core": "^8.6.0",
+    "@capacitor/ios": "^8.6.0",
     "@capacitor/status-bar": "^8.0.4",
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@fontsource/ibm-plex-sans": "^5.3.0",

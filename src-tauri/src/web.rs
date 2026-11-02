@@ -1766,6 +1766,8 @@ pub(crate) fn member_cmd_ok(cmd: &str) -> bool {
             // Confirming a page is exactly what a member is for; page_list is
             // read-only and lets a phone recover a page it missed while asleep.
             | "page_ack" | "page_list" | "posfile_list"
+            // Deleting your own account: always the session's own, never an id.
+            | "identity_delete_self"
             // Comms is for every crew phone; each call acts only as the
             // session's own person (intercom.rs).
             | "intercom_join" | "intercom_leave" | "intercom_talk" | "intercom_signal" | "intercom_roster"
@@ -2238,6 +2240,19 @@ async fn dispatch(
             let identity = app.state::<crate::identity::IdentityState>().inner().clone();
             crate::identity::approve_core(app, &identity, s("id"), approved)?;
             Ok(Value::Null)
+        }
+        // A volunteer deletes their own crew account (App Store guideline
+        // 5.1.1(v): an app that creates accounts must let you delete yours).
+        // Only ever the session's own account; push goes with it.
+        "identity_delete_self" => {
+            let session = args.get("session").and_then(|v| v.as_str()).unwrap_or("");
+            let identity = app.state::<crate::identity::IdentityState>().inner().clone();
+            let (id, _) = crate::identity::session_user(&identity, session)
+                .ok_or("sign in first: there's no account on this phone to delete")?;
+            let push = app.state::<crate::push::PushState>().inner().clone();
+            crate::push::unsubscribe(&push, &id);
+            crate::identity::remove_core(app, &identity, id)?;
+            Ok(json!({ "ok": true }))
         }
         "identity_remove" => {
             let s = |k: &str| args.get(k).and_then(|v| v.as_str()).unwrap_or("").to_string();
@@ -2789,7 +2804,7 @@ mod member_pp_tests {
         for cmd in [
             "get_settings", "load_dashboards", "load_pco_data", "load_checklists",
             "load_routing", "load_tracking", "chat_history", "web_whoami", "pp_get",
-            "page_ack", "page_list", "posfile_list", "checkin_set", "checkin_list",
+            "page_ack", "page_list", "posfile_list", "checkin_set", "checkin_list", "identity_delete_self",
             "intercom_join", "intercom_leave", "intercom_talk", "intercom_signal", "intercom_roster",
             "checklist_toggle", "ga4_state",
             // The three tiles that were silently broken on every kiosk.

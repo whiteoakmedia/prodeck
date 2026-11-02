@@ -14,7 +14,7 @@ import { CrewDash } from "./CrewDash";
 import { CREW_ID_KEY, CREW_SESSION_KEY, useChat } from "../chatStore";
 import { listVisibleFor, useChecklists } from "../checklistStore";
 import { usePco } from "../pcoStore";
-import { IS_WEB, atemState, clearWebToken, identityWhoami, onGatewayState } from "../lib/tauri";
+import { IS_WEB, atemState, clearWebToken, identityDeleteSelf, identityWhoami, onGatewayState } from "../lib/tauri";
 import { offersTally, readTallyMode, writeTallyMode } from "../lib/tallyMode";
 import { switchLayout, wideScreen } from "../lib/layout";
 import { IN_CREW_APP, crewAppHome } from "../lib/crewApp";
@@ -259,6 +259,12 @@ export function MobileShell() {
                   >
                     Sign out completely
                   </button>
+                  {chat.auth === "in" && <DeleteAccount onDone={() => {
+                    chat.forgetDevice();
+                    clearWebToken();
+                    if (IN_CREW_APP) location.href = crewAppHome();
+                    else location.reload();
+                  }} />}
                   <p className="crew-hint muted" style={{ marginTop: 6 }}>
                     {isAdmin
                       ? "You can send pages from Chat."
@@ -289,6 +295,55 @@ export function MobileShell() {
 // Notifications. States the actual reason push isn't available rather than a
 // bare "off" — on iOS the browser reports "denied" when the real problem is
 // that the app isn't on the Home Screen yet, which is unguessable.
+/**
+ * Delete my account: removes this volunteer's crew account at the booth, with
+ * its notifications. Two taps, the second spelling out what goes.
+ */
+function DeleteAccount({ onDone }: { onDone: () => void }) {
+  const [sure, setSure] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  if (!sure) {
+    return (
+      <button className="btn ghost crew-delete" style={{ marginTop: 8 }} onClick={() => setSure(true)}>
+        Delete my account
+      </button>
+    );
+  }
+  return (
+    <div className="crew-card danger" style={{ marginTop: 10 }}>
+      <p style={{ margin: 0 }}>
+        This removes your ProDeck crew account from the booth: your sign-in, PIN and notifications. Planning
+        Center isn't changed, so you stay on the schedule, and your name is still there to tap if you join again.
+        Chat messages you sent stay.
+      </p>
+      {err && <p className="crew-join-err">{err}</p>}
+      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+        <button
+          className="btn crew-delete-yes"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            setErr("");
+            try {
+              await identityDeleteSelf(localStorage.getItem(CREW_SESSION_KEY) ?? "");
+              onDone();
+            } catch (e) {
+              setErr((e as Error)?.message ?? String(e));
+              setBusy(false);
+            }
+          }}
+        >
+          {busy ? "Deleting…" : "Delete my account"}
+        </button>
+        <button className="btn ghost" disabled={busy} onClick={() => setSure(false)}>
+          Keep it
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /** Offered only when the booth has a switcher to read cameras from. */
 function TallyCard({ onStart }: { onStart: () => void }) {
   const [show, setShow] = useState(false);

@@ -53,6 +53,17 @@ export function App() {
     go({ kind: "open", church: c, url });
   };
 
+  // The crew app's own demo, built into this app (npm run demo): a pretend
+  // Sunday with no booth, for the curious and for App Review.
+  const openDemo = () => {
+    const url = "./demo/index.html?shots=1&phone=1";
+    if (isNative()) {
+      window.location.href = url;
+      return;
+    }
+    go({ kind: "open", church: { base: "", name: "Demo", lastMs: 0 }, url });
+  };
+
   if (screen.kind === "open") return <Opened url={screen.url} church={screen.church} onBack={() => go({ kind: "home" })} />;
 
   return (
@@ -69,6 +80,7 @@ export function App() {
           onScan={() => go({ kind: "scan" })}
           onNearby={() => go({ kind: "nearby" })}
           onType={() => go({ kind: "type" })}
+          onDemo={openDemo}
         />
       )}
       {screen.kind === "scan" && <Scan onBack={() => go({ kind: "home" })} onCode={(c) => tryInput(c)} err={err} />}
@@ -95,6 +107,7 @@ function Home(p: {
   onScan: () => void;
   onNearby: () => void;
   onType: () => void;
+  onDemo: () => void;
 }) {
   const returning = p.churches.length > 0;
   return (
@@ -135,6 +148,9 @@ function Home(p: {
       {!returning && (
         <p className="hint">The crew code is on the poster in the green room, or in the invite the booth sent you.</p>
       )}
+      <button className="link" onClick={p.onDemo}>
+        Look around first, with a pretend Sunday
+      </button>
     </main>
   );
 }
