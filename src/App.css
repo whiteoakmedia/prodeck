@@ -10716,3 +10716,17 @@ select.input {
 .local-name-row .input { flex: 1; min-width: 0; }
 .local-suffix { color: var(--muted); font-family: var(--mono, ui-monospace, monospace); font-size: 13px; white-space: nowrap; }
 .local-name-bad { color: var(--warn); }
+
+/* Tips (lib/tip.ts): quiet, under the White Oak credit and in Help & support. */
+.sidebar-footer .gift-tip { display: block; margin: 2px auto 0; font-size: 12px; }
+.tip-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
+}

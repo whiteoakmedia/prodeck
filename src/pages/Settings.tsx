@@ -4,6 +4,7 @@ import { CONSOLES, consoleLabel, consoleNeedsMidi, isNrpnConsole, midiBaseForSwi
 import { rebase } from "../lib/formRebase";
 import { NdiNotice } from "../components/NdiNotice";
 import { openExternal } from "../lib/openExternal";
+import { showTips, tipUrl } from "../lib/tip";
 import { LegalDialog, type LegalKind } from "../components/LegalDialog";
 import { requestWizard } from "../lib/wizards";
 import { ReleaseNotesOptIn } from "../components/ReleaseNotesOptIn";
@@ -4125,6 +4126,25 @@ function ChopCard({
 }
 
 /** Help & support: the guide, the private bug/feature form, diagnostics, crash reports. */
+/** Settings, Help & support: a quiet way to say thanks (lib/tip.ts). */
+function TipBox() {
+  if (!showTips()) return null;
+  return (
+    <div className="tip-box">
+      <div>
+        <strong>Support ProDeck</strong>
+        <p className="muted small" style={{ margin: "2px 0 0" }}>
+          ProDeck is free for every church. If it saves your team time on Sundays, a tip helps White Oak Media keep
+          building it.
+        </p>
+      </div>
+      <button className="btn small" onClick={() => openExternal(tipUrl())}>
+        Leave a tip
+      </button>
+    </div>
+  );
+}
+
 function HelpCard() {
   const { subsystems } = useAlerts();
   const { settings, refreshSettings } = useProDeck();
@@ -4179,6 +4199,7 @@ function HelpCard() {
         <h3 id="set-help">Help &amp; support</h3>
         <HelpLink section="honest" />
       </div>
+      <TipBox />
       <div className="rel-actions" style={{ justifyContent: "flex-start", gap: 8, marginBottom: 10 }}>
         <button className="btn small" onClick={() => helpOpen().catch(() => window.open(DOCS_URL, "_blank", "noopener"))}>Open the guide</button>
         <button className="btn small" title="Fill every dashboard with a pretend Sunday. Writes nothing." onClick={() => setDemo(!IS_DEMO)}>
