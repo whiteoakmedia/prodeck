@@ -19,6 +19,10 @@ import { offersTally, readTallyMode, writeTallyMode } from "../lib/tallyMode";
 import { switchLayout, wideScreen } from "../lib/layout";
 import { TallyPage } from "../pages/Tally";
 import { CommsChip, CrewComms } from "./CrewComms";
+import { setCommsAllowed } from "../lib/intercom";
+import { syncHomeScreenManifest } from "../lib/homeScreen";
+import { CrewNotifyStep } from "./CrewNotifyStep";
+import { useProDeck } from "../store";
 import { disablePush, enablePush, pushState, type PushStatus } from "../lib/pushClient";
 import { listenSnapshot, onListen, stopListen } from "../lib/listen";
 import { onTrack, seekTrack, skipTrack, stopTrack, toggleTrack, trackSnapshot } from "../lib/trackPlayer";
@@ -35,8 +39,18 @@ export function MobileShell() {
   const [walk, setWalk] = useState(IS_SHOTS && SHOT_TAB === "walk");
   // Comms is a More screen too; the chip above every tab brings it back.
   const [comms, setComms] = useState(false);
+  // Comms is the booth's switch (Settings, Comms): off, it's nowhere on the
+  // phone, and a phone that was on it hangs up. Known = settings arrived;
+  // until then nothing rejoins by itself.
+  const { settings } = useProDeck();
+  const commsOn = !!settings?.comms_enabled;
+  useEffect(() => {
+    if (settings) setCommsAllowed(commsOn);
+  }, [settings, commsOn]);
   const [onboarding, setOnboarding] = useState(() => IS_WEB && shouldOnboard());
   const chat = useChat();
+  // Keep Add to Home Screen carrying this phone's sign-in (lib/homeScreen.ts).
+  useEffect(() => syncHomeScreenManifest(), [chat.auth]);
   // The overdue dot only counts lists this phone can actually see — an alert
   // for another position's hidden list is just an unanswerable mystery.
   const cl = useChecklists();
@@ -134,7 +148,7 @@ export function MobileShell() {
     <div className="crew">
       <div className="crew-chip-stack">
         <CommsChip
-          hidden={tab === "more" && comms && !walk && !leader}
+          hidden={!commsOn || (tab === "more" && comms && !walk && !leader)}
           onOpen={() => {
             setTab("more");
             setLeader(false);
@@ -146,6 +160,8 @@ export function MobileShell() {
       </div>
       <main className="crew-main">
         {tab === "home" && walk && <CrewWalk onBack={() => setWalk(false)} />}
+        {/* Onboarding's last step, until page notifications are on. */}
+        {IS_WEB && tab === "home" && !walk && <CrewNotifyStep onShowInstall={() => setOnboarding(true)} />}
         {tab === "home" && !walk && <CrewHome onGoChecklist={() => setTab("checklist")} onGoWalk={() => setWalk(true)} />}
         {tab === "chat" && (
           <div className="crew-page crew-page-chat">
@@ -156,8 +172,8 @@ export function MobileShell() {
         {tab === "dashboards" && <CrewDash />}
         {tab === "more" && leader && <CrewLeader />}
         {tab === "more" && !leader && walk && <CrewWalk onBack={() => setWalk(false)} />}
-        {tab === "more" && !leader && !walk && comms && <CrewComms onBack={() => setComms(false)} />}
-        {tab === "more" && !leader && !walk && !comms && (
+        {tab === "more" && !leader && !walk && comms && commsOn && <CrewComms onBack={() => setComms(false)} />}
+        {tab === "more" && !leader && !walk && !(comms && commsOn) && (
           <div className="crew-page">
             <h1 className="crew-title">More</h1>
             <button className="crew-card edge crew-guide" onClick={() => setWalk(true)}>
@@ -167,6 +183,7 @@ export function MobileShell() {
               <span className="crew-guide-line">Find the fault — what the booth already checked, then where to walk</span>
               <span className="crew-guide-go">Start →</span>
             </button>
+            {commsOn && (
             <button className="crew-card edge crew-guide" onClick={() => setComms(true)}>
               <span className="mono" style={{ color: "var(--accent-hi)" }}>
                 Comms
@@ -174,6 +191,7 @@ export function MobileShell() {
               <span className="crew-guide-line">Hold to talk to the crew on a line: All, Cameras, Stage or Booth</span>
               <span className="crew-guide-go">Open comms →</span>
             </button>
+            )}
             <TallyCard onStart={() => tallyOn(true)} />
             {IS_WEB && wideScreen() && (
               <button className="btn ghost" onClick={() => switchLayout("full")}>

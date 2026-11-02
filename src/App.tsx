@@ -32,6 +32,7 @@ import { ServiceWizard } from "./components/ServiceWizard";
 import { FirstRunSetup } from "./components/FirstRunSetup";
 import { GiftCredit } from "./components/GiftCredit";
 import { crewLayout, readLayoutPref, switchLayout } from "./lib/layout";
+import { syncHomeScreenManifest } from "./lib/homeScreen";
 import { SoundcheckWatch } from "./components/SoundcheckWatch";
 import { SetupWizards } from "./components/wizard/SetupWizards";
 import { isFreshInstall } from "./lib/onboarding";
@@ -138,6 +139,8 @@ const WIZARD_DAY_KEY = "prodeck.wizardDay";
 
 function Shell() {
   const [page, setPage] = useState<Page>((IS_SHOTS && (SHOT_PAGE as Page)) || "dashboard");
+  // An iPad on the full layout can be added to the Home Screen too.
+  useEffect(() => syncHomeScreenManifest(), []);
   // Which help topic to open; set by the `?` on a Settings card, or anywhere
   // else that calls openHelp().
   const [helpTopic, setHelpTopic] = useState<string | undefined>(undefined);

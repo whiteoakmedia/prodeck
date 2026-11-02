@@ -135,12 +135,44 @@ fn emit_roster(app: &AppHandle, members: &[Member]) {
     app.emit("intercom:roster", roster_json(members)).ok();
 }
 
-/// Everything the gateway routes here. `session` was already checked to be a
-/// signed-in crew device and `name` is its person.
-pub fn handle(app: &AppHandle, cmd: &str, session: &str, name: &str, args: &Value) -> Result<Value, String> {
-    let key = session;
+/// Shown on every phone when the booth has comms switched off.
+pub const OFF: &str = "Comms is turned off at the booth (Settings, Crew & screens, Comms)";
+
+/// Who a comms call comes from, worked out by the gateway.
+pub struct Who {
+    /// Booth-only device key: a crew session, or "station:" + a camera
+    /// station's own random key.
+    pub key: String,
+    pub name: String,
+}
+
+/// A camera station (an iPad on a tally link) has a member token but no crew
+/// account: it names itself after its camera and keys itself with a random
+/// id it keeps. Only plain, longish keys, so it can't be confused with
+/// anything else, and a short printable name.
+pub fn station_who(key: &str, name: &str) -> Option<Who> {
+    let ok = (16..=64).contains(&key.len()) && key.chars().all(|c| c.is_ascii_alphanumeric());
+    if !ok {
+        return None;
+    }
+    let name: String = name.chars().filter(|c| !c.is_control()).collect::<String>().trim().chars().take(24).collect();
+    Some(Who { key: format!("station:{key}"), name: if name.is_empty() { "Camera station".into() } else { name } })
+}
+
+/// Everything the gateway routes here. `enabled` is the booth's Comms switch.
+pub fn handle(app: &AppHandle, cmd: &str, who: Who, enabled: bool, args: &Value) -> Result<Value, String> {
+    let key = who.key.as_str();
+    let name = who.name.as_str();
     let now = now_ms();
     let mut g = MEMBERS.lock().unwrap_or_else(|p| p.into_inner());
+    if !enabled {
+        // Switched off: drop everyone, so phones that are still on hang up.
+        if !g.is_empty() {
+            g.clear();
+            emit_roster(app, &g);
+        }
+        return if cmd == "intercom_leave" { Ok(json!({ "ok": true })) } else { Err(OFF.into()) };
+    }
     let pruned = prune(&mut g, now);
     let out = match cmd {
         "intercom_join" => {
@@ -273,6 +305,19 @@ mod tests {
         assert!(may_signal(&m, "s1", &a, &d).is_err());
         let big = json!({ "sdp": "x".repeat(MAX_SIGNAL) });
         assert!(may_signal(&m, "s1", &b, &big).is_err());
+    }
+
+    #[test]
+    fn a_camera_station_needs_a_proper_key_and_gets_a_short_name() {
+        let w = station_who("a1b2c3d4e5f6a7b8c9d0", "  CAM 2  ").unwrap();
+        assert_eq!(w.key, "station:a1b2c3d4e5f6a7b8c9d0");
+        assert_eq!(w.name, "CAM 2");
+        assert!(station_who("short", "CAM 2").is_none());
+        assert!(station_who("has spaces in the key!!", "CAM 2").is_none());
+        assert_eq!(station_who("a1b2c3d4e5f6a7b8c9d0", "").unwrap().name, "Camera station");
+        assert_eq!(station_who("a1b2c3d4e5f6a7b8c9d0", &"x".repeat(80)).unwrap().name.len(), 24);
+        // A station key can never be mistaken for a crew session.
+        assert!(station_who("a1b2c3d4e5f6a7b8c9d0", "x").unwrap().key.starts_with("station:"));
     }
 
     #[test]

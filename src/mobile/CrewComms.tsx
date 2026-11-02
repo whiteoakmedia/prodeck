@@ -90,6 +90,53 @@ function linkWord(st: string | undefined, unreachable: boolean): string {
   return " (connecting)";
 }
 
+/**
+ * Comms on a tally screen: a crew phone in tally mode, or a camera station
+ * (an iPad on a tally link, named after its camera). Join, then Talk or Mute
+ * in the corner and who's talking along the top. Open mic and Leave are in
+ * the screen's tap menu (TallyCommsMenu).
+ */
+export function TallyComms() {
+  const c = useComms();
+  if (c.state === "on") {
+    return (
+      <>
+        <NowTalking className="tally-talking" />
+        <TalkButton className="tally-talk" label="Talk" />
+      </>
+    );
+  }
+  return (
+    <div className="tally-comms-join" onClick={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        className="tally-info-btn"
+        disabled={c.state === "joining"}
+        onClick={() => void joinComms()}
+      >
+        {c.state === "joining" ? "Joining comms…" : c.needsTap ? "Tap to rejoin comms" : "Join comms"}
+      </button>
+      {(c.err || joinBlocker()) && <span className="tally-comms-err">{c.err || joinBlocker()}</span>}
+    </div>
+  );
+}
+
+/** Open mic and Leave, for the tally's tap menu while on comms. */
+export function TallyCommsMenu() {
+  const c = useComms();
+  if (c.state !== "on") return null;
+  return (
+    <>
+      <button type="button" className="tally-info-btn" onClick={() => setOpenMic(!c.openMic)}>
+        {c.openMic ? "Open mic: on" : "Open mic: off"}
+      </button>
+      <button type="button" className="tally-info-btn" onClick={() => void leaveComms()}>
+        Leave comms
+      </button>
+    </>
+  );
+}
+
 export function CrewComms({ onBack }: { onBack: () => void }) {
   const c = useComms();
   const blocker = joinBlocker();
@@ -208,7 +255,16 @@ export function CrewComms({ onBack }: { onBack: () => void }) {
 /** Above every tab while on comms: who's talking, and Talk without leaving the page you're on. */
 export function CommsChip({ onOpen, hidden }: { onOpen: () => void; hidden?: boolean }) {
   const c = useComms();
-  if (c.state !== "on" || hidden) return null;
+  if (hidden) return null;
+  // Reopened while on comms, and the phone wants a tap for the microphone.
+  if (c.state === "off" && c.needsTap) {
+    return (
+      <button type="button" className="crew-comms-chip crew-comms-rejoin" onClick={() => void joinComms()}>
+        Tap to rejoin comms
+      </button>
+    );
+  }
+  if (c.state !== "on") return null;
   // Only people you can hear: the chip is a glance, not the roster.
   const t = talkers(c.roster.members, c.me).filter((x) => !x.me && c.listen.includes(x.line));
   return (

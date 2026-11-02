@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { atemState, on, onGatewayState, TALLY_OPTS, type AtemSnapshot } from "../lib/tauri";
+import { atemState, getSettings, on, onGatewayState, TALLY_OPTS, type AtemSnapshot } from "../lib/tauri";
+import { autoRejoin, setCommsAllowed, setStationName } from "../lib/intercom";
 import { boardSources, cardLabel, findSource, liveAndNext, tallyOf, tallySources, tallyView, type Tally } from "../lib/tally";
 import type { AtemInput } from "../lib/tauri";
-import { NowTalking, TalkButton } from "../mobile/CrewComms";
+import { TallyComms, TallyCommsMenu } from "../mobile/CrewComms";
 
 // Tally screen (?tally=<camera>&token=…): a phone or tablet mounted on a
 // camera, full screen red when that camera is on air and green when it's
@@ -79,6 +80,19 @@ export function TallyPage({ param, onExit }: { param: string; onExit?: () => voi
 
   useWakeLock();
 
+  // Comms, when the booth has it on. Read here because a tally link runs
+  // without the rest of the app around it.
+  const [commsOn, setCommsOn] = useState(false);
+  useEffect(() => {
+    getSettings()
+      .then((s) => {
+        const on = !!s?.comms_enabled;
+        setCommsOn(on);
+        setCommsAllowed(on);
+      })
+      .catch(() => {});
+  }, []);
+
   // In the app the camera operator also wants what is live and next.
   const view = inApp ? "operator" : tallyView(TALLY_OPTS.view, param);
   const src = findSource(snap, chosen);
@@ -126,6 +140,15 @@ export function TallyPage({ param, onExit }: { param: string; onExit?: () => voi
       : !snap || !snap.ready
         ? "Reading the switcher"
         : "";
+
+  // On a tally link (no crew sign-in) this device is a camera station, on
+  // comms under its camera's name. Rejoin by itself once that name is known.
+  // (Above the board's early return: hooks run in the same order every time.)
+  useEffect(() => {
+    if (inApp || !src || view === "board") return;
+    setStationName(src.name || src.short || `Camera ${src.id}`);
+    autoRejoin();
+  }, [inApp, src?.id, src?.name, view]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (view === "board") return <TallyBoard snap={snap} known={known} why={why} />;
 
@@ -179,8 +202,8 @@ export function TallyPage({ param, onExit }: { param: string; onExit?: () => voi
       <div className="tally-name">{name}</div>
       {shown === "unknown" && <div className="tally-why">{why}. Don't trust this light.</div>}
       {/* A camera operator on comms talks from the tally itself. */}
-      {inApp && <NowTalking className="tally-talking" />}
-      {inApp && <TalkButton className="tally-talk" label="Talk" />}
+      {/* Out of the way while the tap menu is up (it carries Open mic and Leave). */}
+      {commsOn && !info && <TallyComms />}
       {view === "operator" && known && (
         <div className="tally-strip">
           <span className="tally-strip-cell live">
@@ -201,6 +224,7 @@ export function TallyPage({ param, onExit }: { param: string; onExit?: () => voi
           <button type="button" className="tally-info-btn" onClick={() => setPicking(true)}>
             Change camera
           </button>
+          {commsOn && <TallyCommsMenu />}
           {onExit && (
             <button type="button" className="tally-info-btn" onClick={onExit}>
               Back to ProDeck

@@ -13,6 +13,10 @@ pub struct Settings {
     /// computer or a church that runs slides from Pro itself. Enforced in
     /// propresenter.rs, so nothing in the app can slip past it.
     pub pp_view_only: bool,
+    /// Crew comms (intercom.rs): hold to talk between phones, iPads and
+    /// camera tally stations. Off by default: a church with its own intercom
+    /// (a Hollyland, a Clear-Com) shouldn't find a second one on every phone.
+    pub comms_enabled: bool,
     pub audio_input: Option<String>,
     pub whisper_bin: Option<String>,
     pub whisper_model: Option<String>,
@@ -351,6 +355,7 @@ impl Default for Settings {
             pp_port: 1025,
             pp_auto_connect: false,
             pp_view_only: false,
+            comms_enabled: false,
             audio_input: None,
             whisper_bin: detect_whisper_bin(),
             whisper_model: detect_whisper_model(),

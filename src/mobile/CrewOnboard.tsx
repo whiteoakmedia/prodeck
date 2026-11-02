@@ -27,6 +27,12 @@ export const shouldOnboard = () =>
 
 export function CrewOnboard({ onDone }: { onDone: () => void }) {
   const ios = isIos();
+  // iOS: after "I've added it" the next move is to leave Safari for the Home
+  // Screen copy (which now arrives signed in, lib/homeScreen.ts), not to carry
+  // on here and sign in twice. Carrying on in Safari stays possible from there.
+  const [added, setAdded] = useState(false);
+  const ipad =
+    /iPad/.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
   const [prompt, setPrompt] = useState<Event | null>(
     (window as unknown as { __pdInstallPrompt?: Event }).__pdInstallPrompt ?? null,
   );
@@ -38,17 +44,32 @@ export function CrewOnboard({ onDone }: { onDone: () => void }) {
 
   const steps = ios
     ? [
-        "Tap the Share button in Safari",
-        "Choose “Add to Home Screen”",
-        "Open ProDeck from your Home Screen and allow Notifications",
+        `Tap the Share button (the square with an arrow, ${ipad ? "at the top right" : "at the bottom of Safari"})`,
+        "Scroll down, choose “Add to Home Screen”, then tap Add",
+        "Open ProDeck from your Home Screen. You'll sign in there, once",
       ]
     : [
         // Only promise an Install button when the browser actually gave us
         // one (beforeinstallprompt) — otherwise point at the menu.
-        prompt ? "Tap Install below" : "Open the Chrome menu (⋮) → Add to Home screen",
-        "Open ProDeck from your app drawer",
-        "Allow Notifications when asked",
+        prompt ? "Tap Install below" : "Open the Chrome menu (⋮), then Add to Home screen",
+        "Open ProDeck from your home screen",
+        "Sign in, then turn on notifications when ProDeck asks",
       ];
+
+  if (ios && added) {
+    return (
+      <div className="crew-onboard">
+        <img className="crew-mark" src={markColor} alt="" aria-hidden />
+        <h1 className="crew-onboard-title">Now open ProDeck from your Home Screen</h1>
+        <p className="crew-onboard-sub">
+          Find the ProDeck icon and tap it. You can close Safari: you'll sign in and get pages in that copy.
+        </p>
+        <button className="crew-link" onClick={dismiss}>
+          I don't see it, keep going in Safari
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="crew-onboard">
@@ -100,8 +121,8 @@ export function CrewOnboard({ onDone }: { onDone: () => void }) {
           Skip for now
         </button>
       ) : (
-        <button className="crew-btn primary" onClick={dismiss}>
-          {ios ? "I've added it — continue" : "Continue in the browser"}
+        <button className="crew-btn primary" onClick={ios ? () => setAdded(true) : dismiss}>
+          {ios ? "I've added it" : "Continue in the browser"}
         </button>
       )}
     </div>

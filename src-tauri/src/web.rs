@@ -1315,6 +1315,16 @@ async fn handle_conn(
     // opened the main app. This one starts at the page that asked for it.
     // It only repeats back the requester's own same-site path, so it needs
     // no password (a manifest fetch doesn't carry one).
+    // Home-screen app for the crew app. On iPhones the Home Screen copy keeps
+    // its own storage, so a volunteer who joined in Safari (poster, invite)
+    // opened it to a password prompt they were never given. This manifest's
+    // start carries the gateway token (`hs`, and a personal invite as `hsi`),
+    // which the app applies only when it has none yet (lib/tauri.ts).
+    if method == "GET" && (path == "/app.webmanifest" || path.starts_with("/app.webmanifest?")) {
+        let query = path.split_once('?').map(|(_, q)| q).unwrap_or("");
+        let body = app_manifest(query);
+        return write_bytes(&mut stream, 200, "application/manifest+json", body.as_bytes()).await;
+    }
     if method == "GET" && (path == "/tally.webmanifest" || path.starts_with("/tally.webmanifest?")) {
         let query = path.split_once('?').map(|(_, q)| q).unwrap_or("");
         let body = tally_manifest(query);
@@ -1501,6 +1511,43 @@ async fn serve_audio_mp3(mut stream: tokio::net::TcpStream, app: AppHandle) -> s
 
 /// The tally home-screen manifest for `start=<path>&name=<title>`. A start
 /// that isn't a plain path on this site falls back to the tally board.
+/// The crew app's home-screen manifest for `hs=<token>[&hsi=<invite>]`.
+/// Tokens are echoed only if they look like tokens; anything else starts at
+/// plain "/", the same as the static manifest.
+fn app_manifest(query: &str) -> String {
+    let param = |k: &str| {
+        query.split('&').find_map(|pair| {
+            let (a, b) = pair.split_once('=')?;
+            (a == k).then(|| urlencoding::decode(b).map(|c| c.into_owned()).unwrap_or_default())
+        })
+    };
+    // A typed member password can hold anything printable, so it is
+    // re-encoded rather than restricted: it can only ever be a query value.
+    let tokenish = |t: &String| (4..=128).contains(&t.chars().count()) && !t.chars().any(|c| c.is_control());
+    let mut start = "/".to_string();
+    if let Some(t) = param("hs").filter(tokenish) {
+        start = format!("/?hs={}", urlencoding::encode(&t));
+        if let Some(i) = param("hsi").filter(tokenish) {
+            start.push_str(&format!("&hsi={}", urlencoding::encode(&i)));
+        }
+    }
+    json!({
+        "name": "ProDeck",
+        "short_name": "ProDeck",
+        "description": "Production crew: chat, checklists and dashboards from the booth.",
+        "start_url": start,
+        "scope": "/",
+        "display": "standalone",
+        "background_color": "#0e131b",
+        "theme_color": "#0e131b",
+        "icons": [
+            { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+            { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+        ]
+    })
+    .to_string()
+}
+
 fn tally_manifest(query: &str) -> String {
     let param = |k: &str| {
         query.split('&').find_map(|pair| {
@@ -1893,9 +1940,18 @@ async fn dispatch(
         "intercom_join" | "intercom_leave" | "intercom_talk" | "intercom_signal" | "intercom_roster" => {
             let session = args.get("session").and_then(|v| v.as_str()).unwrap_or("");
             let identity = app.state::<crate::identity::IdentityState>().inner().clone();
-            let (_, name) = crate::identity::session_user(&identity, session)
-                .ok_or("sign in first: comms is tied to your crew name")?;
-            crate::intercom::handle(app, cmd, session, &name, args)
+            // A signed-in crew device is itself; a camera station (a tally
+            // link: member token, no crew account) is its camera.
+            let who = match crate::identity::session_user(&identity, session) {
+                Some((_, name)) => crate::intercom::Who { key: session.to_string(), name },
+                None => crate::intercom::station_who(
+                    args.get("station").and_then(|v| v.as_str()).unwrap_or(""),
+                    args.get("stationName").and_then(|v| v.as_str()).unwrap_or(""),
+                )
+                .ok_or("sign in first: comms is tied to your crew name")?,
+            };
+            let enabled = app.state::<SettingsState>().lock().unwrap_or_else(|p| p.into_inner()).comms_enabled;
+            crate::intercom::handle(app, cmd, who, enabled, args)
         }
         "page_rebuzz" => {
             let page_id = args.get("pageId").and_then(|v| v.as_u64()).unwrap_or(0);
@@ -2784,6 +2840,23 @@ mod member_pp_tests {
         // Getting it right clears the record.
         clear_auth_failures(peer);
         assert!(auth_backoff(peer).is_none());
+    }
+
+    #[test]
+    fn app_manifest_carries_the_sign_in_only_when_it_looks_like_one() {
+        let m: serde_json::Value = serde_json::from_str(&super::app_manifest("hs=abcDEF123_-xyz")).unwrap();
+        assert_eq!(m["start_url"], "/?hs=abcDEF123_-xyz");
+        let m: serde_json::Value = serde_json::from_str(&super::app_manifest("hs=abcdefgh123&hsi=invite12345")).unwrap();
+        assert_eq!(m["start_url"], "/?hs=abcdefgh123&hsi=invite12345");
+        // An invite alone, or nothing usable, starts at "/".
+        for bad in ["", "hsi=invite12345", "hs=abc", "hs=line%0Abreak"] {
+            let m: serde_json::Value = serde_json::from_str(&super::app_manifest(bad)).unwrap();
+            assert_eq!(m["start_url"], "/", "{bad}");
+        }
+        // A typed password with symbols stays a single query value: it can't
+        // add parameters or point the app anywhere else.
+        let m: serde_json::Value = serde_json::from_str(&super::app_manifest("hs=a%26tally%3D2%20%2F%2Fx")).unwrap();
+        assert_eq!(m["start_url"], "/?hs=a%26tally%3D2%20%2F%2Fx");
     }
 
     #[test]

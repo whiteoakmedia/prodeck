@@ -30,6 +30,7 @@ import {
   intercomSignal,
   intercomTalk,
   on,
+  type CommsWho,
   type IntercomMember,
   type IntercomRoster,
 } from "./tauri";
@@ -40,6 +41,10 @@ const DIAL_TIMEOUT_MS = 12_000;
 const LISTEN_KEY = "prodeck.commsListen";
 const TALK_KEY = "prodeck.commsTalk";
 const OPEN_KEY = "prodeck.commsOpenMic";
+/** "1" while this device should be on comms: set by joining, cleared only by Leave. */
+const AUTO_KEY = "prodeck.commsAuto";
+/** A camera station's own random key (it has no crew account). */
+const STATION_KEY = "prodeck.stationKey";
 export const DEFAULT_LISTEN = ["All"];
 
 export type CommsState = "off" | "joining" | "on";
@@ -62,6 +67,12 @@ export interface CommsSnapshot {
   talking: boolean;
   /** People connected to this phone right now (audio path up). */
   linked: string[];
+  /**
+   * This device was on comms and tried to rejoin by itself after reopening,
+   * but the phone wants a tap before it hands over the microphone. The UI
+   * shows "Tap to rejoin comms".
+   */
+  needsTap: boolean;
   /** Each connection's state by device id, for the comms screen. */
   links: Record<string, string>;
   /**
@@ -156,6 +167,7 @@ let snap: CommsSnapshot = {
   openMic: readStr(OPEN_KEY, "") === "1",
   talking: false,
   linked: [],
+  needsTap: false,
   links: {},
   unreachable: [],
 };
@@ -190,6 +202,59 @@ const session = () => {
   }
 };
 
+/** Set by a tally link's screen: this device is a camera station called `name`. */
+let stationName: string | null = null;
+
+export function setStationName(name: string) {
+  stationName = name;
+}
+
+function stationKey(): string {
+  try {
+    let k = localStorage.getItem(STATION_KEY) ?? "";
+    if (!/^[A-Za-z0-9]{16,64}$/.test(k)) {
+      k = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
+      localStorage.setItem(STATION_KEY, k);
+    }
+    return k;
+  } catch {
+    return "";
+  }
+}
+
+/** Who this device is on comms: its crew sign-in, or failing that its camera. */
+function who(): CommsWho {
+  const s = session();
+  if (s) return { session: s };
+  if (stationName) return { station: stationKey(), stationName };
+  return {};
+}
+
+/**
+ * The booth's Comms switch, as this screen last read it. null = not known yet:
+ * nothing joins by itself until it is.
+ */
+let allowed: boolean | null = null;
+
+export function setCommsAllowed(on: boolean) {
+  allowed = on;
+  if (!on && snap.state !== "off") {
+    void leaveComms(false);
+    set({ err: OFF_MSG });
+  }
+  if (on) autoRejoin();
+}
+
+const OFF_MSG = "Comms is turned off at the booth.";
+const isOff = (e: unknown) => /turned off/i.test(String((e as Error)?.message ?? e));
+
+/** Rejoin, muted, if this device was on comms when it last closed. */
+export function autoRejoin() {
+  if (allowed !== true || snap.state !== "off" || readStr(AUTO_KEY, "") !== "1") return;
+  if (joinBlocker()) return;
+  void joinComms(true);
+}
+
 export function joinBlocker(): string {
   if (IS_DEMO) return "";
   return cannotJoin({
@@ -197,15 +262,20 @@ export function joinBlocker(): string {
     boothScreen: isBoothScreen(IS_WEB, typeof location === "undefined" ? "" : location.hostname),
     secure: typeof window !== "undefined" && window.isSecureContext,
     hasMic: typeof navigator !== "undefined" && !!navigator.mediaDevices?.getUserMedia,
-    signedIn: !!session(),
+    signedIn: !!session() || !!stationName,
   });
 }
 
-export async function joinComms() {
+/**
+ * Join comms. `auto` = rejoining by itself on reopen: if the phone wants a
+ * tap before handing over the microphone, ask for one instead of an error.
+ */
+export async function joinComms(auto = false) {
   if (snap.state !== "off") return;
+  if (allowed === false) return set({ err: OFF_MSG });
   const why = joinBlocker();
   if (why) return set({ err: why });
-  set({ state: "joining", err: "" });
+  set({ state: "joining", err: "", needsTap: false });
   if (!IS_DEMO) try {
     mic = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
@@ -213,6 +283,7 @@ export async function joinComms() {
     // Silent until Talk is held.
     mic.getAudioTracks().forEach((t) => (t.enabled = false));
   } catch {
+    if (auto) return set({ state: "off", needsTap: true });
     return set({ state: "off", err: "The microphone was blocked. Allow it for this site in the phone's settings, then try again." });
   }
   unsubs.push(await on<IntercomRoster>("intercom:roster", (r) => r && applyRoster(r)));
@@ -225,22 +296,29 @@ export async function joinComms() {
     }),
   );
   try {
-    const r = await intercomJoin(session(), snap.listen);
+    const r = await intercomJoin(who(), snap.listen);
     set({ state: "on", me: r.me });
+    writeStr(AUTO_KEY, "1");
     applyRoster(r.roster);
     const held = early.filter((m) => m.to === r.me);
     early = [];
     for (const m of held) await onSignal(m.from, m.data);
   } catch (e) {
-    await leaveComms();
-    return set({ err: `Couldn't join comms: ${String((e as Error)?.message ?? e)}` });
+    await leaveComms(false);
+    return set({ err: isOff(e) ? OFF_MSG : `Couldn't join comms: ${String((e as Error)?.message ?? e)}` });
   }
   beat = setInterval(heartbeat, HEARTBEAT_MS);
   dials = setInterval(checkDials, 3_000);
   document.addEventListener("visibilitychange", onVisible);
 }
 
-export async function leaveComms() {
+/**
+ * Leave comms. `byUser` (the Leave button) also stops this device rejoining
+ * by itself; leaving for any other reason (the booth switched comms off, a
+ * failed join) keeps it, so it comes back when it can.
+ */
+export async function leaveComms(byUser = true) {
+  if (byUser) writeStr(AUTO_KEY, "");
   if (beat) clearInterval(beat);
   beat = null;
   if (dials) clearInterval(dials);
@@ -253,7 +331,7 @@ export async function leaveComms() {
   mic = null;
   const was = snap.state;
   set({ state: "off", talking: false, linked: [], links: {}, unreachable: [], roster: { channels: [], members: [] } });
-  if (was !== "off") await intercomLeave(session()).catch(() => {});
+  if (was !== "off") await intercomLeave(who()).catch(() => {});
 }
 
 /** Hold-to-talk. The mic opens here, before the booth hears about it, so the first word isn't clipped. */
@@ -261,7 +339,7 @@ export function talk(on: boolean) {
   if (snap.state !== "on" || on === snap.talking) return;
   mic?.getAudioTracks().forEach((t) => (t.enabled = on));
   set({ talking: on });
-  intercomTalk(session(), on ? snap.talkOn : null).catch(() => {});
+  intercomTalk(who(), on ? snap.talkOn : null).catch(() => {});
 }
 
 /** Open mic on or off. Turning it on starts muted; turning it off closes the mic. */
@@ -280,7 +358,7 @@ export function setTalkLine(line: string) {
   writeStr(TALK_KEY, line);
   set({ talkOn: line });
   // Switching lines mid-sentence moves the sentence.
-  if (snap.talking) intercomTalk(session(), line).catch(() => {});
+  if (snap.talking) intercomTalk(who(), line).catch(() => {});
 }
 
 export function setListening(line: string, on: boolean) {
@@ -288,7 +366,7 @@ export function setListening(line: string, on: boolean) {
   writeList(LISTEN_KEY, listen);
   set({ listen });
   applyAudible();
-  if (snap.state === "on") intercomJoin(session(), listen).catch(() => {});
+  if (snap.state === "on") intercomJoin(who(), listen).catch(() => {});
 }
 
 /**
@@ -310,18 +388,36 @@ function checkDials() {
   if (closed) applyRoster(snap.roster);
 }
 
+let beating = false;
 function heartbeat() {
-  intercomJoin(session(), snap.listen)
+  if (beating) return;
+  beating = true;
+  intercomJoin(who(), snap.listen)
     .then((r) => {
+      if (snap.state !== "on") return;
+      // The booth forgot this device (it restarted, or dropped it as silent)
+      // and gave it a new id: every call was to the old one, so start over.
+      if (r.me !== snap.me) {
+        for (const id of [...peers.keys()]) closePeer(id);
+        set({ me: r.me });
+      }
       applyRoster(r.roster);
       // An open mic outlives the booth's memory of it (a booth restart, a
       // phone that dropped off and rejoined). Say it again, or everyone else
       // switches this phone off while it is still talking.
       const mine = r.roster.members.find((m) => m.id === snap.me);
       const want = snap.talking ? snap.talkOn : null;
-      if (mine && (mine.talk ?? null) !== want) intercomTalk(session(), want).catch(() => {});
+      if (mine && (mine.talk ?? null) !== want) intercomTalk(who(), want).catch(() => {});
     })
-    .catch(() => {});
+    .catch((e) => {
+      if (isOff(e)) {
+        void leaveComms(false);
+        set({ err: OFF_MSG });
+      }
+    })
+    .finally(() => {
+      beating = false;
+    });
 }
 
 // iOS suspends a backgrounded page: on return, check in at once and redo any
@@ -337,6 +433,9 @@ function onVisible() {
 function applyRoster(r: IntercomRoster) {
   set({ roster: r });
   if (snap.state !== "on") return;
+  // Not on the booth's list any more: check in now rather than wait for the
+  // next heartbeat (the booth was switched off and on, or restarted).
+  if (!IS_DEMO && snap.me && !r.members.some((m) => m.id === snap.me)) heartbeat();
   // The demo has nobody to call: show everyone as connected.
   if (IS_DEMO) return set({ linked: r.members.map((m) => m.id).filter((id) => id !== snap.me) });
   const plan = reconcile(r.members, snap.me, [...peers.keys()]);
@@ -376,7 +475,7 @@ function newPeer(id: string): Peer {
     applyAudible();
   };
   pc.onicecandidate = (e) => {
-    if (e.candidate) intercomSignal(session(), id, { ice: e.candidate.toJSON() }).catch(() => {});
+    if (e.candidate) intercomSignal(who(), id, { ice: e.candidate.toJSON() }).catch(() => {});
   };
   pc.onconnectionstatechange = () => {
     const st = pc.connectionState;
@@ -419,7 +518,7 @@ async function offerTo(id: string) {
   try {
     const offer = await p.pc.createOffer({ offerToReceiveAudio: true });
     await p.pc.setLocalDescription(offer);
-    await intercomSignal(session(), id, { sdp: p.pc.localDescription?.toJSON() });
+    await intercomSignal(who(), id, { sdp: p.pc.localDescription?.toJSON() });
   } catch {
     closePeer(id);
   }
@@ -436,7 +535,7 @@ async function onSignal(from: string, data: SignalData) {
       await flushPending(p);
       const answer = await p.pc.createAnswer();
       await p.pc.setLocalDescription(answer);
-      await intercomSignal(session(), from, { sdp: p.pc.localDescription?.toJSON() });
+      await intercomSignal(who(), from, { sdp: p.pc.localDescription?.toJSON() });
     } else if (data.sdp?.type === "answer") {
       const p = peers.get(from);
       if (!p || p.pc.signalingState !== "have-local-offer") return;

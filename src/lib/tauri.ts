@@ -1,6 +1,7 @@
 import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 import { listen as tauriListen, type UnlistenFn } from "@tauri-apps/api/event";
 import { IS_DEMO, IS_SHOTS, demoInvoke, demoOn } from "./demo";
+import { LAYOUT_KEY } from "./layout";
 
 export { IS_DEMO, IS_SHOTS, SHOT_LAB, SHOT_PAGE, SHOT_DASH, SHOT_PHONE, SHOT_TAB, SHOT_CHAT, setDemo } from "./demo";
 
@@ -45,9 +46,27 @@ if (IS_WEB && typeof localStorage !== "undefined") {
     const q = new URLSearchParams(window.location.search);
     const join = q.get("join");
     const invite = q.get("invite");
-    if (join || invite) {
-      localStorage.setItem(TOKEN_KEY, (invite ?? join)!);
-      if (invite) localStorage.setItem(INVITE_KEY, invite);
+    // The Home Screen copy's start address (/app.webmanifest, set by
+    // lib/homeScreen.ts) carries the sign-in it was added with, because on
+    // an iPhone it doesn't share Safari's storage. Only on its FIRST launch:
+    // every later launch has a token already, and the one in the address may
+    // be out of date by then.
+    const hs = q.get("hs");
+    const hsi = q.get("hsi");
+    const fresh = !localStorage.getItem(TOKEN_KEY);
+    if (join || invite || hs) {
+      if (join || invite) {
+        localStorage.setItem(TOKEN_KEY, (invite ?? join)!);
+        if (invite) localStorage.setItem(INVITE_KEY, invite);
+      } else if (fresh && hs) {
+        localStorage.setItem(TOKEN_KEY, hs);
+        if (hsi) localStorage.setItem(INVITE_KEY, hsi);
+      }
+      // Arriving from the poster, an invite or the Home Screen means crew,
+      // so a wide screen (an iPad) opens in the crew layout unless this
+      // device already chose (lib/layout.ts).
+      if (!localStorage.getItem(LAYOUT_KEY) && window.matchMedia?.("(min-width: 761px)").matches)
+        localStorage.setItem(LAYOUT_KEY, "crew");
       window.history.replaceState(null, "", window.location.pathname);
     }
     // /join redirects here when the booth has not opened a joining window.
@@ -286,6 +305,8 @@ export interface Settings {
   pp_auto_connect: boolean;
   /** ProDeck reads ProPresenter and never changes it (enforced in propresenter.rs). */
   pp_view_only: boolean;
+  /** Crew comms on phones, iPads and tally stations (off by default). */
+  comms_enabled: boolean;
   audio_input: string | null;
   whisper_bin: string | null;
   whisper_model: string | null;
@@ -1152,13 +1173,19 @@ export interface IntercomRoster {
   channels: string[];
   members: IntercomMember[];
 }
-export const intercomJoin = (session: string, listen: string[]) =>
-  invoke<{ me: string; roster: IntercomRoster }>("intercom_join", { session, listen });
-export const intercomLeave = (session: string) => invoke<unknown>("intercom_leave", { session });
-export const intercomTalk = (session: string, channel: string | null) =>
-  invoke<unknown>("intercom_talk", { session, channel });
-export const intercomSignal = (session: string, to: string, data: unknown) =>
-  invoke<unknown>("intercom_signal", { session, to, data });
+/** A crew device ({session}) or a camera station on a tally link ({station, stationName}). */
+export interface CommsWho {
+  session?: string;
+  station?: string;
+  stationName?: string;
+}
+export const intercomJoin = (who: CommsWho, listen: string[]) =>
+  invoke<{ me: string; roster: IntercomRoster }>("intercom_join", { ...who, listen });
+export const intercomLeave = (who: CommsWho) => invoke<unknown>("intercom_leave", { ...who });
+export const intercomTalk = (who: CommsWho, channel: string | null) =>
+  invoke<unknown>("intercom_talk", { ...who, channel });
+export const intercomSignal = (who: CommsWho, to: string, data: unknown) =>
+  invoke<unknown>("intercom_signal", { ...who, to, data });
 export const pageRebuzz = (pageId: number) =>
   invoke<{ buzzed: number }>("page_rebuzz", { pageId });
 export const pageList = () => invoke<CrewPage[]>("page_list");

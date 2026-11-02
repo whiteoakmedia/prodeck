@@ -1310,3 +1310,11 @@
     padding-right: max(20px, calc((100% - 640px) / 2));
   }
 }
+
+/* Onboarding's last step on Home (CrewNotifyStep). */
+.crew .crew-notify-step { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.crew .crew-notify-title { font-weight: 700; color: var(--warn-heading); font-size: 1rem; }
+.crew .crew-notify-body { margin: 0; color: var(--warn-text); font-size: 0.875rem; line-height: 1.4; }
+.crew .crew-notify-step .crew-btn { max-width: none; }
+.crew .crew-notify-step .crew-link { align-self: center; }
+.crew .crew-comms-rejoin { padding: 8px 14px; color: var(--text); font-size: 0.75rem; font-weight: 700; }

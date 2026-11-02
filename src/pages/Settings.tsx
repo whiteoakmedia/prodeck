@@ -1876,6 +1876,39 @@ export function SettingsPage() {
       {!IS_WEB && <Sec id="set-kiosk"><KioskCard form={form} /></Sec>}
       {!IS_WEB && <Sec id="set-tv"><TvScreensCard form={form} /></Sec>}
       {!IS_WEB && form.atem_enabled && <Sec id="set-tally"><TallyCard form={form} atem={atem} /></Sec>}
+      {!IS_WEB && (
+        <Sec id="set-comms">
+          <section className="card">
+            <div className="card-head">
+              <h3 id="set-comms">Comms</h3>
+              {form.comms_enabled ? <span className="chip online">on</span> : <span className="chip">off</span>}
+            </div>
+            <label className="field check">
+              <input type="checkbox" checked={!!form.comms_enabled}
+                onChange={(e) => set("comms_enabled", e.target.checked)} />
+              <span>Crew comms: hold to talk between phones, iPads and camera tally stations</span>
+            </label>
+            <p className="muted small">
+              Leave this off if your team already has an intercom. When it's on, crew find it under More, Comms,
+              and a camera tally link gets a Join comms button. Phones talk straight to each other over the church
+              Wi-Fi; this computer only connects them and never plays comms.
+            </p>
+            {form.comms_enabled && (
+              <ul className="muted small">
+                <li>
+                  Phones only allow the microphone on a secure (https) address, so crew must open ProDeck from your
+                  public address.{" "}
+                  {(form as any).public_url?.trim()
+                    ? <>Yours is <code>{(form as any).public_url}</code>.</>
+                    : <strong>Set your public address in Browser Access first.</strong>}
+                </li>
+                <li>Use the staff Wi-Fi. A phone on cellular or a guest network can join but can't reach the others.</li>
+                <li>Earbuds or a headset, and the app open with the screen on. A locked iPhone stops comms.</li>
+              </ul>
+            )}
+          </section>
+        </Sec>
+      )}
       {!IS_WEB && <Sec id="set-backup"><BackupCard /></Sec>}
       {!IS_WEB && <Sec id="set-help"><HelpCard /></Sec>}
 
@@ -3686,6 +3719,26 @@ function TallyCard({ form, atem }: { form: Settings; atem: AtemSnapshot | null }
               <li><strong>Android:</strong> scan the code in Chrome, menu, Add to Home screen. Pin the screen (Security, App pinning) and set the screen timeout to the longest.</li>
               <li>Keep it on the church wifi and plugged in. It reconnects by itself and updates itself when ProDeck does. Tap the screen to see which camera it is or to change it.</li>
             </ol>
+            {f.comms_enabled && !board && (
+              <div className="muted small">
+                <p style={{ margin: "8px 0 4px" }}>
+                  <strong>Camera station with comms.</strong> With Comms on, this tally has a Join comms button and
+                  shows up on comms as <strong>{cam?.name || cam?.short || "the camera"}</strong>, with Talk or Mute in
+                  the corner. Whoever is on that camera this week uses it, no sign-in needed. Once joined, it rejoins
+                  by itself (muted) whenever it reopens.
+                </p>
+                <ul style={{ margin: 0 }}>
+                  <li>Plug a headset into the iPad (wired or Bluetooth) so the operator hears comms and the room doesn't.</li>
+                  <li>Tap the tally once after setting it up and choose Join comms, then allow the microphone.</li>
+                  {!(f.public_url ?? "").trim() && (
+                    <li>
+                      <strong>Set your public address in Browser Access first.</strong> This code opens the local address,
+                      and iPads only allow the microphone on a secure (https) one.
+                    </li>
+                  )}
+                </ul>
+              </div>
+            )}
             <p className="hint">The link carries the member password. Changing that password stops every tally link, so rescan them when you do.</p>
           </div>
           {qr && <img src={qr} alt={board ? "Tally board link" : `Tally link for ${cam?.name ?? "the camera"}`} className="kiosk-qr" />}

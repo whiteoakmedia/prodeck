@@ -618,6 +618,8 @@ function ppLibrary(path: string): unknown {
 // -------------------------------------------------------------- the handler
 
 const SETTINGS_OVERLAY: Record<string, unknown> = {
+  // So the demo and screenshots show comms (a sample crew is on the lines).
+  comms_enabled: true,
   pp_host: "10.0.1.42",
   pp_port: 51417,
   pp_auto_connect: true,

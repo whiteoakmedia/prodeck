@@ -601,10 +601,13 @@ Use long passwords. The gateway is reachable from anywhere you expose it (a publ
     aliases: ["install on iphone", "add to home screen", "notifications on the phone", "app keeps signing me out"],
     body: `Open the join link in the phone's browser, then:
 
-- **iPhone (Safari):** Share → **Add to Home Screen**. Open it from the icon, not Safari. Allow notifications when asked — on an iPhone, the notification is the only buzz a page can make.
-- **Android (Chrome):** menu → **Add to Home screen**, or **Install app** if offered. Allow notifications.
+- **iPhone (Safari):** Share → **Add to Home Screen** → Add. Then open ProDeck from the icon, not Safari: the icon's copy arrives already connected to the booth, and the volunteer signs in there with their name and PIN once. On an iPhone the notification is the only buzz a page can make, so notifications only work from the icon.
+- **Android (Chrome):** menu → **Add to Home screen**, or **Install app** if offered.
+- **iPad:** the same as an iPhone. An iPad that came from the poster or an invite opens in the crew view; **Full view** at the bottom of **More** switches to every page and dashboard, and **Crew view** at the bottom of the sidebar switches back.
 
-From the icon, the app remembers the account and reconnects by itself. If it ever lands on the password screen, the crew password changed — get the new join link.`,
+**The last step is notifications.** Until they're on, Home shows a card that says exactly what to do: a **Turn on notifications** button, how to unblock them in the phone's Settings, or how to get onto the secure address (notifications don't work on the plain local address). **Not now** hides it for half a day.
+
+From the icon, the app remembers the account and reconnects by itself. If it ever lands on the password screen, the crew password changed: get the new join link.`,
     related: ["pages", "gateway-passwords"],
   },
   {
@@ -756,7 +759,7 @@ The link carries the member password. Changing that password stops every tally l
     group: "Crew",
     title: "Comms: talking to the crew from phones",
     aliases: ["comms", "intercom", "headset", "talk to the crew", "push to talk", "party line", "clearcom", "radio"],
-    body: `Comms turns crew phones and iPads into a hold to talk intercom. On a phone: **More → Comms → Join comms**, allow the microphone, pick the line to talk on, and hold the big button while you speak. There are four lines: **All**, **Cameras**, **Stage** and **Booth**. Choose which ones you listen to; everyone hears All unless they turn it off. A chip at the top of every screen shows who's talking and has its own **Talk** button. For hands-free comms, turn on **Open mic**: you talk without holding anything until you turn it off, and the big button (and the chip's) becomes **Mute** and **Unmute**. Open mic always starts muted when you join, so a mic never opens by itself.
+    body: `Comms turns crew phones and iPads into a hold to talk intercom. It's **off until you turn it on** in **Settings → Crew & screens → Comms**; leave it off if your team already has an intercom, and it appears nowhere. On a phone: **More → Comms → Join comms**, allow the microphone, pick the line to talk on, and hold the big button while you speak. There are four lines: **All**, **Cameras**, **Stage** and **Booth**. Choose which ones you listen to; everyone hears All unless they turn it off. A chip at the top of every screen shows who's talking and has its own **Talk** button. For hands-free comms, turn on **Open mic**: you talk without holding anything until you turn it off, and the big button (and the chip's) becomes **Mute** and **Unmute**. Open mic always starts muted when you join, so a mic never opens by itself.
 
 Phones talk straight to each other over the church Wi-Fi, so the delay is a fraction of a second. ProDeck only connects them, and the booth computer never plays comms: it can't reach the house.
 
@@ -766,7 +769,12 @@ What it needs:
 - **Phones on the church Wi-Fi.** A phone on cellular still joins (the public address reaches the booth from anywhere), but it can't reach the other phones, so nobody hears it. A guest network that keeps devices apart does the same. Use the staff network. **On comms** says **can't reach** next to anyone this happens with.
 - **The app open, screen on.** A locked iPhone stops a web app's sound and microphone. Comms suits people at a post with the phone in view, like a camera operator using the phone as a tally. Use earbuds so the phone's speaker doesn't feed back into its mic.
 
-Up to 16 people can be on comms at once.`,
+**Camera stations.** An iPad that lives on a camera doesn't need anyone's account. Make its code in **Settings → Camera tally**, scan it on the iPad, add it to the Home Screen, and tap the tally once to **Join comms**. It shows up on comms under the camera's name, with Talk or Mute in the corner and Open mic in the tap menu, and rejoins by itself (muted) whenever it reopens. Plug a headset into it, set Auto-Lock to Never, and use Guided Access to keep it on the tally.
+
+A device that was on comms rejoins by itself when it reopens. If the phone wants a tap before it hands over the microphone, it shows **Tap to rejoin comms**. **Leave comms** stops that until you join again.
+
+Up to 16 devices can be on comms at once.`,
+    settings: "set-comms",
     related: ["atem-tally", "pages", "public-url"],
   },
   {

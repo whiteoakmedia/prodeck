@@ -31,6 +31,7 @@ export const ANCHOR_TOPIC: Record<string, string> = {
   "set-ndi": "ndi",
   "set-reliability": "keep-running",
   "set-kiosk": "kiosk",
+  "set-comms": "comms",
   "set-backup": "backup",
   "set-help": "report-problem",
 };
