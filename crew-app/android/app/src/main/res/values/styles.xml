@@ -9,10 +9,18 @@
         <item name="colorAccent">@color/colorAccent</item>
     </style>
 
-    <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
+    <!-- Dark all the way to the edges: the area behind the status and
+         navigation bars shows the window background on Android 15's
+         edge-to-edge, and it must match the app, with light icons on it. -->
+    <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <item name="android:windowBackground">@color/prodeck_bg</item>
+        <item name="android:statusBarColor">@color/prodeck_bg</item>
+        <item name="android:navigationBarColor">@color/prodeck_bg</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
     </style>
 
 

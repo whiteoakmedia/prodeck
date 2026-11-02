@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { IN_CREW_APP } from "../lib/crewApp";
 import markColor from "../assets/prodeck-mark-color.svg";
 
 // S01a / S01b — install onboarding.
@@ -23,7 +24,8 @@ export const isStandalone = () =>
 const SEEN_KEY = "prodeck.installSeen";
 /** Shown once per device; re-entry is via the link in More. */
 export const shouldOnboard = () =>
-  !isStandalone() && localStorage.getItem(SEEN_KEY) !== "1";
+  // The ProDeck Crew app is already installed: nothing to add to a Home Screen.
+  !IN_CREW_APP && !isStandalone() && localStorage.getItem(SEEN_KEY) !== "1";
 
 export function CrewOnboard({ onDone }: { onDone: () => void }) {
   const ios = isIos();

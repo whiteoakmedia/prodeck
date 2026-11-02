@@ -16,8 +16,17 @@ export interface Found {
 /** Scan a QR code with the camera. null = cancelled, or no camera (preview). */
 export async function scanCode(): Promise<string | null> {
   if (!isNative()) return null;
-  // Native camera plugin arrives with the native projects (phase 1b).
-  return null;
+  try {
+    const { CapacitorBarcodeScanner, CapacitorBarcodeScannerTypeHint } = await import("@capacitor/barcode-scanner");
+    const r = await CapacitorBarcodeScanner.scanBarcode({
+      hint: CapacitorBarcodeScannerTypeHint.QR_CODE,
+      scanInstructions: "Point at the crew code",
+      scanButton: false,
+    });
+    return r?.ScanResult?.trim() || null;
+  } catch {
+    return null; // cancelled, or the camera wasn't allowed
+  }
 }
 
 /** Look for booths on this Wi-Fi for a few seconds. */

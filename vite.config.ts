@@ -50,6 +50,10 @@ export default defineConfig(async () => ({
     // features (web viewer, kiosk) can be exercised without a reinstall.
     proxy: {
       "/api": { target: "http://localhost:8088", changeOrigin: true },
+      // The poster's door and the Home Screen manifest live on the booth too,
+      // so a phone (or the crew app on an emulator) can test them here.
+      "/join": { target: "http://localhost:8088", changeOrigin: true },
+      "/app.webmanifest": { target: "http://localhost:8088", changeOrigin: true },
     },
     hmr: host
       ? {

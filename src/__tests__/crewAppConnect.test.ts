@@ -46,3 +46,14 @@ describe("crew app: finding the booth", () => {
     expect(forget([a, b], "http://a:8088")).toEqual([b]);
   });
 });
+
+import { crewAppHome } from "../lib/crewApp";
+
+describe("crew app: back to the churches list", () => {
+  it("goes to the app's own page, which differs on iPhone and Android", () => {
+    expect(crewAppHome("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0) ProDeckCrew/0.1")).toBe("capacitor://localhost/?home=1");
+    expect(crewAppHome("Mozilla/5.0 (Linux; Android 15) ProDeckCrew/0.1")).toBe("https://localhost/?home=1");
+    // An iPad asks for the desktop site and says Macintosh.
+    expect(crewAppHome("Mozilla/5.0 (Macintosh; Intel Mac OS X) ProDeckCrew/0.1")).toBe("capacitor://localhost/?home=1");
+  });
+});

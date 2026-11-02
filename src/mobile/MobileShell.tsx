@@ -17,6 +17,7 @@ import { usePco } from "../pcoStore";
 import { IS_WEB, atemState, clearWebToken, identityWhoami, onGatewayState } from "../lib/tauri";
 import { offersTally, readTallyMode, writeTallyMode } from "../lib/tallyMode";
 import { switchLayout, wideScreen } from "../lib/layout";
+import { IN_CREW_APP, crewAppHome } from "../lib/crewApp";
 import { TallyPage } from "../pages/Tally";
 import { CommsChip, CrewComms } from "./CrewComms";
 import { setCommsAllowed } from "../lib/intercom";
@@ -193,6 +194,11 @@ export function MobileShell() {
             </button>
             )}
             <TallyCard onStart={() => tallyOn(true)} />
+            {IN_CREW_APP && (
+              <button className="btn ghost" onClick={() => (location.href = crewAppHome())}>
+                Switch church
+              </button>
+            )}
             {IS_WEB && wideScreen() && (
               <button className="btn ghost" onClick={() => switchLayout("full")}>
                 Full view: every page and dashboard

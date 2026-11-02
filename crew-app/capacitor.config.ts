@@ -15,6 +15,9 @@ const config: CapacitorConfig = {
     androidScheme: "https",
   },
   backgroundColor: "#0e131b",
+  // Lets the booth's crew app know it's inside the app (src/lib/crewApp.ts):
+  // no "Add to Home Screen", and a Switch church button.
+  appendUserAgent: "ProDeckCrew/0.1",
   android: {
     // The shell checks a booth over plain http on the church network.
     allowMixedContent: true,

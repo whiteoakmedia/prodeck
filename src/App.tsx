@@ -33,6 +33,7 @@ import { FirstRunSetup } from "./components/FirstRunSetup";
 import { GiftCredit } from "./components/GiftCredit";
 import { crewLayout, readLayoutPref, switchLayout } from "./lib/layout";
 import { syncHomeScreenManifest } from "./lib/homeScreen";
+import { IN_CREW_APP } from "./lib/crewApp";
 import { SoundcheckWatch } from "./components/SoundcheckWatch";
 import { SetupWizards } from "./components/wizard/SetupWizards";
 import { isFreshInstall } from "./lib/onboarding";
@@ -59,7 +60,8 @@ import "./mobile/mobile.css";
 const IS_PHONE = crewLayout({
   isWeb: IS_WEB,
   shotPhone: SHOT_PHONE,
-  narrow: typeof window !== "undefined" && window.matchMedia("(max-width: 760px)").matches,
+  // The ProDeck Crew app is the crew layout, even on a tablet.
+  narrow: IN_CREW_APP || (typeof window !== "undefined" && window.matchMedia("(max-width: 760px)").matches),
   pref: IS_WEB ? readLayoutPref() : null,
 });
 import { ProDeckProvider, useProDeck } from "./store";

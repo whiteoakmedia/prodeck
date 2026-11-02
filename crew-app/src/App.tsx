@@ -14,10 +14,20 @@ type Screen =
   | { kind: "checking"; target: Target; name: string }
   | { kind: "open"; church: Church; url: string };
 
+/** The booth's Switch church button comes back here with ?home=1. */
+const asked = typeof location !== "undefined" && new URLSearchParams(location.search).has("home");
+
 export function App() {
   const [churches, setChurches] = useState<Church[]>(() => loadChurches());
   const [screen, setScreen] = useState<Screen>({ kind: "home" });
   const [err, setErr] = useState("");
+
+  // Opening the app goes straight to the church you used last; the churches
+  // list is for switching. (On a phone only: the preview stays on the list.)
+  useEffect(() => {
+    if (!isNative() || asked || churches.length === 0) return;
+    openChurch(churches[0]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const go = (s: Screen) => {
     setErr("");
@@ -155,8 +165,19 @@ function Scan({ onBack, onCode, err }: { onBack: () => void; onCode: (c: string)
         <span className="corner tr" />
         <span className="corner bl" />
         <span className="corner br" />
-        <p>{camera ? "Point the camera at the code" : "The camera opens here on your phone"}</p>
+        <p>
+          {camera
+            ? "Point the camera at the code"
+            : isNative()
+              ? "Scanning stopped. Allow the camera for ProDeck Crew if you were asked."
+              : "The camera opens here on your phone"}
+        </p>
       </div>
+      {!camera && isNative() && (
+        <button className="btn primary" onClick={() => setCamera(true)}>
+          Scan again
+        </button>
+      )}
       {!camera && (
         <form
           className="stack"
