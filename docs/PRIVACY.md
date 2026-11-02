@@ -36,10 +36,11 @@ Multitrack recordings, service reports, settings and crew accounts are stored on
 
 ## The ProDeck Crew phone app
 
-ProDeck Crew (iPhone, iPad and Android) connects a volunteer to their church's own ProDeck booth. It has no account with White Oak Media and sends White Oak Media nothing: no analytics, no tracking, no advertising.
+ProDeck Crew (iPhone, iPad and Android) connects a volunteer to their church's own ProDeck booth. It has no account with White Oak Media: no analytics, no tracking, no advertising. The one thing that passes through White Oak Media is a page notification, below.
 
 - **On the phone:** the list of churches you've connected to (each booth's address and name), and, from the booth's crew app, your crew sign-in on that phone.
 - **To your church's booth:** what you do in the crew app goes to the ProDeck computer your church runs, on its own network: your name and PIN when you join, chat messages, check-ins, checklist ticks, and confirmations of pages. Your church's production leaders can see these. White Oak Media can't.
+- **Page notifications:** if you allow notifications, your phone gives the app a push token (a random address for this app on this phone, from Apple). The app hands it to your church's booth. When the booth pages you, it sends the token and the notification's words ("ProDeck · Page", who sent it and the message) to White Oak Media's notification relay, which passes them to Apple to deliver. The relay sends nothing about your church or you, keeps nothing, and isn't used for anything else. Turn notifications off in the app (More) or in your phone's Settings.
 - **Camera:** used only to scan your church's crew code. Images never leave the phone.
 - **Local network:** used only to find your church's booth on the Wi-Fi and connect to it.
 - **Microphone:** used only while you talk on crew comms, if your church turns comms on. Your voice goes straight to the other crew phones on the church network.

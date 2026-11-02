@@ -48,17 +48,20 @@ chat and check-ins go to **their own church's booth**, which the church runs.
 Apple counts data as "collected" when it leaves the device for the developer
 or its partners, so the honest answer is:
 
-- **Data collection:** Data Not Collected. The developer receives nothing; the
-  church's own server is the destination.
+- **Data collection:** only the push token (below). Everything else goes to
+  the church's own booth, not to the developer.
 - If Apple pushes back (some reviewers treat any server as collection),
   declare:
   - **Contact Info, Name:** App Functionality, linked to the user, not used
     for tracking.
   - **User Content, Other (chat messages):** App Functionality, linked, not
     tracking.
-- Once native push ships, push tokens go to White Oak's relay to deliver
-  pages. Declare **Identifiers, Device ID:** App Functionality, not linked,
-  not tracking.
+- Page notifications go through White Oak's relay (push-edge/, prodeck-push
+  Worker): the push token and the page's words pass through and nothing is
+  kept. So the honest answer is **Data Collected**, one type:
+  **Identifiers, Device ID:** App Functionality, not linked to the user, not
+  used for tracking. (The relay never sees a name: the booth sends it only
+  the token and the notification text.)
 
 Add to docs/PRIVACY.md: what the crew app stores on the phone (the churches
 list), that everything else goes to the church's own booth, and how to delete
