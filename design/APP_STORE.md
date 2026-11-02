@@ -37,7 +37,7 @@ nothing is submitted from this repo.
 
 **Keywords (100):** church,production,volunteer,worship,tech,crew,ProPresenter,Planning Center,tally,pages
 
-- **Support URL:** https://whiteoakmedia.io/tools (or a support page)
+- **Support URL:** https://www.whiteoakmedia.io/tools/support
 - **Privacy policy URL:** the published docs/PRIVACY.md. It needs a short
   section on the crew app before submission (below).
 

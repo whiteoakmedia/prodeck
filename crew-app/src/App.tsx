@@ -14,6 +14,7 @@ type Screen =
   | { kind: "nearby" }
   | { kind: "type" }
   | { kind: "checking"; target: Target; name: string }
+  | { kind: "opening"; church: Church }
   | { kind: "open"; church: Church; url: string };
 
 const params = typeof location !== "undefined" ? new URLSearchParams(location.search) : new URLSearchParams();
@@ -74,14 +75,26 @@ export function App() {
     go({ kind: "checking", target: t, name: name || shortName(t.base) });
   };
 
-  const openChurch = async (c: Church, path = "/", ask = false) => {
+  const openChurch = async (c: Church, path = "/", o: { ask?: boolean; checked?: boolean } = {}) => {
     const next = remember(churches, { ...c, lastMs: Date.now() });
     setChurches(next);
     saveChurches(next);
     const url = `${c.base}${path}`;
     if (isNative()) {
+      setIntro(false);
+      go({ kind: "opening", church: c });
+      // Off the church Wi-Fi a saved booth can't be reached, and the phone
+      // would sit on a blank page. Say so on the churches list instead.
+      if (!o.checked) {
+        const r = await checkBooth(c.base, 5000);
+        if (!r.ok) {
+          go({ kind: "home" });
+          setErr(`Couldn't reach ${c.name}. Check you're on the church Wi-Fi, and that ProDeck is open at the booth.`);
+          return;
+        }
+      }
       // A fresh token each time: the phone can change it.
-      const push = await pushToken(ask);
+      const push = await pushToken(!!o.ask);
       window.location.href = push ? `${url}#crewpush=${encodeURIComponent(push)}` : url;
       return;
     }
@@ -91,7 +104,7 @@ export function App() {
   // Back from the booth's Turn on notifications button: ask the phone, then
   // straight back to that church.
   useEffect(() => {
-    if (askNotify && churches[0]) void openChurch(churches[0], "/", true);
+    if (askNotify && churches[0]) void openChurch(churches[0], "/", { ask: true });
     else if (askNotify) setIntro(false);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -124,7 +137,7 @@ export function App() {
       {screen.kind === "home" && (
         <Home
           churches={churches}
-          onOpen={(c) => openChurch(c)}
+          onOpen={(c) => void openChurch(c)}
           onForget={(c) => {
             const next = forget(churches, c.base);
             setChurches(next);
@@ -134,7 +147,14 @@ export function App() {
           onNearby={() => go({ kind: "nearby" })}
           onType={() => go({ kind: "type" })}
           onDemo={openDemo}
+          err={err}
         />
+      )}
+      {screen.kind === "opening" && (
+        <main className="screen center">
+          <div className="pulse big" />
+          <p className="sub">Opening {screen.church.name}…</p>
+        </main>
       )}
       {screen.kind === "scan" && <Scan onBack={() => go({ kind: "home" })} onCode={(c) => tryInput(c)} err={err} />}
       {screen.kind === "nearby" && (
@@ -146,7 +166,7 @@ export function App() {
           target={screen.target}
           name={screen.name}
           onBack={() => go({ kind: "home" })}
-          onReady={(base) => openChurch({ base, name: screen.name, lastMs: Date.now() }, screen.target.open)}
+          onReady={(base) => void openChurch({ base, name: screen.name, lastMs: Date.now() }, screen.target.open, { checked: true })}
         />
       )}
     </div>
@@ -161,6 +181,7 @@ function Home(p: {
   onNearby: () => void;
   onType: () => void;
   onDemo: () => void;
+  err: string;
 }) {
   const returning = p.churches.length > 0;
   return (
@@ -171,6 +192,7 @@ function Home(p: {
         <p className="sub">Pages, chat, checklists and comms for your church's production team.</p>
       )}
 
+      {p.err && <p className="err" role="alert">{p.err}</p>}
       {returning && (
         <section className="list" aria-label="Your churches">
           {p.churches.map((c) => (
