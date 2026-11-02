@@ -824,6 +824,14 @@
   display: flex;
   align-items: flex-end;
 }
+/* Every guide sheet is also a .crew-sheet, whose column layout and padding
+   left the panel hanging from the top with the page showing under it. A
+   bottom sheet sits on the bottom edge, full width. */
+.crew-sheet.crew-guide-sheet {
+  justify-content: flex-end;
+  padding: max(50px, env(safe-area-inset-top)) 0 0;
+  overflow: hidden;
+}
 .crew-guide-body {
   background: var(--panel-raised);
   border-radius: 16px 16px 0 0;

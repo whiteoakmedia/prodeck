@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { leaderLine } from "../lib/leaderLine";
 import { usePco, splitFilesFor, chartPdfFor, type PlanItem } from "../pcoStore";
 import { pcoAttachmentOpen } from "../lib/tauri";
 import { isAudioFile, playTrack } from "../lib/trackPlayer";
@@ -84,7 +85,7 @@ export function CrewMySet({ rule }: { rule: string[] | null }) {
               </span>
               {s.key && <span className="crew-setlist-key">{s.key}</span>}
             </div>
-            {s.leader && <div className="crew-setlist-sub mono-data">{s.leader} leads</div>}
+            {s.leader && <div className="crew-setlist-sub mono-data">{leaderLine(s.leader)}</div>}
             {(open4.length > 0 || overflow.length > 0 || chartPdf || (s.songId && s.arrangementId)) && (
               <div className="crew-setlist-charts" style={{ paddingLeft: 0 }}>
                 {/* The band's real chart: MultiTracks PDF when the song has

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { leaderLine } from "../lib/leaderLine";
 import { usePco, chartPdfFor, type PlanItem } from "../pcoStore";
 import { pcoAttachmentOpen } from "../lib/tauri";
 import { isAudioFile, playTrack } from "../lib/trackPlayer";
@@ -71,7 +72,7 @@ export function CrewSetlist({ onClose }: { onClose: () => void }) {
               {(s.leader || s.id === liveId) && (
                 <div className="crew-setlist-sub mono-data">
                   {s.id === liveId ? "● NOW · " : ""}
-                  {s.leader ? `${s.leader} leads` : ""}
+                  {leaderLine(s.leader)}
                 </div>
               )}
               <div className="crew-setlist-charts">

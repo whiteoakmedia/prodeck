@@ -72,8 +72,8 @@ const SONGS = [
   { title: "Welcome / Announcements", type: "item", len: 240, key: "", leader: "Pastor Dan" },
   { title: "Great Are You Lord", type: "song", len: 300, key: "A", leader: "Josh Kim" },
   { title: "Giving Moment", type: "item", len: 180, key: "", leader: "" },
-  { title: "Message — “Rooted”, part 3", type: "item", len: 1980, key: "", leader: "Pastor Dan" },
-  { title: "Response — Build My Life", type: "song", len: 360, key: "G", leader: "Josh Kim" },
+  { title: "Message: Rooted, part 3", type: "item", len: 1980, key: "", leader: "Pastor Dan" },
+  { title: "Response: Build My Life", type: "song", len: 360, key: "G", leader: "Josh Kim" },
   { title: "Closing & Dismissal", type: "item", len: 180, key: "", leader: "Pastor Dan" },
 ];
 
@@ -157,7 +157,7 @@ function pcoItems() {
         length: s.len,
         item_type: s.type,
         key_name: s.key,
-        description: s.leader ? `${s.leader} lead` : "",
+        description: s.leader,
       },
       relationships: {},
     })),
@@ -921,13 +921,13 @@ export async function demoInvoke<T>(cmd: string, args?: Record<string, unknown>)
       return out([
         { id: 1, from: "Renee Alvarez", target: "team", channel: "team", text: "Doors open in 10.", ts: NOW() - 900_000 },
         { id: 2, from: "Sam Porter", target: "team", channel: "team", text: "Pulpit mic swapped, battery was low.", ts: NOW() - 480_000 },
-        { id: 3, from: "Kayla Nguyen", target: "team", channel: "team", text: "Lyrics for the new song are in — slides 1–14.", ts: NOW() - 300_000 },
+        { id: 3, from: "Kayla Nguyen", target: "team", channel: "team", text: "Lyrics for the new song are in, slides 1 to 14.", ts: NOW() - 300_000 },
         { id: 4, from: "Booth", target: "team", channel: "team", text: "Walk-in music down at 9:58, countdown at 9:59.", ts: NOW() - 120_000 },
       ]);
     case "page_list":
       return out([]);
     case "diag_recent_log":
-      return out(["(demo mode — the real log is hidden while sample data is on)"]);
+      return out(["(demo mode: the real log is hidden while sample data is on)"]);
     case "pp_get": {
       const v = ppLibrary(String(args?.path ?? "").replace(/^\/?(v1\/)?/, ""));
       if (v != null) return out(v);

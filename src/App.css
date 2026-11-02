@@ -10483,11 +10483,15 @@ select.input {
   right: 0;
   bottom: 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0, …): a long camera name shortens with … instead of pushing
+     into the other half and off the screen. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   font-size: min(5vw, 5vh);
   font-weight: 700;
 }
-.tally-strip-cell { display: flex; align-items: center; justify-content: center; gap: 0.5em; padding: 2vh 12px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: #fff; }
+.tally-strip-cell { display: flex; align-items: center; justify-content: center; gap: 0.5em; min-width: 0; padding: 2vh 12px calc(2vh + env(safe-area-inset-bottom, 0px)); color: #fff; }
+.tally-strip-cell > span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tally-strip-cell b { flex-shrink: 0; }
 .tally-strip-cell.live { background: #8a0000; }
 .tally-strip-cell.next { background: #005c22; }
 .tally-strip-cell b { font-size: 0.7em; letter-spacing: 0.08em; opacity: 0.9; }

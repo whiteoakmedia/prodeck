@@ -220,8 +220,11 @@ export function MobileShell() {
                   className={`crew-toggle ${chat.sound ? "on" : ""}`}
                   role="switch"
                   aria-checked={chat.sound}
+                  aria-label="Message sounds"
                   onClick={() => chat.setSound(!chat.sound)}
-                />
+                >
+                  <span className="crew-toggle-knob" />
+                </button>
               </div>
             </div>
             {(isAdmin || can("manage")) && (

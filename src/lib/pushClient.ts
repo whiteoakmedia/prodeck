@@ -1,4 +1,4 @@
-import { IS_WEB, pushAppSubscribe, pushAppUnsubscribe, pushPublicKey, pushSubscribe, pushUnsubscribe } from "./tauri";
+import { IS_DEMO, IS_SHOTS, IS_WEB, pushAppSubscribe, pushAppUnsubscribe, pushPublicKey, pushSubscribe, pushUnsubscribe } from "./tauri";
 import { CREW_SESSION_KEY } from "../chatStore";
 import { appPush, crewAppHome, IN_CREW_APP } from "./crewApp";
 
@@ -53,6 +53,8 @@ const ls = (k: string) => {
 };
 
 async function appState(): Promise<PushStatus> {
+  // The app's pretend Sunday: the switch works, nothing is sent.
+  if (IS_DEMO || IS_SHOTS) return ls(APP_OFF_KEY) === "1" ? "off" : "on";
   if (!appPush) return "unsupported";
   if (appPush === "denied") return "denied";
   if (appPush === "prompt" || ls(APP_OFF_KEY) === "1") return "off";

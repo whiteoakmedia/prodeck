@@ -207,10 +207,10 @@ export function TallyPage({ param, onExit }: { param: string; onExit?: () => voi
       {view === "operator" && known && (
         <div className="tally-strip">
           <span className="tally-strip-cell live">
-            <b>LIVE</b> {names(ln.live)}
+            <b>LIVE</b> <span>{names(ln.live)}</span>
           </span>
           <span className="tally-strip-cell next">
-            <b>NEXT</b> {names(ln.next)}
+            <b>NEXT</b> <span>{names(ln.next)}</span>
           </span>
         </div>
       )}

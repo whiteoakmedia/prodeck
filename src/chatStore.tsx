@@ -8,6 +8,7 @@ import {
 } from "react";
 import {
   IS_WEB,
+  SHOT_PHONE,
   chatClearConfidence,
   chatHistory,
   chatSend,
@@ -100,7 +101,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const soundRef = useRef(sound);
   soundRef.current = sound;
   // The booth signs as its device name (updates when settings load).
-  const effectiveName = IS_WEB ? name : settings?.device_name || "Booth";
+  // The phone demo is a volunteer's phone, not the booth (Devon runs camera
+  // in the sample team, lib/demo.ts).
+  const effectiveName = IS_WEB ? name : SHOT_PHONE ? "Devon Clark" : settings?.device_name || "Booth";
   const nameRef = useRef(effectiveName);
   nameRef.current = effectiveName;
 
