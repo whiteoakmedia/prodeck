@@ -16,6 +16,7 @@ import { listVisibleFor, useChecklists } from "../checklistStore";
 import { usePco } from "../pcoStore";
 import { IS_WEB, atemState, clearWebToken, identityWhoami, onGatewayState } from "../lib/tauri";
 import { offersTally, readTallyMode, writeTallyMode } from "../lib/tallyMode";
+import { switchLayout, wideScreen } from "../lib/layout";
 import { TallyPage } from "../pages/Tally";
 import { CommsChip, CrewComms } from "./CrewComms";
 import { disablePush, enablePush, pushState, type PushStatus } from "../lib/pushClient";
@@ -174,6 +175,11 @@ export function MobileShell() {
               <span className="crew-guide-go">Open comms →</span>
             </button>
             <TallyCard onStart={() => tallyOn(true)} />
+            {IS_WEB && wideScreen() && (
+              <button className="btn ghost" onClick={() => switchLayout("full")}>
+                Full view: every page and dashboard
+              </button>
+            )}
             <PushCard />
             {/* In-app sounds: chat chime + vibration while the app is open.
                 Pages always ring regardless — they're the emergency channel. */}

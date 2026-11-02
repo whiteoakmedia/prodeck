@@ -10688,3 +10688,5 @@ select.input {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
 }
 .tally .crew-talk.tally-talk.on { background: #f5a524; color: #1a1200; }
+
+.sidebar-footer .crew-layout-switch { width: 100%; margin: 6px 0; }

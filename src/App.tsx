@@ -31,6 +31,7 @@ import { PosterJoin, hasJoinTicket } from "./components/PosterJoin";
 import { ServiceWizard } from "./components/ServiceWizard";
 import { FirstRunSetup } from "./components/FirstRunSetup";
 import { GiftCredit } from "./components/GiftCredit";
+import { crewLayout, readLayoutPref, switchLayout } from "./lib/layout";
 import { SoundcheckWatch } from "./components/SoundcheckWatch";
 import { SetupWizards } from "./components/wizard/SetupWizards";
 import { isFreshInstall } from "./lib/onboarding";
@@ -54,8 +55,12 @@ import "./mobile/mobile.css";
 // Phone-width web clients get the ProDeck Crew shell (design/mobile); the
 // desktop app and full-size browsers keep the sidebar UI. Evaluated once —
 // a phone doesn't become a desktop mid-session.
-const IS_PHONE =
-  (IS_WEB || SHOT_PHONE) && typeof window !== "undefined" && window.matchMedia("(max-width: 760px)").matches;
+const IS_PHONE = crewLayout({
+  isWeb: IS_WEB,
+  shotPhone: SHOT_PHONE,
+  narrow: typeof window !== "undefined" && window.matchMedia("(max-width: 760px)").matches,
+  pref: IS_WEB ? readLayoutPref() : null,
+});
 import { ProDeckProvider, useProDeck } from "./store";
 import { PcoProvider } from "./pcoStore";
 import { TrackingProvider } from "./trackingStore";
@@ -348,6 +353,13 @@ function Shell() {
           {/* Traffic lights + click-for-what-to-do; replaces the old
               PP-only pill (PP is the first light). */}
           <HealthStrip />
+          {/* A tablet in a browser can take the crew layout: comms, tally
+              light, the phone tabs. Never offered on the booth computer. */}
+          {IS_WEB && (
+            <button className="btn ghost small crew-layout-switch" onClick={() => switchLayout("crew")}>
+              Crew view: comms and tally light
+            </button>
+          )}
           <div className="fb-links">
             <button className="link-btn" onClick={() => openFeedback({ kind: "bug" })}>Report a bug</button>
             <span aria-hidden="true">·</span>
