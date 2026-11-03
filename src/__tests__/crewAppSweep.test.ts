@@ -42,3 +42,15 @@ describe("crew app: what the address check says when it finds nothing", () => {
     );
   });
 });
+
+import { orderAddresses } from "../../crew-app/src/native";
+import { sameNetwork } from "../../crew-app/src/sweep";
+
+describe("crew app: which of the booth's addresses to try first", () => {
+  it("prefers the one on the phone's own network over a Dante one", () => {
+    const phone = [{ ip: "172.20.1.28", netmask: "255.255.254.0" }];
+    expect(sameNetwork("172.20.0.243", phone[0])).toBe(true);
+    expect(sameNetwork("172.20.80.54", phone[0])).toBe(false);
+    expect(orderAddresses(["172.20.80.54", "172.20.0.243"], phone)[0]).toBe("172.20.0.243");
+  });
+});

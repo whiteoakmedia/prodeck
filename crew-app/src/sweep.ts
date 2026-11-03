@@ -58,3 +58,13 @@ export function hostsToTry(a: PhoneAddress): string[] {
   }
   return [...mine, ...rest].map(toIp);
 }
+
+/** Is `ip` on the same network as the phone address `a`? */
+export function sameNetwork(ip: string, a: PhoneAddress): boolean {
+  const x = toInt(ip);
+  const y = toInt(a.ip);
+  const bits = prefixOf(a);
+  if (x === null || y === null || bits === null || bits < 1) return false;
+  const size = 2 ** (32 - bits);
+  return Math.floor(x / size) === Math.floor(y / size);
+}

@@ -3,7 +3,7 @@
 // stand-ins, so the screens can be built and seen without a phone.
 
 import { Capacitor, registerPlugin } from "@capacitor/core";
-import { hostsToTry, type PhoneAddress } from "./sweep";
+import { hostsToTry, sameNetwork, type PhoneAddress } from "./sweep";
 import { DEFAULT_PORT, type Church } from "./connect";
 
 export const isNative = () => Capacitor.isNativePlatform();
@@ -70,12 +70,15 @@ export async function findBooths(onProgress?: (msg: string) => void): Promise<Se
   }
   const found = new Map<string, Found>();
   // A booth on two networks (Wi-Fi and Dante, say) answers on both: one entry.
+  let onFirst = () => {};
+  const first = new Promise<void>((r) => (onFirst = r));
   const add = (f: Found) => {
     if (![...found.values()].some((x) => x.base === f.base || x.name === f.name)) found.set(f.base, f);
+    onFirst();
   };
   const addresses = await phoneAddresses();
   const phoneIp = addresses[0]?.ip ?? "";
-  const bonjour = bonjourSearch(() => found.size > 0).then((list) => list.forEach(add));
+  const bonjour = bonjourSearch(() => found.size > 0, addresses).then((list) => list.forEach(add));
   const hosts = addresses.flatMap(hostsToTry);
   let detail = "";
   const swept = (async () => {
@@ -97,7 +100,9 @@ export async function findBooths(onProgress?: (msg: string) => void): Promise<Se
   })().catch((e) => {
     detail = `address check failed: ${String((e as Error)?.message ?? e)}`;
   });
-  await Promise.all([bonjour, swept]);
+  // Done when both are, or a moment after the first booth turns up: the
+  // address check can take a while longer and has nothing more to add.
+  await Promise.race([Promise.all([bonjour, swept]), first.then(() => new Promise((r) => setTimeout(r, 400)))]);
   return { found: [...found.values()], phoneIp, detail };
 }
 
@@ -136,7 +141,7 @@ async function boothName(base: string, ip: string): Promise<string> {
  * announces every address it has, including a Dante network the phone can't
  * reach, so each one is tried and the first that answers is used.
  */
-async function bonjourSearch(done: () => boolean): Promise<Found[]> {
+async function bonjourSearch(done: () => boolean, phone: PhoneAddress[]): Promise<Found[]> {
   const { ZeroConf } = await import("@mhaberler/capacitor-zeroconf-nsd");
   const req = { type: "_prodeck._tcp.", domain: "local." };
   const seen = new Map<string, { name: string; ips: string[]; port: number }>();
@@ -153,11 +158,13 @@ async function bonjourSearch(done: () => boolean): Promise<Found[]> {
   } catch {
     /* no Wi-Fi, or the search wasn't allowed */
   } finally {
-    await ZeroConf.unwatch(req).catch(() => {});
+    // Not awaited: the plugin never confirms a stop on iOS, and waiting for
+    // it left the search on "Looking…" forever whenever Bonjour found a booth.
+    void ZeroConf.unwatch(req).catch(() => {});
   }
   const out: Found[] = [];
   for (const b of seen.values()) {
-    for (const ip of orderAddresses(b.ips)) {
+    for (const ip of orderAddresses(b.ips, phone)) {
       const base = `http://${ip}:${b.port}`;
       // Short: an address on a network the phone isn't on just never answers.
       if ((await checkBooth(base, 2500)).ok) {
@@ -169,9 +176,13 @@ async function bonjourSearch(done: () => boolean): Promise<Found[]> {
   return out;
 }
 
-/** Usual Wi-Fi ranges first (192.168, then 10), so the phone's network is tried before a Dante one. */
-export function orderAddresses(ips: string[]): string[] {
-  const rank = (ip: string) => (ip.startsWith("192.168.") ? 0 : ip.startsWith("10.") ? 1 : ip.startsWith("172.") ? 2 : 3);
+/**
+ * The booth's address on the phone's own network first, then the usual Wi-Fi
+ * ranges (192.168, then 10), so a Dante address is tried last.
+ */
+export function orderAddresses(ips: string[], phone: PhoneAddress[] = []): string[] {
+  const rank = (ip: string) =>
+    phone.some((p) => sameNetwork(ip, p)) ? -1 : ip.startsWith("192.168.") ? 0 : ip.startsWith("10.") ? 1 : ip.startsWith("172.") ? 2 : 3;
   return [...new Set(ips)].sort((a, b) => rank(a) - rank(b));
 }
 
