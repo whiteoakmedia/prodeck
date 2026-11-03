@@ -5,6 +5,20 @@ import { CrewNav, type CrewTab } from "./CrewNav";
 import { CrewWalk } from "./CrewWalk";
 import { CrewChat } from "./CrewChat";
 import { CrewJoin } from "./CrewJoin";
+import {
+  IconBell,
+  IconChevron,
+  IconChime,
+  IconComms,
+  IconLock,
+  IconNoSound,
+  IconPeople,
+  IconScreen,
+  IconSignOut,
+  IconSwitch,
+  IconTally,
+  IconTrash,
+} from "./icons";
 import { CrewHome } from "./CrewHome";
 import { CrewChecklist } from "./CrewChecklist";
 import { CrewOnboard, shouldOnboard } from "./CrewOnboard";
@@ -135,7 +149,7 @@ export function MobileShell() {
   // Signing in is the whole screen, not a panel inside Chat: an unapproved
   // phone can't do anything on the other tabs either, and the nav would just
   // be four dead ends.
-  if (IS_WEB && chat.auth !== "in") {
+  if ((IS_WEB && chat.auth !== "in") || (IS_SHOTS && SHOT_TAB === "join")) {
     return (
       <div className="crew">
         <main className="crew-main">
@@ -163,7 +177,7 @@ export function MobileShell() {
         {tab === "home" && walk && <CrewWalk onBack={() => setWalk(false)} />}
         {/* Onboarding's last step, until page notifications are on. */}
         {IS_WEB && tab === "home" && !walk && <CrewNotifyStep onShowInstall={() => setOnboarding(true)} />}
-        {tab === "home" && !walk && <CrewHome onGoChecklist={() => setTab("checklist")} onGoWalk={() => setWalk(true)} />}
+        {tab === "home" && !walk && <CrewHome onGoChecklist={() => setTab("checklist")} onGoWalk={() => setWalk(true)} onGoChat={() => setTab("chat")} />}
         {tab === "chat" && (
           <div className="crew-page crew-page-chat">
             <CrewChat />
@@ -175,107 +189,88 @@ export function MobileShell() {
         {tab === "more" && !leader && walk && <CrewWalk onBack={() => setWalk(false)} />}
         {tab === "more" && !leader && !walk && comms && commsOn && <CrewComms onBack={() => setComms(false)} />}
         {tab === "more" && !leader && !walk && !(comms && commsOn) && (
-          <div className="crew-page">
+          <div className="crew-page crew-more">
             <h1 className="crew-title">More</h1>
-            <button className="crew-card edge crew-guide" onClick={() => setWalk(true)}>
-              <span className="mono" style={{ color: "var(--accent-hi)" }}>
-                No sound?
+
+            <div className="more-profile">
+              <span className="more-avatar" aria-hidden>
+                {initials(chat.name)}
               </span>
-              <span className="crew-guide-line">Find the fault: what the booth already checked, then where to walk</span>
-              <span className="crew-guide-go">Start →</span>
-            </button>
-            {commsOn && (
-            <button className="crew-card edge crew-guide" onClick={() => setComms(true)}>
-              <span className="mono" style={{ color: "var(--accent-hi)" }}>
-                Comms
-              </span>
-              <span className="crew-guide-line">Hold to talk to the crew on a line: All, Cameras, Stage or Booth</span>
-              <span className="crew-guide-go">Open comms →</span>
-            </button>
-            )}
-            <TallyCard onStart={() => tallyOn(true)} />
-            {IN_CREW_APP && (
-              <button className="btn ghost" onClick={() => (location.href = crewAppHome())}>
-                Switch church
-              </button>
-            )}
-            {IS_WEB && wideScreen() && (
-              <button className="btn ghost" onClick={() => switchLayout("full")}>
-                Full view: every page and dashboard
-              </button>
-            )}
-            <PushCard />
-            {/* In-app sounds: chat chime + vibration while the app is open.
-                Pages always ring regardless — they're the emergency channel. */}
-            <div className="crew-card edge">
-              <div className="crew-buzz" style={{ background: "none", padding: 0 }}>
-                <div>
-                  <div className="crew-buzz-title">Message sounds</div>
-                  <div className="crew-buzz-sub">
-                    Chime and vibrate for new chat while the app is open. Pages always
-                    ring.
-                  </div>
-                </div>
-                <button
-                  className={`crew-toggle ${chat.sound ? "on" : ""}`}
-                  role="switch"
-                  aria-checked={chat.sound}
-                  aria-label="Message sounds"
-                  onClick={() => chat.setSound(!chat.sound)}
-                >
-                  <span className="crew-toggle-knob" />
-                </button>
+              <div className="more-profile-text">
+                <div className="more-profile-name">{chat.name || "This phone"}</div>
+                {IS_WEB && <div className="mono more-profile-tier">{isAdmin ? "Admin" : "Crew member"}</div>}
               </div>
             </div>
-            {(isAdmin || can("manage")) && (
-              <button className="crew-btn primary" onClick={() => setLeader(true)}>
-                Leader board
-              </button>
-            )}
-            <div className="crew-card edge">
-              <p style={{ margin: 0 }}>
-                Signed in as <strong>{chat.name || "—"}</strong>
-                {IS_WEB && (
-                  <span className="mono crew-tier"> · {isAdmin ? "admin" : "member"}</span>
-                )}
-              </p>
-              {chat.auth === "in" && (
-                <button className="btn ghost" style={{ marginTop: 10 }} onClick={chat.signOut}>
-                  Lock (PIN again)
-                </button>
+
+            <MoreGroup label="Tools">
+              {commsOn && <MoreRow icon={<IconComms />} title="Comms" sub="Talk to the crew" onClick={() => setComms(true)} />}
+              <TallyRow onStart={() => tallyOn(true)} />
+              <MoreRow icon={<IconNoSound />} title="No sound?" sub="Find the fault, step by step" onClick={() => setWalk(true)} />
+              {(isAdmin || can("manage")) && (
+                <MoreRow icon={<IconPeople />} title="Leader board" sub="Who's here, who needs help" onClick={() => setLeader(true)} />
               )}
-              {IS_WEB && (
-                <>
-                  {/* Without this a phone is stuck on whichever tier it first
-                      signed in as: "Sign out" only cleared the crew session, so
-                      you'd get the PIN screen back and never the access-password
-                      screen. Signing in as member then needing to page was a
-                      dead end. */}
+            </MoreGroup>
+
+            <MoreGroup label="Notifications">
+              <PushRow />
+              <MoreRow
+                icon={<IconChime />}
+                title="Message sounds"
+                sub="While the app is open. Pages always ring."
+                trailing={
                   <button
-                    className="btn ghost"
-                    style={{ marginTop: 8 }}
-                    onClick={() => {
-                      chat.forgetDevice();
-                      clearWebToken();
-                      location.reload();
-                    }}
+                    className={`crew-toggle ${chat.sound ? "on" : ""}`}
+                    role="switch"
+                    aria-checked={chat.sound}
+                    aria-label="Message sounds"
+                    onClick={() => chat.setSound(!chat.sound)}
                   >
-                    Sign out completely
+                    <span className="crew-toggle-knob" />
                   </button>
-                  {chat.auth === "in" && <DeleteAccount onDone={() => {
+                }
+              />
+            </MoreGroup>
+
+            <MoreGroup label="Account">
+              {IN_CREW_APP && <MoreRow icon={<IconSwitch />} title="Switch church" onClick={() => (location.href = crewAppHome())} />}
+              {IS_WEB && wideScreen() && (
+                <MoreRow icon={<IconScreen />} title="Full view" sub="Every page and dashboard" onClick={() => switchLayout("full")} />
+              )}
+              {chat.auth === "in" && <MoreRow icon={<IconLock />} title="Lock" sub="Ask for my PIN again" onClick={chat.signOut} />}
+              {IS_WEB && (
+                // Without this a phone is stuck on whichever tier it first
+                // signed in as: "Lock" only clears the crew session, so you'd
+                // get the PIN screen back and never the access-password screen.
+                <MoreRow
+                  icon={<IconSignOut />}
+                  title="Sign out"
+                  sub="Forget this phone"
+                  onClick={() => {
+                    chat.forgetDevice();
+                    clearWebToken();
+                    location.reload();
+                  }}
+                />
+              )}
+              {IS_WEB && chat.auth === "in" && (
+                <DeleteAccount
+                  onDone={() => {
                     chat.forgetDevice();
                     clearWebToken();
                     if (IN_CREW_APP) location.href = crewAppHome();
                     else location.reload();
-                  }} />}
-                  <p className="crew-hint muted" style={{ marginTop: 6 }}>
-                    {isAdmin
-                      ? "You can send pages from Chat."
-                      : "As a member you can chat, check in, and confirm pages. Booth controls need an admin sign-in (ask at the booth)."}
-                  </p>
-                </>
+                  }}
+                />
               )}
-            </div>
+            </MoreGroup>
+
+            {IS_WEB && (
+              <p className="more-foot">
+                {isAdmin
+                  ? "You can send pages from Chat."
+                  : "Members can chat, check in and confirm pages. Booth controls need an admin sign in."}
+              </p>
+            )}
           </div>
         )}
       </main>
@@ -307,11 +302,7 @@ function DeleteAccount({ onDone }: { onDone: () => void }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   if (!sure) {
-    return (
-      <button className="btn ghost crew-delete" style={{ marginTop: 8 }} onClick={() => setSure(true)}>
-        Delete my account
-      </button>
-    );
+    return <MoreRow icon={<IconTrash />} title="Delete my account" danger onClick={() => setSure(true)} />;
   }
   return (
     <div className="crew-card danger" style={{ marginTop: 10 }}>
@@ -348,7 +339,7 @@ function DeleteAccount({ onDone }: { onDone: () => void }) {
 }
 
 /** Offered only when the booth has a switcher to read cameras from. */
-function TallyCard({ onStart }: { onStart: () => void }) {
+function TallyRow({ onStart }: { onStart: () => void }) {
   const [show, setShow] = useState(false);
   useEffect(() => {
     let alive = true;
@@ -360,21 +351,10 @@ function TallyCard({ onStart }: { onStart: () => void }) {
     };
   }, []);
   if (!show) return null;
-  return (
-    <button className="crew-card edge crew-guide" onClick={onStart}>
-      <span className="mono" style={{ color: "var(--accent-hi)" }}>
-        Tally light
-      </span>
-      <span className="crew-guide-line">
-        Turn this phone into the tally for your camera: red when it's live, green when it's next.
-        Tap the screen for Back to ProDeck.
-      </span>
-      <span className="crew-guide-go">Use as tally light →</span>
-    </button>
-  );
+  return <MoreRow icon={<IconTally />} title="Tally light" sub="Use this phone at a camera" onClick={onStart} />;
 }
 
-function PushCard() {
+function PushRow() {
   const [state, setState] = useState<PushStatus>("off");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -384,8 +364,8 @@ function PushCard() {
   }, []);
 
   const copy: Record<PushStatus, string> = {
-    on: "Pages will buzz this phone even when ProDeck is closed.",
-    off: "Turn on so pages reach you when your phone is in your pocket.",
+    on: "Pages reach you even when it's closed",
+    off: "Off: pages only show while it's open",
     denied:
       "This browser is refusing notifications for ProDeck. That also happens if the permission pop-up was dismissed. Allow notifications for this site in your browser settings, then come back.",
     insecure:
@@ -401,38 +381,30 @@ function PushCard() {
     copy.unsupported = "Pages can't buzz this phone yet. Keep ProDeck Crew open during the service and pages still show.";
   }
 
-  return (
-    <div className="crew-card edge">
-      <div className="crew-buzz" style={{ background: "none", padding: 0 }}>
-        <div>
-          <div className="crew-buzz-title">Page notifications</div>
-          <div className="crew-buzz-sub">{copy[state]}</div>
-        </div>
-        {(state === "on" || state === "off" || (IN_CREW_APP && state === "denied")) && (
-          <button
-            className={`crew-toggle ${state === "on" ? "on" : ""}`}
-            role="switch"
-            aria-checked={state === "on"}
-            disabled={busy}
-            onClick={async () => {
-              setBusy(true);
-              setErr("");
-              try {
-                setState(state === "on" ? await disablePush() : await enablePush());
-              } catch (e) {
-                setErr(String(e));
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            <span className="crew-toggle-knob" />
-          </button>
-        )}
-      </div>
-      {err && <p className="crew-join-err">{err}</p>}
-    </div>
-  );
+  const toggle =
+    state === "on" || state === "off" || (IN_CREW_APP && state === "denied") ? (
+      <button
+        className={`crew-toggle ${state === "on" ? "on" : ""}`}
+        role="switch"
+        aria-checked={state === "on"}
+        aria-label="Page notifications"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          setErr("");
+          try {
+            setState(state === "on" ? await disablePush() : await enablePush());
+          } catch (e) {
+            setErr(String(e));
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <span className="crew-toggle-knob" />
+      </button>
+    ) : null;
+  return <MoreRow icon={<IconBell />} title="Page notifications" sub={err || copy[state]} trailing={toggle} />;
 }
 
 // Floating "still listening" chip — the stream survives tab changes now
@@ -495,5 +467,59 @@ function TrackBar() {
         <span className="mono-data crew-track-time">{dur > 0 ? mmss(dur) : "–:––"}</span>
       </div>
     </div>
+  );
+}
+
+/** "Devon Clark" → "DC" for the More screen's avatar. */
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "·";
+  return ((parts[0][0] ?? "") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
+}
+
+/** A titled group of rows, iOS Settings style. */
+function MoreGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <section className="more-group" aria-label={label}>
+      <div className="mono more-group-label">{label}</div>
+      <div className="more-group-rows">{children}</div>
+    </section>
+  );
+}
+
+/** One row: icon, title, an optional line under it, then a switch or a chevron. */
+function MoreRow({
+  icon,
+  title,
+  sub,
+  onClick,
+  trailing,
+  danger,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  sub?: string;
+  onClick?: () => void;
+  trailing?: React.ReactNode;
+  danger?: boolean;
+}) {
+  const body = (
+    <>
+      <span className="more-icon" aria-hidden>
+        {icon}
+      </span>
+      <span className="more-text">
+        <span className="more-title">{title}</span>
+        {sub && <span className="more-sub">{sub}</span>}
+      </span>
+      {trailing ?? (onClick ? <span className="more-chev"><IconChevron /></span> : null)}
+    </>
+  );
+  return onClick && !trailing ? (
+    <button className={`more-row${danger ? " danger" : ""}`} onClick={onClick}>
+      {body}
+    </button>
+  ) : (
+    <div className={`more-row${danger ? " danger" : ""}`}>{body}</div>
   );
 }

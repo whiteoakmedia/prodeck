@@ -37,8 +37,17 @@ import { useLiveTimers } from "../lib/liveTimers";
 import { CrewSetlist } from "./CrewSetlist";
 import { CrewMySet } from "./CrewMySet";
 import { fileRuleFor } from "../pcoStore";
+import { IconChat, IconChecklist, IconGuide, IconMusic, IconNoSound, IconTap } from "./icons";
 
-export function CrewHome({ onGoChecklist, onGoWalk }: { onGoChecklist?: () => void; onGoWalk?: () => void }) {
+export function CrewHome({
+  onGoChecklist,
+  onGoWalk,
+  onGoChat,
+}: {
+  onGoChecklist?: () => void;
+  onGoWalk?: () => void;
+  onGoChat?: () => void;
+}) {
   const pco = usePco();
   const chat = useChat();
   const cl = useChecklists();
@@ -267,15 +276,30 @@ export function CrewHome({ onGoChecklist, onGoWalk }: { onGoChecklist?: () => vo
 
   return (
     <div className="crew-page">
-      <h1 className="crew-title">Sunday</h1>
-      {/* Who the app thinks you are — the quiet confirmation that sign-in and
-          role assignment actually took. */}
-      {myName && (
-        <p className="crew-hint muted" style={{ marginTop: -8 }}>
-          Hi {myName.split(" ")[0]}
-          {myRole ? ` · ${myRole}` : ""}
-        </p>
-      )}
+      <header className="home-head">
+        <div>
+          <h1 className="crew-title">Sunday</h1>
+          {/* Who the app thinks you are: the quiet confirmation that sign in
+              and role assignment actually took. */}
+          {myName && (
+            <p className="home-hi">
+              Hi {myName.split(" ")[0]}
+              {myRole ? ` · ${myRole}` : ""}
+            </p>
+          )}
+        </div>
+        {/* One quiet line of status where four cards' worth used to be.
+            Pro is only shown once heard from: a phone that hasn't had a
+            status frame yet must not be told "Pro offline". */}
+        <div className="home-status mono" aria-label="Status">
+          <span className="crew-dot" style={{ background: boothUp ? "var(--success)" : "var(--danger)" }} />
+          {boothUp ? "Booth" : "Offline"}
+          {connected && <span className="home-status-sep">Pro</span>}
+          {audioRunning && audioDb > -85 && (
+            <span className="home-status-sep">{Math.round(audioDb + splCalibration)} dB</span>
+          )}
+        </div>
+      </header>
 
       {/* Countdown — the live ProPresenter timer when one is running (what
           the room screens show), otherwise time to the PCO service start. */}
@@ -297,39 +321,44 @@ export function CrewHome({ onGoChecklist, onGoWalk }: { onGoChecklist?: () => vo
         </div>
       </div>
 
+      {/* Check-in, right under the service card: the first thing anyone does
+          on arrival. Only people on this week's plan get an expected time;
+          everyone else can still check in (last minute subs happen). */}
+      <div className="crew-checkin edge">
+        {checked ? (
+          <span className="crew-checkin-done">
+            <span className="crew-check on green">✓</span> Checked in {clock(checked)}
+          </span>
+        ) : (
+          <>
+            <div>
+              <div className="crew-buzz-title">
+                {myArrival.scheduled ? "Not checked in" : "Not on this week's plan"}
+              </div>
+              {myArrival.scheduled && expectedTs > 0 && (
+                <div className="mono-data crew-buzz-sub">
+                  expected {dayClock(expectedTs)}
+                  {myArrival.ts == null ? " · service start" : ""}
+                </div>
+              )}
+              {!myArrival.scheduled && (
+                <div className="mono-data crew-buzz-sub">
+                  filling in? check in anyway
+                </div>
+              )}
+            </div>
+            <button className="crew-checkin-btn" disabled={busy} onClick={checkIn}>
+              {busy ? "…" : "I'm here"}
+            </button>
+          </>
+        )}
+      </div>
+
       {/* Band members: My Set inline (their files, right here). Everyone
           else: the compact Setlist card opening the full sheet. */}
       {songCount > 0 && isBand && <CrewMySet rule={fileRule} />}
-      {songCount > 0 && !isBand && (
-        <button className="crew-card edge crew-guide" onClick={() => setSetlistOpen(true)}>
-          <span className="mono" style={{ color: "var(--accent-hi)" }}>
-            Setlist
-          </span>
-          <span className="crew-guide-line">
-            {songCount} song{songCount === 1 ? "" : "s"}: keys, leaders &amp; charts
-          </span>
-          <span className="crew-guide-go">Open →</span>
-        </button>
-      )}
       {setlistOpen && <CrewSetlist onClose={() => setSetlistOpen(false)} />}
 
-      {/* Position guide — only when scheduled this week and the booth wrote
-          one for this position. Small callout; full text opens as a sheet. */}
-      {(guideText || myFiles.length > 0) && (
-        <button className="crew-card edge crew-guide" onClick={() => setGuideOpen(true)}>
-          <span className="mono" style={{ color: "var(--accent-hi)" }}>
-            Your position
-          </span>
-          <span className="crew-guide-line">
-            {myArrival.position} —{" "}
-            {guideText ? "job description & expectations" : "reference files"}
-            {guideText && myFiles.length > 0
-              ? ` · ${myFiles.length} file${myFiles.length === 1 ? "" : "s"}`
-              : ""}
-          </span>
-          <span className="crew-guide-go">Read →</span>
-        </button>
-      )}
       {guideOpen && (
         <div className="crew-sheet crew-guide-sheet" onClick={() => setGuideOpen(false)}>
           <div className="crew-guide-body" onClick={(e) => e.stopPropagation()}>
@@ -424,7 +453,7 @@ export function CrewHome({ onGoChecklist, onGoWalk }: { onGoChecklist?: () => vo
                   : `${dutyPool.length} to go`}
             </span>
           </div>
-          <div className="crew-duty-title">{duty.item.text}</div>
+          <div className="crew-duty-title home-duty-title">{duty.item.text}</div>
           <div className="crew-buzz-sub">
             {duty.list.name}
             {dutyDue ? ` · due ${dayClock(dutyDue)}` : ""}
@@ -446,128 +475,86 @@ export function CrewHome({ onGoChecklist, onGoWalk }: { onGoChecklist?: () => vo
         </div>
       )}
 
-      {/* No sound? — the routing troubleshooter. Always present: the moment
-          it is needed is exactly the moment nobody can find the sheet. */}
-      {onGoWalk && (
-        <button className="crew-card edge crew-guide" onClick={onGoWalk}>
-          <span className="mono" style={{ color: "var(--accent-hi)" }}>
-            No sound?
-          </span>
-          <span className="crew-guide-line">Tap the person or channel to see what the booth checked, then where to walk</span>
-          <span className="crew-guide-go">Start →</span>
-        </button>
-      )}
-
-      {/* Checklist progress — only when there IS a checklist for this
-          position. "0 of 0" read as something being broken. */}
-      {totals.total > 0 && (
-        <div className="crew-card edge">
-          <div className="crew-row-head">
-            <span className="crew-buzz-title">Checklist</span>
-            {overdue > 0 && <span className="crew-chip-warn mono">{overdue} overdue</span>}
-            <span className="mono-data crew-count-of">
-              {totals.done}/{totals.total}
-            </span>
-          </div>
-          <div className="crew-progress" style={{ marginTop: 10 }}>
-            <div className="crew-progress-fill accent" style={{ width: `${pct}%` }} />
-          </div>
-        </div>
-      )}
-
-      {/* Tiles */}
-      <div className="crew-tiles">
-        <div className="crew-card edge">
-          <span className="mono" style={{ color: "var(--dim)" }}>
-            Unread
-          </span>
-          <div className="crew-tile-big">{chat.unread}</div>
-          <div className="crew-hint muted">
-            {chat.unread === 1 ? "message" : "messages"} in Sunday Team
-          </div>
-        </div>
-        {isAdmin && (
-          <div className="crew-card edge">
-            <span className="mono" style={{ color: "var(--dim)" }}>
-              TapLink
-            </span>
-            <div className="crew-tile-row">
-              <span
-                className="crew-dot"
-                style={{ background: tap ? "var(--success)" : "var(--dim)" }}
-              />
-              <span className="crew-tile-state">{tap?.state ?? "default"}</span>
-            </div>
-            <div className="crew-hint muted">
-              {tap ? "discs live" : "not reachable"}
-            </div>
-          </div>
+      {/* Shortcuts: everything else on one grid of tiles, each a single tap
+          to the full thing. These were five separate cards. */}
+      <div className="home-tiles">
+        {songCount > 0 && !isBand && (
+          <HomeTile icon={<IconMusic />} title="Setlist" value={`${songCount} song${songCount === 1 ? "" : "s"}`} onClick={() => setSetlistOpen(true)} />
         )}
-      </div>
-
-      {/* Live strip */}
-      <div className="crew-strip edge">
-        <span className="crew-strip-item">
-          <span
-            className="crew-dot"
-            style={{ background: boothUp ? "var(--success)" : "var(--danger)" }}
+        {totals.total > 0 && (
+          <HomeTile
+            icon={<IconChecklist />}
+            title="Checklist"
+            value={`${totals.done}/${totals.total}`}
+            warn={overdue > 0 ? `${overdue} overdue` : undefined}
+            progress={pct}
+            onClick={onGoChecklist}
           />
-          {boothUp ? "Booth online" : "Booth offline"}
-        </span>
-        <span className="crew-strip-rule" />
-        {/* ProPresenter is its own fact, and only shown once we've actually
-            heard from it — a phone that simply hasn't received a status frame
-            yet must not be reported as "Pro offline". */}
-        {connected && (
-          <>
-            <span className="crew-strip-item">
-              <span className="crew-dot" style={{ background: "var(--success)" }} />
-              Pro live
-            </span>
-            <span className="crew-strip-rule" />
-          </>
         )}
-        <span className="mono-data crew-strip-item">
-          {audioRunning
-            ? audioDb > -85
-              ? `${Math.round(audioDb + splCalibration)} dB`
-              : "quiet"
-            : "no meter"}
-        </span>
-      </div>
-
-      {/* Check-in — the only control on the screen. Only people on this
-          week's plan get an expected time; everyone else can still check in
-          (last-minute subs happen) but is never told they're due. */}
-      <div className="crew-checkin edge">
-        {checked ? (
-          <span className="crew-checkin-done">
-            <span className="crew-check on green">✓</span> Checked in {clock(checked)}
-          </span>
-        ) : (
-          <>
-            <div>
-              <div className="crew-buzz-title">
-                {myArrival.scheduled ? "Not checked in" : "Not on this week's plan"}
-              </div>
-              {myArrival.scheduled && expectedTs > 0 && (
-                <div className="mono-data crew-buzz-sub">
-                  expected {dayClock(expectedTs)}
-                  {myArrival.ts == null ? " · service start" : ""}
-                </div>
-              )}
-              {!myArrival.scheduled && (
-                <div className="mono-data crew-buzz-sub">
-                  filling in? check in anyway
-                </div>
-              )}
-            </div>
-            <button className="crew-checkin-btn" disabled={busy} onClick={checkIn}>
-              {busy ? "…" : "I'm here"}
-            </button>
-          </>
+        <HomeTile
+          icon={<IconChat />}
+          title="Chat"
+          value={chat.unread ? `${chat.unread} unread` : "All read"}
+          accent={chat.unread > 0}
+          onClick={onGoChat}
+        />
+        {onGoWalk && <HomeTile icon={<IconNoSound />} title="No sound?" value="Find the fault" onClick={onGoWalk} />}
+        {(guideText || myFiles.length > 0) && (
+          <HomeTile icon={<IconGuide />} title="My role" value={myArrival.position || "Guide"} onClick={() => setGuideOpen(true)} />
+        )}
+        {isAdmin && (
+          <HomeTile icon={<IconTap />} title="TapLink" value={tap ? (tap.state ?? "default") : "Not reachable"} dot={tap ? "var(--success)" : "var(--dim)"} />
         )}
       </div>
     </div>
+  );
+}
+
+/** One shortcut tile on Home: icon, name, and one value (mono, per the spec). */
+function HomeTile({
+  icon,
+  title,
+  value,
+  onClick,
+  warn,
+  accent,
+  dot,
+  progress,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  value: string;
+  onClick?: () => void;
+  warn?: string;
+  accent?: boolean;
+  dot?: string;
+  progress?: number;
+}) {
+  const body = (
+    <>
+      <span className="home-tile-top">
+        <span className="home-tile-icon" aria-hidden>
+          {icon}
+        </span>
+        {warn && <span className="crew-chip-warn mono">{warn}</span>}
+      </span>
+      <span className="home-tile-title">{title}</span>
+      <span className={`home-tile-value mono-data${accent ? " accent" : ""}`}>
+        {dot && <span className="crew-dot" style={{ background: dot }} />}
+        {value}
+      </span>
+      {progress != null && (
+        <span className="crew-progress home-tile-progress">
+          <span className="crew-progress-fill accent" style={{ width: `${progress}%` }} />
+        </span>
+      )}
+    </>
+  );
+  return onClick ? (
+    <button className="home-tile" onClick={onClick}>
+      {body}
+    </button>
+  ) : (
+    <div className="home-tile">{body}</div>
   );
 }

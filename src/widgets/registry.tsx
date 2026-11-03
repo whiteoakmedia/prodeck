@@ -1746,7 +1746,7 @@ export function ListenWidget() {
       <p className="muted small">
         {kiosk
           ? "Live booth audio — always on; set loudness on the TV."
-          : "Live booth audio (overflow mix) — keeps playing while you use other tabs."}
+          : "Live booth audio, the overflow mix. It keeps playing while you use other tabs."}
       </p>
       {err && <p className="error small">{err}</p>}
     </div>

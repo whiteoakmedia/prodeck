@@ -5,6 +5,14 @@
 
 export const IN_CREW_APP: boolean = typeof navigator !== "undefined" && /\bProDeckCrew\//.test(navigator.userAgent);
 
+// An app doesn't pinch-zoom: lock the scale inside ProDeck Crew, so a zoom
+// can't happen and can't get stuck. Browsers keep their own zoom.
+if (IN_CREW_APP && typeof document !== "undefined") {
+  document
+    .querySelector('meta[name="viewport"]')
+    ?.setAttribute("content", "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover");
+}
+
 const APP_PUSH_KEY = "prodeck.appPush";
 
 /**

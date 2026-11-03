@@ -2,7 +2,7 @@ import { BackToChurches } from "../components/BackToChurches";
 import { useEffect, useState } from "react";
 import { useChat } from "../chatStore";
 import { productionRoster, usePco } from "../pcoStore";
-import { INVITE_KEY, inviteInfo } from "../lib/tauri";
+import { INVITE_KEY, IS_SHOTS, SHOT_TAB, inviteInfo } from "../lib/tauri";
 
 // S02a / S02b — join, PIN, waiting for approval (design/mobile/README.md).
 //
@@ -23,12 +23,17 @@ const PENDING_AT_KEY = "prodeck.crewPendingAt";
 export function CrewJoin() {
   const chat = useChat();
   // A stored name means this device has registered before → unlock, not signup.
-  const returning = !!chat.name;
-  const [name, setName] = useState(chat.name);
+  // (The demo's ?tab=join shows a phone that's never joined.)
+  const returning = !!chat.name && !(IS_SHOTS && SHOT_TAB === "join");
+  const [name, setName] = useState(returning ? chat.name : "");
   const [pin, setPin] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [forgot, setForgot] = useState(false);
+  // "Already have an account?": name + PIN for an account made on another
+  // phone, in a browser, or before this phone was reset. Joining with your
+  // own name and PIN also signed you in, but nothing said so.
+  const [signIn, setSignIn] = useState(false);
   // Position picked off the plan, sent with registration.
   const [role, setRole] = useState("");
   const pco = usePco();
@@ -57,7 +62,7 @@ export function CrewJoin() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invite]);
 
-  const mode: "unlock" | "register" = returning && !invite ? "unlock" : "register";
+  const mode: "unlock" | "register" | "signin" = returning && !invite ? "unlock" : signIn ? "signin" : "register";
 
   async function submit(p: string) {
     if (busy) return;
@@ -83,6 +88,8 @@ export function CrewJoin() {
           PENDING_AT_KEY,
           new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
         );
+      } else if (mode === "signin") {
+        await chat.login(name.trim(), p);
       } else {
         await chat.login(chat.name, p);
       }
@@ -91,6 +98,11 @@ export function CrewJoin() {
       // The booth no longer has this name — the account was deleted or renamed
       // at the booth. Without this the device is stranded: it stays in unlock
       // mode forever, asking for the PIN of an account that doesn't exist.
+      if (mode === "signin" && /no such name|register first/i.test(msg)) {
+        setErr(`No account called ${name.trim()} at this booth. Check the spelling, or join instead.`);
+        setPin("");
+        return;
+      }
       if (/no such name|register first/i.test(msg)) {
         chat.forgetDevice();
         setName("");
@@ -105,9 +117,10 @@ export function CrewJoin() {
     }
   }
 
-  // Unlock fires the moment the 4th digit lands — no confirm button.
+  // Unlock (and sign in, once there's a name) fires the moment the 4th digit
+  // lands: no confirm button.
   useEffect(() => {
-    if (mode === "unlock" && pin.length === 4) submit(pin);
+    if ((mode === "unlock" || (mode === "signin" && name.trim())) && pin.length === 4) submit(pin);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pin, mode]);
 
@@ -189,10 +202,37 @@ export function CrewJoin() {
       <h1 className="crew-join-title">
         {mode === "unlock"
           ? `Welcome back, ${chat.name}`
-          : inviteReady
+          : mode === "signin"
+            ? "Sign in"
+            : inviteReady
             ? `Almost there, ${name.split(" ")[0]}!`
             : "Join the crew"}
       </h1>
+
+      {mode !== "unlock" && !invite && (
+        <div className="crew-seg crew-join-seg" role="tablist" aria-label="New or returning">
+          {(
+            [
+              ["register", "I'm new"],
+              ["signin", "I have an account"],
+            ] as const
+          ).map(([m, label]) => (
+            <button
+              key={m}
+              role="tab"
+              aria-selected={mode === m}
+              className={`crew-seg-btn ${mode === m ? "on" : ""}`}
+              onClick={() => {
+                setSignIn(m === "signin");
+                setPin("");
+                setErr("");
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {mode === "register" && inviteReady && (
         <p className="crew-join-help">
@@ -204,11 +244,13 @@ export function CrewJoin() {
         <p className="crew-join-help">Checking your invite…</p>
       )}
 
-      {mode === "register" && !invite && (
+      {mode !== "unlock" && !invite && (
         <>
           {roster.length > 0 && (
             <>
-              <p className="crew-join-help">Tap your name on this week's plan</p>
+              <p className="crew-join-help">
+                {mode === "signin" ? "Tap your name, or type it below" : "Tap your name on this week's plan"}
+              </p>
               <div className="crew-roster">
                 {roster.map((m) => {
                   const on = name.trim().toLowerCase() === m.name.trim().toLowerCase();
@@ -227,7 +269,7 @@ export function CrewJoin() {
                   );
                 })}
               </div>
-              <p className="crew-join-help">or type it</p>
+              {mode === "register" && <p className="crew-join-help">or type it</p>}
             </>
           )}
           <input
@@ -240,7 +282,7 @@ export function CrewJoin() {
               setRole(""); // typed by hand → no position to claim
             }}
           />
-          {role && (
+          {role && mode === "register" && (
             <p className="crew-join-help">
               Role: <strong>{role}</strong>
             </p>
@@ -250,7 +292,7 @@ export function CrewJoin() {
 
       <PinDots pin={pin} />
       <p className="crew-join-help">
-        {mode === "unlock"
+        {mode === "unlock" || mode === "signin"
           ? "Enter your 4-digit PIN"
           : "Pick a 4 digit PIN. You'll use it to unlock on this phone"}
       </p>

@@ -10739,3 +10739,15 @@ select.input {
 
 /* Inside the ProDeck Crew app, before sign-in (BackToChurches.tsx). */
 .back-to-churches { display: block; margin: 16px auto 0; font-size: 14px; }
+
+/* iPhone and iPad zoom into any text field under 16px the moment it's
+   tapped, and stay zoomed after the keyboard closes. The crew screens had a
+   16px floor; the join and sign-in screens before them didn't. Everywhere,
+   on iOS only, so the desktop's denser fields keep their size. */
+@supports (-webkit-touch-callout: none) {
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1em);
+  }
+}

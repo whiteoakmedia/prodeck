@@ -1,6 +1,8 @@
+import { useEffect, useState } from "react";
 import { useProDeck } from "../store";
 import { usePco } from "../pcoStore";
-import { ListenWidget } from "../widgets/registry";
+import { ListenWidget, WIDGET_MAP } from "../widgets/registry";
+import { loadDashboards, type Dashboard } from "../lib/dashboards";
 
 // S10 — Dashboard on a phone.
 //
@@ -13,6 +15,12 @@ import { ListenWidget } from "../widgets/registry";
 // Camera feeds are deliberately absent: the NDI MJPEG streams live on separate
 // LAN-only ports and are never tunnelled (video would eat the church's upstream
 // and starve chat and pages).
+//
+// The booth's own dashboards are offered too (S10's segmented control), one
+// tap away across the top: each widget full width, one under another in the
+// booth's order, read only, the way a TV kiosk shows them.
+
+const DASH_KEY = "prodeck.crewDash";
 
 const fmtLen = (sec: number) => {
   if (!sec) return "";
@@ -28,6 +36,85 @@ const splPct = (spl: number) => Math.max(0, Math.min(100, ((spl - 40) / 60) * 10
 const QUIET_DBFS = -85;
 
 export function CrewDash() {
+  const [dashes, setDashes] = useState<Dashboard[]>([]);
+  const [pick, setPick] = useState(() => {
+    try {
+      return localStorage.getItem(DASH_KEY) ?? "service";
+    } catch {
+      return "service";
+    }
+  });
+  useEffect(() => {
+    let alive = true;
+    loadDashboards()
+      .then((d) => alive && setDashes((d ?? []).filter((x) => x.widgets?.length)))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const choose = (id: string) => {
+    setPick(id);
+    try {
+      localStorage.setItem(DASH_KEY, id);
+    } catch {
+      /* private storage */
+    }
+  };
+  const booth = dashes.find((d) => d.id === pick);
+
+  return (
+    <div className="crew-page">
+      <h1 className="crew-title">Dashboards</h1>
+      {dashes.length > 0 && (
+        <div className="dash-pick" role="tablist" aria-label="Dashboard">
+          {[{ id: "service", name: "Service" }, ...dashes].map((d) => (
+            <button
+              key={d.id}
+              role="tab"
+              aria-selected={(booth ? booth.id : "service") === d.id}
+              className={`dash-chip${(booth ? booth.id : "service") === d.id ? " on" : ""}`}
+              onClick={() => choose(d.id)}
+            >
+              {d.name}
+            </button>
+          ))}
+        </div>
+      )}
+      {booth ? <BoothDash dash={booth} /> : <ServiceDash />}
+    </div>
+  );
+}
+
+/** A booth dashboard on a phone: its widgets full width, top to bottom. */
+function BoothDash({ dash }: { dash: Dashboard }) {
+  const widgets = [...dash.widgets].sort((a, b) => a.y - b.y || a.x - b.x);
+  return (
+    <div className="dash-stack">
+      {widgets.map((w) => {
+        const def = WIDGET_MAP[w.type];
+        if (!def) return null; // a widget this build doesn't have
+        const Comp = def.component;
+        // The booth's grid rows are about 48px; a phone gets the same height
+        // for each widget, within reason.
+        const height = Math.max(176, Math.min(460, w.h * 48));
+        return (
+          <div key={w.id} className="widget dash-widget" style={{ height }}>
+            <div className="widget-bar">
+              <span className="widget-title">{def.label}</span>
+            </div>
+            <div className="widget-body">
+              <Comp widget={w} editing={false} update={() => {}} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** The phone's own curated service view. */
+function ServiceDash() {
   const { audioDb, audioPeakDb, audioRunning, splCalibration } = useProDeck();
   const pco = usePco();
   // Same calibrated scale as the booth's big SPL readout, not raw dBFS.
@@ -38,8 +125,7 @@ export function CrewDash() {
   const liveIdx = pco.items.findIndex((i) => i.id === pco.liveItemId);
 
   return (
-    <div className="crew-page">
-      <h1 className="crew-title">Dashboard</h1>
+    <>
 
       {/* Sound level */}
       <div className="crew-card edge">
@@ -136,6 +222,6 @@ export function CrewDash() {
       <p className="crew-hint muted">
         Camera feeds stay on the booth network. They aren't sent outside the building.
       </p>
-    </div>
+    </>
   );
 }
