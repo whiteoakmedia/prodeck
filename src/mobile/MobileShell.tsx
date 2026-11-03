@@ -49,6 +49,9 @@ import { onTrack, seekTrack, skipTrack, stopTrack, toggleTrack, trackSnapshot } 
 export function MobileShell() {
   const shotTab = IS_SHOTS && SHOT_TAB && ["home", "chat", "checklist", "dashboards", "more"].includes(SHOT_TAB) ? (SHOT_TAB as CrewTab) : null;
   const [tab, setTab] = useState<CrewTab>(shotTab ?? "home");
+  // Bumped when Home is tapped while already on Home: remounts it, closing
+  // whatever sheet it had open (My role), like a native tab bar.
+  const [homeKey, setHomeKey] = useState(0);
   // "No sound?" is reached from Home (and More), not a sixth tab: the nav is
   // five tabs by design and this is an occasional screen, not a daily one.
   const [walk, setWalk] = useState(IS_SHOTS && SHOT_TAB === "walk");
@@ -177,7 +180,7 @@ export function MobileShell() {
         {tab === "home" && walk && <CrewWalk onBack={() => setWalk(false)} />}
         {/* Onboarding's last step, until page notifications are on. */}
         {IS_WEB && tab === "home" && !walk && <CrewNotifyStep onShowInstall={() => setOnboarding(true)} />}
-        {tab === "home" && !walk && <CrewHome onGoChecklist={() => setTab("checklist")} onGoWalk={() => setWalk(true)} onGoChat={() => setTab("chat")} />}
+        {tab === "home" && !walk && <CrewHome key={homeKey} onGoChecklist={() => setTab("checklist")} onGoWalk={() => setWalk(true)} onGoChat={() => setTab("chat")} />}
         {tab === "chat" && (
           <div className="crew-page crew-page-chat">
             <CrewChat />
@@ -283,6 +286,12 @@ export function MobileShell() {
           setLeader(false); // leaving More closes the leader board
           setWalk(false); // and any tab tap leaves the troubleshooter
           setComms(false); // and the comms screen (comms itself keeps running)
+          // Tapping the tab you're on takes you to its top, as on iOS. Before,
+          // it did nothing and read as a dead button.
+          if (t === tab) {
+            document.querySelector(".crew-main")?.scrollTo({ top: 0, behavior: "smooth" });
+            if (t === "home") setHomeKey((k) => k + 1);
+          }
           setTab(t);
         }}
       />
