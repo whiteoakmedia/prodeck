@@ -301,11 +301,18 @@ function Scan({ onBack, onCode, err }: { onBack: () => void; onCode: (c: string)
 
 function Nearby({ onBack, onPick, onType }: { onBack: () => void; onPick: (f: Found) => void; onType: () => void }) {
   const [found, setFound] = useState<Found[] | null>(null);
+  const [phoneIp, setPhoneIp] = useState("");
+  const [progress, setProgress] = useState("");
   const [round, setRound] = useState(0);
   useEffect(() => {
     let alive = true;
     setFound(null);
-    findBooths().then((f) => alive && setFound(f));
+    setProgress("");
+    findBooths((m) => alive && setProgress(m)).then((r) => {
+      if (!alive) return;
+      setPhoneIp(r.phoneIp);
+      setFound(r.found);
+    });
     return () => {
       alive = false;
     };
@@ -317,6 +324,7 @@ function Nearby({ onBack, onPick, onType }: { onBack: () => void; onPick: (f: Fo
         <div className="searching">
           <span className="pulse" />
           <p>Looking for ProDeck on this Wi-Fi…</p>
+          {progress && <p className="hint mono">{progress}</p>}
         </div>
       )}
       {found && found.length > 0 && (
@@ -336,6 +344,14 @@ function Nearby({ onBack, onPick, onType }: { onBack: () => void; onPick: (f: Fo
             Make sure this phone is on the church Wi-Fi (not cellular or a guest network), and that ProDeck is open at
             the booth.
           </p>
+          {phoneIp ? (
+            <p className="hint">
+              This phone is at <span className="mono">{phoneIp}</span>. If the booth's address starts differently,
+              the two are on different networks.
+            </p>
+          ) : (
+            <p className="hint">This phone doesn't seem to be on Wi-Fi.</p>
+          )}
           <button className="btn" onClick={() => setRound((n) => n + 1)}>
             Look again
           </button>

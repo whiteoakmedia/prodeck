@@ -30,7 +30,11 @@ body {
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
+  /* An app, not a page: a long press doesn't select the words. */
+  -webkit-user-select: none;
+  user-select: none;
 }
+input { -webkit-user-select: text; user-select: text; }
 button { font: inherit; color: inherit; cursor: pointer; }
 .mono { font-family: var(--font-mono); }
 

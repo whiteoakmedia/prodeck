@@ -1352,13 +1352,15 @@ async fn handle_conn(
     // Only https addresses, and nothing secret: these are the addresses the
     // booth already puts on its posters and links.
     if method == "GET" && path == "/api/origin" {
-        let (public, local) = {
+        let (public, local, name) = {
             let st = app.state::<SettingsState>();
             let g = st.lock().unwrap_or_else(|p| p.into_inner());
-            (g.public_url.trim().to_string(), g.local_url.trim().to_string())
+            (g.public_url.trim().to_string(), g.local_url.trim().to_string(), g.device_name.trim().to_string())
         };
         let secure = secure_origin(&public, &local);
-        let body = json!({ "secure": secure }).to_string();
+        // The name the booth also announces over Bonjour, for the crew app's
+        // list when it found the booth by address instead.
+        let body = json!({ "secure": secure, "name": name }).to_string();
         return write_bytes(&mut stream, 200, "application/json", body.as_bytes()).await;
     }
     if method == "GET" && (path == "/app.webmanifest" || path.starts_with("/app.webmanifest?")) {

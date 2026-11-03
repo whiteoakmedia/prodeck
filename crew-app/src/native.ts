@@ -2,7 +2,8 @@
 // the camera and the Wi-Fi search are native; in the browser preview they're
 // stand-ins, so the screens can be built and seen without a phone.
 
-import { Capacitor } from "@capacitor/core";
+import { Capacitor, registerPlugin } from "@capacitor/core";
+import { hostsToTry, type PhoneAddress } from "./sweep";
 import { DEFAULT_PORT, type Church } from "./connect";
 
 export const isNative = () => Capacitor.isNativePlatform();
@@ -29,19 +30,85 @@ export async function scanCode(): Promise<string | null> {
   }
 }
 
-const SEARCH_MS = 4000;
+const SEARCH_MS = 6000;
+
+/** What a search turned up, and the phone's own address for when it found nothing. */
+export interface Search {
+  found: Found[];
+  phoneIp: string;
+}
 
 /**
- * Look for booths on this Wi-Fi for a few seconds. The booth announces every
- * address it has, including a Dante network the phone can't reach, so each
- * one is tried and the first that answers is used.
+ * Look for booths on this Wi-Fi two ways at once: Bonjour (the booth announces
+ * itself), and asking every address on the phone's network directly, because
+ * plenty of church Wi-Fi drops Bonjour between devices (sweep.ts). The first
+ * booth that answers ends the search.
  */
-export async function findBooths(): Promise<Found[]> {
+export async function findBooths(onProgress?: (msg: string) => void): Promise<Search> {
   if (!isNative()) {
     // Preview: the booth on this computer, so the flow can be tried end to end.
     await new Promise((r) => setTimeout(r, 1200));
-    return [{ name: "This computer (preview)", base: `http://127.0.0.1:${DEFAULT_PORT}` }];
+    return { found: [{ name: "This computer (preview)", base: `http://127.0.0.1:${DEFAULT_PORT}` }], phoneIp: "" };
   }
+  const found = new Map<string, Found>();
+  // A booth on two networks (Wi-Fi and Dante, say) answers on both: one entry.
+  const add = (f: Found) => {
+    if (![...found.values()].some((x) => x.base === f.base || x.name === f.name)) found.set(f.base, f);
+  };
+  const addresses = await phoneAddresses();
+  const phoneIp = addresses[0]?.ip ?? "";
+  const bonjour = bonjourSearch(() => found.size > 0).then((list) => list.forEach(add));
+  const hosts = addresses.flatMap(hostsToTry);
+  if (hosts.length) onProgress?.(`Checking ${hosts.length} addresses on this Wi-Fi`);
+  const swept = netInfo()
+    .probe({ hosts, port: DEFAULT_PORT, timeoutMs: 700 })
+    .then(async ({ open }) => {
+      // A handful at most: printers, cameras, the booth. Confirm which is ProDeck.
+      for (const ip of open ?? []) {
+        const base = `http://${ip}:${DEFAULT_PORT}`;
+        if ((await checkBooth(base, 3000)).ok) add({ name: await boothName(base, ip), base });
+      }
+    })
+    .catch(() => {});
+  await Promise.all([bonjour, swept]);
+  return { found: [...found.values()], phoneIp };
+}
+
+/** The app's own plugin (ios/App/App/NetInfoPlugin.swift, android NetInfoPlugin.java). */
+type NetInfoPlugin = {
+  wifi(): Promise<{ addresses: PhoneAddress[] }>;
+  probe(o: { hosts: string[]; port: number; timeoutMs: number }): Promise<{ open: string[] }>;
+};
+let netInfoPlugin: NetInfoPlugin | null = null;
+const netInfo = () => (netInfoPlugin ??= registerPlugin<NetInfoPlugin>("NetInfo"));
+
+/** The phone's Wi-Fi addresses. */
+async function phoneAddresses(): Promise<PhoneAddress[]> {
+  try {
+    return (await netInfo().wifi()).addresses ?? [];
+  } catch {
+    return []; // an older app build without the plugin: Bonjour only
+  }
+}
+
+/** What the booth calls itself; older booths don't say, so its address stands in. */
+async function boothName(base: string, ip: string): Promise<string> {
+  try {
+    const r = await fetch(`${base}/api/origin`, { cache: "no-store" });
+    const name = ((await r.json()) as { name?: string })?.name?.trim();
+    if (name) return name;
+  } catch {
+    /* fall through */
+  }
+  return `ProDeck at ${ip}`;
+}
+
+/**
+ * Bonjour, for a few seconds or until the sweep finds something. The booth
+ * announces every address it has, including a Dante network the phone can't
+ * reach, so each one is tried and the first that answers is used.
+ */
+async function bonjourSearch(done: () => boolean): Promise<Found[]> {
   const { ZeroConf } = await import("@mhaberler/capacitor-zeroconf-nsd");
   const req = { type: "_prodeck._tcp.", domain: "local." };
   const seen = new Map<string, { name: string; ips: string[]; port: number }>();
@@ -52,7 +119,9 @@ export async function findBooths(): Promise<Found[]> {
       const ips = (svc.ipv4Addresses ?? []).filter(Boolean);
       if (ips.length) seen.set(svc.name, { name: svc.name, ips, port: svc.port || DEFAULT_PORT });
     });
-    await new Promise((r) => setTimeout(r, SEARCH_MS));
+    for (let t = 0; t < SEARCH_MS && !done() && seen.size === 0; t += 250) await new Promise((r) => setTimeout(r, 250));
+    // Found something: give its address a moment to resolve fully.
+    if (seen.size) await new Promise((r) => setTimeout(r, 500));
   } catch {
     /* no Wi-Fi, or the search wasn't allowed */
   } finally {
