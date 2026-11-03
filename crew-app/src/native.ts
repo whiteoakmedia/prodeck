@@ -95,7 +95,8 @@ async function phoneAddresses(): Promise<PhoneAddress[]> {
 async function boothName(base: string, ip: string): Promise<string> {
   try {
     const r = await fetch(`${base}/api/origin`, { cache: "no-store" });
-    const name = ((await r.json()) as { name?: string })?.name?.trim();
+    // As Bonjour shows it: "Command-Center", not "Command-Center.local".
+    const name = ((await r.json()) as { name?: string })?.name?.trim().replace(/\.local\.?$/i, "");
     if (name) return name;
   } catch {
     /* fall through */
