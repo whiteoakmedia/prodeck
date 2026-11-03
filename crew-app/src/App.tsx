@@ -185,16 +185,16 @@ function Home(p: {
 }) {
   const returning = p.churches.length > 0;
   return (
-    <main className="screen center">
-      <img src={mark} alt="" className="mark" />
-      <h1 className="title">ProDeck Crew</h1>
-      {!returning && (
-        <p className="sub">Pages, chat, checklists and comms for your church's production team.</p>
-      )}
+    <main className="screen home">
+      <div className={`home-hero${returning ? " small" : ""}`}>
+        <img src={mark} alt="" className="home-mark" />
+        <h1 className="title">ProDeck Crew</h1>
+        {!returning && <p className="home-tag">For your church's production team</p>}
+      </div>
 
       {p.err && <p className="err" role="alert">{p.err}</p>}
       {returning && (
-        <section className="list" aria-label="Your churches">
+        <section className="list home-list" aria-label="Your churches">
           {p.churches.map((c) => (
             <div key={c.base} className="church">
               <button className="church-open" onClick={() => p.onOpen(c)}>
@@ -209,23 +209,25 @@ function Home(p: {
         </section>
       )}
 
-      <div className="actions">
-        <button className="btn primary" onClick={p.onScan}>
-          {returning ? "Scan another church's code" : "Scan your church's crew code"}
+      <div className="home-actions">
+        <button className={`btn${returning ? "" : " primary"}`} onClick={p.onScan}>
+          {returning ? "Scan another church" : "Scan crew code"}
         </button>
         <button className="btn" onClick={p.onNearby}>
-          Find my church on this Wi-Fi
+          Find on this Wi-Fi
         </button>
-        <button className="link" onClick={p.onType}>
-          Type the booth's address instead
-        </button>
+        <div className="home-links">
+          <button className="link" onClick={p.onType}>
+            Enter address
+          </button>
+          <span className="home-dot" aria-hidden>
+            ·
+          </span>
+          <button className="link" onClick={p.onDemo}>
+            Try a demo
+          </button>
+        </div>
       </div>
-      {!returning && (
-        <p className="hint">The crew code is on the poster in the green room, or in the invite the booth sent you.</p>
-      )}
-      <button className="link" onClick={p.onDemo}>
-        Look around first, with a pretend Sunday
-      </button>
     </main>
   );
 }
@@ -302,6 +304,7 @@ function Scan({ onBack, onCode, err }: { onBack: () => void; onCode: (c: string)
 function Nearby({ onBack, onPick, onType }: { onBack: () => void; onPick: (f: Found) => void; onType: () => void }) {
   const [found, setFound] = useState<Found[] | null>(null);
   const [phoneIp, setPhoneIp] = useState("");
+  const [detail, setDetail] = useState("");
   const [progress, setProgress] = useState("");
   const [round, setRound] = useState(0);
   useEffect(() => {
@@ -311,6 +314,7 @@ function Nearby({ onBack, onPick, onType }: { onBack: () => void; onPick: (f: Fo
     findBooths((m) => alive && setProgress(m)).then((r) => {
       if (!alive) return;
       setPhoneIp(r.phoneIp);
+      setDetail(r.detail);
       setFound(r.found);
     });
     return () => {
@@ -339,24 +343,22 @@ function Nearby({ onBack, onPick, onType }: { onBack: () => void; onPick: (f: Fo
       )}
       {found && found.length === 0 && (
         <div className="empty">
-          <p>No booth found.</p>
+          <h2>No booth found</h2>
           <p className="hint">
-            Make sure this phone is on the church Wi-Fi (not cellular or a guest network), and that ProDeck is open at
-            the booth.
+            {phoneIp ? (
+              <>
+                Check ProDeck is open at the booth. This phone is at <span className="mono">{phoneIp}</span>.
+              </>
+            ) : (
+              "This phone doesn't seem to be on Wi-Fi."
+            )}
           </p>
-          {phoneIp ? (
-            <p className="hint">
-              This phone is at <span className="mono">{phoneIp}</span>. If the booth's address starts differently,
-              the two are on different networks.
-            </p>
-          ) : (
-            <p className="hint">This phone doesn't seem to be on Wi-Fi.</p>
-          )}
+          {detail && <p className="hint mono detail">{detail}</p>}
           <button className="btn" onClick={() => setRound((n) => n + 1)}>
             Look again
           </button>
           <button className="link" onClick={onType}>
-            Type the address instead
+            Enter address
           </button>
         </div>
       )}

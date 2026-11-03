@@ -29,3 +29,16 @@ describe("crew app: finding the booth address by address", () => {
     expect(hostsToTry({ ip: "192.168.1.9" })).toEqual([]);
   });
 });
+
+import { probeDetail } from "../../crew-app/src/native";
+
+describe("crew app: what the address check says when it finds nothing", () => {
+  it("counts each kind of answer, and errors by code", () => {
+    expect(probeDetail(509, { open: [], refused: 4, silent: 505, errors: {}, ms: 2100 })).toBe(
+      "509 checked: 0 answered, 4 refused, 505 silent, 2.1s",
+    );
+    expect(probeDetail(10, { open: [], refused: 0, silent: 0, errors: { "65": 10 }, ms: 40 })).toBe(
+      "10 checked: 0 answered, 0 refused, 0 silent, 10 error 65, 0.0s",
+    );
+  });
+});

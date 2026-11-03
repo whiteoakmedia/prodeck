@@ -52,6 +52,11 @@ public class NetInfoPlugin extends Plugin {
         call.resolve(ret);
     }
 
+    /**
+     * Which of `hosts` accept a TCP connection on `port`, `width` at a time,
+     * and how the rest answered (refused, silent, or another error), shown
+     * when nothing is found.
+     */
     @PluginMethod
     public void probe(PluginCall call) {
         final List<String> hosts = new ArrayList<>();
@@ -63,23 +68,32 @@ public class NetInfoPlugin extends Plugin {
             return;
         }
         final int port = call.getInt("port", 8088);
-        final int timeoutMs = call.getInt("timeoutMs", 700);
+        final int timeoutMs = call.getInt("timeoutMs", 800);
+        final int width = Math.max(1, Math.min(call.getInt("width", 64), 128));
         new Thread(() -> {
+            final long started = System.currentTimeMillis();
             final List<String> open = java.util.Collections.synchronizedList(new ArrayList<>());
-            ExecutorService pool = Executors.newFixedThreadPool(64);
+            final java.util.concurrent.atomic.AtomicInteger refused = new java.util.concurrent.atomic.AtomicInteger();
+            final java.util.concurrent.atomic.AtomicInteger silent = new java.util.concurrent.atomic.AtomicInteger();
+            final java.util.Map<String, Integer> errors = new java.util.concurrent.ConcurrentHashMap<>();
+            ExecutorService pool = Executors.newFixedThreadPool(width);
             for (String host : hosts) {
                 pool.execute(() -> {
                     try (Socket s = new Socket()) {
                         s.connect(new InetSocketAddress(host, port), timeoutMs);
                         open.add(host);
-                    } catch (Exception ignored) {
-                        // Nothing there, or not a booth.
+                    } catch (java.net.ConnectException e) {
+                        refused.incrementAndGet();
+                    } catch (java.net.SocketTimeoutException e) {
+                        silent.incrementAndGet();
+                    } catch (Exception e) {
+                        errors.merge(e.getClass().getSimpleName(), 1, Integer::sum);
                     }
                 });
             }
             pool.shutdown();
             try {
-                pool.awaitTermination(60, TimeUnit.SECONDS);
+                pool.awaitTermination(120, TimeUnit.SECONDS);
             } catch (InterruptedException ignored) {
                 Thread.currentThread().interrupt();
             }
@@ -87,8 +101,14 @@ public class NetInfoPlugin extends Plugin {
             synchronized (open) {
                 for (String h : open) out.put(h);
             }
+            JSObject errs = new JSObject();
+            for (java.util.Map.Entry<String, Integer> e : errors.entrySet()) errs.put(e.getKey(), e.getValue());
             JSObject ret = new JSObject();
             ret.put("open", out);
+            ret.put("refused", refused.get());
+            ret.put("silent", silent.get());
+            ret.put("errors", errs);
+            ret.put("ms", System.currentTimeMillis() - started);
             call.resolve(ret);
         }).start();
     }

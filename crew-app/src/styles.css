@@ -52,6 +52,21 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .screen.center { justify-content: center; text-align: center; }
 
 .mark { width: 64px; height: 64px; margin: 0 auto 4px; }
+
+/* Home: the mark and name in the middle, the choices at the bottom where a
+   thumb reaches, and no paragraphs. */
+.screen.home { gap: 0; text-align: center; }
+.home-hero { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 200px; }
+.home-hero.small { flex: 0 0 auto; min-height: 0; padding: 28px 0 8px; }
+.home-mark { width: 96px; height: 96px; margin-bottom: 6px; }
+.home-hero.small .home-mark { width: 56px; height: 56px; margin-bottom: 0; }
+.home-tag { margin: 0; color: var(--muted); font-size: 1rem; }
+.home-list { flex: 1; align-content: start; margin-bottom: 16px; }
+.home-actions { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; }
+.home-links { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 2px; }
+.home-links .link { padding: 0 10px; }
+.home-dot { color: var(--dim); }
+.empty .detail { font-size: 0.75rem; color: var(--dim); }
 .title { margin: 0; font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; }
 .sub { margin: 0 auto; max-width: 30ch; color: var(--text-soft); line-height: 1.45; }
 .hint { color: var(--muted); font-size: 0.875rem; line-height: 1.4; margin: 0; }

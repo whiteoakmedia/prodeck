@@ -36,6 +36,24 @@ const SEARCH_MS = 6000;
 export interface Search {
   found: Found[];
   phoneIp: string;
+  /** How the address check went, for the "No booth found" screen. */
+  detail: string;
+}
+
+interface ProbeResult {
+  open: string[];
+  refused: number;
+  silent: number;
+  errors: Record<string, number>;
+  ms: number;
+}
+
+/** "509 checked: 0 answered, 4 refused, 505 silent, 2.1s" plus any errors by code. */
+export function probeDetail(n: number, r: ProbeResult): string {
+  const errs = Object.entries(r.errors ?? {})
+    .map(([code, count]) => `${count} error ${code}`)
+    .join(", ");
+  return `${n} checked: ${r.open.length} answered, ${r.refused} refused, ${r.silent} silent${errs ? `, ${errs}` : ""}, ${(r.ms / 1000).toFixed(1)}s`;
 }
 
 /**
@@ -48,7 +66,7 @@ export async function findBooths(onProgress?: (msg: string) => void): Promise<Se
   if (!isNative()) {
     // Preview: the booth on this computer, so the flow can be tried end to end.
     await new Promise((r) => setTimeout(r, 1200));
-    return { found: [{ name: "This computer (preview)", base: `http://127.0.0.1:${DEFAULT_PORT}` }], phoneIp: "" };
+    return { found: [{ name: "This computer (preview)", base: `http://127.0.0.1:${DEFAULT_PORT}` }], phoneIp: "", detail: "" };
   }
   const found = new Map<string, Found>();
   // A booth on two networks (Wi-Fi and Dante, say) answers on both: one entry.
@@ -59,25 +77,34 @@ export async function findBooths(onProgress?: (msg: string) => void): Promise<Se
   const phoneIp = addresses[0]?.ip ?? "";
   const bonjour = bonjourSearch(() => found.size > 0).then((list) => list.forEach(add));
   const hosts = addresses.flatMap(hostsToTry);
-  if (hosts.length) onProgress?.(`Checking ${hosts.length} addresses on this Wi-Fi`);
-  const swept = netInfo()
-    .probe({ hosts, port: DEFAULT_PORT, timeoutMs: 700 })
-    .then(async ({ open }) => {
-      // A handful at most: printers, cameras, the booth. Confirm which is ProDeck.
-      for (const ip of open ?? []) {
-        const base = `http://${ip}:${DEFAULT_PORT}`;
-        if ((await checkBooth(base, 3000)).ok) add({ name: await boothName(base, ip), base });
-      }
-    })
-    .catch(() => {});
+  let detail = "";
+  const swept = (async () => {
+    if (!hosts.length) return;
+    onProgress?.(`Checking ${hosts.length} addresses on this Wi-Fi`);
+    let r = await netInfo().probe({ hosts, port: DEFAULT_PORT, timeoutMs: 800, width: 64 });
+    // Not one reply of any kind usually means the phone was too quick for the
+    // network, not that nobody's there: once more, a few at a time.
+    if (!r.open?.length && !r.refused && !found.size) {
+      onProgress?.("Checking again, more slowly");
+      r = await netInfo().probe({ hosts, port: DEFAULT_PORT, timeoutMs: 1800, width: 24 });
+    }
+    detail = probeDetail(hosts.length, r);
+    // A handful at most: printers, cameras, the booth. Confirm which is ProDeck.
+    for (const ip of r.open ?? []) {
+      const base = `http://${ip}:${DEFAULT_PORT}`;
+      if ((await checkBooth(base, 3000)).ok) add({ name: await boothName(base, ip), base });
+    }
+  })().catch((e) => {
+    detail = `address check failed: ${String((e as Error)?.message ?? e)}`;
+  });
   await Promise.all([bonjour, swept]);
-  return { found: [...found.values()], phoneIp };
+  return { found: [...found.values()], phoneIp, detail };
 }
 
 /** The app's own plugin (ios/App/App/NetInfoPlugin.swift, android NetInfoPlugin.java). */
 type NetInfoPlugin = {
   wifi(): Promise<{ addresses: PhoneAddress[] }>;
-  probe(o: { hosts: string[]; port: number; timeoutMs: number }): Promise<{ open: string[] }>;
+  probe(o: { hosts: string[]; port: number; timeoutMs: number; width: number }): Promise<ProbeResult>;
 };
 let netInfoPlugin: NetInfoPlugin | null = null;
 const netInfo = () => (netInfoPlugin ??= registerPlugin<NetInfoPlugin>("NetInfo"));
