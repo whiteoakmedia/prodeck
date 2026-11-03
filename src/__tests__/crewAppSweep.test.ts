@@ -30,7 +30,7 @@ describe("crew app: finding the booth address by address", () => {
   });
 });
 
-import { probeDetail } from "../../crew-app/src/native";
+import { probeDetail } from "../../crew-app/src/sweep";
 
 describe("crew app: what the address check says when it finds nothing", () => {
   it("counts each kind of answer, and errors by code", () => {
@@ -43,7 +43,7 @@ describe("crew app: what the address check says when it finds nothing", () => {
   });
 });
 
-import { orderAddresses } from "../../crew-app/src/native";
+import { orderAddresses } from "../../crew-app/src/sweep";
 import { sameNetwork } from "../../crew-app/src/sweep";
 
 describe("crew app: which of the booth's addresses to try first", () => {

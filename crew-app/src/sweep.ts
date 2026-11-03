@@ -68,3 +68,29 @@ export function sameNetwork(ip: string, a: PhoneAddress): boolean {
   const size = 2 ** (32 - bits);
   return Math.floor(x / size) === Math.floor(y / size);
 }
+
+export interface ProbeResult {
+  open: string[];
+  refused: number;
+  silent: number;
+  errors: Record<string, number>;
+  ms: number;
+}
+
+/** "509 checked: 0 answered, 4 refused, 505 silent, 2.1s" plus any errors by code. */
+export function probeDetail(n: number, r: ProbeResult): string {
+  const errs = Object.entries(r.errors ?? {})
+    .map(([code, count]) => `${count} error ${code}`)
+    .join(", ");
+  return `${n} checked: ${r.open.length} answered, ${r.refused} refused, ${r.silent} silent${errs ? `, ${errs}` : ""}, ${(r.ms / 1000).toFixed(1)}s`;
+}
+
+/**
+ * The booth's address on the phone's own network first, then the usual Wi-Fi
+ * ranges (192.168, then 10), so a Dante address is tried last.
+ */
+export function orderAddresses(ips: string[], phone: PhoneAddress[] = []): string[] {
+  const rank = (ip: string) =>
+    phone.some((p) => sameNetwork(ip, p)) ? -1 : ip.startsWith("192.168.") ? 0 : ip.startsWith("10.") ? 1 : ip.startsWith("172.") ? 2 : 3;
+  return [...new Set(ips)].sort((a, b) => rank(a) - rank(b));
+}

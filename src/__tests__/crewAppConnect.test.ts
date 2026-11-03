@@ -58,7 +58,7 @@ describe("crew app: back to the churches list", () => {
   });
 });
 
-import { orderAddresses } from "../../crew-app/src/native";
+import { orderAddresses } from "../../crew-app/src/sweep";
 
 describe("crew app: booths found on the Wi-Fi", () => {
   // The booth also announces its Dante network, which the phone isn't on.

@@ -3,7 +3,7 @@
 // stand-ins, so the screens can be built and seen without a phone.
 
 import { Capacitor, registerPlugin } from "@capacitor/core";
-import { hostsToTry, sameNetwork, type PhoneAddress } from "./sweep";
+import { hostsToTry, orderAddresses, probeDetail, type PhoneAddress, type ProbeResult } from "./sweep";
 import { DEFAULT_PORT, type Church } from "./connect";
 
 export const isNative = () => Capacitor.isNativePlatform();
@@ -38,22 +38,6 @@ export interface Search {
   phoneIp: string;
   /** How the address check went, for the "No booth found" screen. */
   detail: string;
-}
-
-interface ProbeResult {
-  open: string[];
-  refused: number;
-  silent: number;
-  errors: Record<string, number>;
-  ms: number;
-}
-
-/** "509 checked: 0 answered, 4 refused, 505 silent, 2.1s" plus any errors by code. */
-export function probeDetail(n: number, r: ProbeResult): string {
-  const errs = Object.entries(r.errors ?? {})
-    .map(([code, count]) => `${count} error ${code}`)
-    .join(", ");
-  return `${n} checked: ${r.open.length} answered, ${r.refused} refused, ${r.silent} silent${errs ? `, ${errs}` : ""}, ${(r.ms / 1000).toFixed(1)}s`;
 }
 
 /**
@@ -174,16 +158,6 @@ async function bonjourSearch(done: () => boolean, phone: PhoneAddress[]): Promis
     }
   }
   return out;
-}
-
-/**
- * The booth's address on the phone's own network first, then the usual Wi-Fi
- * ranges (192.168, then 10), so a Dante address is tried last.
- */
-export function orderAddresses(ips: string[], phone: PhoneAddress[] = []): string[] {
-  const rank = (ip: string) =>
-    phone.some((p) => sameNetwork(ip, p)) ? -1 : ip.startsWith("192.168.") ? 0 : ip.startsWith("10.") ? 1 : ip.startsWith("172.") ? 2 : 3;
-  return [...new Set(ips)].sort((a, b) => rank(a) - rank(b));
 }
 
 /** Is there a ProDeck booth at this address? Its app manifest says so. */
