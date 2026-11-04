@@ -73,14 +73,14 @@ export function CrewJoin() {
         try {
           await chat.register(name.trim(), p, role, invite);
         } catch (e) {
-          // "That name is taken — pick another name or log in" was a dead end:
-          // this screen has no log-in path at all when the device has been
-          // forgotten (Sign out completely, or the booth invalidating a stale
-          // session). A volunteer typing their OWN name was told to log in with
-          // no way to do it. If the name exists, the PIN they just typed is
-          // almost certainly theirs, so try it.
+          // The name is someone's already. It used to try this new PIN as a
+          // sign in to that account, which counted against their lockout and,
+          // if two people chose the same PIN, signed a newcomer in as someone
+          // else. Now it asks: their account, or a different name.
           if (!/is taken/i.test(String(e))) throw e;
-          await chat.login(name.trim(), p);
+          setSignIn(true);
+          setPin("");
+          setErr(`Someone here already uses the name ${name.trim()}. If that's you, type your PIN to sign in. If not, tap I'm new and add your last initial.`);
           return;
         }
         if (invite) localStorage.removeItem(INVITE_KEY); // claimed
@@ -264,7 +264,7 @@ export function CrewJoin() {
                       }}
                     >
                       <span className="crew-recip-name">{m.name}</span>
-                      <span className="mono-data crew-recip-seen">{m.position || "—"}</span>
+                      <span className="mono-data crew-recip-seen">{m.position || "No position"}</span>
                     </button>
                   );
                 })}
@@ -336,6 +336,13 @@ export function CrewJoin() {
           onClick={() => submit(pin)}
         >
           {busy ? "Sending…" : "Confirm PIN"}
+        </button>
+      )}
+      {/* Sign in goes by itself on the 4th digit once there's a name. Typed
+          the other way round (PIN first), this is the way to finish. */}
+      {mode === "signin" && pin.length === 4 && name.trim() && !busy && (
+        <button className="crew-btn primary" onClick={() => submit(pin)}>
+          Sign in
         </button>
       )}
 

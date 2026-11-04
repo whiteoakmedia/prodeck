@@ -174,6 +174,8 @@ let snap: CommsSnapshot = {
 const subs = new Set<() => void>();
 const peers = new Map<string, Peer>();
 let mic: MediaStream | null = null;
+/** Bumped by every join and leave, so a join that was overtaken knows it. */
+let joinGen = 0;
 let beat: ReturnType<typeof setInterval> | null = null;
 let dials: ReturnType<typeof setInterval> | null = null;
 let unsubs: (() => void)[] = [];
@@ -275,28 +277,46 @@ export async function joinComms(auto = false) {
   if (allowed === false) return set({ err: OFF_MSG });
   const why = joinBlocker();
   if (why) return set({ err: why });
+  const gen = ++joinGen;
+  // Comms turned off, Lock, or Leave while this join was still waiting: give
+  // the microphone straight back instead of finishing the join with it.
+  const stale = () => gen !== joinGen;
   set({ state: "joining", err: "", needsTap: false });
   if (!IS_DEMO) try {
-    mic = await navigator.mediaDevices.getUserMedia({
+    const got = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
     });
+    if (stale()) {
+      got.getTracks().forEach((t) => t.stop());
+      return;
+    }
+    mic = got;
     // Silent until Talk is held.
     mic.getAudioTracks().forEach((t) => (t.enabled = false));
   } catch {
+    if (stale()) return;
     if (auto) return set({ state: "off", needsTap: true });
     return set({ state: "off", err: "The microphone was blocked. Allow it for this site in the phone's settings, then try again." });
   }
-  unsubs.push(await on<IntercomRoster>("intercom:roster", (r) => r && applyRoster(r)));
+  const roster = await on<IntercomRoster>("intercom:roster", (r) => r && applyRoster(r));
   early = [];
-  unsubs.push(
-    await on<Signal>("intercom:signal", (m) => {
-      if (!m) return;
-      if (snap.state === "joining") early.push(m);
-      else if (m.to === snap.me) void onSignal(m.from, m.data);
-    }),
-  );
+  const signals = await on<Signal>("intercom:signal", (m) => {
+    if (!m) return;
+    if (snap.state === "joining") early.push(m);
+    else if (m.to === snap.me) void onSignal(m.from, m.data);
+  });
+  if (stale()) {
+    roster();
+    signals();
+    return;
+  }
+  unsubs.push(roster, signals);
   try {
     const r = await intercomJoin(who(), snap.listen);
+    if (stale()) {
+      await intercomLeave(who()).catch(() => {});
+      return;
+    }
     set({ state: "on", me: r.me });
     writeStr(AUTO_KEY, "1");
     applyRoster(r.roster);
@@ -318,6 +338,7 @@ export async function joinComms(auto = false) {
  * failed join) keeps it, so it comes back when it can.
  */
 export async function leaveComms(byUser = true) {
+  joinGen++;
   if (byUser) writeStr(AUTO_KEY, "");
   if (beat) clearInterval(beat);
   beat = null;

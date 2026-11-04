@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 // The loading intro: the three blocks of the ProDeck mark start apart and come
 // together, the blue one landing last. The phone's own launch screen can't
@@ -9,11 +9,15 @@ import { useEffect } from "react";
 export const INTRO_MS = 1700;
 
 export function Intro({ onDone }: { onDone: () => void }) {
+  // The latest onDone, not the first: a link that opened the app can arrive
+  // while the intro plays, and onDone must see it.
+  const done = useRef(onDone);
+  done.current = onDone;
   useEffect(() => {
     // ?intro holds it on screen, for stepping through the frames in a preview.
     if (new URLSearchParams(location.search).has("intro")) return;
     const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    const t = setTimeout(onDone, reduce ? 700 : INTRO_MS);
+    const t = setTimeout(() => done.current(), reduce ? 700 : INTRO_MS);
     return () => clearTimeout(t);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

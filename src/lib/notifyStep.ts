@@ -19,9 +19,11 @@ export const SNOOZE_MS = 12 * 60 * 60 * 1000;
 
 export function notifyStep(
   status: PushStatus,
-  o: { ios: boolean; secureUrl: string; snoozedUntil: number; now: number; app?: boolean },
+  o: { ios: boolean; secureUrl: string; snoozedUntil: number; now: number; app?: boolean; choseOff?: boolean },
 ): NotifyStep | null {
   if (status === "on" || status === "unsupported") return null;
+  // They turned pages off in More: that's an answer, not a step left to do.
+  if (status === "off" && o.choseOff) return null;
   if (o.now < o.snoozedUntil) return null;
   switch (status) {
     case "off":

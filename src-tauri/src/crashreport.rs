@@ -50,7 +50,29 @@ pub fn init(enabled: bool) -> Option<sentry::ClientInitGuard> {
     opts.before_breadcrumb = Some(Arc::new(|b| if ENABLED.load(Ordering::Relaxed) { Some(b) } else { None }));
     let guard = sentry::init((dsn, opts));
     sentry::configure_scope(|s| s.set_tag("side", "app"));
+    // Release builds ship without symbols, so a panic arrives as a wall of
+    // <unknown> frames (PRODECK-8). The panic's own file and line still say
+    // where it happened: tag the event with them before Sentry's hook sends it.
+    let sentry_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        if let Some(loc) = info.location() {
+            let at = format!("{}:{}", short_path(loc.file()), loc.line());
+            sentry::configure_scope(|s| s.set_tag("panic.at", at));
+        }
+        sentry_hook(info);
+    }));
     Some(guard)
+}
+
+/// A panic location without the build machine's folders: our own files are
+/// already relative ("src/web.rs"); a dependency's path runs through the
+/// builder's cargo registry, so keep only "crate-1.2.3/src/file.rs".
+fn short_path(file: &str) -> String {
+    let parts: Vec<&str> = file.split(['/', '\\']).filter(|p| !p.is_empty()).collect();
+    match parts.iter().rposition(|p| *p == "src") {
+        Some(i) if i > 0 && parts.len() > 3 => parts[i - 1..].join("/"),
+        _ => parts.join("/"),
+    }
 }
 
 /// The last word on every event: drop it when reports are off, and strip
@@ -92,7 +114,6 @@ fn dirs_home() -> Option<String> {
 
 /// Front-end errors from the web views arrive through the JS SDK directly;
 /// this is only for Rust-side failures worth knowing about that don't panic.
-#[allow(dead_code)]
 pub fn report(msg: &str) {
     if ENABLED.load(Ordering::Relaxed) {
         sentry::capture_message(msg, sentry::Level::Error);
@@ -102,6 +123,19 @@ pub fn report(msg: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn panic_locations_drop_the_build_machines_folders() {
+        assert_eq!(short_path("src/web.rs"), "src/web.rs");
+        assert_eq!(
+            short_path("/Users/someone/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mdns-sd-0.21.5/src/dns_parser.rs"),
+            "mdns-sd-0.21.5/src/dns_parser.rs"
+        );
+        assert_eq!(
+            short_path(r"C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tokio-1.40.0\src\runtime\task.rs"),
+            "tokio-1.40.0/src/runtime/task.rs"
+        );
+    }
 
     // One test, not two: they share the global switch, and tests run in parallel.
     #[test]

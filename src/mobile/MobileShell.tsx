@@ -32,9 +32,10 @@ import { IS_WEB, atemState, clearWebToken, identityDeleteSelf, identityWhoami, o
 import { offersTally, readTallyMode, writeTallyMode } from "../lib/tallyMode";
 import { switchLayout, wideScreen } from "../lib/layout";
 import { IN_CREW_APP, crewAppHome } from "../lib/crewApp";
+import { setCrashTag } from "../lib/crashReports";
 import { TallyPage } from "../pages/Tally";
 import { CommsChip, CrewComms } from "./CrewComms";
-import { setCommsAllowed } from "../lib/intercom";
+import { leaveComms, setCommsAllowed } from "../lib/intercom";
 import { syncHomeScreenManifest } from "../lib/homeScreen";
 import { CrewNotifyStep } from "./CrewNotifyStep";
 import { useProDeck } from "../store";
@@ -49,6 +50,12 @@ import { onTrack, seekTrack, skipTrack, stopTrack, toggleTrack, trackSnapshot } 
 export function MobileShell() {
   const shotTab = IS_SHOTS && SHOT_TAB && ["home", "chat", "checklist", "dashboards", "more"].includes(SHOT_TAB) ? (SHOT_TAB as CrewTab) : null;
   const [tab, setTab] = useState<CrewTab>(shotTab ?? "home");
+  useEffect(() => {
+    setCrashTag("layout", "crew");
+    setCrashTag("crew_app", IN_CREW_APP ? "yes" : "no");
+  }, []);
+  // Which tab a crash happened on.
+  useEffect(() => setCrashTag("crew_tab", tab), [tab]);
   // Bumped when Home is tapped while already on Home: remounts it, closing
   // whatever sheet it had open (My role), like a native tab bar.
   const [homeKey, setHomeKey] = useState(0);
@@ -69,6 +76,12 @@ export function MobileShell() {
   const chat = useChat();
   // Keep Add to Home Screen carrying this phone's sign-in (lib/homeScreen.ts).
   useEffect(() => syncHomeScreenManifest(), [chat.auth]);
+  // Lock and Sign out leave comms. Comms is phone to phone, so the booth
+  // dropping the session doesn't stop it, and the sign in screen has no Talk
+  // or Mute: a mic left open there would stay live with no way to close it.
+  useEffect(() => {
+    if (chat.auth !== "in") void leaveComms(false);
+  }, [chat.auth]);
   // The overdue dot only counts lists this phone can actually see — an alert
   // for another position's hidden list is just an unanswerable mystery.
   const cl = useChecklists();
@@ -473,7 +486,7 @@ function TrackBar() {
         <button className="crew-track-btn" onClick={() => skipTrack(15)}>
           15↻
         </button>
-        <span className="mono-data crew-track-time">{dur > 0 ? mmss(dur) : "–:––"}</span>
+        <span className="mono-data crew-track-time">{dur > 0 ? mmss(dur) : "0:00"}</span>
       </div>
     </div>
   );

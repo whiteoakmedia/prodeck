@@ -125,7 +125,14 @@ async function boothName(base: string, ip: string): Promise<string> {
  * announces every address it has, including a Dante network the phone can't
  * reach, so each one is tried and the first that answers is used.
  */
+/** Bumped by each search. Bonjour has one watch per service type, so a search
+ *  left behind (the screen was closed and opened again) must neither keep
+ *  waiting nor stop the newer search's watch on its way out. */
+let searchGen = 0;
+
 async function bonjourSearch(done: () => boolean, phone: PhoneAddress[]): Promise<Found[]> {
+  const gen = ++searchGen;
+  const current = () => gen === searchGen;
   const { ZeroConf } = await import("@mhaberler/capacitor-zeroconf-nsd");
   const req = { type: "_prodeck._tcp.", domain: "local." };
   const seen = new Map<string, { name: string; ips: string[]; port: number }>();
@@ -136,7 +143,7 @@ async function bonjourSearch(done: () => boolean, phone: PhoneAddress[]): Promis
       const ips = (svc.ipv4Addresses ?? []).filter(Boolean);
       if (ips.length) seen.set(svc.name, { name: svc.name, ips, port: svc.port || DEFAULT_PORT });
     });
-    for (let t = 0; t < SEARCH_MS && !done() && seen.size === 0; t += 250) await new Promise((r) => setTimeout(r, 250));
+    for (let t = 0; t < SEARCH_MS && !done() && seen.size === 0 && current(); t += 250) await new Promise((r) => setTimeout(r, 250));
     // Found something: give its address a moment to resolve fully.
     if (seen.size) await new Promise((r) => setTimeout(r, 500));
   } catch {
@@ -144,8 +151,9 @@ async function bonjourSearch(done: () => boolean, phone: PhoneAddress[]): Promis
   } finally {
     // Not awaited: the plugin never confirms a stop on iOS, and waiting for
     // it left the search on "Looking…" forever whenever Bonjour found a booth.
-    void ZeroConf.unwatch(req).catch(() => {});
+    if (current()) void ZeroConf.unwatch(req).catch(() => {});
   }
+  if (!current()) return [];
   const out: Found[] = [];
   for (const b of seen.values()) {
     for (const ip of orderAddresses(b.ips, phone)) {
@@ -212,6 +220,15 @@ export async function pushToken(ask: boolean): Promise<string> {
     if (ask && perm !== "granted" && perm !== "denied") perm = (await P.requestPermissions()).receive;
     if (perm === "denied") return "denied";
     if (perm !== "granted") return "prompt";
+    // The last token Apple gave this phone. Asking again is still worth it (a
+    // token can change), but only briefly: on a filtered church network the
+    // answer can take the whole 8 seconds, and opening a church shouldn't.
+    let last = "";
+    try {
+      last = localStorage.getItem(TOKEN_KEY) ?? "";
+    } catch {
+      /* private storage */
+    }
     return await new Promise<string>((resolve) => {
       const handles: Promise<{ remove: () => Promise<void> }>[] = [];
       let settled = false;
@@ -221,10 +238,19 @@ export async function pushToken(ask: boolean): Promise<string> {
         handles.forEach((h) => void h.then((x) => x.remove()));
         resolve(v);
       };
-      handles.push(P.addListener("registration", (t) => done(`apns:${t.value}`)));
-      handles.push(P.addListener("registrationError", () => done("")));
+      handles.push(
+        P.addListener("registration", (t) => {
+          try {
+            localStorage.setItem(TOKEN_KEY, t.value);
+          } catch {
+            /* private storage */
+          }
+          done(`apns:${t.value}`);
+        }),
+      );
+      handles.push(P.addListener("registrationError", () => done(last ? `apns:${last}` : "")));
       void P.register();
-      setTimeout(() => done(""), 8000);
+      setTimeout(() => done(last ? `apns:${last}` : ""), last ? 1500 : 8000);
     });
   } catch {
     return "";
@@ -232,6 +258,8 @@ export async function pushToken(ask: boolean): Promise<string> {
 }
 
 const KEY = "prodeck.crewChurches";
+/** The phone's push token from Apple, last time it gave one. */
+const TOKEN_KEY = "prodeck.apnsToken";
 
 export function loadChurches(): Church[] {
   try {

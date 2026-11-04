@@ -41,6 +41,23 @@ const isStandalone = () =>
 // registered without another tap, unless you turned pages off here.
 
 const APP_OFF_KEY = "prodeck.appPushOff";
+/** Set when the volunteer turns pages off themselves (More), app or browser. */
+const CHOSE_OFF_KEY = "prodeck.pushChoseOff";
+
+/** Did this phone's volunteer turn page notifications off on purpose? Home
+ *  stops asking them to turn it back on. */
+export function choseOff(): boolean {
+  return ls(CHOSE_OFF_KEY) === "1";
+}
+
+function markChoseOff(on: boolean) {
+  try {
+    if (on) localStorage.setItem(CHOSE_OFF_KEY, "1");
+    else localStorage.removeItem(CHOSE_OFF_KEY);
+  } catch {
+    /* private storage */
+  }
+}
 /** Registered this page load, as session|token, so it isn't sent every read. */
 let appSent = "";
 
@@ -141,6 +158,7 @@ function urlB64ToBytes(b64: string): Uint8Array {
 
 /** Ask for permission and register this device against the crew identity. */
 export async function enablePush(): Promise<PushStatus> {
+  markChoseOff(false);
   if (IN_CREW_APP) {
     try {
       localStorage.removeItem(APP_OFF_KEY);
@@ -185,6 +203,7 @@ export async function enablePush(): Promise<PushStatus> {
 }
 
 export async function disablePush(): Promise<PushStatus> {
+  markChoseOff(true);
   if (IN_CREW_APP) {
     try {
       localStorage.setItem(APP_OFF_KEY, "1");

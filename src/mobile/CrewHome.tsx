@@ -156,7 +156,7 @@ export function CrewHome({
   }, [checked, serviceKey, start]);
   // Human at any distance: "T-24 min to service" on Sunday morning,
   // "2d 7h to service" midweek — a bare T-3606 helps nobody.
-  const cd = start ? fmtCountdown(start) : { big: "—", caption: "to service" };
+  const cd = start ? fmtCountdown(start) : { big: "No time", caption: "set for service" };
   // When ProPresenter is running a countdown (the pre-service timer on the
   // screens), the phones show THAT — it's the number the room is watching.
   const ppTimer = useLiveTimers().find((t) => t.state === "running");

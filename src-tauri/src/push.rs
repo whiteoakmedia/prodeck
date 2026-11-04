@@ -239,7 +239,16 @@ pub fn subscribe(
     Ok(())
 }
 
+/// Notifications off in a browser. Only the browser kind: the same person's
+/// ProDeck Crew app on another phone keeps getting pages.
 pub fn unsubscribe(push: &PushState, user_id: &str) {
+    let mut s = push.store.lock().unwrap_or_else(|p| p.into_inner());
+    s.subs.retain(|x| x.user_id != user_id);
+    push.persist(&s);
+}
+
+/// The account is gone: every browser and every app phone stops.
+pub fn forget_user(push: &PushState, user_id: &str) {
     let mut s = push.store.lock().unwrap_or_else(|p| p.into_inner());
     s.subs.retain(|x| x.user_id != user_id);
     s.apps.retain(|x| x.user_id != user_id);
@@ -344,9 +353,16 @@ async fn send_apps(client: &reqwest::Client, push: &PushState, apps: &[AppSub], 
         Ok(r) => {
             let code = r.status().as_u16();
             let why = r.text().await.unwrap_or_default();
-            crate::diag::log(format!("[push] the app push relay refused a page: {code} {}", why.chars().take(120).collect::<String>()));
+            let why: String = why.chars().take(120).collect();
+            crate::diag::log(format!("[push] the app push relay refused a page: {code} {why}"));
+            // A page that never reached the crew app's phones. The relay's
+            // reply names no church or person, only what it objected to.
+            crate::crashreport::report(&format!("App push relay refused a page: {code} {why}"));
         }
-        Err(e) => crate::diag::log(format!("[push] couldn't reach the app push relay: {e}")),
+        Err(e) => {
+            crate::diag::log(format!("[push] couldn't reach the app push relay: {e}"));
+            crate::crashreport::report(&format!("Couldn't reach the app push relay: {}", e.without_url()));
+        }
     }
 }
 
@@ -376,8 +392,11 @@ pub fn notify(app: &AppHandle, user_ids: Vec<String>, payload: serde_json::Value
             .timeout(std::time::Duration::from_secs(10))
             .build();
         let Ok(client) = client else { return };
+        // Side by side, not in turn: a slow or filtered relay must not hold
+        // up the browser pages behind it.
         if !apps.is_empty() {
-            send_apps(&client, &push, &apps, &payload).await;
+            let (client, push, payload) = (client.clone(), push.clone(), payload.clone());
+            tauri::async_runtime::spawn(async move { send_apps(&client, &push, &apps, &payload).await });
         }
 
         for sub in targets {

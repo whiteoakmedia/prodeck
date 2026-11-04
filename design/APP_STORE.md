@@ -62,6 +62,11 @@ or its partners, so the honest answer is:
   **Identifiers, Device ID:** App Functionality, not linked to the user, not
   used for tracking. (The relay never sees a name: the booth sends it only
   the token and the notification text.)
+- Crash reports (Sentry) come from the app's own screens (crew-app/src/crash.ts)
+  and from the booth's crew screens inside it (src/lib/crashReports.ts). Add a
+  second type: **Diagnostics, Crash Data:** App Functionality, not linked to
+  the user, not used for tracking. Addresses and booth names are scrubbed on
+  the phone before sending.
 
 Add to docs/PRIVACY.md: what the crew app stores on the phone (the churches
 list), that everything else goes to the church's own booth, and how to delete

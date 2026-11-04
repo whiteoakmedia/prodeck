@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { enablePush, pushState, type PushStatus } from "../lib/pushClient";
+import { choseOff, enablePush, pushState, type PushStatus } from "../lib/pushClient";
 import { notifyStep, secureLink, SNOOZE_MS } from "../lib/notifyStep";
 import { getWebToken } from "../lib/tauri";
 import { useProDeck } from "../store";
@@ -40,7 +40,7 @@ export function CrewNotifyStep({ onShowInstall }: { onShowInstall: () => void })
 
   if (!status) return null;
   const secureUrl = secureLink(secureBase(settings), getWebToken());
-  const step = notifyStep(status, { ios: isIos(), secureUrl, snoozedUntil, now: Date.now(), app: IN_CREW_APP });
+  const step = notifyStep(status, { ios: isIos(), secureUrl, snoozedUntil, now: Date.now(), app: IN_CREW_APP, choseOff: choseOff() });
   if (!step) return null;
 
   const act = async () => {

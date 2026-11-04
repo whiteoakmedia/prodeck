@@ -21,6 +21,7 @@
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@fontsource/ibm-plex-sans": "^5.3.0",
     "@mhaberler/capacitor-zeroconf-nsd": "^5.1.0",
+    "@sentry/browser": "^11.5.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },

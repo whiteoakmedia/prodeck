@@ -72,6 +72,11 @@ export function initCrashReports(opts: { demo: boolean; shots: boolean }): void 
   Sentry.setTag("side", IS_WEB ? "browser" : "app");
 }
 
+/** Labels later reports, so crew phone trouble can be told apart in Sentry. */
+export function setCrashTag(key: string, value: string): void {
+  if (started) Sentry.setTag(key, value);
+}
+
 export function reportRenderCrash(error: Error, componentStack: string | null | undefined): void {
   if (!started || !enabled) return;
   Sentry.captureException(error, { contexts: { react: { componentStack: componentStack ?? "" } } });

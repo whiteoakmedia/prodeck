@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import mark from "./mark.svg";
 import { Intro } from "./Intro";
 import { readLink, type LinkAction } from "./links";
 import { forget, parseTarget, remember, shortName, type Church, type Target } from "./connect";
+import { captureError, reportNoBooth } from "./crash";
 import { checkBooth, findBooths, isNative, loadChurches, pushToken, saveChurches, scanCode, secureBase, type Found } from "./native";
 
 // ProDeck Crew: find your church's booth, then open its crew app.
@@ -31,6 +32,9 @@ export function App() {
   const [intro, setIntro] = useState(!asked && !askNotify);
   // A link that opened the app (links.ts), acted on once the intro is done.
   const [link, setLink] = useState<LinkAction>(null);
+  // Bumped whenever a new place to go is chosen. A church still being checked
+  // when a link or a tap picks somewhere else gives up instead of winning.
+  const openGen = useRef(0);
   useEffect(() => {
     if (!isNative()) {
       // Preview: ?link=prodeckcrew://… stands in for opening a link.
@@ -70,12 +74,14 @@ export function App() {
 
   /** Try a scanned or typed address. */
   const tryInput = (input: string, name?: string) => {
+    openGen.current++;
     const t = parseTarget(input);
     if (!t) return setErr("That doesn't look like a booth address. It should look like 192.168.1.20 or booth.yourchurch.org.");
     go({ kind: "checking", target: t, name: name || shortName(t.base) });
   };
 
   const openChurch = async (c: Church, path = "/", o: { ask?: boolean; checked?: boolean } = {}) => {
+    const gen = ++openGen.current;
     const next = remember(churches, { ...c, lastMs: Date.now() });
     setChurches(next);
     saveChurches(next);
@@ -87,6 +93,7 @@ export function App() {
       // would sit on a blank page. Say so on the churches list instead.
       if (!o.checked) {
         const r = await checkBooth(c.base, 5000);
+        if (gen !== openGen.current) return;
         if (!r.ok) {
           go({ kind: "home" });
           setErr(`Couldn't reach ${c.name}. Check you're on the church Wi-Fi, and that ProDeck is open at the booth.`);
@@ -95,6 +102,7 @@ export function App() {
       }
       // A fresh token each time: the phone can change it.
       const push = await pushToken(!!o.ask);
+      if (gen !== openGen.current) return;
       window.location.href = push ? `${url}#crewpush=${encodeURIComponent(push)}` : url;
       return;
     }
@@ -248,7 +256,17 @@ function Scan({ onBack, onCode, err }: { onBack: () => void; onCode: (c: string)
   const [camera, setCamera] = useState(isNative());
   useEffect(() => {
     if (!camera) return;
-    scanCode().then((c) => (c ? onCode(c) : setCamera(false)));
+    // The camera is done either way: a code that isn't a booth's must land
+    // on the message and Scan again, not a viewfinder with no camera.
+    scanCode()
+      .then((c) => {
+        setCamera(false);
+        if (c) onCode(c);
+      })
+      .catch((e: unknown) => {
+        captureError(e);
+        setCamera(false);
+      });
   }, [camera]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <main className="screen">
@@ -311,12 +329,22 @@ function Nearby({ onBack, onPick, onType }: { onBack: () => void; onPick: (f: Fo
     let alive = true;
     setFound(null);
     setProgress("");
-    findBooths((m) => alive && setProgress(m)).then((r) => {
-      if (!alive) return;
-      setPhoneIp(r.phoneIp);
-      setDetail(r.detail);
-      setFound(r.found);
-    });
+    findBooths((m) => alive && setProgress(m))
+      .then((r) => {
+        if (!alive) return;
+        setPhoneIp(r.phoneIp);
+        setDetail(r.detail);
+        setFound(r.found);
+        if (r.found.length === 0) reportNoBooth(r.detail);
+      })
+      // A search that throws must still end in "No booth found" with a way to
+      // try again, not a spinner forever.
+      .catch((e: unknown) => {
+        if (!alive) return;
+        captureError(e);
+        setDetail("");
+        setFound([]);
+      });
     return () => {
       alive = false;
     };

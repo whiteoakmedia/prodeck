@@ -83,4 +83,10 @@ describe("the notifications step inside the ProDeck Crew app", () => {
     expect(s.action).toBe("enable");
     expect(s.button).toBe("Check again");
   });
+
+  it("doesn't ask again once the volunteer turned pages off themselves", () => {
+    expect(notifyStep("off", { ...base, choseOff: true })).toBeNull();
+    // Blocked in the phone's settings is still worth a word.
+    expect(notifyStep("denied", { ...base, choseOff: true })).not.toBeNull();
+  });
 });

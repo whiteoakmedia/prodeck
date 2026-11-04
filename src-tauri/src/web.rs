@@ -2294,7 +2294,7 @@ async fn dispatch(
             let (id, _) = crate::identity::session_user(&identity, session)
                 .ok_or("sign in first: there's no account on this phone to delete")?;
             let push = app.state::<crate::push::PushState>().inner().clone();
-            crate::push::unsubscribe(&push, &id);
+            crate::push::forget_user(&push, &id);
             crate::identity::remove_core(app, &identity, id)?;
             Ok(json!({ "ok": true }))
         }

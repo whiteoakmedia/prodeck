@@ -3,6 +3,7 @@ import { useProDeck } from "../store";
 import { usePco } from "../pcoStore";
 import { ListenWidget, WIDGET_MAP } from "../widgets/registry";
 import { loadDashboards, type Dashboard } from "../lib/dashboards";
+import { usePerms } from "../lib/perms";
 
 // S10 — Dashboard on a phone.
 //
@@ -86,11 +87,34 @@ export function CrewDash() {
   );
 }
 
+/** Never on a phone: each one opens a camera stream on the booth per phone. */
+const PHONE_NEVER = new Set(["video_input"]);
+/** Buttons that change the service. The booth refuses them from a crew
+ *  member's phone, so showing them would only be buttons that do nothing. */
+const BOOTH_CONTROLS = new Set([
+  "avantis", "key_change", "automix", "recorder", "obs", "atem", "atem-macros",
+  "pro_macros", "walk_in_music", "stage_message", "lobby_tv", "timer", "tap_link",
+]);
+
+/** Which of a booth dashboard's widgets a phone shows. */
+export function phoneWidgets<T extends { type: string; x: number; y: number }>(widgets: T[], admin: boolean): T[] {
+  return widgets
+    .filter((w) => !PHONE_NEVER.has(w.type) && (admin || !BOOTH_CONTROLS.has(w.type)))
+    .sort((a, b) => a.y - b.y || a.x - b.x);
+}
+
 /** A booth dashboard on a phone: its widgets full width, top to bottom. */
 function BoothDash({ dash }: { dash: Dashboard }) {
-  const widgets = [...dash.widgets].sort((a, b) => a.y - b.y || a.x - b.x);
+  const { isAdmin } = usePerms();
+  const widgets = phoneWidgets(dash.widgets, isAdmin);
+  const left = dash.widgets.length - widgets.length;
   return (
     <div className="dash-stack">
+      {left > 0 && (
+        <p className="crew-hint">
+          {left === 1 ? "One part of this dashboard is" : `${left} parts of this dashboard are`} only on the booth screen.
+        </p>
+      )}
       {widgets.map((w) => {
         const def = WIDGET_MAP[w.type];
         if (!def) return null; // a widget this build doesn't have
@@ -139,8 +163,14 @@ function ServiceDash() {
           </span>
         </div>
         <div className="crew-spl">
-          {audioRunning && !quiet ? Math.round(spl) : "—"}
-          <small> dB SPL</small>
+          {audioRunning && !quiet ? (
+            <>
+              {Math.round(spl)}
+              <small> dB SPL</small>
+            </>
+          ) : (
+            <small>No reading</small>
+          )}
         </div>
         <div className="crew-progress">
           <div

@@ -67,14 +67,14 @@ if (IS_WEB && typeof localStorage !== "undefined") {
       // device already chose (lib/layout.ts).
       if (!localStorage.getItem(LAYOUT_KEY) && window.matchMedia?.("(min-width: 761px)").matches)
         localStorage.setItem(LAYOUT_KEY, "crew");
-      window.history.replaceState(null, "", window.location.pathname);
+      window.history.replaceState(null, "", window.location.pathname + window.location.hash);
     }
     // /join redirects here when the booth has not opened a joining window.
     // Scanning the poster otherwise lands on a bare password prompt, which
     // reads as "the app is broken" rather than "you're a few minutes early".
     if (q.get("joinclosed") === "1") {
       JOIN_CLOSED = true;
-      window.history.replaceState(null, "", window.location.pathname);
+      window.history.replaceState(null, "", window.location.pathname + window.location.hash);
     }
   } catch {
     /* malformed URL — fall through to the normal login */

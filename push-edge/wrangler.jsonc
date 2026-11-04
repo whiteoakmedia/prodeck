@@ -10,6 +10,8 @@
   "name": "prodeck-push",
   "main": "src/index.ts",
   "compatibility_date": "2026-07-01",
+  // Sentry keeps each request's context apart with AsyncLocalStorage.
+  "compatibility_flags": ["nodejs_als"],
   "vars": {
     "APNS_TEAM": "2B77WL3HZ6",
     "APNS_TOPIC": "app.prodeck.crew"

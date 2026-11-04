@@ -44,6 +44,10 @@ pub const BASE: &str = "local.prodeck.live";
 const PORTS: [u16; 2] = [443, 8443];
 /// How often the booth checks its address and certificate.
 const TICK: Duration = Duration::from_secs(15 * 60);
+/// After a pass that left the address down, try again this soon instead.
+const RETRY: Duration = Duration::from_secs(60);
+/// Phones served by the https front at once.
+const MAX_CONNECTIONS: usize = 256;
 
 const B64: base64::engine::general_purpose::GeneralPurpose = base64::engine::general_purpose::URL_SAFE_NO_PAD;
 
@@ -120,7 +124,16 @@ fn http() -> Result<reqwest::Client, String> {
 
 /// This computer's private IPv4 addresses (the ones a phone could reach).
 fn private_ips() -> Vec<String> {
-    crate::dante::local_ips().into_iter().filter(|ip| is_private(ip)).collect()
+    let mut ips: Vec<String> = crate::dante::local_ips().into_iter().filter(|ip| is_private(ip)).collect();
+    // ipconfig's labels are translated on a non English Windows, so its list
+    // can come back empty there. The address the system routes through is
+    // found without parsing anything.
+    if let Some(d) = default_route_ip() {
+        if !ips.contains(&d) {
+            ips.push(d);
+        }
+    }
+    ips
 }
 
 pub fn is_private(ip: &str) -> bool {
@@ -433,21 +446,31 @@ async fn issue_cert(name: &str, secret: &str, host: &str) -> Result<(), String> 
     if !pem.contains("BEGIN CERTIFICATE") {
         return Err("Let's Encrypt sent something that isn't a certificate".into());
     }
-    write_private(&dir().join("key.pem"), &key.serialize_pem())?;
-    std::fs::write(dir().join("cert.pem"), &pem).map_err(|e| e.to_string())?;
-    std::fs::write(dir().join("host.txt"), host).map_err(|e| e.to_string())?;
+    // All three written beside the old ones first, then swapped in, so a crash
+    // or a full disk midway never leaves a key that doesn't match its cert.
+    write_private(&dir().join("key.pem.new"), &key.serialize_pem())?;
+    std::fs::write(dir().join("cert.pem.new"), &pem).map_err(|e| e.to_string())?;
+    std::fs::write(dir().join("host.txt.new"), host).map_err(|e| e.to_string())?;
+    for f in ["key.pem", "cert.pem", "host.txt"] {
+        std::fs::rename(dir().join(format!("{f}.new")), dir().join(f)).map_err(|e| e.to_string())?;
+    }
     Ok(())
 }
 
-/// The certificate key: owner-only on Unix.
+/// The certificate key: owner-only on Unix from the moment it exists.
 fn write_private(path: &std::path::Path, text: &str) -> Result<(), String> {
-    std::fs::write(path, text).map_err(|e| e.to_string())?;
+    use std::io::Write;
+    let _ = std::fs::remove_file(path);
+    let mut o = std::fs::OpenOptions::new();
+    o.write(true).create_new(true);
     #[cfg(unix)]
     {
-        use std::os::unix::fs::PermissionsExt;
-        let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600));
+        use std::os::unix::fs::OpenOptionsExt;
+        o.mode(0o600);
     }
-    Ok(())
+    let mut f = o.open(path).map_err(|e| e.to_string())?;
+    f.write_all(text.as_bytes()).map_err(|e| e.to_string())?;
+    f.sync_all().map_err(|e| e.to_string())
 }
 
 // ---------------------------------------------------------------- certificate dates
@@ -639,10 +662,26 @@ async fn start_front(app: &AppHandle) -> Result<u16, String> {
     let acceptor = tokio_rustls::TlsAcceptor::from(cfg);
     let app = app.clone();
     let tauri::async_runtime::JoinHandle::Tokio(handle) = tauri::async_runtime::spawn(async move {
+        // A whole church on phones is a few dozen connections; this many at
+        // once is something else, and the rest wait their turn.
+        let slots = Arc::new(tokio::sync::Semaphore::new(MAX_CONNECTIONS));
         loop {
-            let Ok((tcp, peer)) = listener.accept().await else { continue };
+            let (tcp, peer) = match listener.accept().await {
+                Ok(c) => c,
+                // Out of file handles (it has happened: PRODECK-6) fails every
+                // accept at once; looping straight back would pin a core.
+                Err(_) => {
+                    tokio::time::sleep(Duration::from_millis(100)).await;
+                    continue;
+                }
+            };
+            let Ok(slot) = slots.clone().acquire_owned().await else { break };
             let web_port = app.state::<SettingsState>().lock().unwrap_or_else(|p| p.into_inner()).web_port;
-            tauri::async_runtime::spawn(serve_one(acceptor.clone(), tcp, peer, web_port));
+            let acceptor = acceptor.clone();
+            tauri::async_runtime::spawn(async move {
+                serve_one(acceptor, tcp, peer, web_port).await;
+                drop(slot);
+            });
         }
     });
     *FRONT.lock().unwrap_or_else(|p| p.into_inner()) = Some(handle);
@@ -680,24 +719,52 @@ pub fn url_for(host: &str, port: u16) -> String {
 }
 
 /// One pass: point the name at this computer, get or renew the certificate,
-/// make sure the front is serving it. Safe to call any time.
-pub async fn refresh(app: &AppHandle) {
+/// make sure the front is serving it. Safe to call any time. False when the
+/// address is left down, so the next try comes sooner.
+pub async fn refresh(app: &AppHandle) -> bool {
     let _one = BUSY.lock().await;
     let (name, secret, chosen) = {
         let g = app.state::<SettingsState>();
         let g = g.lock().unwrap_or_else(|p| p.into_inner());
         (g.local_name.clone(), g.local_secret.clone(), g.local_ip.clone())
     };
-    let ips = private_ips();
     if name.is_empty() || secret.is_empty() {
+        // Nothing claimed: no address lookups (on Windows each one runs
+        // ipconfig). The settings screen asks for them when it opens.
         stop_front();
         save_local_url(app, "");
         set_status(app, |s| {
-            *s = Status { phase: "off".into(), ips: ips.clone(), ..Default::default() };
+            *s = Status { phase: "off".into(), ..Default::default() };
         });
-        return;
+        return true;
     }
+    let ips = private_ips();
     let host = format!("{name}.{BASE}");
+
+    // A certificate already on disk serves straight away, before anything goes
+    // out to the internet: after a restart with the internet or the address
+    // service down, phones on the church Wi-Fi still reach the booth.
+    let front_up = || FRONT.lock().unwrap_or_else(|p| p.into_inner()).as_ref().map(|h| !h.is_finished()).unwrap_or(false);
+    if !front_up() {
+        let have_host = std::fs::read_to_string(dir().join("host.txt")).unwrap_or_default();
+        let pem = std::fs::read_to_string(dir().join("cert.pem")).unwrap_or_default();
+        let unexpired = have_host.trim() == host
+            && cert_validity(&pem).map(|(_, na)| na > (now_ms() / 1000) as i64).unwrap_or(false);
+        if unexpired {
+            if let Ok(port) = start_front(app).await {
+                let url = url_for(&host, port);
+                save_local_url(app, &url);
+                set_status(app, |s| {
+                    s.name = name.clone();
+                    s.host = host.clone();
+                    s.phase = "serving".into();
+                    s.port = port;
+                    s.url = url.clone();
+                    s.detail = format!("Phones on the church Wi-Fi can open {url}");
+                });
+            }
+        }
+    }
     let result: Result<(), String> = async {
         let ip = pick_ip(&chosen, default_route_ip().as_deref(), &ips)
             .ok_or("This computer has no address on a church network (like 192.168.1.20). Is it on the network?")?;
@@ -721,8 +788,21 @@ pub async fn refresh(app: &AppHandle) {
         if renew {
             issue(app, &name, &secret, &host).await?;
         }
-        let running = FRONT.lock().unwrap_or_else(|p| p.into_inner()).as_ref().map(|h| !h.is_finished()).unwrap_or(false);
-        let port = if renew || !running { start_front(app).await? } else { status().port };
+        let running = front_up();
+        let port = if renew || !running {
+            match start_front(app).await {
+                Ok(p) => p,
+                // The files on disk don't make a working pair (a key from one
+                // issue, a cert from another): get a fresh pair.
+                Err(_) if !renew => {
+                    issue(app, &name, &secret, &host).await?;
+                    start_front(app).await?
+                }
+                Err(e) => return Err(e),
+            }
+        } else {
+            status().port
+        };
         let pem = std::fs::read_to_string(dir().join("cert.pem")).unwrap_or_default();
         let expires = cert_validity(&pem).map(|(_, na)| (na as u64) * 1000).unwrap_or(0);
         let url = url_for(&host, port);
@@ -737,24 +817,28 @@ pub async fn refresh(app: &AppHandle) {
         Ok(())
     }
     .await;
-    if let Err(e) = result {
-        crate::diag::log(format!("[local-https] {e}"));
-        // Still serving the old certificate is fine; say what went wrong.
-        let serving = FRONT.lock().unwrap_or_else(|p| p.into_inner()).as_ref().map(|h| !h.is_finished()).unwrap_or(false);
-        set_status(app, |s| {
-            s.error = e.clone();
-            if !serving {
-                s.phase = "error".into();
-            }
-        });
+    match result {
+        Ok(()) => true,
+        Err(e) => {
+            crate::diag::log(format!("[local-https] {e}"));
+            // Still serving the old certificate is fine; say what went wrong.
+            let serving = front_up();
+            set_status(app, |s| {
+                s.error = e.clone();
+                if !serving {
+                    s.phase = "error".into();
+                }
+            });
+            serving
+        }
     }
 }
 
 pub fn spawn(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
         loop {
-            refresh(&app).await;
-            tokio::time::sleep(TICK).await;
+            let up = refresh(&app).await;
+            tokio::time::sleep(if up { TICK } else { RETRY }).await;
         }
     });
 }

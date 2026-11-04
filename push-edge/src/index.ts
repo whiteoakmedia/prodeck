@@ -17,7 +17,16 @@
  *    the phone hands only to its own church's booth.
  *  - Rate limits per sender and per phone, small caps on size, and nothing
  *    is stored.
+ *
+ * Errors go to White Oak's Sentry (project "prodeck", tag side=push-relay):
+ * Apple refusing the key or topic, and anything that throws. Reports never
+ * carry a page's words, a push token or the sender's address.
  */
+
+import * as Sentry from "@sentry/cloudflare";
+
+/** Workers reach sentry.io directly; only booths need the feedback Worker's tunnel. */
+const SENTRY_DSN = "https://79aebd1fda6a14652e119fabfa555f91@o4511745054998528.ingest.us.sentry.io/4512215209869312";
 
 interface Env {
   SENDS: RateLimit;
@@ -91,6 +100,9 @@ async function sendApns(env: Env, token: string, body: string, tag: string, page
   }
   if (lastReason === "BadDeviceToken") return "dead";
   console.log(`apns refused: ${lastReason}`);
+  // One issue per reason. The ones that matter most (InvalidProviderToken,
+  // TopicDisallowed) mean every page from every church is failing.
+  Sentry.captureMessage(`APNs refused: ${lastReason}`, { level: "error", fingerprint: ["apns-refused", lastReason] });
   return "failed";
 }
 
@@ -133,6 +145,7 @@ async function send(req: Request, env: Env): Promise<Response> {
       if (!(await env.PHONES.limit({ key: t })).success) return;
       const r = await sendApns(env, t, body, tag, page).catch((e) => {
         console.log(`apns error: ${e}`);
+        Sentry.captureException(e);
         return "failed" as const;
       });
       if (r === "sent") sent++;
@@ -142,11 +155,29 @@ async function send(req: Request, env: Env): Promise<Response> {
   return json({ ok: true, sent, dead });
 }
 
-export default {
-  async fetch(req: Request, env: Env): Promise<Response> {
-    const url = new URL(req.url);
-    if (req.method === "GET" && url.pathname === "/") return json({ ok: true, apns: !!(env.APNS_KEY && env.APNS_KEY_ID) });
-    if (req.method === "POST" && url.pathname === "/v1/send") return send(req, env);
-    return fail(404, "not found");
-  },
-};
+export default Sentry.withSentry<Env>(
+  () => ({
+    dsn: SENTRY_DSN,
+    release: "prodeck-push@1",
+    environment: "production",
+    sendDefaultPii: false,
+    tracesSampleRate: 0,
+    initialScope: { tags: { side: "push-relay" } },
+    // The request holds the sender's address and the page itself; neither
+    // belongs in a crash report.
+    beforeSend: (e) => {
+      delete e.request;
+      delete e.user;
+      return e;
+    },
+    beforeBreadcrumb: (b) => (b.category === "fetch" || b.category === "console" ? null : b),
+  }),
+  {
+    async fetch(req: Request, env: Env): Promise<Response> {
+      const url = new URL(req.url);
+      if (req.method === "GET" && url.pathname === "/") return json({ ok: true, apns: !!(env.APNS_KEY && env.APNS_KEY_ID) });
+      if (req.method === "POST" && url.pathname === "/v1/send") return send(req, env);
+      return fail(404, "not found");
+    },
+  } satisfies ExportedHandler<Env>,
+);

@@ -232,7 +232,15 @@ pub(crate) fn local_ips() -> Vec<String> {
     // "   IPv4 Address. . . . . . . . . . . : 192.168.1.20"
     #[cfg(windows)]
     let (cmd, prefix) = ("ipconfig", "IPv4 Address");
-    let out = std::process::Command::new(cmd).output().map(|o| String::from_utf8_lossy(&o.stdout).to_string()).unwrap_or_default();
+    let mut c = std::process::Command::new(cmd);
+    // A windowed app running a console tool flashes a console window on the
+    // booth screen without this (same as diag.rs).
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        c.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    }
+    let out = c.output().map(|o| String::from_utf8_lossy(&o.stdout).to_string()).unwrap_or_default();
     out.lines()
         .filter_map(|l| l.trim().strip_prefix(prefix))
         .filter_map(|r| r.trim_start_matches(|c: char| c == '.' || c == ' ' || c == ':').split_whitespace().next())
