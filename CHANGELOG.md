@@ -44,6 +44,41 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.116 — 5 November 2026
+
+Everything in 0.9.115, plus:
+
+### New
+
+- **What's new in ProDeck.** After this update the booth opens a short
+  animated tour of everything new, with where to turn each thing on. Open it
+  again any time from Help.
+- **Comms on every phone.** Crew phones and iPads become an intercom with four
+  lines: All, Cameras, Stage and Booth. Hold to talk, or Open mic with Mute.
+  Settings → Crew & screens → Comms. The booth never plays comms.
+- **Any phone is a tally light.** More → Tally light on a crew phone: red when
+  live, green when next, silent and still while it's a tally.
+- **A secure address in one click.** Settings → Crew & screens → Secure local
+  address gives the booth https on the church network, which phones need for
+  comms, a camera's microphone and notifications.
+- **Crew view on iPad**, **calmer crew screens**, and signing in to an
+  existing account from a new phone.
+- **Support ProDeck** in the sidebar and Help.
+
+### Fixed
+
+- TVs find the booth again when the booth computer comes back on a new
+  address, instead of showing "Webpage not available" until paired again
+  (ProDeck Display 1.3: press Update all in Settings → TV screens).
+- The bottom bar on crew phones answers every tap.
+- ProDeck for Mac is signed with Developer ID and notarized: it opens with no
+  trip to Privacy & Security. macOS may ask once more for permissions you
+  granted before.
+
+### Coming
+
+- **ProDeck Crew** for iPhone, iPad and Android.
+
 ## 0.9.115 — 1 November 2026
 
 Everything in 0.9.114, plus:
