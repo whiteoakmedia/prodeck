@@ -44,6 +44,18 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.117 — 5 November 2026
+
+Everything in 0.9.116, plus:
+
+### Fixed
+
+- **Dashboards on TVs fit the screen.** On a Fire TV Stick, tiles like Mic
+  Assignments, Live Viewers and the SPL meter ran past their boxes and showed
+  scrollbars nobody can use with a remote. Each tile now draws its content a
+  little smaller until it fits, short tiles keep just what matters, and Show
+  Flow keeps the live item in view by itself.
+
 ## 0.9.116 — 5 November 2026
 
 Everything in 0.9.115, plus:
