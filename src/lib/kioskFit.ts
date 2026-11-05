@@ -28,3 +28,32 @@ export function kioskFit(o: { vw: number; vh: number; rows: number; margin?: num
   const scale = availH / need;
   return { rowHeight: MIN_ROW, scale, width: Math.round(availW / scale) };
 }
+
+// ---------------------------------------------------------------- tile fit
+//
+// Inside one tile: a TV can't scroll, so a tile whose content is bigger than
+// its box draws that content smaller (CSS zoom, which lays it out again
+// rather than blurring it) until it fits. Never below MIN_TILE_ZOOM: past
+// that the words are too small to read across a room, so the tile's own
+// height rules (App.css, .kiosk @container) drop its extras instead, and
+// anything still left over is clipped, never a scrollbar.
+
+export const MIN_TILE_ZOOM = 0.6;
+
+export interface Box {
+  w: number;
+  h: number;
+}
+
+/**
+ * The next zoom to try, given the zoom now, the room the tile has (`avail`)
+ * and the room its content takes at that zoom (`used`). Returns the same
+ * zoom when it already fits. A little under the exact ratio, so rounding in
+ * the next layout doesn't leave it one pixel over.
+ */
+export function nextTileZoom(zoom: number, avail: Box, used: Box, min = MIN_TILE_ZOOM): number {
+  if (avail.w <= 0 || avail.h <= 0 || used.w <= 0 || used.h <= 0) return zoom;
+  const ratio = Math.min(avail.w / used.w, avail.h / used.h);
+  if (ratio >= 0.995) return zoom;
+  return Math.max(min, Math.round(zoom * ratio * 0.98 * 1000) / 1000);
+}

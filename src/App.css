@@ -5608,6 +5608,29 @@ select.input {
 .kiosk .layout {
   pointer-events: none; /* no inputs attached — and nothing to mis-click */
 }
+/* Nobody can scroll a TV. Each tile fits its content to its box instead
+   (KioskTileBody in Kiosk.tsx), and nothing shows a scrollbar. Tiles here
+   have a fixed size, so they can also answer to their height: a tile can drop
+   its extras when it's short (container queries below). */
+.kiosk .widget-body {
+  overflow: hidden;
+  container-type: size;
+}
+.kiosk,
+.kiosk * {
+  scrollbar-width: none;
+}
+.kiosk ::-webkit-scrollbar {
+  display: none;
+}
+/* Live Viewers in a short tile: the number, without the little chart and
+   caption under it. */
+@container (max-height: 120px) {
+  .w-liveviewers .lv-spark,
+  .w-liveviewers .metric-cap {
+    display: none;
+  }
+}
 .kiosk-ppbanner {
   margin-bottom: 12px;
   padding: 8px 14px;

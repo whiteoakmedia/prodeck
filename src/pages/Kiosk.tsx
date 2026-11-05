@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ScreenMessage } from "../components/ScreenMessage";
 import { startListen, stopListen } from "../lib/listen";
 import GridLayout, { WidthProvider, type Layout } from "react-grid-layout";
@@ -6,7 +6,7 @@ import "react-grid-layout/css/styles.css";
 import { useProDeck } from "../store";
 import { WIDGET_MAP } from "../widgets/registry";
 import { loadDashboards, type Dashboard as Dash } from "../lib/dashboards";
-import { kioskFit } from "../lib/kioskFit";
+import { kioskFit, MIN_TILE_ZOOM, nextTileZoom, type Box } from "../lib/kioskFit";
 
 const Grid = WidthProvider(GridLayout);
 
@@ -199,14 +199,124 @@ export function KioskPage({ name }: { name: string }) {
               <div className="widget-bar">
                 <span className="widget-title">{def.label}</span>
               </div>
-              <div className="widget-body">
+              <KioskTileBody>
                 <Comp widget={w} editing={false} update={() => {}} />
-              </div>
+              </KioskTileBody>
             </div>
           );
         })}
       </Grid>
       </div>
+    </div>
+  );
+}
+
+// How often a shrunken tile tries its full size again (its content may have
+// got shorter), and the least time between checks while its content changes
+// (a clock or a meter changes every second).
+const TILE_REGROW_MS = 30_000;
+const TILE_CHECK_MS = 1_000;
+
+/** The room a tile's content takes, at whatever zoom it's drawn at now. A
+ *  list inside it that scrolls counts by how far it runs over, except one
+ *  marked data-kiosk-scrolls, which keeps its live item in view instead. */
+function usedBox(body: HTMLElement, avail: Box, padX: number, padY: number): Box {
+  let w = Math.max(avail.w, body.scrollWidth - padX);
+  let h = Math.max(avail.h, body.scrollHeight - padY);
+  for (const el of body.querySelectorAll<HTMLElement>("*")) {
+    if (el.clientHeight === 0 || el.closest("[data-kiosk-scrolls]")) continue;
+    if (el.scrollHeight <= el.clientHeight + 1 && el.scrollWidth <= el.clientWidth + 1) continue;
+    const cs = getComputedStyle(el);
+    if (!/auto|scroll/.test(cs.overflowX + cs.overflowY)) continue;
+    w = Math.max(w, (avail.w * el.scrollWidth) / Math.max(1, el.clientWidth));
+    h = Math.max(h, (avail.h * el.scrollHeight) / Math.max(1, el.clientHeight));
+  }
+  return { w, h };
+}
+
+/** Lists that scroll on purpose (Show Flow): keep the live item in the middle. */
+function centreLive(body: HTMLElement) {
+  for (const list of body.querySelectorAll<HTMLElement>("[data-kiosk-scrolls]")) {
+    const live = list.querySelector<HTMLElement>(".live");
+    if (!live || list.scrollHeight <= list.clientHeight) continue;
+    const box = list.getBoundingClientRect();
+    const item = live.getBoundingClientRect();
+    if (box.height === 0) continue;
+    // Screen pixels to the list's own (it may be zoomed and the canvas scaled).
+    const k = list.clientHeight / box.height;
+    const off = (item.top - box.top - (box.height - item.height) / 2) * k;
+    if (Math.abs(off) > 2) list.scrollTop += off;
+  }
+}
+
+/**
+ * One tile on a kiosk or TV. Nobody can scroll a TV, so a tile whose content
+ * is bigger than its box draws it smaller until it fits (lib/kioskFit,
+ * nextTileZoom), and lists that scroll on purpose follow the live item.
+ */
+function KioskTileBody({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const body = ref.current;
+    if (!body) return;
+    let zoom = 1;
+    let lastCheck = 0;
+    let pending: ReturnType<typeof setTimeout> | undefined;
+
+    const measure = () => {
+      const cs = getComputedStyle(body);
+      const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+      const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+      const avail = { w: body.clientWidth - padX, h: body.clientHeight - padY };
+      return { avail, used: usedBox(body, avail, padX, padY) };
+    };
+    const setZoom = (root: HTMLElement, z: number) => {
+      zoom = z;
+      root.style.zoom = z === 1 ? "" : String(z);
+    };
+    // From full size down, all before the next paint, so nothing flickers.
+    const fit = () => {
+      const root = body.firstElementChild as HTMLElement | null;
+      if (!root) return;
+      setZoom(root, 1);
+      for (let i = 0; i < 6; i++) {
+        const { avail, used } = measure();
+        const next = nextTileZoom(zoom, avail, used);
+        if (next === zoom) break;
+        setZoom(root, next);
+        if (next <= MIN_TILE_ZOOM) break;
+      }
+      centreLive(body);
+    };
+    // Content changed: only refit if it no longer fits at the zoom it's at.
+    const check = () => {
+      pending = undefined;
+      lastCheck = Date.now();
+      const { avail, used } = measure();
+      if (zoom > MIN_TILE_ZOOM && nextTileZoom(zoom, avail, used) !== zoom) fit();
+      else centreLive(body);
+    };
+    const schedule = () => {
+      if (pending) return;
+      pending = setTimeout(check, Math.max(0, TILE_CHECK_MS - (Date.now() - lastCheck)));
+    };
+
+    fit();
+    const ro = new ResizeObserver(() => fit());
+    ro.observe(body);
+    const mo = new MutationObserver(schedule);
+    mo.observe(body, { childList: true, subtree: true, characterData: true });
+    const regrow = setInterval(() => zoom < 1 && fit(), TILE_REGROW_MS);
+    return () => {
+      ro.disconnect();
+      mo.disconnect();
+      clearInterval(regrow);
+      if (pending) clearTimeout(pending);
+    };
+  }, []);
+  return (
+    <div className="widget-body" ref={ref}>
+      {children}
     </div>
   );
 }

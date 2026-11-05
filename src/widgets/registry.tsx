@@ -2197,7 +2197,8 @@ function ShowFlowWidget() {
           the Planning Center page — so pressing next from a dashboard failed
           in complete silence. */}
       {liveError && <div className="error small">{liveError}</div>}
-      <div className="showflow">
+      {/* On a kiosk or TV this list follows the live item (Kiosk.tsx). */}
+      <div className="showflow" data-kiosk-scrolls>
         {items.map((it) =>
         it.type === "header" ? (
           <div key={it.id} className="sf-header">
