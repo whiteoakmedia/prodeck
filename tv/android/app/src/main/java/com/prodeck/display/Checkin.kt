@@ -44,9 +44,11 @@ object Checkin {
         0
     }
 
-    /** One check-in. The booth's answer, or null if it couldn't be reached. */
-    fun send(ctx: Context): JSONObject? {
-        val base = Prefs.base(ctx) ?: return null
+    /** One check-in. The booth's answer, or null if it couldn't be reached or
+     *  didn't accept this TV's crew password. `base` defaults to the saved
+     *  booth; Finder passes a candidate to see whether it's our booth. */
+    fun send(ctx: Context, base: String? = Prefs.base(ctx)): JSONObject? {
+        if (base == null) return null
         val current = Prefs.path(ctx)?.let { Uri.parse("http://x$it") } ?: return null
         val token = current.getQueryParameter("token") ?: return null
         val showing = current.getQueryParameter("kiosk") ?: if (current.getQueryParameter("tally") != null) "Camera tally board" else ""

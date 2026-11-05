@@ -35,6 +35,15 @@ class MainActivity : Activity() {
     private val handler = Handler(Looper.getMainLooper())
     private var lastBack = 0L
     private val checkins = Executors.newSingleThreadScheduledExecutor()
+    private val finder = Executors.newSingleThreadExecutor()
+    /** The page load in progress failed: Android's own error page is about to
+     *  "finish loading", and that must not take the offline screen down. */
+    @Volatile private var loadFailed = false
+    /** Check-ins in a row the booth didn't answer (checkins thread only). */
+    private var misses = 0
+    private var searching = false
+    private var lastSearch = 0L
+    private val retry = Runnable { Prefs.url(this)?.let { web.loadUrl(it) } }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -63,17 +72,29 @@ class MainActivity : Activity() {
             if (Build.VERSION.SDK_INT >= 21) settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
             isFocusable = false
             webViewClient = object : WebViewClient() {
+                override fun onPageStarted(view: WebView, u: String, favicon: android.graphics.Bitmap?) {
+                    loadFailed = false
+                }
+
                 override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                    if (request.isForMainFrame) showOffline()
+                    if (request.isForMainFrame) {
+                        loadFailed = true
+                        showOffline()
+                    }
                 }
 
                 @Deprecated("API < 23")
                 override fun onReceivedError(view: WebView, errorCode: Int, description: String?, failingUrl: String?) {
-                    if (failingUrl == Prefs.url(this@MainActivity)) showOffline()
+                    if (failingUrl == Prefs.url(this@MainActivity)) {
+                        loadFailed = true
+                        showOffline()
+                    }
                 }
 
                 override fun onPageFinished(view: WebView, u: String) {
-                    if (offline.visibility == View.VISIBLE && !u.startsWith("about:")) offline.visibility = View.GONE
+                    if (offline.visibility == View.VISIBLE && !loadFailed && !u.startsWith("about:")) {
+                        offline.visibility = View.GONE
+                    }
                 }
             }
         }
@@ -96,7 +117,15 @@ class MainActivity : Activity() {
 
     /** Tell the booth this TV is here, and do what it asks (Checkin.kt). Background thread. */
     private fun checkIn() {
-        val r = Checkin.send(this) ?: return
+        val r = Checkin.send(this)
+        if (r == null) {
+            // The dashboard page keeps showing its own "reconnecting" screen
+            // when the booth goes quiet, so the WebView never errors; two
+            // missed check-ins are the sign the booth may have moved.
+            if (++misses >= 2) handler.post { findBooth() }
+            return
+        }
+        misses = 0
         val latest = r.optInt("latest")
         val apk = r.optString("apk")
         getSharedPreferences("display", MODE_PRIVATE).edit().putInt("latest", latest).putString("apk", apk).apply()
@@ -114,8 +143,35 @@ class MainActivity : Activity() {
     /** The booth isn't answering (powered off, or the TV woke first): try again every few seconds. */
     private fun showOffline() {
         offline.visibility = View.VISIBLE
-        handler.removeCallbacksAndMessages(null)
-        handler.postDelayed({ Prefs.url(this)?.let { web.loadUrl(it) } }, 5000)
+        handler.removeCallbacks(retry)
+        handler.postDelayed(retry, 5000)
+        findBooth()
+    }
+
+    /**
+     * The booth may have come back on a new address (a restart without a
+     * reserved address): look for it on the network, at most once a minute,
+     * and move this TV to it if it accepts our crew password (Finder.kt).
+     * Main thread.
+     */
+    private fun findBooth() {
+        val now = System.currentTimeMillis()
+        if (searching || now - lastSearch < 60_000) return
+        searching = true
+        lastSearch = now
+        finder.execute {
+            val found = try { Finder.find(this) } catch (_: Exception) { null }
+            handler.post {
+                searching = false
+                val path = Prefs.path(this)
+                if (found != null && path != null && found != Prefs.base(this)) {
+                    Prefs.save(this, found, path)
+                    misses = 0
+                    handler.removeCallbacks(retry)
+                    Prefs.url(this)?.let { web.loadUrl(it) }
+                }
+            }
+        }
     }
 
     @Suppress("DEPRECATION")
@@ -161,6 +217,7 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         checkins.shutdownNow()
+        finder.shutdownNow()
         handler.removeCallbacksAndMessages(null)
         if (::web.isInitialized) web.destroy()
         super.onDestroy()
