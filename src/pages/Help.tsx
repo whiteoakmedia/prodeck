@@ -4,6 +4,7 @@ import { contextFor, searchHelp } from "../help/search";
 import { getSettings, helpAsk, IS_WEB, diagOpenIssue, REPORT_REPO, DOCS_URL, helpOpen } from "../lib/tauri";
 import { Icon } from "../components/Icon";
 import { openFeedback } from "../lib/feedback";
+import { openWhatsNew } from "../lib/whatsNew";
 
 /**
  * Help: ask a question, get an answer, inside the app.
@@ -126,6 +127,11 @@ export function HelpPage({
       <header className="page-head">
         <h1>Help</h1>
         <span className="page-sub">Ask a question, or browse by area. Everything here works offline.</span>
+        {!IS_WEB && (
+          <button className="btn small primary help-whats-new" onClick={openWhatsNew}>
+            What's new
+          </button>
+        )}
       </header>
 
       <div className="help-ask">

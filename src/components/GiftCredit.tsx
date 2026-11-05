@@ -26,7 +26,7 @@ export function GiftCredit() {
     </a>
     {showTips() && (
       <button className="link-btn gift-tip" onClick={() => openExternal(tipUrl())}>
-        Leave a tip
+        Support ProDeck
       </button>
     )}
     </>

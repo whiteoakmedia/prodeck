@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { openWhatsNew } from "../lib/whatsNew";
 import { tvStatus, type TvScreen } from "../lib/tvScreens";
 import { CONSOLES, consoleLabel, consoleNeedsMidi, isNrpnConsole, midiBaseForSwitch, portForSwitch } from "../lib/consoles";
 import { rebase } from "../lib/formRebase";
@@ -4134,12 +4135,12 @@ function TipBox() {
       <div>
         <strong>Support ProDeck</strong>
         <p className="muted small" style={{ margin: "2px 0 0" }}>
-          ProDeck is free for every church. If it saves your team time on Sundays, a tip helps White Oak Media keep
+          ProDeck is free for every church. If it saves your team time on Sundays, a donation helps White Oak Media keep
           building it.
         </p>
       </div>
       <button className="btn small" onClick={() => openExternal(tipUrl())}>
-        Leave a tip
+        Support ProDeck
       </button>
     </div>
   );
@@ -4202,6 +4203,7 @@ function HelpCard() {
       <TipBox />
       <div className="rel-actions" style={{ justifyContent: "flex-start", gap: 8, marginBottom: 10 }}>
         <button className="btn small" onClick={() => helpOpen().catch(() => window.open(DOCS_URL, "_blank", "noopener"))}>Open the guide</button>
+        <button className="btn small" onClick={openWhatsNew}>What's new</button>
         <button className="btn small" title="Fill every dashboard with a pretend Sunday. Writes nothing." onClick={() => setDemo(!IS_DEMO)}>
           {IS_DEMO ? "Exit demo mode" : "Try demo mode"}
         </button>

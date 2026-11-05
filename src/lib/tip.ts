@@ -1,6 +1,6 @@
-// Tips for White Oak Media, who give ProDeck away. A Stripe Payment Link
-// (the person picks the amount), so the app holds no keys: it only opens a
-// public page in the browser.
+// Support for White Oak Media, who give ProDeck away. Their public support
+// page (it takes the donation itself), so the app holds no keys: it only
+// opens a page in the browser.
 //
 // Booth computer only. Phone app stores require their own in-app payments for
 // tips to a developer, so the crew app and phones never show it.
@@ -8,8 +8,8 @@
 import { IS_DEMO } from "./demo";
 import { IS_WEB } from "./tauri";
 
-/** White Oak Media's Stripe Payment Link. Empty = tips are hidden. */
-export const TIP_URL = "";
+/** White Oak Media's support page. Empty = support links are hidden. */
+export const TIP_URL = "https://www.whiteoakmedia.io/tools/support";
 
 export function tipUrl(): string {
   if (TIP_URL) return TIP_URL;

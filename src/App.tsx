@@ -37,6 +37,7 @@ import { IN_CREW_APP } from "./lib/crewApp";
 import { BackToChurches } from "./components/BackToChurches";
 import { SoundcheckWatch } from "./components/SoundcheckWatch";
 import { SetupWizards } from "./components/wizard/SetupWizards";
+import { WhatsNewHost } from "./components/WhatsNew";
 import { isFreshInstall } from "./lib/onboarding";
 import { NAVIGATE_EVENT } from "./lib/navigate";
 import { requestSettingsJump } from "./lib/settingsJump";
@@ -314,6 +315,8 @@ function Shell() {
       {startupWizard && <ServiceWizard locked onClose={() => setStartupWizard(false)} />}
       <FirstRunSetup onNavigate={(p) => setPage(p as Page)} />
       <SetupWizards />
+      {/* Once per edition after an update, never over a service (lib/whatsNew). */}
+      <WhatsNewHost blocked={startupWizard} />
       {/* Always rendered so the mobile bottom-nav (CSS) shows even when the
           desktop sidebar is collapsed; desktop collapse hides it via CSS. */}
       <aside className="sidebar">

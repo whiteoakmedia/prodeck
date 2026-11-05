@@ -31,6 +31,8 @@ export const SHOT_TAB: string | null = QS?.get("tab") ?? null;
 export const SHOT_CHAT: boolean = !!QS?.has("chat");
 /** ?shots=1&update=1: the update announcement, with the next release's notes. */
 export const SHOT_UPDATE: boolean = !!QS?.has("update");
+/** ?shots=1&whatsnew=1: the full screen What's new showcase. */
+export const SHOT_WHATSNEW: boolean = !!QS?.has("whatsnew");
 
 export const IS_DEMO: boolean = (() => {
   if (IS_SHOTS) return true;
