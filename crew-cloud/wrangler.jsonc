@@ -20,7 +20,7 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-07-01",
   "workers_dev": false,
-  // "routes": [{ "pattern": "*-crew.prodeck.live/*", "zone_name": "prodeck.live" }],
+  "routes": [{ "pattern": "*-crew.prodeck.live/*", "zone_name": "prodeck.live" }],
   "durable_objects": { "bindings": [{ "name": "CHURCH", "class_name": "Church" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Church"] }],
   "services": [{ "binding": "NAMES", "service": "prodeck-local", "entrypoint": "Names" }],

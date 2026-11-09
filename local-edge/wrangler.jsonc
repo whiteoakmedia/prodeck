@@ -23,7 +23,7 @@
     "BASE": "local.prodeck.live",
     // Crew addresses (<name>-crew.prodeck.live, crew-cloud/). Leave "0" until
     // prodeck-crew is deployed: booths check this and do nothing until "1".
-    "CREW_READY": "0",
+    "CREW_READY": "1",
     // "per-name": a proxied record per church that turns it on (the default,
     // nothing else under prodeck.live resolves). "wildcard": you added one
     // proxied  *  AAAA 100::  record yourself; then this writes none.
