@@ -30,6 +30,6 @@ changes here on request branches; Zach merges.
 - **prodeck.live is Zach's private instance for his own church.** Never link to it, point code at
   it, or treat it as a product site. Two exceptions, both per-church names handed out by the
   `local-edge/` Worker: the app may use `<name>.local.prodeck.live` (secure local addresses,
-  design/LOCAL_HTTPS.md) and `<name>.crew.prodeck.live` (crew addresses, the `crew-cloud/` Worker,
+  design/LOCAL_HTTPS.md) and `<name>-crew.prodeck.live` (crew addresses, the `crew-cloud/` Worker,
   design/CREW_ADDRESS.md). Nothing else under prodeck.live.
 - Anything a user sees: plain words, no dashes, at most one exclamation mark.
