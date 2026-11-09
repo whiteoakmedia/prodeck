@@ -7,6 +7,7 @@ import {
   JOIN_CLOSED,
   setWebToken,
   getSettings,
+  cloudPasswordOk,
   identityList,
   identitySetRole,
   on,
@@ -588,8 +589,14 @@ function WebGate({ children }: { children: ReactNode }) {
     try {
       await getSettings(); // round-trips the token against the host
       setAuthed(true);
-    } catch {
-      setErr("Wrong password.");
+    } catch (e) {
+      // The booth is off (or out of reach): its crew address can still check
+      // the password against the last copy it sent (lib/crewCloud.ts).
+      const offline = String((e as Error)?.message ?? "") !== "unauthorized";
+      const ok = offline ? await cloudPasswordOk(pw).catch(() => null) : false;
+      if (ok) setAuthed(true);
+      else if (ok === null) setErr("Can't reach the booth right now.");
+      else setErr("Wrong password.");
     } finally {
       setBusy(false);
     }

@@ -4,7 +4,7 @@
 
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { hostsToTry, orderAddresses, probeDetail, type PhoneAddress, type ProbeResult } from "./sweep";
-import { DEFAULT_PORT, type Church } from "./connect";
+import { DEFAULT_PORT, cleanCrew, type Church } from "./connect";
 
 export const isNative = () => Capacitor.isNativePlatform();
 
@@ -201,6 +201,17 @@ export async function secureBase(base: string): Promise<string> {
     /* an older booth without /api/origin: plain it is */
   }
   return base;
+}
+
+/** The church's crew address, if its booth has one turned on (crewcloud.rs). */
+export async function crewAddress(base: string): Promise<string> {
+  if (cleanCrew(base)) return base;
+  try {
+    const r = await fetch(`${base}/api/origin`, { cache: "no-store" });
+    return cleanCrew(((await r.json()) as { crew?: string })?.crew);
+  } catch {
+    return "";
+  }
 }
 
 /**

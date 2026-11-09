@@ -117,6 +117,7 @@ import { relaunch } from "@tauri-apps/plugin-process";
 import lockupHorizontal from "../assets/prodeck-lockup-horizontal-color.svg";
 import { askConfirm } from "../lib/dialogs";
 import { SecureLocalCard } from "../components/SecureLocalCard";
+import { CrewAddressCard } from "../components/CrewAddressCard";
 import QRCode from "qrcode";
 import { loadDashboards as loadDashList } from "../lib/dashboards";
 import { useSchedules } from "../scheduleStore";
@@ -1875,6 +1876,7 @@ export function SettingsPage() {
         )}
       </Sec>
       {!IS_WEB && <Sec id="set-local"><SecureLocalCard form={form} /></Sec>}
+      {!IS_WEB && <Sec id="set-crewaddr"><CrewAddressCard form={form} set={(v) => set("crew_cloud", v)} /></Sec>}
 
       {!IS_WEB && <Sec id="set-reliability"><ReliabilityCard /></Sec>}
       {!IS_WEB && <Sec id="set-kiosk"><KioskCard form={form} /></Sec>}

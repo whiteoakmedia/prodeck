@@ -170,7 +170,7 @@ pub fn pick_ip(chosen: &str, default_route: Option<&str>, all: &[String]) -> Opt
 
 // ---------------------------------------------------------------- the Worker
 
-async fn edge_call(method: reqwest::Method, path: &str, body: Value) -> Result<Value, String> {
+pub(crate) async fn edge_call(method: reqwest::Method, path: &str, body: Value) -> Result<Value, String> {
     let c = http()?;
     let r = c
         .request(method, format!("{}{path}", edge()))
@@ -869,14 +869,30 @@ pub async fn local_https_claim(name: String, app: AppHandle) -> Result<Status, S
             return Err("This computer already has a secure address. Release it first.".into());
         }
     }
-    let v = edge_call(reqwest::Method::POST, "/v1/claim", json!({ "name": name })).await?;
-    let secret = v["secret"].as_str().ok_or("The address service sent no secret")?.to_string();
+    // The crew address (crewcloud.rs) may already hold this very name: it's
+    // this booth's, so it's adopted rather than claimed again.
+    let (crew_name, crew_secret) = {
+        let g = app.state::<SettingsState>();
+        let g = g.lock().unwrap_or_else(|p| p.into_inner());
+        (g.crew_name.clone(), g.crew_secret.clone())
+    };
+    let secret = if !crew_name.is_empty() && crew_name == name && !crew_secret.is_empty() {
+        crew_secret
+    } else {
+        let v = edge_call(reqwest::Method::POST, "/v1/claim", json!({ "name": name })).await?;
+        v["secret"].as_str().ok_or("The address service sent no secret")?.to_string()
+    };
     {
         let state = app.state::<SettingsState>();
         let to_save = {
             let mut g = state.lock().unwrap_or_else(|p| p.into_inner());
             g.local_name = name.clone();
             g.local_secret = secret;
+            // One name for both from now on: the crew address follows it.
+            if g.crew_name == name {
+                g.crew_name.clear();
+                g.crew_secret.clear();
+            }
             g.clone()
         };
         crate::settings::save(&to_save)?;
@@ -924,10 +940,18 @@ pub async fn local_https_release(app: AppHandle) -> Result<Status, String> {
         let g = g.lock().unwrap_or_else(|p| p.into_inner());
         (g.local_name.clone(), g.local_secret.clone())
     };
+    // The crew address uses this name too (crewcloud.rs): keep it for that,
+    // and only stop it pointing at the church network.
+    let keep_for_crew = {
+        let g = app.state::<SettingsState>();
+        let g = g.lock().unwrap_or_else(|p| p.into_inner());
+        g.crew_cloud && g.crew_name.is_empty()
+    };
     if !name.is_empty() {
         // Forget it here even if the service can't be reached: the name is
         // useless to anyone without its secret, and White Oak can free it.
-        if let Err(e) = edge_call(reqwest::Method::POST, "/v1/release", json!({ "name": name, "secret": secret })).await {
+        let (method, path) = if keep_for_crew { (reqwest::Method::DELETE, "/v1/address") } else { (reqwest::Method::POST, "/v1/release") };
+        if let Err(e) = edge_call(method, path, json!({ "name": name, "secret": secret })).await {
             crate::diag::log(format!("[local-https] release: {e}"));
         }
     }
@@ -935,6 +959,10 @@ pub async fn local_https_release(app: AppHandle) -> Result<Status, String> {
         let state = app.state::<SettingsState>();
         let to_save = {
             let mut g = state.lock().unwrap_or_else(|p| p.into_inner());
+            if keep_for_crew && !name.is_empty() {
+                g.crew_name = name.clone();
+                g.crew_secret = secret.clone();
+            }
             g.local_name.clear();
             g.local_secret.clear();
             g.clone()

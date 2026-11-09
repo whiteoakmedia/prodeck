@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import markWhite from "../assets/prodeck-mark-white.svg";
-import { edgeFetch, getWebToken } from "../lib/tauri";
+import { crewUrl, edgeFetch, getWebToken, setWebToken } from "../lib/tauri";
 import { CREW_SESSION_KEY } from "../chatStore";
+import { adoptCloudChecklists, type Checklist } from "../checklistStore";
+import { cloudCopyLine, handoffHash, shouldMoveToCrew } from "../lib/crewCloud";
 import {
   arrivalForIn,
   isDeclined,
@@ -40,6 +42,76 @@ interface EdgePlan {
     checkinTimes?: Record<string, string>;
     positionGuides?: Record<string, string>;
   };
+  /** "booth" when this is the crew address's copy (crew-cloud), which the
+   *  booth sent at sentMs; absent from crew-edge, which reads Planning Center. */
+  source?: string;
+  sentMs?: number;
+  /** The booth is on and linked to its crew address. */
+  boothOnline?: boolean;
+  checklists?: Checklist[];
+}
+
+/** Off to the crew address, taking this phone's sign in along. */
+function moveToCrew(url: string) {
+  const ls = (k: string) => localStorage.getItem(k) ?? "";
+  window.location.replace(
+    `${url}/${handoffHash({
+      token: getWebToken(),
+      session: ls(CREW_SESSION_KEY),
+      name: ls("prodeck.crewName"),
+      role: ls("prodeck.crewRole"),
+      id: ls("prodeck.crewId"),
+    })}`,
+  );
+}
+
+// No password on this phone yet (it opened the crew address for the first
+// time while the booth was off): the crew password reads the cloud copy.
+function CloudSignIn({ onIn }: { onIn: () => void }) {
+  const [pw, setPw] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const go = async () => {
+    if (!pw.trim() || busy) return;
+    setBusy(true);
+    setErr("");
+    try {
+      const r = await edgeFetch(`/plan?token=${encodeURIComponent(pw.trim())}`);
+      if (r.status === 401) throw new Error("That password didn't work.");
+      if (r.status === 429) throw new Error("Too many tries. Wait a few minutes.");
+      if (!r.ok && r.status !== 404) throw new Error("The crew address didn't answer.");
+      setWebToken(pw.trim());
+      onIn();
+    } catch (e) {
+      setErr(String((e as Error)?.message ?? e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="crew-card edge crew-offline-plan">
+      <div className="crew-row-head">
+        <span className="mono" style={{ color: "var(--accent-hi)" }}>
+          Sign in
+        </span>
+      </div>
+      <p className="crew-hint muted" style={{ margin: "4px 0 8px" }}>
+        Enter the crew password to see the week while the booth is off.
+      </p>
+      <input
+        className="crew-input"
+        type="password"
+        placeholder="Crew password"
+        value={pw}
+        onChange={(e) => setPw(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && go()}
+      />
+      <button className="crew-btn primary" style={{ marginTop: 8 }} disabled={busy} onClick={go}>
+        {busy ? "Checking" : "Sign in"}
+      </button>
+      {err && <p className="crew-join-err">{err}</p>}
+    </div>
+  );
 }
 
 interface EdgeMsg {
@@ -100,6 +172,8 @@ function EdgeChat() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           token,
+          // The crew address names the sender from their session.
+          session: localStorage.getItem(CREW_SESSION_KEY) ?? "",
           from: name,
           text: body,
           // Lets the edge skip buzzing the sender's own devices.
@@ -308,18 +382,36 @@ export function CrewOffline({ onCached }: { onCached: () => void }) {
   // Bumped after an edge join so EdgeChat re-reads the stored name.
   const [, bump] = useState(0);
 
+  const [signedIn, setSignedIn] = useState(0);
   useEffect(() => {
     const t = getWebToken();
     if (!t) {
       setTried(true);
       return;
     }
-    edgeFetch(`/plan?token=${encodeURIComponent(t)}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((j) => setEdge(j as EdgePlan))
-      .catch(() => {})
-      .finally(() => setTried(true));
-  }, []);
+    let alive = true;
+    const load = () =>
+      edgeFetch(`/plan?token=${encodeURIComponent(t)}`)
+        .then((r) => (r.ok ? r.json() : Promise.reject()))
+        .then((j: EdgePlan) => {
+          if (!alive) return;
+          // The booth is on, just not reachable from here (this phone left
+          // the building): carry on at the crew address, which relays to it.
+          const crew = crewUrl();
+          if (shouldMoveToCrew(location.hostname, crew, !!j.boothOnline)) return moveToCrew(crew);
+          setEdge(j);
+          if (j.source === "booth" && Array.isArray(j.checklists)) adoptCloudChecklists(j.checklists);
+        })
+        .catch(() => {})
+        .finally(() => alive && setTried(true));
+    load();
+    // Keep the copy (and whether the booth is back) current while this is open.
+    const iv = setInterval(load, 30_000);
+    return () => {
+      alive = false;
+      clearInterval(iv);
+    };
+  }, [signedIn]);
 
   const items = edge?.items ?? [];
   const nextTime = edge?.serviceTimes
@@ -385,13 +477,21 @@ export function CrewOffline({ onCached }: { onCached: () => void }) {
       <img className="crew-mark dim" src={markWhite} alt="" aria-hidden />
       <h1 className="crew-onboard-title">Command Center offline</h1>
       <p className="crew-onboard-sub">
-        The plan, charts, chat, and your checklist still work; pages and
-        check-in return with the booth.
+        {edge?.source === "booth"
+          ? "The plan, team chat and your checklist still work. Anything you tick or send reaches the booth when it's back; pages and check in return with it."
+          : "The plan, charts, chat, and your checklist still work; pages and check-in return with the booth."}
       </p>
       <div className="crew-caution">
         <span className="pulse-dot" style={{ background: "var(--warn)" }} />
         <span className="mono">Waiting for the booth</span>
       </div>
+      {/* Plainly: this is the copy the booth left, not the live booth. */}
+      {edge?.source === "booth" && (
+        <p className="crew-hint" role="status" style={{ margin: "8px 0", color: "var(--warn)" }}>
+          {cloudCopyLine(edge.sentMs ?? 0)}
+        </p>
+      )}
+      {tried && !getWebToken() && <CloudSignIn onIn={() => setSignedIn((n) => n + 1)} />}
       <button className="crew-btn primary" onClick={onCached}>
         Open checklist
       </button>
@@ -488,7 +588,9 @@ export function CrewOffline({ onCached }: { onCached: () => void }) {
             </details>
           )}
           <p className="crew-hint muted" style={{ marginTop: 8 }}>
-            Live from Planning Center. Tap a song for its chart.
+            {edge.source === "booth"
+              ? "As the booth last sent it."
+              : "Live from Planning Center. Tap a song for its chart."}
           </p>
         </div>
       )}
@@ -501,7 +603,7 @@ export function CrewOffline({ onCached }: { onCached: () => void }) {
         />
       )}
       <EdgeChat />
-      {tried && !edge && (
+      {tried && !edge && getWebToken() && (
         <p className="crew-hint muted">
           The week's plan wasn't reachable either. Check your connection.
         </p>

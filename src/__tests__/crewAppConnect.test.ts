@@ -113,3 +113,30 @@ describe("crew app: page notifications handed over by the app", () => {
     expect(crewAppHome("Mozilla/5.0 (iPhone) ProDeckCrew/0.1", "notify")).toBe("capacitor://localhost/?notify=1");
   });
 });
+
+describe("crew app: the crew address", () => {
+  it("keeps only a real crew address", async () => {
+    const { cleanCrew } = await import("../../crew-app/src/connect");
+    expect(cleanCrew("https://Grace.crew.prodeck.live/")).toBe("https://grace.crew.prodeck.live");
+    expect(cleanCrew("http://grace.crew.prodeck.live")).toBe("");
+    expect(cleanCrew("https://grace.crew.prodeck.live.evil.com")).toBe("");
+    expect(cleanCrew(undefined)).toBe("");
+  });
+
+  it("remembers a church's crew address and doesn't lose it on the next open", () => {
+    const a = { base: "http://10.0.0.5:8088", name: "Grace", lastMs: 1, crew: "https://grace.crew.prodeck.live" };
+    const list = remember([a], { base: a.base, name: "Grace", lastMs: 2 });
+    expect(list).toHaveLength(1);
+    expect(list[0].crew).toBe("https://grace.crew.prodeck.live");
+    expect(list[0].lastMs).toBe(2);
+  });
+
+  it("opens the booth when it answers, the crew address when it doesn't", async () => {
+    const { pickBase } = await import("../../crew-app/src/connect");
+    const c = { base: "http://10.0.0.5:8088", name: "Grace", lastMs: 1, crew: "https://grace.crew.prodeck.live" };
+    expect(await pickBase(c, async () => true)).toBe(c.base);
+    expect(await pickBase(c, async (b) => b === c.crew)).toBe(c.crew);
+    expect(await pickBase(c, async () => false)).toBeNull();
+    expect(await pickBase({ ...c, crew: undefined }, async (b) => b !== c.base)).toBeNull();
+  });
+});

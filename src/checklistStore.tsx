@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { IS_WEB, checklistToggle, loadChecklists, on, saveChecklists } from "./lib/tauri";
+import { IS_WEB, checklistToggle, edgeFetch, getWebToken, loadChecklists, on, saveChecklists } from "./lib/tauri";
 import { enqueue } from "./lib/outbox";
 import { moveTo } from "./lib/reorder";
 
@@ -213,6 +213,36 @@ export async function saveChecklistsNow(list: Checklist[]): Promise<void> {
   for (const fn of externalSaves) fn(list);
 }
 
+/**
+ * The booth is off and the crew address (lib/crewCloud.ts) sent the lists as
+ * the booth last saw them, with any ticks waiting for it: show those. Kept as
+ * this device's cache too, so the list is there next time.
+ */
+export function adoptCloudChecklists(list: Checklist[]) {
+  if (!Array.isArray(list) || list.length === 0) return;
+  writeCache(list);
+  for (const fn of externalSaves) fn(list);
+}
+
+/**
+ * Tick an item through the crew address while the booth is off. A set, not a
+ * flip: it waits there and the booth applies it when it's back.
+ */
+export async function cloudTick(listId: string, itemId: string, done: boolean): Promise<void> {
+  const r = await edgeFetch("/checklist", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      token: getWebToken(),
+      session: localStorage.getItem("prodeck.crewSession") ?? "",
+      listId,
+      itemId,
+      done,
+    }),
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+}
+
 export function ChecklistProvider({ children }: { children: ReactNode }) {
   const [checklists, setChecklists] = useState<Checklist[]>([]);
   const loaded = useRef(false);
@@ -398,10 +428,12 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
             })),
           )
           .catch(() => {
-            // Unreachable booth → queue it and reflect the tick locally. Safe
-            // to show as done because the booth applies the flip on arrival;
-            // if it refused for a real reason, the next load corrects us.
-            enqueue({ kind: "checklist", listId: id, itemId });
+            // Unreachable booth → the crew address keeps the tick for it
+            // (lib/crewCloud.ts); failing that, this phone queues it. Safe to
+            // show as done either way because the booth applies it on
+            // arrival; if it refused for a real reason, the next load corrects us.
+            const now = !checklists.find((c) => c.id === id)?.items.find((i) => i.id === itemId)?.done;
+            cloudTick(id, itemId, now).catch(() => enqueue({ kind: "checklist", listId: id, itemId }));
             patch(id, (c) => ({
               ...c,
               items: c.items.map((it) =>

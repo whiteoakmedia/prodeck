@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import mark from "./mark.svg";
 import { Intro } from "./Intro";
 import { readLink, type LinkAction } from "./links";
-import { forget, parseTarget, remember, shortName, type Church, type Target } from "./connect";
+import { forget, parseTarget, pickBase, remember, shortName, type Church, type Target } from "./connect";
 import { captureError, reportNoBooth } from "./crash";
-import { checkBooth, findBooths, isNative, loadChurches, pushToken, saveChurches, scanCode, secureBase, type Found } from "./native";
+import { checkBooth, crewAddress, findBooths, isNative, loadChurches, pushToken, saveChurches, scanCode, secureBase, type Found } from "./native";
 
 // ProDeck Crew: find your church's booth, then open its crew app.
 // (design/CREW_APP.md)
@@ -85,19 +85,34 @@ export function App() {
     const next = remember(churches, { ...c, lastMs: Date.now() });
     setChurches(next);
     saveChurches(next);
-    const url = `${c.base}${path}`;
+    let url = `${c.base}${path}`;
     if (isNative()) {
       setIntro(false);
       go({ kind: "opening", church: c });
       // Off the church Wi-Fi a saved booth can't be reached, and the phone
-      // would sit on a blank page. Say so on the churches list instead.
+      // would sit on a blank page. Its crew address (if the booth has one)
+      // still works from anywhere, booth on or off; else say so on the list.
       if (!o.checked) {
-        const r = await checkBooth(c.base, 5000);
+        const base = await pickBase(c, async (b) => (await checkBooth(b, 5000)).ok);
         if (gen !== openGen.current) return;
-        if (!r.ok) {
+        if (!base) {
           go({ kind: "home" });
           setErr(`Couldn't reach ${c.name}. Check you're on the church Wi-Fi, and that ProDeck is open at the booth.`);
           return;
+        }
+        // The crew address opens at its start: the booth's own path (a
+        // scanned /join) means nothing there while the booth is off.
+        if (base !== c.base) url = `${base}/`;
+      }
+      // Learn (or refresh) the crew address while the booth answers, for next time.
+      // Briefly: the page is about to be replaced, and that would cut it off.
+      if (url.startsWith(c.base)) {
+        const crew = await Promise.race([crewAddress(c.base), new Promise<string>((r) => setTimeout(() => r(""), 1500))]);
+        if (gen !== openGen.current) return;
+        if (crew && crew !== c.crew) {
+          const list = remember(loadChurches(), { ...c, crew });
+          setChurches(list);
+          saveChurches(list);
         }
       }
       // A fresh token each time: the phone can change it.

@@ -20,6 +20,7 @@ mod chop;
 mod music;
 mod crashreport;
 mod discovery;
+mod crewcloud;
 mod edge;
 mod identity;
 mod intercom;
@@ -272,6 +273,9 @@ pub fn run() {
             // Secure local address (claimed in Settings): keeps the name
             // pointed here and the certificate fresh.
             localhttps::spawn(app.handle().clone());
+            // Crew address (<name>.crew.prodeck.live): the cloud copy and the
+            // relay. On unless turned off in Settings, Crew & screens.
+            crewcloud::spawn(app.handle().clone());
             ga4::spawn_ga4_poll(app.handle().clone());
             propresenter::spawn_lobby_auto(app.handle().clone());
             propresenter::spawn_announcement_poll(app.handle().clone());
@@ -475,6 +479,10 @@ pub fn run() {
             localhttps::local_https_retry,
             localhttps::local_https_set_ip,
             localhttps::local_https_release,
+            crewcloud::crew_cloud_status,
+            crewcloud::crew_cloud_set_plan,
+            crewcloud::crew_cloud_retry,
+            crewcloud::crew_cloud_rename,
             tv::tv_update,
             tv::tv_show,
             tv::tv_dismiss,

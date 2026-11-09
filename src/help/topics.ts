@@ -776,6 +776,23 @@ Already have your own public address (a domain with a tunnel)? Links use that, a
     related: ["comms", "phones-install", "public-url"],
   },
   {
+    id: "crew-address",
+    group: "Phones & kiosks",
+    title: "Reaching ProDeck away from church, and while the booth is off",
+    aliases: ["crew address", "crew.prodeck.live", "from home", "outside the building", "cellular", "booth is off", "remote access", "away", "offline plan"],
+    body: `Every booth has a **crew address**, **https://yourname.crew.prodeck.live**. It's on unless you turn it off in **Settings → Crew & screens → Crew address**, and there's nothing to set up: no port forwarding, no domain, no tunnel.
+
+**With ProDeck open at the booth,** crew open the crew address from home or on cellular and get the live booth, the same as on the church Wi-Fi. The booth keeps one connection out to White Oak Media's service, and phones' requests come to it that way. Passwords and permissions are checked by the booth, as always. Comms, camera feeds and the overflow audio stay on the church Wi-Fi.
+
+**With the booth computer off,** the crew address shows the last copy the booth sent: this week's plan (songs, keys, leaders, times, who's on, call times and position guides), checklists and team chat. A line at the top says so plainly, with the time it was sent. Checklist ticks, chat messages and signups made then wait there and reach the booth when it's back.
+
+Crew links, the poster and QR codes don't change. A phone that can't reach the booth on its usual address reads the copy from the crew address by itself, and moves over to it when the booth is on but out of reach (the phone left the building), keeping its sign in. ProDeck Crew does the same.
+
+The name is your secure local address's name if you claimed one, else one made from this computer's name (change it in the card). What the copy holds and who keeps it is in **Settings → About → Privacy**. Turning the crew address off deletes the copy.`,
+    settings: "set-crewaddr",
+    related: ["secure-local", "public-url", "crew-overview"],
+  },
+  {
     id: "comms",
     group: "Crew",
     title: "Comms: talking to the crew from phones",

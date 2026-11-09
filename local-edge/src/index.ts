@@ -15,7 +15,9 @@
  *   booth  POST   /v1/address   {name, secret, ip}      point the name at the booth
  *   booth  POST   /v1/challenge {name, secret, value}   certificate challenge TXT
  *   booth  DELETE /v1/challenge {name, secret}          ...and clean it up
+ *   booth  DELETE /v1/address   {name, secret}          stop pointing the name anywhere (kept for the crew address)
  *   booth  POST   /v1/release   {name, secret}          give the name back
+ *   Worker Names.fetch POST /verify {name, secret}   is this the name's secret? (service binding only)
  *   Zach   POST   /v1/admin/release {name}  (Authorization: Bearer ADMIN_TOKEN)
  *
  * Keeping prodeck.live safe (it also runs Cornerstone's crew app):
@@ -30,6 +32,7 @@
  *  - A ceiling (MAX_NAMES) keeps the zone well under Cloudflare's free-plan
  *    record limit, so the crew app's own records can always be edited.
  */
+import { WorkerEntrypoint } from "cloudflare:workers";
 import { isPrivateIPv4, nameProblem } from "./names";
 
 interface Env {
@@ -84,6 +87,7 @@ export default {
     const routes: Record<string, string> = {
       "POST /v1/claim": "claim",
       "POST /v1/address": "address",
+      "DELETE /v1/address": "unaddress",
       "POST /v1/challenge": "challenge",
       "DELETE /v1/challenge": "unchallenge",
       "POST /v1/release": "release",
@@ -95,6 +99,20 @@ export default {
     return registry.fetch(`https://do/${route}`, { method: "POST", body: JSON.stringify(await body(req)) });
   },
 };
+
+/**
+ * For the crew address Worker (prodeck-crew, crew-cloud/) only, through a
+ * service binding: it asks whether a booth's secret is its name's. Not
+ * reachable from the internet: a named entrypoint only answers bindings.
+ */
+export class Names extends WorkerEntrypoint<Env> {
+  async fetch(req: Request): Promise<Response> {
+    const url = new URL(req.url);
+    if (req.method !== "POST" || url.pathname !== "/verify") return fail(404, "Not found.");
+    const registry = this.env.REGISTRY.get(this.env.REGISTRY.idFromName("registry"));
+    return registry.fetch("https://do/verify", { method: "POST", body: JSON.stringify(await body(req)) });
+  }
+}
 
 async function body(req: Request): Promise<Record<string, unknown>> {
   try {
@@ -229,6 +247,23 @@ export class Registry {
           }
           this.sql.exec("UPDATE names SET ip = ?, a_id = ?, seen = ? WHERE name = ?", ip, id, Date.now(), row.name);
           return json({ ok: true, host: this.host(row.name), ip });
+        }
+        case "/unaddress": {
+          // The booth gave up its secure local address but keeps the name for
+          // its crew address: the name stops pointing at the church network.
+          const row = await this.authed(b);
+          if (row instanceof Response) return row;
+          if (row.a_id) await this.dns("DELETE", `/${row.a_id}`);
+          this.sql.exec("UPDATE names SET ip = '', a_id = '', seen = ? WHERE name = ?", Date.now(), row.name);
+          return json({ ok: true });
+        }
+        case "/verify": {
+          // Only reachable through Names (above): the public router never
+          // forwards here.
+          const row = this.row(String(b.name ?? "").toLowerCase());
+          const ok = !!row && same(row.hash, await sha256(String(b.secret ?? "")));
+          if (ok) this.sql.exec("UPDATE names SET seen = ? WHERE name = ?", Date.now(), row!.name);
+          return json({ ok });
         }
         case "/challenge": {
           const row = await this.authed(b);

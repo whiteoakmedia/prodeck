@@ -1,0 +1,10 @@
+{
+  // Tests only (vitest.config.ts): same Worker, a tiny stand-in for dist/,
+  // and NAMES is replaced by a stub there.
+  "name": "prodeck-crew-test",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-01",
+  "durable_objects": { "bindings": [{ "name": "CHURCH", "class_name": "Church" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Church"] }],
+  "assets": { "directory": "./test/assets", "binding": "ASSETS", "run_worker_first": true }
+}

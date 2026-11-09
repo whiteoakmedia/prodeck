@@ -841,6 +841,27 @@ pub fn find_approved_by_name(id_state: &IdentityState, name: &str) -> Option<(St
     None
 }
 
+/// What the crew address's cloud copy needs (crewcloud.rs): approved crew as
+/// (id, name, role), and each of their sessions as sha256(session) → user id,
+/// so a phone signed in here is still itself there without its session ever
+/// being stored anywhere but this computer.
+pub fn cloud_crew(id_state: &IdentityState) -> (Vec<(String, String, String)>, Vec<(String, String)>) {
+    let s = id_state.store.lock().unwrap_or_else(|p| p.into_inner());
+    let crew: Vec<(String, String, String)> =
+        s.users.iter().filter(|u| u.approved).map(|u| (u.id.clone(), u.name.clone(), u.role.clone())).collect();
+    let sessions = s
+        .sessions
+        .iter()
+        .filter(|(_, uid)| crew.iter().any(|(id, _, _)| id == *uid))
+        .map(|(sess, uid)| {
+            let mut h = Sha256::new();
+            h.update(sess.as_bytes());
+            (hex::encode(h.finalize()), uid.clone())
+        })
+        .collect();
+    (crew, sessions)
+}
+
 /// Every user name (any approval state) — mirrored to the edge so booth-off
 /// signups get "name taken" immediately instead of failing at ingest.
 pub fn all_names(id_state: &IdentityState) -> Vec<String> {

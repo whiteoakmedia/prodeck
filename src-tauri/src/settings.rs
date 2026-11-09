@@ -117,6 +117,18 @@ pub struct Settings {
     /// there's no public_url. Empty = not serving.
     #[serde(default)]
     pub local_url: String,
+    /// Crew address (crewcloud.rs, design/CREW_ADDRESS.md): this booth's crew
+    /// reach it from anywhere at <name>.crew.prodeck.live, and see the last
+    /// plan, checklists and chat it sent while it's off. On unless turned off
+    /// in Settings, Crew & screens.
+    pub crew_cloud: bool,
+    /// The name, when the booth claimed one just for the crew address (no
+    /// secure local address). With a secure local address, that name is used.
+    pub crew_name: String,
+    /// The crew name's claim secret. Booth only, like local_secret.
+    pub crew_secret: String,
+    /// Written by the booth: "https://<name>.crew.prodeck.live". Empty = off.
+    pub crew_url: String,
     pub gemini_api_key: Option<String>,
     /// "Ask ProDeck" troubleshooter (design/TROUBLESHOOTER.md). Secret; the
     /// gateway strips it and pins it on browser round-trips.
@@ -365,6 +377,10 @@ impl Default for Settings {
             local_secret: String::new(),
             local_ip: String::new(),
             local_url: String::new(),
+            crew_cloud: true,
+            crew_name: String::new(),
+            crew_secret: String::new(),
+            crew_url: String::new(),
             crew_join_until_ms: 0,
             crew_roles: default_crew_roles(),
             avantis_watch_user: String::new(),
@@ -950,6 +966,10 @@ pub fn update_settings(
         settings.local_url = s.local_url.clone();
         // Chosen in the Secure local address card, which saves it itself.
         settings.local_ip = s.local_ip.clone();
+        // Same for the crew address's claim, which the booth writes itself.
+        settings.crew_name = s.crew_name.clone();
+        settings.crew_secret = s.crew_secret.clone();
+        settings.crew_url = s.crew_url.clone();
         *s = settings;
         s.clone()
     };
@@ -1076,6 +1096,35 @@ pub fn checklist_toggle(list_id: String, item_id: String) -> Result<bool, String
     let json = serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?;
     write_json_atomic_backed_up(checklists_path(), json)?;
     Ok(now)
+}
+
+/// Set one checklist item done or not done, booth-side: a tick a phone made
+/// through the crew address while the booth was off (crewcloud.rs). A set,
+/// not a flip, so applying it twice can't undo it. Ok(false) when the list or
+/// item is gone, or the line is a header: nothing to apply, and nothing to
+/// retry either.
+pub fn checklist_set(list_id: &str, item_id: &str, done: bool) -> Result<bool, String> {
+    let mut data = read_json_strict(&checklists_path(), "checklists.json")?;
+    let Some(lists) = data.as_array_mut() else { return Ok(false) };
+    let Some(item) = lists
+        .iter_mut()
+        .find(|l| l.get("id").and_then(|v| v.as_str()) == Some(list_id))
+        .and_then(|l| l.get_mut("items"))
+        .and_then(|v| v.as_array_mut())
+        .and_then(|items| items.iter_mut().find(|i| i.get("id").and_then(|v| v.as_str()) == Some(item_id)))
+    else {
+        return Ok(false);
+    };
+    if item.get("header").and_then(|v| v.as_bool()).unwrap_or(false) {
+        return Ok(false);
+    }
+    if item.get("done").and_then(|v| v.as_bool()).unwrap_or(false) == done {
+        return Ok(true);
+    }
+    item["done"] = serde_json::Value::Bool(done);
+    let json = serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?;
+    write_json_atomic_backed_up(checklists_path(), json)?;
+    Ok(true)
 }
 
 #[cfg(test)]

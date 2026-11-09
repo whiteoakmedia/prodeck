@@ -36,6 +36,7 @@ import { setCrashTag } from "../lib/crashReports";
 import { TallyPage } from "../pages/Tally";
 import { CommsChip, CrewComms } from "./CrewComms";
 import { leaveComms, setCommsAllowed } from "../lib/intercom";
+import { isCrewHost } from "../lib/crewCloud";
 import { syncHomeScreenManifest } from "../lib/homeScreen";
 import { CrewNotifyStep } from "./CrewNotifyStep";
 import { useProDeck } from "../store";
@@ -68,7 +69,9 @@ export function MobileShell() {
   // phone, and a phone that was on it hangs up. Known = settings arrived;
   // until then nothing rejoins by itself.
   const { settings } = useProDeck();
-  const commsOn = !!settings?.comms_enabled;
+  // Not through the crew address: comms is phone to phone on the church
+  // Wi-Fi, and the crew address only relays the booth's own requests.
+  const commsOn = !!settings?.comms_enabled && !(IS_WEB && isCrewHost(location.hostname));
   useEffect(() => {
     if (settings) setCommsAllowed(commsOn);
   }, [settings, commsOn]);

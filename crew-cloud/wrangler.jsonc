@@ -1,0 +1,32 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Every church's crew address, <name>.crew.prodeck.live: the cloud copy of
+  // the week for when the booth is off, and a relay to the booth when it's on.
+  // See src/index.ts and design/CREW_ADDRESS.md.
+  //
+  // Not deployed yet. Before the first deploy (Zach, once):
+  //  - prodeck-local (local-edge/) must be deployed first: it exports the
+  //    `Names` entrypoint this binds to, which checks a booth's claim secret.
+  //  - DNS: a proxied wildcard record  *.crew  AAAA 100::  on prodeck.live.
+  //  - TLS: Cloudflare's free certificate covers one level (*.prodeck.live),
+  //    not two. Either buy Advanced Certificate Manager and order a
+  //    certificate for *.crew.prodeck.live, or turn on Total TLS (needs ACM).
+  //    See design/CREW_ADDRESS.md for the per name alternative.
+  //  - Then uncomment "routes" below. The pattern is more specific than
+  //    crew-edge's prodeck.live/* (apex only), so the two never overlap.
+  "name": "prodeck-crew",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-01",
+  "workers_dev": false,
+  // "routes": [{ "pattern": "*.crew.prodeck.live/*", "zone_name": "prodeck.live" }],
+  "durable_objects": { "bindings": [{ "name": "CHURCH", "class_name": "Church" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Church"] }],
+  "services": [{ "binding": "NAMES", "service": "prodeck-local", "entrypoint": "Names" }],
+  // The app's built dist/ (npx vite build at the repo root before deploying):
+  // the shell phones get while the booth is off, and the hashed files phones
+  // fetch either way. run_worker_first so a linked booth answers first.
+  "assets": { "directory": "../dist", "binding": "ASSETS", "run_worker_first": true },
+  // Off: phones put the crew password in the URL (?token= on the event
+  // stream), and request logs keep URLs.
+  "observability": { "enabled": false }
+}

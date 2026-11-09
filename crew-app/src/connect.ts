@@ -12,6 +12,18 @@ export interface Church {
   name: string;
   /** Last opened, epoch ms. */
   lastMs: number;
+  /**
+   * The church's crew address (https://<name>.crew.prodeck.live), as the
+   * booth reported it (/api/origin). Opened when the booth's own address
+   * doesn't answer: off the church Wi-Fi, or with the booth Mac off.
+   */
+  crew?: string;
+}
+
+/** Only a real crew address is kept (the booth said it; a page can't). */
+export function cleanCrew(v: unknown): string {
+  const m = /^https:\/\/[a-z0-9-]+\.crew\.prodeck\.live$/i.exec(String(v ?? "").trim().replace(/\/+$/, ""));
+  return m ? m[0].toLowerCase() : "";
 }
 
 export interface Target {
@@ -79,9 +91,25 @@ export function shortName(base: string): string {
   }
 }
 
-/** Saved churches, most recent first, one entry per booth. */
+/** Saved churches, most recent first, one entry per booth. A crew address
+ *  already known is kept when the new entry doesn't say one. */
 export function remember(list: Church[], c: Church): Church[] {
-  return [c, ...list.filter((x) => x.base !== c.base)].slice(0, 8);
+  const old = list.find((x) => x.base === c.base);
+  const crew = c.crew || old?.crew;
+  return [{ ...c, ...(crew ? { crew } : {}) }, ...list.filter((x) => x.base !== c.base)].slice(0, 8);
+}
+
+/**
+ * Where to open a saved church: its own address when that answers, else its
+ * crew address when that does. null = neither (say so on the churches list).
+ */
+export async function pickBase(
+  c: Church,
+  reachable: (base: string) => Promise<boolean>,
+): Promise<string | null> {
+  if (await reachable(c.base)) return c.base;
+  if (c.crew && c.crew !== c.base && (await reachable(c.crew))) return c.crew;
+  return null;
 }
 
 export function forget(list: Church[], base: string): Church[] {

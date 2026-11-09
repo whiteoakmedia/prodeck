@@ -32,7 +32,10 @@ import {
   type PcoLiveAction,
   type PcoController,
   IS_DEMO,
-  pcoOauthStatus,} from "./lib/tauri";
+  pcoOauthStatus,
+  crewCloudSetPlan,
+} from "./lib/tauri";
+import { cloudPlanSnapshot } from "./lib/crewCloud";
 import { normTitle, bestMatch } from "./lib/match";
 import { autoTargetPlan, mergePlanPages } from "./lib/planPick";
 import { micPool } from "./lib/micPool";
@@ -1291,6 +1294,31 @@ export function PcoProvider({ children }: { children: ReactNode }) {
       };
     });
   }, [items, keyOverrides, leaderOverrides, selectedPlanId, attachMaps]);
+
+  // Crew address (lib/crewCloud.ts): the booth hands this week's plan, as it
+  // shows it, to the cloud copy phones read while the booth is off. Booth
+  // only, and only when it changed (the booth sends nothing it didn't fetch).
+  const cloudPlanSent = useRef("");
+  useEffect(() => {
+    if (IS_WEB || IS_DEMO) return;
+    const snap = cloudPlanSnapshot({
+      plan: plans.find((p) => p.id === selectedPlanId),
+      items: displayItems,
+      serviceTimes,
+      team,
+      checkinTimes,
+      positionGuides,
+    });
+    if (!snap) return;
+    const key = JSON.stringify(snap);
+    if (key === cloudPlanSent.current) return;
+    const t = setTimeout(() => {
+      cloudPlanSent.current = key;
+      crewCloudSetPlan(snap).catch(() => {});
+    }, 3000);
+    return () => clearTimeout(t);
+  }, [plans, selectedPlanId, displayItems, serviceTimes, team, checkinTimes, positionGuides]);
+
 
   // Desk scenes by leader: see lib/autoScene.ts (follows the same live song as the key-send).
 

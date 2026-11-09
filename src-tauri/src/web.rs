@@ -1421,15 +1421,21 @@ async fn handle_conn(
     // Only https addresses, and nothing secret: these are the addresses the
     // booth already puts on its posters and links.
     if method == "GET" && path == "/api/origin" {
-        let (public, local, name) = {
+        let (public, local, name, crew) = {
             let st = app.state::<SettingsState>();
             let g = st.lock().unwrap_or_else(|p| p.into_inner());
-            (g.public_url.trim().to_string(), g.local_url.trim().to_string(), g.device_name.trim().to_string())
+            (
+                g.public_url.trim().to_string(),
+                g.local_url.trim().to_string(),
+                g.device_name.trim().to_string(),
+                if g.crew_cloud { g.crew_url.trim().to_string() } else { String::new() },
+            )
         };
         let secure = secure_origin(&public, &local);
         // The name the booth also announces over Bonjour, for the crew app's
-        // list when it found the booth by address instead.
-        let body = json!({ "secure": secure, "name": name }).to_string();
+        // list when it found the booth by address instead. `crew` is where the
+        // app goes when this address doesn't answer (crewcloud.rs).
+        let body = json!({ "secure": secure, "name": name, "crew": crew }).to_string();
         return write_bytes(&mut stream, 200, "application/json", body.as_bytes()).await;
     }
     if method == "GET" && (path == "/app.webmanifest" || path.starts_with("/app.webmanifest?")) {
@@ -2026,6 +2032,8 @@ async fn dispatch(
             set.obs_password = String::new();
             // Proves the secure local name is this booth's (localhttps.rs).
             set.local_secret = String::new();
+            // Same for the crew address's claim (crewcloud.rs).
+            set.crew_secret = String::new();
             // NOTE: pco_app_id is deliberately NOT redacted here. It is the
             // username half of the pair (the secret is what protects it), and
             // the Planning Center page uses its presence to decide whether
@@ -2566,6 +2574,13 @@ async fn dispatch(
                 new.local_secret = g.local_secret.clone();
                 new.local_ip = g.local_ip.clone();
                 new.local_url = g.local_url.clone();
+                // The crew address too, switch included: turned off from a
+                // phone through the crew address itself, it would cut that
+                // phone off mid-change. The switch is at the booth.
+                new.crew_cloud = g.crew_cloud;
+                new.crew_name = g.crew_name.clone();
+                new.crew_secret = g.crew_secret.clone();
+                new.crew_url = g.crew_url.clone();
                 new.whisper_bin = g.whisper_bin.clone();
                 new.whisper_model = g.whisper_model.clone();
                 *g = new;

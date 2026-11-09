@@ -3,6 +3,7 @@ import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 import { listen as tauriListen, type UnlistenFn } from "@tauri-apps/api/event";
 import { IS_DEMO, IS_SHOTS, demoInvoke, demoOn } from "./demo";
 import { LAYOUT_KEY } from "./layout";
+import { CREW_URL_KEY, cleanCrewUrl, edgeBases, readHandoff } from "./crewCloud";
 
 export { IS_DEMO, IS_SHOTS, SHOT_LAB, SHOT_PAGE, SHOT_DASH, SHOT_PHONE, SHOT_TAB, SHOT_CHAT, setDemo } from "./demo";
 
@@ -41,6 +42,24 @@ export const INVITE_KEY = "prodeck.inviteToken";
 // module init, before anything renders or connects.
 /** The poster was scanned while joining was closed. Read by the gate screen. */
 export let JOIN_CLOSED = false;
+
+// Moved here from the booth's own address (lib/crewCloud.ts handoffHash): the
+// sign in comes along in the #fragment, which no server ever sees.
+if (IS_WEB && typeof localStorage !== "undefined") {
+  try {
+    const { handoff, rest } = readHandoff(window.location.hash);
+    if (handoff) {
+      localStorage.setItem(TOKEN_KEY, handoff.token);
+      if (handoff.session) localStorage.setItem("prodeck.crewSession", handoff.session);
+      if (handoff.name) localStorage.setItem("prodeck.crewName", handoff.name);
+      if (handoff.role) localStorage.setItem("prodeck.crewRole", handoff.role);
+      if (handoff.id) localStorage.setItem("prodeck.crewId", handoff.id);
+      window.history.replaceState(null, "", window.location.pathname + window.location.search + rest);
+    }
+  } catch {
+    /* storage or history unavailable: sign in by hand */
+  }
+}
 
 if (IS_WEB && typeof localStorage !== "undefined") {
   try {
@@ -371,6 +390,10 @@ export interface Settings {
   local_name: string;
   local_ip: string;
   local_url: string;
+  /** Crew address (crewcloud.rs): on/off, the name claimed just for it, and https://<name>.crew.prodeck.live. */
+  crew_cloud: boolean;
+  crew_name: string;
+  crew_url: string;
   audio_input: string | null;
   whisper_bin: string | null;
   whisper_model: string | null;
@@ -1261,6 +1284,22 @@ export const localHttpsRetry = () => invoke<LocalHttpsStatus>("local_https_retry
 export const localHttpsSetIp = (ip: string) => invoke<LocalHttpsStatus>("local_https_set_ip", { ip });
 export const localHttpsRelease = () => invoke<LocalHttpsStatus>("local_https_release");
 
+// Crew address (src-tauri/src/crewcloud.rs, design/CREW_ADDRESS.md). Booth only.
+export interface CrewCloudStatus {
+  /** off | starting | ready | error */
+  phase: string;
+  name: string;
+  url: string;
+  /** Phones away from church reach the live booth. */
+  linked: boolean;
+  last_sync_ms: number;
+  error: string;
+}
+export const crewCloudStatus = () => invoke<CrewCloudStatus>("crew_cloud_status");
+export const crewCloudSetPlan = (plan: unknown) => invoke<void>("crew_cloud_set_plan", { plan });
+export const crewCloudRetry = () => invoke<CrewCloudStatus>("crew_cloud_retry");
+export const crewCloudRename = (name: string) => invoke<CrewCloudStatus>("crew_cloud_rename", { name });
+
 /** A crew device ({session}) or a camera station on a tally link ({station, stationName}). */
 export interface CommsWho {
   session?: string;
@@ -1418,17 +1457,55 @@ export const setPublicUrl = (v: string) => {
   if (t) PUBLIC_URL = t;
 };
 
-/** Reach the crew-edge worker: same-origin first (works on prodeck.live even
- *  with the booth off — the /edge/* route is a Worker on the zone, not the
- *  tunnel), falling back to the public origin for a PWA that was installed
- *  from the booth's LAN address, whose own origin dies with the booth. */
-export const edgeFetch = async (path: string, init?: RequestInit): Promise<Response> => {
+/** The church's crew address, remembered on this phone (lib/crewCloud.ts). */
+export function crewUrl(): string {
   try {
-    return await fetch(`/edge${path}`, init);
+    return cleanCrewUrl(localStorage.getItem(CREW_URL_KEY));
   } catch {
-    return fetch(`${PUBLIC_URL}/edge${path}`, init);
+    return "";
   }
+}
+/** Remember the crew address the booth reports, for when the booth stops answering. */
+export function rememberCrewUrl(v: string | null | undefined) {
+  try {
+    const u = cleanCrewUrl(v);
+    if (u) localStorage.setItem(CREW_URL_KEY, u);
+    else if (v === "") localStorage.removeItem(CREW_URL_KEY);
+  } catch {
+    /* private storage */
+  }
+}
+
+/** Reach the cloud copy (/edge/*): crew-edge on the church's own domain, or
+ *  the crew address (crew-cloud). Same-origin when the page is already there;
+ *  from the booth's address on the church network, the crew address first,
+ *  since the booth's own origin is the one that stopped answering. */
+export const edgeFetch = async (path: string, init?: RequestInit): Promise<Response> => {
+  const origin = typeof location !== "undefined" ? location.origin : "";
+  const bases = edgeBases(origin, crewUrl(), PUBLIC_URL);
+  let last: unknown = new Error("no address to ask");
+  for (const b of bases) {
+    try {
+      const r = await fetch(`${b}/edge${path}`, init);
+      // The booth's own gateway answers /edge/* with its app page, not data.
+      if ((r.headers.get("content-type") ?? "").includes("json")) return r;
+      last = new Error(`not the cloud copy at ${b}`);
+    } catch (e) {
+      last = e;
+    }
+  }
+  throw last;
 };
+/**
+ * The booth is off: is `token` a password the crew address knows (the copy
+ * the booth last sent)? true = yes, false = wrong, throws when unreachable.
+ */
+export async function cloudPasswordOk(token: string): Promise<boolean> {
+  const r = await edgeFetch(`/plan?token=${encodeURIComponent(token)}`);
+  if (r.status === 200 || r.status === 404) return true;
+  if (r.status === 401) return false;
+  throw new Error(`HTTP ${r.status}`);
+}
 export const identityLogin = (name: string, pin: string) =>
   invoke<{ status: string; session?: string; name: string; id?: string; role?: string }>(
     "identity_login",

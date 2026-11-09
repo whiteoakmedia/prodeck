@@ -21,6 +21,7 @@ import {
   type Json,
   type Settings,
   setPublicUrl,
+  rememberCrewUrl,
 } from "./lib/tauri";
 import { DB_FLOOR, ballisticsDt, toDbfs } from "./lib/audioMeter";
 import { setCrashReportsEnabled } from "./lib/crashReports";
@@ -140,6 +141,12 @@ export function ProDeckProvider({ children }: { children: ReactNode }) {
     const secure = settings?.public_url || settings?.local_url;
     if (secure) setPublicUrl(secure);
   }, [settings?.public_url, settings?.local_url]);
+  // Phones remember the church's crew address (lib/crewCloud.ts) while the
+  // booth can tell them it, for when the booth stops answering.
+  useEffect(() => {
+    if (!IS_WEB || !settings) return;
+    rememberCrewUrl(settings.crew_cloud ? settings.crew_url ?? "" : "");
+  }, [settings, settings?.crew_cloud, settings?.crew_url]);
   // The booth writes local_url itself when the secure address comes up.
   useEffect(() => {
     if (IS_WEB) return;
