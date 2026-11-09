@@ -157,16 +157,25 @@ export function ChatPanel() {
     <div className="w-chat">
       <div className="w-chat-list" ref={listRef}>
         {chat.msgs.length === 0 && (
-          <div className="muted small">No messages yet — say something.</div>
+          <div className="chat-empty">
+            <strong>No messages yet</strong>
+            <span className="muted small">
+              {isMember
+                ? "Messages to the whole crew show up here."
+                : "Messages reach the crew on their phones. Use To for the stage displays or a TV screen, and Page when someone has to answer."}
+            </span>
+          </div>
         )}
         {chat.msgs.map((m) => (
-          <div key={m.id} className={`w-chat-msg t-${m.target}`}>
-            <span className="w-chat-from">{m.from}</span>
-            {m.target !== "team" && <span className="chip w-chat-target">{m.target}</span>}
-            <span className="w-chat-text">{m.text}</span>
-            <span className="w-chat-time">
-              {new Date(m.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-            </span>
+          <div key={m.id} className={`w-chat-msg t-${m.target}${m.from === chat.name ? " mine" : ""}`}>
+            <div className="w-chat-meta">
+              <span className="w-chat-from">{m.from}</span>
+              {m.target !== "team" && <span className="chip w-chat-target">{m.target}</span>}
+              <span className="w-chat-time">
+                {new Date(m.ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+              </span>
+            </div>
+            <div className="w-chat-text">{m.text}</div>
           </div>
         ))}
       </div>
@@ -183,8 +192,11 @@ export function ChatPanel() {
           </button>
         ))}
 
-      <div className="field-row w-chat-compose" onMouseDown={(e) => e.stopPropagation()}>
+      <div className="w-chat-compose" onMouseDown={(e) => e.stopPropagation()}>
         {!isMember && (
+          <div className="w-chat-compose-top">
+          <label className="w-chat-to">
+          <span className="muted small">To</span>
           <select
             className="input w-chat-dest"
             value={target === "screen" ? screenChannel(screen) : target}
@@ -210,7 +222,17 @@ export function ChatPanel() {
               ))}
             </optgroup>
           </select>
+          </label>
+          <button
+            className="btn small chat-page-btn"
+            title="Send a page. It buzzes the chosen crew until each one confirms."
+            onClick={() => setComposing(true)}
+          >
+            Page someone
+          </button>
+          </div>
         )}
+        <div className="w-chat-compose-row">
         <input
           className="input"
           value={text}
@@ -228,18 +250,9 @@ export function ChatPanel() {
             if (e.key === "Enter") send();
           }}
         />
-        <button className="btn small primary" onClick={send}>
+        <button className="btn primary" onClick={send} disabled={!text.trim()}>
           Send
         </button>
-        {!isMember && (
-          <button
-            className="btn small chat-page-btn"
-            title="Send a page — buzzes the chosen crew until each one confirms"
-            onClick={() => setComposing(true)}
-          >
-            Page
-          </button>
-        )}
         {!isMember && target === "screen" && (
           <button
             className="btn small ghost"
@@ -258,6 +271,7 @@ export function ChatPanel() {
             Clear
           </button>
         )}
+        </div>
       </div>
       {err && <p className="error small">{err}</p>}
 

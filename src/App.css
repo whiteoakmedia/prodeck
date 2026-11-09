@@ -5694,21 +5694,57 @@ select.input {
 }
 .w-chat-msg {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
-  font-size: 13px;
-  line-height: 1.35;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13.5px;
+  line-height: 1.4;
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  max-width: 92%;
+  align-self: flex-start;
 }
+.w-chat-msg.mine {
+  align-self: flex-end;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.w-chat-meta { display: flex; align-items: baseline; gap: 6px; }
 .w-chat-from {
   color: var(--accent-hi);
   font-weight: 600;
+  font-size: 12px;
   white-space: nowrap;
 }
 .w-chat-msg.t-stage .w-chat-target { border-color: var(--warn, #e6a03c); color: var(--warn, #e6a03c); }
 .w-chat-msg.t-confidence .w-chat-target { border-color: var(--good); color: var(--good); }
-.w-chat-text { flex: 1; word-break: break-word; }
-.w-chat-time { color: var(--muted); font-size: 11px; white-space: nowrap; }
-.w-chat-compose .w-chat-dest { flex: 0 0 auto; width: auto; }
+.w-chat-text { word-break: break-word; }
+.w-chat-time { color: var(--muted); font-size: 11px; white-space: nowrap; margin-left: auto; }
+.chat-empty {
+  margin: auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  text-align: center;
+  padding: 24px 12px;
+  line-height: 1.45;
+}
+/* Who it's to and Page on one line, the message and Send under it. Every
+   control keeps a usable width in a 380 px drawer. */
+.w-chat-compose {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.w-chat-compose-top { display: flex; align-items: center; gap: 8px; }
+.w-chat-to { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.w-chat-to select { flex: 1; min-width: 0; width: auto; }
+.w-chat-compose-top .chat-page-btn { flex: 0 0 auto; }
+.w-chat-compose-row { display: flex; gap: 8px; }
+.w-chat-compose-row .input { flex: 1; min-width: 0; }
+.w-chat-compose-row .btn { flex: 0 0 auto; }
 
 /* Confidence banner takeover */
 .cf-banner {
@@ -5756,8 +5792,10 @@ select.input {
   align-items: center;
   gap: 8px;
 }
-.chat-drawer-head h3 { margin: 0; flex: 1; }
-.chat-drawer-name { display: flex; align-items: center; gap: 4px; }
+.chat-drawer-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.chat-drawer-head h3 { margin: 0; }
+.chat-drawer-name { display: flex; align-items: center; gap: 6px; }
+.chat-drawer-close { font-size: 18px; line-height: 1; }
 .chat-toast {
   position: fixed;
   right: 16px;

@@ -38,15 +38,17 @@ export function ChatDrawer() {
       {chat.open && (
         <aside className="chat-drawer">
           <header className="chat-drawer-head">
-            <h3>Messages</h3>
-            <span className="muted small chat-drawer-name">
-              as <strong>{chat.name || "…"}</strong>
-              {IS_WEB && chat.auth === "in" && (
-                <button className="btn small ghost" onClick={chat.signOut} title="Sign out">
-                  ⎋
-                </button>
-              )}
-            </span>
+            <div className="chat-drawer-title">
+              <h3>Messages</h3>
+              <span className="muted small chat-drawer-name">
+                Sending as <strong>{chat.name || "…"}</strong>
+                {IS_WEB && chat.auth === "in" && (
+                  <button className="btn small ghost" onClick={chat.signOut} title="Sign out">
+                    Sign out
+                  </button>
+                )}
+              </span>
+            </div>
             {/* The booth desktop never plays sounds (lib/sound.ts is hard-
                 silenced there — its output feeds the house), so only web
                 clients get the toggle. Icon alone read as ambiguous state,
@@ -56,15 +58,15 @@ export function ChatDrawer() {
                 className="btn small ghost"
                 title={
                   chat.sound
-                    ? "New messages play a chime — click to silence"
-                    : "New messages are silent — click to enable the chime"
+                    ? "New messages play a chime. Click to silence it."
+                    : "New messages are silent. Click to hear a chime."
                 }
                 onClick={() => chat.setSound(!chat.sound)}
               >
                 {chat.sound ? "🔔 Sound on" : "🔕 Muted"}
               </button>
             )}
-            <button className="btn small ghost" onClick={() => chat.setOpen(false)}>
+            <button className="btn small ghost chat-drawer-close" aria-label="Close messages" onClick={() => chat.setOpen(false)}>
               ×
             </button>
           </header>

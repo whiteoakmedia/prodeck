@@ -23,7 +23,6 @@ import {
   ppSetStageMessage,
   type ChatMsg,
 } from "./lib/tauri";
-import { useProDeck } from "./store";
 import { clearServiceWorkerSession, mirrorForServiceWorker } from "./lib/swSession";
 import { buzz, chime } from "./lib/sound";
 
@@ -76,7 +75,6 @@ const Ctx = createContext<ChatStore | null>(null);
 // primed on first touch so iOS actually lets them play).
 
 export function ChatProvider({ children }: { children: ReactNode }) {
-  const { settings } = useProDeck();
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
   // Per-channel so the list can show where the traffic actually is. The total
   // is derived, never stored twice.
@@ -100,10 +98,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   openRef.current = open;
   const soundRef = useRef(sound);
   soundRef.current = sound;
-  // The booth signs as its device name (updates when settings load).
+  // The booth signs as "Booth". It used to sign with this computer's network
+  // name, so the crew got messages from "Command-Center.local".
   // The phone demo is a volunteer's phone, not the booth (Devon runs camera
   // in the sample team, lib/demo.ts).
-  const effectiveName = IS_WEB ? name : SHOT_PHONE ? "Devon Clark" : settings?.device_name || "Booth";
+  const effectiveName = IS_WEB ? name : SHOT_PHONE ? "Devon Clark" : "Booth";
   const nameRef = useRef(effectiveName);
   nameRef.current = effectiveName;
 
