@@ -27,7 +27,8 @@ import "./whatsNew.css";
 // in the app's own colours (App.css tokens), so it follows the theme.
 // Booth only, silent (the booth feeds the house), and never over a service.
 
-export function WhatsNewHost({ blocked }: { blocked: boolean }) {
+/** `blocked`: another full screen thing is up, so wait (none today). */
+export function WhatsNewHost({ blocked = false }: { blocked?: boolean }) {
   const [open, setOpen] = useState(() => IS_SHOTS && SHOT_WHATSNEW);
   const [fresh, setFresh] = useState<boolean | null>(null);
   const { settings } = useProDeck();

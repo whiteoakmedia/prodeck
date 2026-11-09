@@ -16,26 +16,10 @@ import { ProSetlistSwap } from "./ProSetlistSwap";
 
 const STEPS = ["Service", "ProPresenter", "Mics", "Board", "Done"] as const;
 
-function greeting(): string {
-  const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 17) return "Good afternoon";
-  return "Good evening";
-}
-const todayLine = () =>
-  new Date().toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
-
-export function ServiceWizard({
-  onClose,
-  locked = false,
-}: {
-  onClose: () => void;
-  /** Startup mode: full-screen, no ✕, backdrop clicks ignored. The only ways
-   *  out are finishing the runbook — or the owner's secret dismiss: hold
-   *  SHIFT and press ↑ ↑ ↓ ↓ (resets on a wrong key or 3 s of silence).
-   *  Deliberately undocumented in the UI. */
-  locked?: boolean;
-}) {
+// Opened from Planning Center's Service setup button. It used to open by
+// itself, full screen, on the booth's first launch each day; that was removed
+// (Zach, 2026-11-09: "more harm than good").
+export function ServiceWizard({ onClose }: { onClose: () => void }) {
   const pco = usePco();
   const [step, setStep] = useState(0);
   const [desk, setDesk] = useState<AvantisSnapshot | null>(null);
@@ -45,32 +29,6 @@ export function ServiceWizard({
   // successful swap (or immediately if there's nothing to place).
   const [swapSignal, setSwapSignal] = useState(0);
   const [swapped, setSwapped] = useState(false);
-
-  // Secret dismiss for the locked startup wizard.
-  useEffect(() => {
-    if (!locked) return;
-    const SEQ = ["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown"];
-    let i = 0;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const onKey = (e: KeyboardEvent) => {
-      if (!e.shiftKey || e.key !== SEQ[i]) {
-        i = 0;
-        return;
-      }
-      i += 1;
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        i = 0;
-      }, 3000);
-      if (i === SEQ.length) onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      if (timer) clearTimeout(timer);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locked]);
 
   useEffect(() => {
     avantisState()
@@ -135,58 +93,16 @@ export function ServiceWizard({
         display: "flex",
         alignItems: "flex-start",
         justifyContent: "center",
-        padding: locked ? 0 : "6vh 16px",
+        padding: "6vh 16px",
       }}
-      onClick={locked ? undefined : onClose}
+      onClick={onClose}
     >
       <div
         className="card"
-        style={
-          locked
-            ? { width: "100vw", height: "100vh", maxHeight: "none", borderRadius: 0, overflowY: "auto", padding: "6vh 0 8vh" }
-            : { width: "min(720px, 100%)", maxHeight: "86vh", overflowY: "auto" }
-        }
+        style={{ width: "min(720px, 100%)", maxHeight: "86vh", overflowY: "auto" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={locked ? { maxWidth: 860, margin: "0 auto", padding: "0 32px" } : undefined}>
-        {locked ? (
-          <div style={{ marginBottom: 28 }}>
-            <div style={{ fontSize: 15, letterSpacing: 2, textTransform: "uppercase", color: "var(--accent-hi, #7cc4ff)", fontWeight: 700 }}>
-              ProDeck · Service setup
-            </div>
-            <h1 style={{ fontSize: 40, margin: "6px 0 2px", fontWeight: 800 }}>{greeting()}.</h1>
-            <p className="muted" style={{ fontSize: 17, margin: 0 }}>
-              {todayLine()} — let's get the service ready. Four quick steps.
-            </p>
-            <div style={{ display: "flex", alignItems: "center", gap: 0, marginTop: 26 }}>
-              {STEPS.map((label, i) => (
-                <div key={label} style={{ display: "flex", alignItems: "center", flex: i < STEPS.length - 1 ? 1 : "none" }}>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, minWidth: 64 }}>
-                    <div
-                      style={{
-                        width: 34, height: 34, borderRadius: "50%",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontWeight: 700, fontSize: 15,
-                        background: i < step ? "var(--accent-hi, #7cc4ff)" : i === step ? "var(--accent-hi, #7cc4ff)" : "rgba(255,255,255,0.08)",
-                        color: i <= step ? "#0b1220" : "var(--muted, #8a94a6)",
-                        opacity: i === step ? 1 : i < step ? 0.85 : 1,
-                        transition: "background .2s",
-                      }}
-                    >
-                      {i < step ? "✓" : i + 1}
-                    </div>
-                    <span className={i === step ? "" : "muted"} style={{ fontSize: 13, fontWeight: i === step ? 700 : 400 }}>
-                      {label}
-                    </span>
-                  </div>
-                  {i < STEPS.length - 1 && (
-                    <div style={{ flex: 1, height: 2, margin: "0 8px 22px", background: i < step ? "var(--accent-hi, #7cc4ff)" : "rgba(255,255,255,0.1)" }} />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
+        <div>
           <div className="card-head">
             <h3>Service setup</h3>
             <span className="muted small" style={{ flex: 1 }}>
@@ -200,11 +116,10 @@ export function ServiceWizard({
               ✕
             </button>
           </div>
-        )}
 
         {step === 0 && (
           <>
-            <p className={locked ? "muted" : "muted small"} style={locked ? { fontSize: 16 } : undefined}>
+            <p className="muted small">
               Which service are we setting up today?
             </p>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
@@ -212,7 +127,6 @@ export function ServiceWizard({
                 <button
                   key={st.id}
                   className={`btn ${pco.selectedServiceTypeId === st.id ? "primary" : ""}`}
-                  style={locked ? { fontSize: 18, padding: "14px 26px" } : undefined}
                   onClick={() => pco.selectServiceType(st.id)}
                 >
                   {st.name}
@@ -324,7 +238,7 @@ export function ServiceWizard({
 
         {step === 4 && (
           <>
-            <h2 style={locked ? { fontSize: 26, marginTop: 0 } : undefined}>You're all set 🎉</h2>
+            <h2>You're all set 🎉</h2>
             <p className="muted">Here's what's ready for today:</p>
             <ul className="muted small" style={{ lineHeight: 1.8 }}>
               <li>Service: {pco.serviceTypes.find((s) => s.id === pco.selectedServiceTypeId)?.name ?? "—"} · {pco.plans.find((p) => p.id === pco.selectedPlanId)?.date ?? ""}</li>
@@ -338,9 +252,9 @@ export function ServiceWizard({
           </>
         )}
 
-        <div style={{ display: "flex", gap: 8, marginTop: locked ? 30 : 14 }}>
+        <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
           {step > 0 && step < STEPS.length - 1 && (
-            <button className="btn" style={locked ? { fontSize: 16, padding: "12px 22px" } : undefined} onClick={() => setStep(step - 1)}>
+            <button className="btn" onClick={() => setStep(step - 1)}>
               ← Back
             </button>
           )}
@@ -348,7 +262,6 @@ export function ServiceWizard({
           {step < STEPS.length - 1 ? (
             <button
               className="btn primary"
-              style={locked ? { fontSize: 17, padding: "12px 34px" } : undefined}
               disabled={!canNext}
               onClick={() => {
                 if (step === 1 && !swapped) setSwapSignal((n) => n + 1);
@@ -358,7 +271,7 @@ export function ServiceWizard({
               Next →
             </button>
           ) : (
-            <button className="btn primary" style={locked ? { fontSize: 17, padding: "12px 34px" } : undefined} onClick={onClose}>
+            <button className="btn primary" onClick={onClose}>
               Done — let's go
             </button>
           )}

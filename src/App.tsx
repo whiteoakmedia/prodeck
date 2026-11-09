@@ -28,7 +28,6 @@ import { ScheduleProvider } from "./scheduleStore";
 import { startOutbox } from "./lib/outbox";
 import { CrewPageTakeover } from "./mobile/CrewPages";
 import { PosterJoin, hasJoinTicket } from "./components/PosterJoin";
-import { ServiceWizard } from "./components/ServiceWizard";
 import { FirstRunSetup } from "./components/FirstRunSetup";
 import { GiftCredit } from "./components/GiftCredit";
 import { crewLayout, readLayoutPref, switchLayout } from "./lib/layout";
@@ -135,12 +134,6 @@ const NAV: { id: Page; label: string; icon: string }[] = [
   { id: "settings", label: "Settings", icon: "settings" },
 ];
 
-// Startup wizard: the booth walks through service setup (service, setlist
-// swap, mics, desk names) on the day's FIRST app launch. Once per calendar
-// day, so watchdog crash-restarts and update installs never pop it over a
-// live service; ✕ or Done snoozes it until tomorrow.
-const WIZARD_DAY_KEY = "prodeck.wizardDay";
-
 function Shell() {
   const [page, setPage] = useState<Page>((IS_SHOTS && (SHOT_PAGE as Page)) || "dashboard");
   // An iPad on the full layout can be added to the Home Screen too.
@@ -157,7 +150,6 @@ function Shell() {
     window.addEventListener(HELP_EVENT, onHelp);
     return () => window.removeEventListener(HELP_EVENT, onHelp);
   }, []);
-  const [startupWizard, setStartupWizard] = useState(false);
   const [navHidden, setNavHidden] = useState(
     () => localStorage.getItem("prodeck.navHidden") === "1",
   );
@@ -229,51 +221,6 @@ function Shell() {
   // makes "not scheduled = no position checklist" true.
   const pcoSync = usePco();
 
-  // Open the startup wizard once PCO has loaded enough to be useful (service
-  // types present). Never on web clients — the booth runs the service.
-  useEffect(() => {
-    if (IS_WEB || IS_SHOTS || pcoSync.serviceTypes.length === 0) return;
-    const today = new Date().toDateString();
-    if (localStorage.getItem(WIZARD_DAY_KEY) !== today) {
-      localStorage.setItem(WIZARD_DAY_KEY, today);
-      setStartupWizard(true);
-    }
-  }, [pcoSync.serviceTypes.length]);
-
-  // The owner's chord works both ways: SHIFT + ↑ ↑ ↓ ↓ on the normal UI
-  // SUMMONS the fullscreen wizard (inside it, the same chord dismisses —
-  // the ref guard stops this listener from instantly re-summoning it).
-  const wizardOpenRef = useRef(false);
-  useEffect(() => {
-    wizardOpenRef.current = startupWizard;
-  }, [startupWizard]);
-  useEffect(() => {
-    if (IS_WEB) return;
-    const SEQ = ["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown"];
-    let i = 0;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const onKey = (e: KeyboardEvent) => {
-      if (!e.shiftKey || e.key !== SEQ[i]) {
-        i = 0;
-        return;
-      }
-      i += 1;
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        i = 0;
-      }, 3000);
-      if (i === SEQ.length) {
-        i = 0;
-        if (!wizardOpenRef.current) setStartupWizard(true);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      if (timer) clearTimeout(timer);
-    };
-  }, []);
-
   useEffect(() => {
     if (IS_WEB) return; // the booth owns the roster; phones only read it
     if (pcoSync.team.length === 0) return; // no plan loaded — never wipe on empty
@@ -312,11 +259,10 @@ function Shell() {
 
   return (
     <div className={`app ${navHidden ? "nav-hidden" : ""}`}>
-      {startupWizard && <ServiceWizard locked onClose={() => setStartupWizard(false)} />}
       <FirstRunSetup onNavigate={(p) => setPage(p as Page)} />
       <SetupWizards />
       {/* Once per edition after an update, never over a service (lib/whatsNew). */}
-      <WhatsNewHost blocked={startupWizard} />
+      <WhatsNewHost />
       {/* Always rendered so the mobile bottom-nav (CSS) shows even when the
           desktop sidebar is collapsed; desktop collapse hides it via CSS. */}
       <aside className="sidebar">
