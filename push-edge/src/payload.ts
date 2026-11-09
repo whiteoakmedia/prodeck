@@ -45,3 +45,49 @@ export function apnsPayload(input: PayloadInput, extras?: TargetExtras): Record<
 export function collapses(page: boolean): boolean {
   return !page;
 }
+
+// ------------------------------------------------------------- Android (FCM)
+
+/** Firebase tokens: letters, digits, "_", "-" and ":". */
+export function cleanFcmToken(t: unknown): string | null {
+  return typeof t === "string" && /^[A-Za-z0-9_:-]{32,512}$/.test(t) ? t : null;
+}
+
+/**
+ * One FCM HTTP v1 message for one Android phone. Data only, never a
+ * "notification" block: the app draws every one itself (crew-app android
+ * PageAlerts.java), which is the only way a page gets its own channel and
+ * sound, a "Got it" button, and shows while the app is open. High priority
+ * so a sleeping phone wakes for it.
+ */
+export function fcmMessage(
+  input: PayloadInput,
+  token: string,
+  tag: string,
+  ttlSeconds: number,
+  extras?: TargetExtras,
+): Record<string, unknown> {
+  const data: Record<string, string> = {
+    kind: input.page ? "page" : "crew",
+    title: input.title,
+    body: input.body,
+  };
+  if (tag) data.tag = tag;
+  const ack = input.page ? cleanAck(extras?.ack) : null;
+  if (ack) data.ack = ack;
+  const android: Record<string, unknown> = { priority: "HIGH", ttl: `${ttlSeconds}s` };
+  // Pages never collapse (each repeat must ring); a newer chat replaces the
+  // older one waiting for a phone that's offline.
+  if (tag && collapses(input.page)) android.collapse_key = tag.slice(0, 64);
+  return { message: { token, data, android } };
+}
+
+/** What an FCM refusal means: drop the token, or just a failed send. */
+export function fcmVerdict(status: number, body: unknown): "dead" | "failed" {
+  const err = (body as { error?: { status?: string; message?: string; details?: { errorCode?: string }[] } })?.error;
+  const code = err?.details?.find((d) => d?.errorCode)?.errorCode ?? err?.status ?? "";
+  if (status === 404 || code === "UNREGISTERED" || code === "SENDER_ID_MISMATCH") return "dead";
+  // INVALID_ARGUMENT is also a bad message, so only a token Firebase says is bad.
+  if (code === "INVALID_ARGUMENT" && /registration token/i.test(err?.message ?? "")) return "dead";
+  return "failed";
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { apnsPayload, cleanAck, collapses, PAGE_CATEGORY, PAGE_SOUND } from "../../push-edge/src/payload";
+import { apnsPayload, cleanAck, cleanFcmToken, collapses, fcmMessage, fcmVerdict, PAGE_CATEGORY, PAGE_SOUND } from "../../push-edge/src/payload";
 
 const KEY = "0123456789abcdef0123456789abcdef";
 
@@ -33,5 +33,49 @@ describe("what the push relay asks Apple to show", () => {
     expect(cleanAck(42)).toBeNull();
     // Never on anything that isn't a page.
     expect(apnsPayload({ title: "t", body: "b", page: false }, { ack }).ack).toBeUndefined();
+  });
+});
+
+describe("what the push relay asks Firebase to deliver to Android", () => {
+  const token = "dQw4w9WgXcQ:APA91bH" + "x_Y-z0".repeat(24);
+  const msg = (m: Record<string, unknown>) => m.message as { token: string; data: Record<string, string>; android: Record<string, unknown> };
+
+  it("a page is data only, high priority, and never collapses so each repeat rings", () => {
+    const ack = `http://172.16.1.82:8088/api/page/ack?k=${KEY}`;
+    const m = msg(fcmMessage({ title: "ProDeck · Page", body: "Ruth: camera 2", page: true }, token, "page-7", 600, { ack }));
+    expect(m.token).toBe(token);
+    expect(m.data).toEqual({ kind: "page", title: "ProDeck · Page", body: "Ruth: camera 2", tag: "page-7", ack });
+    expect(m.android).toEqual({ priority: "HIGH", ttl: "600s" });
+    // No notification block: the app draws it (sound, Got it, app open).
+    expect((fcmMessage({ title: "t", body: "b", page: true }, token, "", 600).message as Record<string, unknown>).notification).toBeUndefined();
+    // Every value is a string, as Firebase requires.
+    expect(Object.values(m.data).every((v) => typeof v === "string")).toBe(true);
+  });
+
+  it("chat replaces an older one waiting for the phone, and never carries a confirm link", () => {
+    const m = msg(fcmMessage({ title: "Team", body: "running late", page: false }, token, "chat", 86400, { ack: `https://x.example/api/page/ack?k=${KEY}` }));
+    expect(m.data.kind).toBe("crew");
+    expect(m.data.ack).toBeUndefined();
+    expect(m.android.collapse_key).toBe("chat");
+  });
+
+  it("only takes real Firebase tokens", () => {
+    expect(cleanFcmToken(token)).toBe(token);
+    expect(cleanFcmToken("short")).toBeNull();
+    expect(cleanFcmToken(`${token}/../x`)).toBeNull();
+    expect(cleanFcmToken(42)).toBeNull();
+  });
+
+  it("drops a phone only when Firebase says the app is gone", () => {
+    const fcmErr = (status: string, errorCode: string, message = "") => ({
+      error: { status, message, details: [{ "@type": "type.googleapis.com/google.firebase.fcm.v1.FcmError", errorCode }] },
+    });
+    expect(fcmVerdict(404, fcmErr("NOT_FOUND", "UNREGISTERED"))).toBe("dead");
+    expect(fcmVerdict(403, fcmErr("PERMISSION_DENIED", "SENDER_ID_MISMATCH"))).toBe("dead");
+    expect(fcmVerdict(400, fcmErr("INVALID_ARGUMENT", "INVALID_ARGUMENT", "The registration token is not a valid FCM registration token"))).toBe("dead");
+    expect(fcmVerdict(400, fcmErr("INVALID_ARGUMENT", "INVALID_ARGUMENT", "Invalid value at 'message.data'"))).toBe("failed");
+    expect(fcmVerdict(429, fcmErr("RESOURCE_EXHAUSTED", "QUOTA_EXCEEDED"))).toBe("failed");
+    expect(fcmVerdict(401, {})).toBe("failed");
+    expect(fcmVerdict(503, "nonsense")).toBe("failed");
   });
 });

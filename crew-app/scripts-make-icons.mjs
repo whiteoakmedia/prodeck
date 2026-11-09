@@ -23,3 +23,28 @@ await canvas(1024, BG).png().toFile("assets/icon-background.png");
 await canvas(2732, BG).png().toFile("assets/splash.png");
 await canvas(2732, BG).png().toFile("assets/splash-dark.png");
 console.log("icon sources written to assets/");
+
+// Android's adaptive icon, drawn straight into res/: a full bleed ProDeck dark
+// layer, and the mark at the same size it has on the iPhone icon (600 of 1024
+// across), measured against the 72 of 108 the launcher shows. Android 13 and
+// later tint the monochrome layer (res/drawable/ic_launcher_monochrome.xml).
+const RES = "android/app/src/main/res";
+const DENSITIES = { mdpi: 1, hdpi: 1.5, xhdpi: 2, xxhdpi: 3, xxxhdpi: 4 };
+const MARK_OF_ICON = 600 / 1024;
+for (const [d, k] of Object.entries(DENSITIES)) {
+  const layer = Math.round(108 * k);
+  const mark = Math.round(72 * k * MARK_OF_ICON);
+  await canvas(layer, CLEAR).composite([{ input: await markPng(mark), gravity: "center" }]).png().toFile(`${RES}/mipmap-${d}/ic_launcher_foreground.png`);
+  await canvas(layer, BG).png().toFile(`${RES}/mipmap-${d}/ic_launcher_background.png`);
+  // Before Android 8 (and some launchers' fallbacks): the plain icon.
+  const legacy = Math.round(48 * k);
+  await onDark(legacy, Math.round(legacy * MARK_OF_ICON), `${RES}/mipmap-${d}/ic_launcher.png`);
+  const round = await sharp(Buffer.from(`<svg width="${legacy}" height="${legacy}"><circle cx="${legacy / 2}" cy="${legacy / 2}" r="${legacy / 2}" fill="#fff"/></svg>`)).png().toBuffer();
+  await canvas(legacy, BG)
+    .composite([{ input: await markPng(Math.round(legacy * MARK_OF_ICON * 0.92)), gravity: "center" }, { input: round, blend: "dest-in" }])
+    .png()
+    .toFile(`${RES}/mipmap-${d}/ic_launcher_round.png`);
+}
+// Google Play's listing icon: 512 square, full bleed (Play rounds it).
+await onDark(512, Math.round(512 * MARK_OF_ICON), "../design/play/icon-512.png");
+console.log("Android icons written to android/app/src/main/res and design/play/");

@@ -24,6 +24,19 @@ const asked = params.has("home");
 /** The booth's Turn on notifications button comes back here with ?notify=1. */
 const askNotify = params.has("notify");
 
+/** True the first time this launch sees this link. Session storage lasts as
+ *  long as the app is running, so a new launch with the same link still counts. */
+function firstSight(url: string): boolean {
+  const key = "prodeck.launchLink";
+  try {
+    if (sessionStorage.getItem(key) === url) return false;
+    sessionStorage.setItem(key, url);
+  } catch {
+    /* no storage: act on it, as before */
+  }
+  return true;
+}
+
 export function App() {
   const [churches, setChurches] = useState<Church[]>(() => loadChurches());
   const [screen, setScreen] = useState<Screen>({ kind: "home" });
@@ -49,8 +62,12 @@ export function App() {
     }
     let off: (() => void) | undefined;
     import("@capacitor/app").then(async ({ App: Cap }) => {
+      // The link the app was opened with is still there each time this page
+      // loads again (back from a church's Switch church or Turn on
+      // notifications on Android): act on it once per launch, or it would
+      // send you straight back to that church instead.
       const launch = await Cap.getLaunchUrl().catch(() => undefined);
-      if (launch?.url) setLink(readLink(launch.url));
+      if (launch?.url && firstSight(launch.url)) setLink(readLink(launch.url));
       const h = await Cap.addListener("appUrlOpen", (e) => setLink(readLink(e.url)));
       off = () => void h.remove();
     });

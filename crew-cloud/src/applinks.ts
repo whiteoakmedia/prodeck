@@ -17,11 +17,22 @@ export const APP_STORE_ID = "6829868156";
 export const APP_STORE_URL = `https://apps.apple.com/app/id${APP_STORE_ID}`;
 
 /**
- * Android App Links, once the Android app exists: its package and the SHA-256
- * fingerprints of its signing certificate. Empty = no assetlinks.json yet.
+ * Android App Links: the app's package and the SHA-256 fingerprints of the
+ * certificates its builds are signed with. The app claims *.prodeck.live/join
+ * (crew-app/android AndroidManifest.xml), and Android checks a wildcard at the
+ * base domain, so crew-edge serves this same file at prodeck.live.
+ *
+ *  - The upload key (~/.prodeck/keys/crew-upload.jks): builds installed
+ *    straight from this Mac.
+ *  - Google Play's app signing key: what everyone installing from Play gets.
+ *    Play Console, ProDeck Crew, Test and release, App integrity, App signing
+ *    key certificate, SHA-256. Add it here once the app exists in Play.
  */
-export const ANDROID_PACKAGE = "";
-export const ANDROID_CERT_SHA256: string[] = [];
+export const ANDROID_PACKAGE = "app.prodeck.crew";
+export const ANDROID_CERT_SHA256: string[] = [
+  // Upload key, made 2026-11-09.
+  "B1:F9:D5:DF:05:41:BA:D6:40:CC:82:DD:27:20:B2:34:5E:EB:42:A0:63:64:F4:70:0E:02:6A:30:AD:02:95:27",
+];
 
 /** /.well-known/apple-app-site-association */
 export function appleAppSiteAssociation() {

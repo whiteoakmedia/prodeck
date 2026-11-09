@@ -1,5 +1,11 @@
 apply plugin: 'com.android.application'
 
+// The Play upload key lives outside the repo (~/.prodeck/keys, never
+// committed). Without it a release build is unsigned, which Play refuses.
+def uploadKeyFile = new File(System.getenv("PRODECK_CREW_UPLOAD_KEY") ?: "${System.getProperty('user.home')}/.prodeck/keys/crew-upload.properties")
+def uploadKey = new Properties()
+if (uploadKeyFile.exists()) uploadKeyFile.withInputStream { uploadKey.load(it) }
+
 android {
     namespace = "app.prodeck.crew"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +13,9 @@ android {
         applicationId "app.prodeck.crew"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // Matches the iPhone app's version. Bump versionCode for every upload.
+        versionCode 2
+        versionName "1.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +23,19 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (uploadKey.getProperty("storeFile")) {
+                storeFile file(uploadKey.getProperty("storeFile"))
+                storePassword uploadKey.getProperty("storePassword")
+                keyAlias uploadKey.getProperty("keyAlias")
+                keyPassword uploadKey.getProperty("keyPassword")
+            }
+        }
+    }
     buildTypes {
         release {
+            if (uploadKey.getProperty("storeFile")) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
@@ -36,6 +54,9 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
+    // Pages (CrewMessagingService). The push plugin brings the same version.
+    implementation "com.google.firebase:firebase-messaging:$firebaseMessagingVersion"
+    implementation "androidx.core:core:$androidxCoreVersion"
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
@@ -43,6 +64,15 @@ dependencies {
 }
 
 apply from: 'capacitor.build.gradle'
+
+// A Play build without the Firebase settings can't ring pages on Android.
+// Refuse it, unless asked on purpose (-PallowNoPush, for a test build).
+gradle.taskGraph.whenReady { graph ->
+    def release = graph.allTasks.any { it.name.toLowerCase().contains("release") && it.project == project }
+    if (release && !file('google-services.json').exists() && !project.hasProperty('allowNoPush')) {
+        throw new GradleException("google-services.json is missing from crew-app/android/app: pages wouldn't ring. See design/play/RELEASE.md, or build with -PallowNoPush for a test build.")
+    }
+}
 
 try {
     def servicesJSON = file('google-services.json')

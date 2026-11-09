@@ -17,9 +17,10 @@ const APP_PUSH_KEY = "prodeck.appPush";
 
 /**
  * What the app said about page notifications as it opened this page
- * (crew-app/src/native.ts pushToken): "apns:<token>", "denied", "prompt", or
- * "" when it said nothing (Android for now, or an older app). It comes in
- * the address's #crewpush= and is kept, so a reload still knows.
+ * (crew-app/src/native.ts pushToken): "apns:<token>" (iPhone), "fcm:<token>"
+ * (Android), "denied", "prompt", or "" when it said nothing (an Android build
+ * without a push project, or an older app). It comes in the address's
+ * #crewpush= and is kept, so a reload still knows.
  */
 export function readAppPush(hash: string, saved: string): { value: string; rest: string } {
   const m = /(^#|&)crewpush=([^&]*)/.exec(hash);
@@ -32,7 +33,17 @@ export function readAppPush(hash: string, saved: string): { value: string; rest:
   } catch {
     /* mangled: as if nothing was said */
   }
-  return { value: /^(apns:[0-9a-f]{64,200}|denied|prompt)$/i.test(value) ? value : "", rest };
+  return { value: appPushTarget(value) || /^(denied|prompt)$/i.test(value) ? value : "", rest };
+}
+
+/** Where pages go for this phone: its push service and token, or null. */
+export function appPushTarget(value: string): { platform: "apns" | "fcm"; token: string } | null {
+  const apns = /^apns:([0-9a-f]{64,200})$/i.exec(value);
+  if (apns) return { platform: "apns", token: apns[1] };
+  // Firebase tokens: letters, digits, "_", "-" and ":" (an instance id, then the token).
+  const fcm = /^fcm:([A-Za-z0-9_:-]{32,512})$/.exec(value);
+  if (fcm) return { platform: "fcm", token: fcm[1] };
+  return null;
 }
 
 export const appPush: string = (() => {

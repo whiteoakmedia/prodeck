@@ -26,8 +26,16 @@ describe("apple-app-site-association", () => {
     }
   });
 
-  it("has no Android file until there's an Android app", async () => {
-    expect((await SELF.fetch("https://grace-crew.prodeck.live/.well-known/assetlinks.json")).status).toBe(404);
+  it("lets Android open crew codes in ProDeck Crew", async () => {
+    const r = await SELF.fetch("https://grace-crew.prodeck.live/.well-known/assetlinks.json");
+    expect(r.status).toBe(200);
+    expect(r.headers.get("content-type")).toBe("application/json");
+    const [link] = (await r.json()) as { relation: string[]; target: { namespace: string; package_name: string; sha256_cert_fingerprints: string[] } }[];
+    expect(link.relation).toEqual(["delegate_permission/common.handle_all_urls"]);
+    expect(link.target.namespace).toBe("android_app");
+    expect(link.target.package_name).toBe("app.prodeck.crew");
+    expect(link.target.sha256_cert_fingerprints.length).toBeGreaterThan(0);
+    for (const f of link.target.sha256_cert_fingerprints) expect(f).toMatch(/^([0-9A-F]{2}:){31}[0-9A-F]{2}$/);
   });
 });
 

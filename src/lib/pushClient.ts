@@ -1,6 +1,6 @@
 import { IS_DEMO, IS_SHOTS, IS_WEB, pushAppSubscribe, pushAppUnsubscribe, pushPublicKey, pushSubscribe, pushUnsubscribe } from "./tauri";
 import { CREW_SESSION_KEY } from "../chatStore";
-import { appPush, crewAppHome, IN_CREW_APP } from "./crewApp";
+import { appPush, appPushTarget, crewAppHome, IN_CREW_APP } from "./crewApp";
 
 // Web push registration, phone side.
 //
@@ -74,13 +74,14 @@ async function appState(): Promise<PushStatus> {
   if (IS_DEMO || IS_SHOTS) return ls(APP_OFF_KEY) === "1" ? "off" : "on";
   if (!appPush) return "unsupported";
   if (appPush === "denied") return "denied";
-  if (appPush === "prompt" || ls(APP_OFF_KEY) === "1") return "off";
+  const target = appPushTarget(appPush);
+  if (!target || ls(APP_OFF_KEY) === "1") return "off";
   const session = ls(CREW_SESSION_KEY);
   if (!session) return "off";
   const mark = `${session}|${appPush}`;
   if (appSent !== mark) {
     try {
-      await pushAppSubscribe(session, "apns", appPush.slice("apns:".length));
+      await pushAppSubscribe(session, target.platform, target.token);
     } catch {
       return "unsupported"; // a booth from before the app could get pages
     }
@@ -211,9 +212,8 @@ export async function disablePush(): Promise<PushStatus> {
       /* private storage */
     }
     appSent = "";
-    if (appPush.startsWith("apns:")) {
-      await pushAppUnsubscribe(ls(CREW_SESSION_KEY), appPush.slice("apns:".length)).catch(() => {});
-    }
+    const target = appPushTarget(appPush);
+    if (target) await pushAppUnsubscribe(ls(CREW_SESSION_KEY), target.token).catch(() => {});
     return "off";
   }
   try {

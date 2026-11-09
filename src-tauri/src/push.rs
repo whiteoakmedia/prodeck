@@ -48,7 +48,7 @@ pub struct Subscription {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppSub {
     pub user_id: String,
-    /// "apns" today; "fcm" once Android has a push project.
+    /// "apns" (iPhone) or "fcm" (Android).
     pub platform: String,
     pub token: String,
     pub created_ms: u64,
@@ -255,13 +255,21 @@ pub fn forget_user(push: &PushState, user_id: &str) {
     push.persist(&s);
 }
 
+/// Is this a token the relay can use? Err = a push service we don't know.
+/// APNs: hex. Firebase (Android): letters, digits, '_', '-' and ':'.
+fn valid_app_token(platform: &str, token: &str) -> Result<bool, String> {
+    match platform {
+        "apns" => Ok((64..=200).contains(&token.len()) && token.chars().all(|c| c.is_ascii_hexdigit())),
+        "fcm" => Ok((32..=512).contains(&token.len())
+            && token.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | ':'))),
+        _ => Err("this phone's notifications aren't supported yet".into()),
+    }
+}
+
 /// Register a phone running the ProDeck Crew app. The same phone signing in
 /// as someone else moves to them.
 pub fn subscribe_app(push: &PushState, user_id: String, platform: String, token: String) -> Result<(), String> {
-    if platform != "apns" {
-        return Err("this phone's notifications aren't supported yet".into());
-    }
-    if !(64..=200).contains(&token.len()) || !token.chars().all(|c| c.is_ascii_hexdigit()) {
+    if !valid_app_token(&platform, &token)? {
         return Err("that isn't a push token".into());
     }
     let mut s = push.store.lock().unwrap_or_else(|p| p.into_inner());
@@ -543,7 +551,12 @@ mod tests {
         assert_eq!(left, vec![tok('2'), tok('3'), tok('4')]);
 
         assert!(subscribe_app(&push, "b".into(), "apns".into(), "not a token".into()).is_err());
-        assert!(subscribe_app(&push, "b".into(), "fcm".into(), tok('5')).is_err());
+        assert!(subscribe_app(&push, "b".into(), "webos".into(), tok('5')).is_err());
+        // Android: a Firebase token, its own shape.
+        let fcm = format!("dQw4w9WgXcQ:APA91bH{}", "x_Y-z0".repeat(24));
+        subscribe_app(&push, "c".into(), "fcm".into(), fcm.clone()).unwrap();
+        assert!(subscribe_app(&push, "c".into(), "fcm".into(), "short".into()).is_err());
+        assert!(subscribe_app(&push, "c".into(), "fcm".into(), format!("{fcm}<x>")).is_err());
 
         unsubscribe_app(&push, "a", &tok('2'));
         assert_eq!(apps_for(&push, &["b".into()]).len(), 3, "only your own phone");

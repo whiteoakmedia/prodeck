@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only: a stand-in for Firebase, so a page can be shown on the
+     emulator without a push project (DebugPageReceiver.java). Never in a
+     release build. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <receiver android:name=".DebugPageReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="app.prodeck.crew.DEBUG_PAGE" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

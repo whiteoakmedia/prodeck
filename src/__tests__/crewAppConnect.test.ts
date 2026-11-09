@@ -47,7 +47,7 @@ describe("crew app: finding the booth", () => {
   });
 });
 
-import { crewAppHome, readAppPush } from "../lib/crewApp";
+import { appPushTarget, crewAppHome, readAppPush } from "../lib/crewApp";
 
 describe("crew app: back to the churches list", () => {
   it("goes to the app's own page, which differs on iPhone and Android", () => {
@@ -111,6 +111,18 @@ describe("crew app: page notifications handed over by the app", () => {
   });
   it("asks the app for notifications at its own page", () => {
     expect(crewAppHome("Mozilla/5.0 (iPhone) ProDeckCrew/0.1", "notify")).toBe("capacitor://localhost/?notify=1");
+    expect(crewAppHome("Mozilla/5.0 (Linux; Android 15) ProDeckCrew/0.1", "notify")).toBe("https://localhost/?notify=1");
+  });
+  it("takes an Android phone's Firebase token too", () => {
+    const fcm = "dQw4w9WgXcQ:APA91bH" + "x_Y-z0".repeat(24);
+    expect(readAppPush(`#crewpush=${encodeURIComponent(`fcm:${fcm}`)}`, "")).toEqual({ value: `fcm:${fcm}`, rest: "" });
+    expect(appPushTarget(`fcm:${fcm}`)).toEqual({ platform: "fcm", token: fcm });
+    expect(appPushTarget(`apns:${tok}`)).toEqual({ platform: "apns", token: tok });
+    // Not a token: too short, or characters Firebase never uses.
+    expect(readAppPush("#crewpush=fcm%3Ashort", "x").value).toBe("");
+    expect(readAppPush(`#crewpush=${encodeURIComponent(`fcm:${fcm}<script>`)}`, "x").value).toBe("");
+    expect(appPushTarget("prompt")).toBeNull();
+    expect(appPushTarget("denied")).toBeNull();
   });
 });
 

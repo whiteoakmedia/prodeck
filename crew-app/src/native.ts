@@ -233,12 +233,14 @@ export async function crewAddress(base: string): Promise<string> {
  * notifications, so the app gets the phone's push token here and hands it to
  * the page as it opens (#crewpush=, read by the booth's lib/pushClient.ts),
  * which registers it once you're signed in. What's handed over:
- * "apns:<token>", "denied", or "prompt" (never asked; the page's Turn on
- * button comes back here with ?notify to ask). Android needs a push project
- * of its own first, so nothing is handed over there yet.
+ * "apns:<token>" (iPhone), "fcm:<token>" (Android), "denied", or "prompt"
+ * (never asked; the page's Turn on button comes back here with ?notify to
+ * ask). An Android build without a push project hands over nothing.
  */
 export async function pushToken(ask: boolean): Promise<string> {
-  if (Capacitor.getPlatform() !== "ios") return "";
+  const platform = Capacitor.getPlatform();
+  if (platform === "android") return androidToken(ask);
+  if (platform !== "ios") return "";
   try {
     const { PushNotifications: P } = await import("@capacitor/push-notifications");
     let perm = (await P.checkPermissions()).receive;
@@ -282,7 +284,53 @@ export async function pushToken(ask: boolean): Promise<string> {
   }
 }
 
+/** The app's own plugin for the Android token (android CrewPushPlugin.java). */
+type CrewPushPlugin = { token(): Promise<{ token: string; why?: string }> };
+let crewPushPlugin: CrewPushPlugin | null = null;
+const crewPush = () => (crewPushPlugin ??= registerPlugin<CrewPushPlugin>("CrewPush"));
+
+/**
+ * Android: the permission through the push plugin (Android 13 and later ask),
+ * the token from Firebase. Briefly, like the iPhone: a church shouldn't wait
+ * on a filtered network, so the last token stands in.
+ */
+async function androidToken(ask: boolean): Promise<string> {
+  try {
+    const { PushNotifications: P } = await import("@capacitor/push-notifications");
+    let perm = (await P.checkPermissions()).receive;
+    if (ask && perm !== "granted" && perm !== "denied") perm = (await P.requestPermissions()).receive;
+    if (perm === "denied") return "denied";
+    if (perm !== "granted") return "prompt";
+    let last = "";
+    try {
+      last = localStorage.getItem(FCM_TOKEN_KEY) ?? "";
+    } catch {
+      /* private storage */
+    }
+    const fresh = await Promise.race([
+      crewPush()
+        .token()
+        .then((r) => r.token ?? "")
+        .catch(() => ""),
+      new Promise<string>((r) => setTimeout(() => r(""), last ? 1500 : 8000)),
+    ]);
+    if (fresh) {
+      try {
+        localStorage.setItem(FCM_TOKEN_KEY, fresh);
+      } catch {
+        /* private storage */
+      }
+    }
+    const t = fresh || last;
+    return t ? `fcm:${t}` : "";
+  } catch {
+    return "";
+  }
+}
+
 const KEY = "prodeck.crewChurches";
+/** The phone's push token from Firebase (Android), last time it gave one. */
+const FCM_TOKEN_KEY = "prodeck.fcmToken";
 /** The phone's push token from Apple, last time it gave one. */
 const TOKEN_KEY = "prodeck.apnsToken";
 

@@ -3,13 +3,14 @@
  *
  * A web page on a phone gets push through the browser, signed by the booth's
  * own key (src-tauri/src/push.rs). The phone app can't: Apple only takes
- * notifications for it signed with White Oak's push key, and that key can't
- * ship inside every church's booth. So a booth sends its app pages here and
- * this signs and hands them to Apple.
+ * notifications for it signed with White Oak's push key, and Google only from
+ * White Oak's Firebase project, and neither key can ship inside every
+ * church's booth. So a booth sends its app pages here and this signs and
+ * hands them to Apple (iPhone, "apns") or Firebase (Android, "fcm").
  *
- *   booth  POST /v1/send  {to: [{p: "apns", t: token}], title, body, tag?, page?}
+ *   booth  POST /v1/send  {to: [{p: "apns" | "fcm", t: token}], title, body, tag?, page?}
  *                         → {ok, sent, dead: [token]}   dead = drop it, the app is gone
- *   anyone GET  /         → {ok, apns}   is it set up?
+ *   anyone GET  /         → {ok, apns, fcm}   is each set up?
  *
  * What keeps it from being anyone's free push service:
  *  - It can only reach phones with ProDeck Crew installed (the key and topic
@@ -23,7 +24,7 @@
  * carry a page's words, a push token or the sender's address.
  */
 
-import { apnsPayload, collapses, type TargetExtras } from "./payload";
+import { apnsPayload, cleanFcmToken, collapses, fcmMessage, fcmVerdict, type TargetExtras } from "./payload";
 import * as Sentry from "@sentry/cloudflare";
 
 /** Workers reach sentry.io directly; only booths need the feedback Worker's tunnel. */
@@ -36,6 +37,10 @@ interface Env {
   APNS_KEY_ID?: string;
   APNS_TEAM: string;
   APNS_TOPIC: string;
+  /** The Firebase service account's whole JSON key file (a secret). */
+  FCM_SERVICE_ACCOUNT?: string;
+  /** Local tests only: a stand-in for fcm.googleapis.com. Never set in production. */
+  FCM_API?: string;
 }
 
 interface Target {
@@ -48,6 +53,8 @@ interface Target {
 const MAX_TO = 100;
 /** A page nobody saw in ten minutes is old news; Apple drops it after this. */
 const PAGE_TTL_S = 600;
+/** Chat and reminders keep a day for a phone that's off (Firebase's default is four weeks). */
+const CREW_TTL_S = 86_400;
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -109,10 +116,88 @@ async function sendApns(env: Env, token: string, body: string, tag: string, page
   return "failed";
 }
 
+// ------------------------------------------------------------- Firebase (Android)
+// FCM HTTP v1 takes an OAuth access token, which the service account gets by
+// signing a JWT (RS256) and trading it at Google's token endpoint. Tokens last
+// an hour; one is kept per isolate for 50 minutes.
+
+interface ServiceAccount {
+  project_id: string;
+  client_email: string;
+  private_key: string;
+  token_uri?: string;
+}
+
+function serviceAccount(env: Env): ServiceAccount | null {
+  try {
+    const sa = JSON.parse(env.FCM_SERVICE_ACCOUNT ?? "") as ServiceAccount;
+    return sa?.project_id && sa.client_email && sa.private_key ? sa : null;
+  } catch {
+    return null;
+  }
+}
+
+let fcmCached: { token: string; at: number } | null = null;
+/** One trip to Google at a time: a page to ten phones asks once. */
+let fcmPending: Promise<string> | null = null;
+
+function fcmAccessToken(sa: ServiceAccount): Promise<string> {
+  if (fcmCached && Date.now() - fcmCached.at < 50 * 60_000) return Promise.resolve(fcmCached.token);
+  fcmPending ??= newFcmToken(sa).finally(() => (fcmPending = null));
+  return fcmPending;
+}
+
+async function newFcmToken(sa: ServiceAccount): Promise<string> {
+  const pem = sa.private_key.replace(/-----[^-]+-----/g, "").replace(/\s+/g, "");
+  const der = Uint8Array.from(atob(pem), (c) => c.charCodeAt(0));
+  const key = await crypto.subtle.importKey("pkcs8", der, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["sign"]);
+  const aud = sa.token_uri || "https://oauth2.googleapis.com/token";
+  const now = Math.floor(Date.now() / 1000);
+  const head = b64urlText(JSON.stringify({ alg: "RS256", typ: "JWT" }));
+  const claims = b64urlText(
+    JSON.stringify({ iss: sa.client_email, scope: "https://www.googleapis.com/auth/firebase.messaging", aud, iat: now, exp: now + 3600 }),
+  );
+  const sig = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key, new TextEncoder().encode(`${head}.${claims}`));
+  const r = await fetch(aud, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion: `${head}.${claims}.${b64url(new Uint8Array(sig))}`,
+    }),
+  });
+  const out = (await r.json().catch(() => ({}))) as { access_token?: string; error?: string };
+  if (!r.ok || !out.access_token) throw new Error(`Google refused the Firebase key: ${out.error ?? r.status}`);
+  fcmCached = { token: out.access_token, at: Date.now() };
+  return out.access_token;
+}
+
+/** One message to one Android phone. Same answers as sendApns. */
+async function sendFcm(env: Env, sa: ServiceAccount, body: string): Promise<"sent" | "dead" | "failed"> {
+  const api = env.FCM_API || "https://fcm.googleapis.com";
+  const r = await fetch(`${api}/v1/projects/${sa.project_id}/messages:send`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${await fcmAccessToken(sa)}`, "content-type": "application/json" },
+    body,
+  });
+  if (r.ok) return "sent";
+  const reply = await r.json().catch(() => ({}));
+  const verdict = fcmVerdict(r.status, reply);
+  if (verdict === "dead") return "dead";
+  if (r.status === 401) fcmCached = null;
+  const reason = (reply as { error?: { status?: string } })?.error?.status ?? String(r.status);
+  console.log(`fcm refused: ${reason}`);
+  // PERMISSION_DENIED / UNAUTHENTICATED mean every Android page is failing.
+  Sentry.captureMessage(`FCM refused: ${reason}`, { level: "error", fingerprint: ["fcm-refused", reason] });
+  return "failed";
+}
+
 // ------------------------------------------------------------- routes
 
 async function send(req: Request, env: Env): Promise<Response> {
-  if (!env.APNS_KEY || !env.APNS_KEY_ID) return fail(503, "not set up yet");
+  const apnsReady = !!(env.APNS_KEY && env.APNS_KEY_ID);
+  const sa = serviceAccount(env);
+  if (!apnsReady && !sa) return fail(503, "not set up yet");
   const who = req.headers.get("CF-Connecting-IP") ?? "?";
   if (!(await env.SENDS.limit({ key: who })).success) return fail(429, "too many sends, slow down");
 
@@ -136,11 +221,15 @@ async function send(req: Request, env: Env): Promise<Response> {
   await Promise.all(
     to.map(async (x) => {
       const t = String(x?.t ?? "");
-      if (x?.p !== "apns" || !/^[0-9a-f]{64,200}$/i.test(t)) return;
+      let go: () => Promise<"sent" | "dead" | "failed">;
+      if (x?.p === "apns" && apnsReady && /^[0-9a-f]{64,200}$/i.test(t)) {
+        go = async () => sendApns(env, t, JSON.stringify(apnsPayload(words, x?.x)), tag, page);
+      } else if (x?.p === "fcm" && sa && cleanFcmToken(t)) {
+        go = async () => sendFcm(env, sa, JSON.stringify(fcmMessage(words, t, tag, page ? PAGE_TTL_S : CREW_TTL_S, x?.x)));
+      } else return;
       if (!(await env.PHONES.limit({ key: t })).success) return;
-      const body = JSON.stringify(apnsPayload(words, x?.x));
-      const r = await sendApns(env, t, body, tag, page).catch((e) => {
-        console.log(`apns error: ${e}`);
+      const r = await go().catch((e) => {
+        console.log(`${x.p} error: ${e}`);
         Sentry.captureException(e);
         return "failed" as const;
       });
@@ -171,7 +260,7 @@ export default Sentry.withSentry<Env>(
   {
     async fetch(req: Request, env: Env): Promise<Response> {
       const url = new URL(req.url);
-      if (req.method === "GET" && url.pathname === "/") return json({ ok: true, apns: !!(env.APNS_KEY && env.APNS_KEY_ID) });
+      if (req.method === "GET" && url.pathname === "/") return json({ ok: true, apns: !!(env.APNS_KEY && env.APNS_KEY_ID), fcm: !!serviceAccount(env) });
       if (req.method === "POST" && url.pathname === "/v1/send") return send(req, env);
       return fail(404, "not found");
     },
