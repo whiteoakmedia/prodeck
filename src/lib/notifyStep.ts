@@ -12,16 +12,40 @@ export interface NotifyStep {
   action: NotifyAction;
   /** The button, when there is one. */
   button?: string;
+  /** A one-time tip once everything is set up, dismissed with Got it rather
+   *  than snoozed. */
+  tip?: boolean;
 }
+
+/** Shown once on an iPhone after page notifications are on. On silent, iOS
+ *  plays no sound for any app, and whether a page buzzes is the phone's own
+ *  Haptics setting, which nothing in the app can change (first real page
+ *  test, 2026-11-09: a page on silent was completely still). */
+export const HAPTICS_TIP: NotifyStep = {
+  title: "Feel pages on silent",
+  body: "On silent, an iPhone only buzzes for a page if Haptics is set to Always Play. Open Settings, tap Sounds & Haptics, then Haptics, and choose Always Play.",
+  action: "none",
+  tip: true,
+};
 
 /** "Not now" hides the step for this long, then it asks again. */
 export const SNOOZE_MS = 12 * 60 * 60 * 1000;
 
 export function notifyStep(
   status: PushStatus,
-  o: { ios: boolean; secureUrl: string; snoozedUntil: number; now: number; app?: boolean; choseOff?: boolean },
+  o: {
+    ios: boolean;
+    secureUrl: string;
+    snoozedUntil: number;
+    now: number;
+    app?: boolean;
+    choseOff?: boolean;
+    /** The haptics tip was already dismissed on this phone. */
+    hapticsTipSeen?: boolean;
+  },
 ): NotifyStep | null {
-  if (status === "on" || status === "unsupported") return null;
+  if (status === "on") return o.ios && !o.hapticsTipSeen ? HAPTICS_TIP : null;
+  if (status === "unsupported") return null;
   // They turned pages off in More: that's an answer, not a step left to do.
   if (status === "off" && o.choseOff) return null;
   if (o.now < o.snoozedUntil) return null;

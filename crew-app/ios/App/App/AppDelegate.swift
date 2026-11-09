@@ -114,6 +114,14 @@ final class PageAlerts: NSObject, UNUserNotificationCenterDelegate {
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 willPresent notification: UNNotification,
                                 withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        // A page rings and shows even with the app open. Capacitor's handler
+        // shows nothing while the app is in front (no presentationOptions
+        // set), so a page to a volunteer looking at ProDeck arrived silent,
+        // and the page screen inside the app can't buzz (2026-11-09 test).
+        if notification.request.content.categoryIdentifier == Self.category {
+            completionHandler([.banner, .list, .sound])
+            return
+        }
         if let n = next, n.responds(to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:willPresent:withCompletionHandler:))) {
             n.userNotificationCenter?(center, willPresent: notification, withCompletionHandler: completionHandler)
         } else {

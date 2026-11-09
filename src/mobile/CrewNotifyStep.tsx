@@ -10,6 +10,7 @@ import { secureBase } from "../lib/lanUrl";
 // (lib/notifyStep.ts says what to show for each state).
 
 const SNOOZE_KEY = "prodeck.notifySnooze";
+const HAPTICS_KEY = "prodeck.hapticsTipSeen";
 const isIos = () => typeof navigator !== "undefined" && /iP(hone|ad|od)/.test(navigator.userAgent);
 
 export function CrewNotifyStep({ onShowInstall }: { onShowInstall: () => void }) {
@@ -22,6 +23,14 @@ export function CrewNotifyStep({ onShowInstall }: { onShowInstall: () => void })
       return Number(localStorage.getItem(SNOOZE_KEY) ?? 0) || 0;
     } catch {
       return 0;
+    }
+  });
+
+  const [hapticsTipSeen, setHapticsTipSeen] = useState(() => {
+    try {
+      return localStorage.getItem(HAPTICS_KEY) === "1";
+    } catch {
+      return false;
     }
   });
 
@@ -40,7 +49,7 @@ export function CrewNotifyStep({ onShowInstall }: { onShowInstall: () => void })
 
   if (!status) return null;
   const secureUrl = secureLink(secureBase(settings), getWebToken());
-  const step = notifyStep(status, { ios: isIos(), secureUrl, snoozedUntil, now: Date.now(), app: IN_CREW_APP, choseOff: choseOff() });
+  const step = notifyStep(status, { ios: isIos(), secureUrl, snoozedUntil, now: Date.now(), app: IN_CREW_APP, choseOff: choseOff(), hapticsTipSeen });
   if (!step) return null;
 
   const act = async () => {
@@ -63,7 +72,7 @@ export function CrewNotifyStep({ onShowInstall }: { onShowInstall: () => void })
   };
 
   return (
-    <div className="crew-card warn crew-notify-step" role="region" aria-label="Page notifications">
+    <div className={`crew-card ${step.tip ? "" : "warn "}crew-notify-step`} role="region" aria-label="Page notifications">
       <div className="crew-notify-title">{step.title}</div>
       <p className="crew-notify-body">{step.body}</p>
       {step.button && (
@@ -72,6 +81,21 @@ export function CrewNotifyStep({ onShowInstall }: { onShowInstall: () => void })
         </button>
       )}
       {err && <p className="crew-join-err">{err}</p>}
+      {step.tip ? (
+        <button
+          className="crew-link"
+          onClick={() => {
+            try {
+              localStorage.setItem(HAPTICS_KEY, "1");
+            } catch {
+              /* private window: hidden until the page reloads */
+            }
+            setHapticsTipSeen(true);
+          }}
+        >
+          Got it
+        </button>
+      ) : (
       <button
         className="crew-link"
         onClick={() => {
@@ -86,6 +110,7 @@ export function CrewNotifyStep({ onShowInstall }: { onShowInstall: () => void })
       >
         Not now
       </button>
+      )}
     </div>
   );
 }

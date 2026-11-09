@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { notifyStep, secureLink, SNOOZE_MS } from "../lib/notifyStep";
+import { HAPTICS_TIP, notifyStep, secureLink, SNOOZE_MS } from "../lib/notifyStep";
 import { homeScreenManifestHref } from "../lib/homeScreen";
 
 const base = { ios: true, secureUrl: "", snoozedUntil: 0, now: 1_000_000 };
@@ -7,7 +7,7 @@ const base = { ios: true, secureUrl: "", snoozedUntil: 0, now: 1_000_000 };
 describe("the notifications step on Home", () => {
   it("asks until notifications are on, then disappears", () => {
     expect(notifyStep("off", base)?.action).toBe("enable");
-    expect(notifyStep("on", base)).toBeNull();
+    expect(notifyStep("on", { ...base, hapticsTipSeen: true })).toBeNull();
     // Nothing a volunteer can do about a browser without push.
     expect(notifyStep("unsupported", base)).toBeNull();
   });
@@ -88,5 +88,27 @@ describe("the notifications step inside the ProDeck Crew app", () => {
     expect(notifyStep("off", { ...base, choseOff: true })).toBeNull();
     // Blocked in the phone's settings is still worth a word.
     expect(notifyStep("denied", { ...base, choseOff: true })).not.toBeNull();
+  });
+});
+
+describe("the haptics tip", () => {
+  it("shows once on an iPhone after pages are on, until Got it", () => {
+    expect(notifyStep("on", base)).toBe(HAPTICS_TIP);
+    expect(HAPTICS_TIP.tip).toBe(true);
+    expect(notifyStep("on", { ...base, hapticsTipSeen: true })).toBeNull();
+  });
+
+  it("only shows on iPhones and iPads, whose silent switch is the problem", () => {
+    expect(notifyStep("on", { ...base, ios: false })).toBeNull();
+  });
+
+  it("isn't hidden by a snooze from the earlier step", () => {
+    expect(notifyStep("on", { ...base, snoozedUntil: base.now + 1_000 })).toBe(HAPTICS_TIP);
+  });
+
+  it("keeps to the house rules for words", () => {
+    const words = HAPTICS_TIP.title + " " + HAPTICS_TIP.body;
+    expect(words).not.toMatch(/[—–]| - /);
+    expect((words.match(/!/g) ?? []).length).toBeLessThanOrEqual(1);
   });
 });
