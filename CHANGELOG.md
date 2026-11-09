@@ -44,6 +44,24 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.118 — 9 November 2026
+
+Everything in 0.9.117, plus:
+
+### Fixed
+
+- **Phones, iPads and TV screens reconnect by themselves.** A hiccup at the
+  booth or in its internet could leave a phone on "booth offline" until it
+  was reloaded, and a phone waking from sleep could hold a connection that
+  had quietly died. They now notice within a minute and come back on their
+  own.
+- **One device with an old password no longer locks everyone out.** Repeated
+  tries with the same old crew password used to trip the password limit for
+  every phone sharing that connection, even ones with the right password.
+  Only real guessing is slowed down now.
+- **No Service setup screen at startup.** It's still on the Planning Center
+  page whenever you want it.
+
 ## 0.9.117 — 5 November 2026
 
 Everything in 0.9.116, plus:
