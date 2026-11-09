@@ -31,13 +31,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
-        // Capacitor's bridge makes itself the notification handler when it
-        // loads; sit in front of it again (everything that isn't a page's
-        // Got it is passed straight through).
-        PageAlerts.shared.takeOver()
-        // The app is open: the booth page shows any page still waiting, so
-        // the stack of repeats on the lock screen has done its job.
-        PageAlerts.clearDelivered()
+        // Not called in a scene-based app; SceneDelegate.sceneDidBecomeActive
+        // re-installs the page handler instead.
     }
 
     func applicationWillTerminate(_ application: UIApplication) {
