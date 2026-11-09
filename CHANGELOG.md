@@ -44,6 +44,29 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.119 — 9 November 2026
+
+Everything in 0.9.118, plus:
+
+### New
+
+- **ProDeck Crew is on the App Store** for iPhone and iPad. Volunteers tap
+  Scan crew code and scan the crew poster.
+- **Crew address.** Each church's crew can reach ProDeck from anywhere, even
+  with the booth computer off: this week's plan, call times, checklists and
+  chat, with ticks and messages synced back when the booth returns. A copy is
+  kept on White Oak Media's servers (passwords only as a scrambled check). On
+  by default; Settings → Crew & screens → Crew address.
+- **Pages you can't miss** with ProDeck Crew 1.1: their own alert sound, a ring
+  on every repeat, and Got it on the notification itself.
+- **A tidier Messages panel**, and the booth signs messages as Booth.
+- **An iPhone tip** for feeling pages on silent (Haptics, Always Play).
+
+### Fixed
+
+- A page shows straight away when you tap its notification.
+- With the ProDeck Crew app open, a page rings and shows a banner.
+
 ## 0.9.118 — 9 November 2026
 
 Everything in 0.9.117, plus:
