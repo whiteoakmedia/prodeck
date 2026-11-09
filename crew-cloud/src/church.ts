@@ -1,4 +1,4 @@
-// One Durable Object per church: its crew address <name>.crew.prodeck.live.
+// One Durable Object per church: its crew address <name>-crew.prodeck.live.
 //
 // Two jobs (design/CREW_ADDRESS.md):
 //

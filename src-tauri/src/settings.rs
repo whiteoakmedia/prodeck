@@ -118,7 +118,7 @@ pub struct Settings {
     #[serde(default)]
     pub local_url: String,
     /// Crew address (crewcloud.rs, design/CREW_ADDRESS.md): this booth's crew
-    /// reach it from anywhere at <name>.crew.prodeck.live, and see the last
+    /// reach it from anywhere at <name>-crew.prodeck.live, and see the last
     /// plan, checklists and chat it sent while it's off. On unless turned off
     /// in Settings, Crew & screens.
     pub crew_cloud: bool,
@@ -127,7 +127,7 @@ pub struct Settings {
     pub crew_name: String,
     /// The crew name's claim secret. Booth only, like local_secret.
     pub crew_secret: String,
-    /// Written by the booth: "https://<name>.crew.prodeck.live". Empty = off.
+    /// Written by the booth: "https://<name>-crew.prodeck.live". Empty = off.
     pub crew_url: String,
     pub gemini_api_key: Option<String>,
     /// "Ask ProDeck" troubleshooter (design/TROUBLESHOOTER.md). Secret; the

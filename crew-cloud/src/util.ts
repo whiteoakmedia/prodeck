@@ -1,23 +1,28 @@
 // Small pure helpers shared by the router and the per-church object. Kept
 // free of Worker globals beyond WebCrypto so the tests can call them directly.
 
-/** Host suffixes a church's crew address can live under. The second is for
- *  `wrangler dev` on this computer: browsers send *.localhost to 127.0.0.1. */
-export const BASES = ["crew.prodeck.live", "crew.localhost"];
+/**
+ * What follows a church's name in its crew address: <name>-crew.prodeck.live,
+ * one level under the zone so Cloudflare's free *.prodeck.live certificate
+ * covers it. The second is for `wrangler dev` on this computer (browsers send
+ * *.localhost to 127.0.0.1).
+ */
+export const SUFFIXES = ["-crew.prodeck.live", "-crew.localhost"];
 
 /** Same rules as the secure local address names (local-edge/src/names.ts). */
 const NAME_RE = /^[a-z0-9](?:[a-z0-9]|-(?!-)){1,30}[a-z0-9]$/;
 
 /**
- * Which church a request is for: the first label of `<name>.crew.prodeck.live`.
- * A `x-prodeck-church` header stands in when the host has no name (the booth
- * calling through workers.dev, the tests). null = not a church address.
+ * Which church a request is for: the name in `<name>-crew.prodeck.live`. A
+ * `x-prodeck-church` header stands in when the host has no name (the booth
+ * calling a local test Worker, the tests). null = not a church address.
  */
-export function churchFor(host: string, header: string | null, bases = BASES): string | null {
+export function churchFor(host: string, header: string | null, suffixes = SUFFIXES): string | null {
   const h = host.toLowerCase().replace(/:\d+$/, "");
-  for (const base of bases) {
-    if (h.endsWith(`.${base}`)) {
-      const name = h.slice(0, -(base.length + 1));
+  for (const suffix of suffixes) {
+    if (h.endsWith(suffix)) {
+      // One label only: "a.b-crew.prodeck.live" is nobody's.
+      const name = h.slice(0, -suffix.length);
       return NAME_RE.test(name) ? name : null;
     }
   }

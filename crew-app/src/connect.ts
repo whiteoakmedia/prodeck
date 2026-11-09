@@ -13,7 +13,7 @@ export interface Church {
   /** Last opened, epoch ms. */
   lastMs: number;
   /**
-   * The church's crew address (https://<name>.crew.prodeck.live), as the
+   * The church's crew address (https://<name>-crew.prodeck.live), as the
    * booth reported it (/api/origin). Opened when the booth's own address
    * doesn't answer: off the church Wi-Fi, or with the booth Mac off.
    */
@@ -22,7 +22,7 @@ export interface Church {
 
 /** Only a real crew address is kept (the booth said it; a page can't). */
 export function cleanCrew(v: unknown): string {
-  const m = /^https:\/\/[a-z0-9-]+\.crew\.prodeck\.live$/i.exec(String(v ?? "").trim().replace(/\/+$/, ""));
+  const m = /^https:\/\/[a-z0-9-]+-crew\.prodeck\.live$/i.exec(String(v ?? "").trim().replace(/\/+$/, ""));
   return m ? m[0].toLowerCase() : "";
 }
 

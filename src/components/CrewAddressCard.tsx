@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { crewCloudRename, crewCloudRetry, crewCloudStatus, on, type CrewCloudStatus, type Settings } from "../lib/tauri";
 import { nameProblem } from "../../local-edge/src/names";
 
-// Settings, Crew & screens: the crew address (<name>.crew.prodeck.live,
+// Settings, Crew & screens: the crew address (<name>-crew.prodeck.live,
 // src-tauri/src/crewcloud.rs). On for every booth unless switched off here.
 // The switch is part of the page's form (Save applies it), like Comms.
 
@@ -47,9 +47,12 @@ export function CrewAddressCard({ form, set }: { form: Settings; set: (on: boole
 
   const enabled = form.crew_cloud !== false;
   const url = st?.url || form.crew_url || "";
+  const waiting = enabled && st?.phase === "waiting";
   const chip = !enabled
     ? { cls: "", text: "off" }
-    : st?.linked
+    : waiting
+      ? { cls: "", text: "not open yet" }
+      : st?.linked
       ? { cls: "online", text: "linked" }
       : st?.phase === "error"
         ? { cls: "warn", text: "trouble" }
@@ -72,7 +75,13 @@ export function CrewAddressCard({ form, set }: { form: Settings; set: (on: boole
         waits for the booth. Nothing to set up: no port forwarding, no domain. Comms and camera feeds stay on the church
         Wi-Fi. Press Save to apply.
       </p>
-      {enabled && (
+      {waiting && (
+        <p className="hint">
+          White Oak Media hasn't opened crew addresses yet. Until it does, this computer sends nothing for it and
+          claims no name; it checks once an hour.
+        </p>
+      )}
+      {enabled && !waiting && (
         <>
           {url ? (
             <p style={{ margin: "6px 0" }}>
@@ -110,7 +119,7 @@ export function CrewAddressCard({ form, set }: { form: Settings; set: (on: boole
                     spellCheck={false}
                     onChange={(e) => setRename(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
                   />
-                  <span className="local-suffix">.crew.prodeck.live</span>
+                  <span className="local-suffix">-crew.prodeck.live</span>
                 </div>
                 {problem && <p className="small local-name-bad">{problem}</p>}
                 <div className="kiosk-actions">

@@ -3,21 +3,27 @@ import { churchFor, forwardHeaders, relayRefuses, responseHeaders, verifier } fr
 
 describe("churchFor", () => {
   it("reads the church from its crew address", () => {
-    expect(churchFor("cornerstone.crew.prodeck.live", null)).toBe("cornerstone");
-    expect(churchFor("St-Johns.crew.prodeck.live", null)).toBe("st-johns");
-    expect(churchFor("grace.crew.localhost:8787", null)).toBe("grace");
+    expect(churchFor("cornerstone-crew.prodeck.live", null)).toBe("cornerstone");
+    expect(churchFor("St-Johns-crew.prodeck.live", null)).toBe("st-johns");
+    expect(churchFor("grace-crew.localhost:8787", null)).toBe("grace");
+    // A church whose own name ends in -crew still parses (the suffix once).
+    expect(churchFor("team-crew-crew.prodeck.live", null)).toBe("team-crew");
   });
-  it("refuses anything that isn't a name under the base", () => {
-    expect(churchFor("crew.prodeck.live", null)).toBeNull();
-    expect(churchFor("a.b.crew.prodeck.live", null)).toBeNull();
+  it("refuses anything that isn't one name under the zone", () => {
     expect(churchFor("prodeck.live", null)).toBeNull();
+    expect(churchFor("www.prodeck.live", null)).toBeNull();
+    expect(churchFor("-crew.prodeck.live", null)).toBeNull();
+    expect(churchFor("a.b-crew.prodeck.live", null)).toBeNull();
+    expect(churchFor("grace.local.prodeck.live", null)).toBeNull();
+    expect(churchFor("grace-crew.local.prodeck.live", null)).toBeNull();
+    expect(churchFor("grace.crew.prodeck.live", null)).toBeNull();
+    expect(churchFor("x--y-crew.prodeck.live", null)).toBeNull();
     expect(churchFor("evil.com", null)).toBeNull();
-    expect(churchFor("x--y.crew.prodeck.live", null)).toBeNull();
   });
   it("takes the header only when the host has no name", () => {
-    expect(churchFor("prodeck-crew.example.workers.dev", "grace")).toBe("grace");
-    expect(churchFor("cornerstone.crew.prodeck.live", "grace")).toBe("cornerstone");
-    expect(churchFor("x.workers.dev", "../etc")).toBeNull();
+    expect(churchFor("127.0.0.1:8799", "grace")).toBe("grace");
+    expect(churchFor("cornerstone-crew.prodeck.live", "grace")).toBe("cornerstone");
+    expect(churchFor("127.0.0.1", "../etc")).toBeNull();
   });
 });
 

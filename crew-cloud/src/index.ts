@@ -1,5 +1,5 @@
 /**
- * prodeck-crew: every church's crew address, <name>.crew.prodeck.live.
+ * prodeck-crew: every church's crew address, <name>-crew.prodeck.live.
  *
  * A church's crew reach their booth from anywhere through this, and still see
  * this week's plan, checklists and team chat while the booth Mac is off. One
@@ -19,7 +19,7 @@
  *                                         booth off: /api/* → 503, pages → the app shell
  *
  * The names are the secure local address names (local-edge/): a church that
- * claimed stjohns.local.prodeck.live is stjohns.crew.prodeck.live here, with
+ * claimed stjohns.local.prodeck.live is stjohns-crew.prodeck.live here, with
  * the same secret. This Worker never hands names out and never writes DNS.
  */
 import { Church, type Env } from "./church";

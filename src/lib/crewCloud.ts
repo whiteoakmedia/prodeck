@@ -1,4 +1,4 @@
-// Crew address (<name>.crew.prodeck.live, design/CREW_ADDRESS.md): the rules
+// Crew address (<name>-crew.prodeck.live, design/CREW_ADDRESS.md): the rules
 // the booth and the phones share, kept free of React so they can be tested.
 //
 //  - The booth's window builds the week as it shows it (overrides and all)
@@ -12,18 +12,19 @@
 /** Where a phone keeps its church's crew address. */
 export const CREW_URL_KEY = "prodeck.crewUrl";
 
-const BASES = [".crew.prodeck.live", ".crew.localhost"];
+/** <name>-crew.prodeck.live (one level, under the zone's free certificate),
+ *  or <name>-crew.localhost for a local test Worker. */
+const CREW_HOST = /^[a-z0-9-]+-crew\.(prodeck\.live|localhost)$/;
 
 /** Is this page on a crew address (as opposed to the booth itself)? */
 export function isCrewHost(hostname: string): boolean {
-  const h = hostname.toLowerCase();
-  return BASES.some((b) => h.endsWith(b));
+  return CREW_HOST.test(hostname.toLowerCase());
 }
 
 /** Only an https crew address (or one on this computer, for testing) is kept. */
 export function cleanCrewUrl(v: string | null | undefined): string {
   const t = (v ?? "").trim().replace(/\/+$/, "");
-  const m = /^(https:\/\/[a-z0-9-]+\.crew\.prodeck\.live|http:\/\/[a-z0-9-]+\.crew\.localhost(:\d+)?)$/i.exec(t);
+  const m = /^(https:\/\/[a-z0-9-]+-crew\.prodeck\.live|http:\/\/[a-z0-9-]+-crew\.localhost(:\d+)?)$/i.exec(t);
   return m ? m[1].toLowerCase() : "";
 }
 

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { verifier } from "../src/util";
 
 const SALT = "pepper-salt-0123";
-const host = (name: string) => `https://${name}.crew.prodeck.live`;
+const host = (name: string) => `https://${name}-crew.prodeck.live`;
 
 async function copy(over: Record<string, unknown> = {}) {
   return {
@@ -205,7 +205,7 @@ describe("booth off: the app still opens", () => {
   });
 
   it("says nothing for an address that isn't a church", async () => {
-    const r = await SELF.fetch("https://crew.prodeck.live/");
+    const r = await SELF.fetch("https://www.prodeck.live/");
     expect(r.status).toBe(404);
   });
 });

@@ -1,24 +1,26 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  // Every church's crew address, <name>.crew.prodeck.live: the cloud copy of
+  // Every church's crew address, <name>-crew.prodeck.live: the cloud copy of
   // the week for when the booth is off, and a relay to the booth when it's on.
   // See src/index.ts and design/CREW_ADDRESS.md.
   //
+  // One level under prodeck.live on purpose: Cloudflare's free Universal SSL
+  // certificate (*.prodeck.live) covers it, so no Advanced Certificate Manager.
+  //
   // Not deployed yet. Before the first deploy (Zach, once):
-  //  - prodeck-local (local-edge/) must be deployed first: it exports the
-  //    `Names` entrypoint this binds to, which checks a booth's claim secret.
-  //  - DNS: a proxied wildcard record  *.crew  AAAA 100::  on prodeck.live.
-  //  - TLS: Cloudflare's free certificate covers one level (*.prodeck.live),
-  //    not two. Either buy Advanced Certificate Manager and order a
-  //    certificate for *.crew.prodeck.live, or turn on Total TLS (needs ACM).
-  //    See design/CREW_ADDRESS.md for the per name alternative.
-  //  - Then uncomment "routes" below. The pattern is more specific than
-  //    crew-edge's prodeck.live/* (apex only), so the two never overlap.
+  //  - Deploy prodeck-local (local-edge/) first: it exports the `Names`
+  //    entrypoint this binds to, and writes each church's proxied DNS record
+  //    (<name>-crew AAAA 100::) when its booth turns the crew address on.
+  //  - Then uncomment "routes" below and deploy this. The pattern only matches
+  //    hosts ending in "-crew.prodeck.live": never prodeck.live itself (crew-edge,
+  //    prodeck.live/*), www, or anything under local.prodeck.live.
+  //  - Last, set CREW_READY to "1" in local-edge/wrangler.jsonc and redeploy it:
+  //    booths do nothing at all for the crew address until then.
   "name": "prodeck-crew",
   "main": "src/index.ts",
   "compatibility_date": "2026-07-01",
   "workers_dev": false,
-  // "routes": [{ "pattern": "*.crew.prodeck.live/*", "zone_name": "prodeck.live" }],
+  // "routes": [{ "pattern": "*-crew.prodeck.live/*", "zone_name": "prodeck.live" }],
   "durable_objects": { "bindings": [{ "name": "CHURCH", "class_name": "Church" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Church"] }],
   "services": [{ "binding": "NAMES", "service": "prodeck-local", "entrypoint": "Names" }],

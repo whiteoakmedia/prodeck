@@ -390,7 +390,7 @@ export interface Settings {
   local_name: string;
   local_ip: string;
   local_url: string;
-  /** Crew address (crewcloud.rs): on/off, the name claimed just for it, and https://<name>.crew.prodeck.live. */
+  /** Crew address (crewcloud.rs): on/off, the name claimed just for it, and https://<name>-crew.prodeck.live. */
   crew_cloud: boolean;
   crew_name: string;
   crew_url: string;

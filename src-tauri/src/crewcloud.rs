@@ -1,5 +1,5 @@
 // Crew address: this booth's crew reach it from anywhere at
-// <name>.crew.prodeck.live, and still see the week while it's off.
+// <name>-crew.prodeck.live, and still see the week while it's off.
 // (design/CREW_ADDRESS.md; the Worker is crew-cloud/.)
 //
 // Two loops, both outbound only, so the church sets up nothing (no port
@@ -39,7 +39,10 @@ use tokio_tungstenite::tungstenite::{client::IntoClientRequest, Message};
 
 use crate::settings::SettingsState;
 
-pub const BASE: &str = "crew.prodeck.live";
+/// After the church's name: <name>-crew.prodeck.live. One level under the
+/// zone, so Cloudflare's free *.prodeck.live certificate covers it. Names are
+/// at most 32 characters, so the label stays well inside DNS's 63.
+pub const SUFFIX: &str = "-crew.prodeck.live";
 const SYNC_EVERY: Duration = Duration::from_secs(120);
 /// After a plan change, wait this long for more before sending.
 const SETTLE: Duration = Duration::from_secs(5);
@@ -59,16 +62,16 @@ fn origin(name: &str) -> String {
     std::env::var("PRODECK_CREW_ORIGIN").unwrap_or_else(|_| crew_url(name))
 }
 
-/// What phones open: https://<name>.crew.prodeck.live
+/// What phones open: https://<name>-crew.prodeck.live
 pub fn crew_url(name: &str) -> String {
-    format!("https://{name}.{BASE}")
+    format!("https://{name}{SUFFIX}")
 }
 
 // ---------------------------------------------------------------- status
 
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct Status {
-    /// off | starting | ready | error
+    /// off | waiting (the service isn't open yet: nothing is sent) | starting | ready | error
     pub phase: String,
     pub name: String,
     pub url: String,
@@ -393,7 +396,48 @@ fn http() -> Result<reqwest::Client, String> {
         .map_err(|e| e.to_string())
 }
 
-/// The name to use, claiming one first if the booth has none. None = off.
+/// Is the crew address service open? prodeck-local answers /v1/crew/ready
+/// once White Oak Media has deployed prodeck-crew and set CREW_READY. Until
+/// then a booth claims nothing, sends nothing and links to nothing: asked at
+/// most once an hour, and a prodeck-local without the route (404) counts as
+/// not open. Once open it stays open for this run.
+static READY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static READY_ASKED_MS: AtomicU64 = AtomicU64::new(0);
+const READY_RECHECK_MS: u64 = 3600 * 1000;
+
+pub fn should_ask_ready(ready: bool, asked_ms: u64, now_ms: u64) -> bool {
+    !ready && (asked_ms == 0 || now_ms.saturating_sub(asked_ms) >= READY_RECHECK_MS)
+}
+
+async fn service_ready() -> bool {
+    let now = crate::identity::now_ms();
+    if !should_ask_ready(READY.load(Ordering::Relaxed), READY_ASKED_MS.load(Ordering::Relaxed), now) {
+        return READY.load(Ordering::Relaxed);
+    }
+    READY_ASKED_MS.store(now, Ordering::Relaxed);
+    let ready = match crate::localhttps::edge_call(reqwest::Method::GET, "/v1/crew/ready", Value::Null).await {
+        Ok(v) => v.get("ready").and_then(|r| r.as_bool()).unwrap_or(false),
+        Err(_) => false,
+    };
+    READY.store(ready, Ordering::Relaxed);
+    ready
+}
+
+/// The name whose DNS record (<name>-crew) was confirmed this run.
+static RECORD_FOR: Mutex<String> = Mutex::new(String::new());
+
+/// Make sure <name>-crew.prodeck.live exists (prodeck-local writes it, proxied).
+async fn ensure_record(name: &str, secret: &str) -> Result<(), String> {
+    if *RECORD_FOR.lock().unwrap_or_else(|p| p.into_inner()) == name {
+        return Ok(());
+    }
+    crate::localhttps::edge_call(reqwest::Method::POST, "/v1/crew", json!({ "name": name, "secret": secret, "on": true })).await?;
+    *RECORD_FOR.lock().unwrap_or_else(|p| p.into_inner()) = name.to_string();
+    Ok(())
+}
+
+/// The name to use, claiming one first if the booth has none. None = off,
+/// or the service isn't open yet.
 async fn ensure_name(app: &AppHandle) -> Result<Option<(String, String)>, String> {
     let (on, claim_now) = {
         let g = app.state::<SettingsState>();
@@ -416,10 +460,16 @@ async fn ensure_name(app: &AppHandle) -> Result<Option<(String, String)>, String
                 if !r.status().is_success() && r.status() != reqwest::StatusCode::FORBIDDEN {
                     return Err(format!("The crew address service didn't delete the copy ({}).", r.status()));
                 }
+                // And the address itself stops resolving.
+                let _ = crate::localhttps::edge_call(reqwest::Method::POST, "/v1/crew", json!({ "name": name, "secret": secret, "on": false })).await;
+                RECORD_FOR.lock().unwrap_or_else(|p| p.into_inner()).clear();
             }
             st["live"] = json!(false);
             write_state(&st);
         }
+        return Ok(None);
+    }
+    if !service_ready().await {
         return Ok(None);
     }
     let (name, secret) = match claim_now {
@@ -433,6 +483,9 @@ async fn ensure_name(app: &AppHandle) -> Result<Option<(String, String)>, String
             (n, sec)
         }
     };
+    ensure_record(&name, &secret).await?;
+    // Only now do phones learn it: an address that doesn't resolve yet is no
+    // use to remember.
     let url = crew_url(&name);
     save_settings(app, |s| s.crew_url = url.clone());
     Ok(Some((name, secret)))
@@ -440,7 +493,9 @@ async fn ensure_name(app: &AppHandle) -> Result<Option<(String, String)>, String
 
 async fn sync_once(app: &AppHandle) -> Result<(), String> {
     let Some((name, secret)) = ensure_name(app).await? else {
-        set_status(app, |s| *s = Status { phase: "off".into(), ..Default::default() });
+        let on = app.state::<SettingsState>().lock().unwrap_or_else(|p| p.into_inner()).crew_cloud;
+        let phase = if on { "waiting" } else { "off" };
+        set_status(app, |s| *s = Status { phase: phase.into(), ..Default::default() });
         return Ok(());
     };
     set_status(app, |s| {
@@ -809,7 +864,8 @@ pub fn spawn(app: AppHandle) {
                 let s = g.lock().unwrap_or_else(|p| p.into_inner());
                 s.crew_cloud && claim_of(&s).is_some()
             };
-            if !named {
+            // Nothing until the service is open (the sync loop asks).
+            if !named || !READY.load(Ordering::Relaxed) {
                 tokio::time::sleep(Duration::from_secs(15)).await;
                 continue;
             }
@@ -885,6 +941,9 @@ pub async fn crew_cloud_rename(name: String, app: AppHandle) -> Result<Status, S
         s.crew_secret = secret.clone();
         s.crew_url = crew_url(&name);
     });
+    // The new name's record is made on the next sync; giving the old name
+    // back removes its record too.
+    RECORD_FOR.lock().unwrap_or_else(|p| p.into_inner()).clear();
     if !old.0.is_empty() {
         let _ = crate::localhttps::edge_call(reqwest::Method::POST, "/v1/release", json!({ "name": old.0, "secret": old.1 })).await;
     }
@@ -926,6 +985,24 @@ mod tests {
         // Nothing usable in the device name: a plain fallback, still valid.
         assert!(candidates("", "a1b2").iter().all(|n| name_ok(n) && n.starts_with("church")));
         assert!(candidates("Crew", "zz99").iter().all(|n| name_ok(n)));
+    }
+
+    #[test]
+    fn the_crew_address_is_one_label_under_the_zone() {
+        assert_eq!(crew_url("grace"), "https://grace-crew.prodeck.live");
+        let longest = "a".repeat(32);
+        assert!(name_ok(&longest) && !name_ok(&"a".repeat(33)));
+        let host = crew_url(&longest).trim_start_matches("https://").to_string();
+        assert_eq!(host.matches('.').count(), 2, "exactly <label>.prodeck.live");
+        assert!(host.split('.').next().unwrap().len() <= 63);
+    }
+
+    #[test]
+    fn asks_whether_the_service_is_open_at_most_hourly() {
+        assert!(should_ask_ready(false, 0, 1_000));
+        assert!(!should_ask_ready(false, 1_000, 1_000 + 60_000));
+        assert!(should_ask_ready(false, 1_000, 1_000 + 3600 * 1000));
+        assert!(!should_ask_ready(true, 0, 1_000), "open stays open");
     }
 
     #[test]

@@ -1,4 +1,4 @@
-# Crew address (`<name>.crew.prodeck.live`)
+# Crew address (`<name>-crew.prodeck.live`)
 
 (Not to be confused with design/CREW_CLOUD.md, the older plan for Cornerstone's own crew-edge.)
 
@@ -23,7 +23,7 @@ the church to set up, on by default with a switch in Settings, Crew & screens.
 ## Names and claiming
 
 The crew address uses the secure local address's name (design/LOCAL_HTTPS.md):
-`cornerstone.local.prodeck.live` means `cornerstone.crew.prodeck.live`, with
+`cornerstone.local.prodeck.live` means `cornerstone-crew.prodeck.live`, with
 the same secret. A booth without one claims a name from the same service on
 its first sync (`/v1/claim`, no DNS record is made), from the computer's name
 (`grace-church`, then `grace-church-2`, and so on), kept as `crew_name` and
@@ -32,7 +32,10 @@ Claiming a secure local address with the crew name adopts it; giving the
 secure local address back keeps the name for the crew address
 (`DELETE /v1/address` instead of `/v1/release`).
 
-prodeck-crew never hands out names or writes DNS. It checks a booth's secret
+prodeck-crew never hands out names or writes DNS. prodeck-local writes each
+church's record when its booth turns the crew address on (`POST /v1/crew`,
+`<name>-crew` AAAA `100::`, proxied, comment "prodeck crew") and removes it
+when the booth turns it off or gives the name back. It checks a booth's secret
 with prodeck-local through the `NAMES` service binding the first time it sees
 it, remembers its hash for an hour, and wipes a church's store if a different
 secret ever proves the name (released and claimed by someone else).
@@ -111,29 +114,63 @@ the Worker's copy of `dist/`.
 - ProDeck Crew learns the crew address from `/api/origin` (`crew`) and opens it
   when the booth's own address doesn't answer.
 
+## Why one level, and what it can't touch
+
+`<name>-crew.prodeck.live` is a single label under the zone, so Cloudflare's
+free Universal SSL certificate (`prodeck.live` and `*.prodeck.live`) covers
+it: no Advanced Certificate Manager. Names are at most 32 characters, so the
+label is at most 37 (DNS allows 63); `local-edge/src/names.ts` `crewHost`
+refuses anything else.
+
+- **Route** `*-crew.prodeck.live/*`: only hosts ending in `-crew.prodeck.live`.
+  Never the apex (crew-edge's `prodeck.live/*`), `www`, or anything under
+  `local.prodeck.live` (those end in `.local.prodeck.live`).
+- **DNS, per church (default, `CREW_DNS = "per-name"`):** nothing resolves
+  that a booth didn't turn on. A record of that name somebody else made is
+  never taken over (the booth gets "already used, pick another name"). Each
+  counts against `MAX_RECORDS` (180, address and crew records together),
+  under Cloudflare's 200 record free plan limit.
+- **DNS, wildcard (`CREW_DNS = "wildcard"`):** for when churches outgrow that
+  limit, Zach adds one proxied `*` AAAA `100::` record and prodeck-local stops
+  writing per church records. Any unclaimed one level name then resolves to
+  Cloudflare and gets an error page (the route still only answers `-crew`
+  names); explicit records (`www`, `local`'s children) are unaffected.
+- **Collisions between churches** can't happen: the crew label is the
+  claimed name plus `-crew`, and names are unique in prodeck-local. A church
+  named `team-crew` is `team-crew-crew.prodeck.live`; the Worker strips the
+  suffix once.
+
+## Nothing happens until it's open
+
+prodeck-local's `CREW_READY` var (`"0"` in the repo) gates everything. A booth
+with the crew address on asks `GET /v1/crew/ready` at most once an hour; until
+it says yes (or while prodeck-local is the older deploy without the route, a
+404), the booth claims no name, writes no record, sends no copy and opens no
+link, and the card says crew addresses aren't open yet. With the switch off a
+booth makes no crew address request at all. The switch is **on** by default
+(fresh installs and existing ones, via the settings default).
+
 ## Zach's prodeck.live
 
 Untouched. crew-edge's route is `prodeck.live/*` (the apex only), this one is
-`*.crew.prodeck.live/*`. Cornerstone's booth runs both: edge.rs still pushes to
-crew-edge, and crewcloud.rs gives it `<name>.crew.prodeck.live` as well. On
+`*-crew.prodeck.live/*`. Cornerstone's booth runs both: edge.rs still pushes to
+crew-edge, and crewcloud.rs gives it `<name>-crew.prodeck.live` as well. On
 prodeck.live the booth-off screen still asks crew-edge first (same origin).
 
 ## Deploying (Zach, once; nothing is deployed yet)
 
-1. **prodeck-local first** (it exports `Names`): `cd local-edge && npx wrangler deploy`.
-2. **DNS:** on prodeck.live, a proxied record `*.crew` AAAA `100::`.
-3. **Certificate.** Cloudflare's free Universal SSL covers `*.prodeck.live`
-   only, one level, so `grace.crew.prodeck.live` would fail TLS. Either:
-   - **Advanced Certificate Manager** ($10 a month on the zone), then order an
-     advanced certificate for `*.crew.prodeck.live`. Recommended.
-   - Or a Worker custom domain per church (free, one certificate each, added
-     by API at claim time). Not built; it would need a token with Workers
-     edit rights in prodeck-local.
-4. **Deploy prodeck-crew:** `npx vite build` at the repo root (the shell comes
-   from `dist/`), then in `crew-cloud/` uncomment `routes` in `wrangler.jsonc`
-   and `npx wrangler deploy`. Redeploy after each release so the shell matches.
-5. **Release** a ProDeck with crewcloud.rs. Booths start syncing 20 seconds
-   after launch.
+1. **prodeck-local:** `cd local-edge && npx wrangler deploy` (it adds the
+   `Names` entrypoint, `/v1/crew` and `/v1/crew/ready`, still with
+   `CREW_READY = "0"`). Its API token already has DNS edit on prodeck.live.
+2. **prodeck-crew:** `npx vite build` at the repo root (the shell comes from
+   `dist/`), then in `crew-cloud/` uncomment `routes` in `wrangler.jsonc` and
+   `npx wrangler deploy`. Redeploy after each release so the shell matches.
+3. **Open it:** set `CREW_READY` to `"1"` in `local-edge/wrangler.jsonc` and
+   deploy prodeck-local again. Booths pick it up within the hour.
+4. **Release** a ProDeck with crewcloud.rs (any time; before step 3 it does
+   nothing).
+
+No certificate step: Universal SSL already covers the names.
 
 ## Limits and cost
 
@@ -151,8 +188,11 @@ prodeck.live the booth-off screen still asks crew-edge first (same origin).
 
 ## Local test
 
-`cd crew-cloud && npx wrangler dev -c wrangler.jsonc -c ../local-edge/wrangler.jsonc`
-(local-edge first in the list only matters for its own port), then open
-`http://<name>.crew.localhost:8787`. Point a booth build at it with
-`PRODECK_CREW_ORIGIN=http://127.0.0.1:8787` (the name goes in a header) and
-`PRODECK_LOCAL_EDGE` at the local prodeck-local.
+Two terminals: `cd local-edge && npx wrangler dev --port 8798 --var CREW_READY:1`
+and `cd crew-cloud && npm run dev` (port 8799; the `NAMES` binding finds the
+local prodeck-local by itself). Claim a name on 8798, then open
+`http://<name>-crew.localhost:8799`. Point a booth build at them with
+`PRODECK_CREW_ORIGIN=http://127.0.0.1:8799` (the name goes in a header) and
+`PRODECK_LOCAL_EDGE=http://127.0.0.1:8798`. Without a `CF_API_TOKEN` the local
+prodeck-local can't write the crew record, so `/v1/crew` errors there; use
+`--var CREW_DNS:wildcard` too.

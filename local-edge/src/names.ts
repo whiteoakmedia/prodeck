@@ -49,3 +49,16 @@ export function isPrivateIPv4(ip: string): boolean {
   if ([a, b, c, d].some((n) => n > 255)) return false;
   return a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
 }
+
+/**
+ * A church's crew address host: <name>-crew.<zone> (crew-cloud/). One label,
+ * so Cloudflare's free *.prodeck.live certificate covers it. With NAME_MAX at
+ * 32 the label is at most 37 characters, well inside DNS's 63.
+ */
+export const CREW_SUFFIX = "-crew";
+export function crewHost(name: string, zone = "prodeck.live"): string {
+  if (nameProblem(name)) throw new Error("refusing a crew address for a name that isn't valid");
+  const label = `${name}${CREW_SUFFIX}`;
+  if (label.length > 63) throw new Error("refusing a DNS label over 63 characters");
+  return `${label}.${zone}`;
+}

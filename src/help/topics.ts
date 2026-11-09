@@ -779,8 +779,8 @@ Already have your own public address (a domain with a tunnel)? Links use that, a
     id: "crew-address",
     group: "Phones & kiosks",
     title: "Reaching ProDeck away from church, and while the booth is off",
-    aliases: ["crew address", "crew.prodeck.live", "from home", "outside the building", "cellular", "booth is off", "remote access", "away", "offline plan"],
-    body: `Every booth has a **crew address**, **https://yourname.crew.prodeck.live**. It's on unless you turn it off in **Settings → Crew & screens → Crew address**, and there's nothing to set up: no port forwarding, no domain, no tunnel.
+    aliases: ["crew address", "crew.prodeck.live", "-crew.prodeck.live", "from home", "outside the building", "cellular", "booth is off", "remote access", "away", "offline plan"],
+    body: `Every booth has a **crew address**, **https://yourname-crew.prodeck.live**. It's on unless you turn it off in **Settings → Crew & screens → Crew address**, and there's nothing to set up: no port forwarding, no domain, no tunnel.
 
 **With ProDeck open at the booth,** crew open the crew address from home or on cellular and get the live booth, the same as on the church Wi-Fi. The booth keeps one connection out to White Oak Media's service, and phones' requests come to it that way. Passwords and permissions are checked by the booth, as always. Comms, camera feeds and the overflow audio stay on the church Wi-Fi.
 

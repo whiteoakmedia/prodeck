@@ -3,11 +3,13 @@
   // Secure local addresses for ProDeck booths: <name>.local.prodeck.live,
   // pointing at a booth's address on its own church network, so phones there
   // get https (and with it comms and page notifications) with nothing to set
-  // up. See src/index.ts and design/LOCAL_HTTPS.md.
+  // up. See src/index.ts and design/LOCAL_HTTPS.md. It also writes the crew
+  // address records, <name>-crew.prodeck.live, proxied (design/CREW_ADDRESS.md).
   //
   // Lives on workers.dev, NOT on prodeck.live: the crew-edge Worker fronts
   // that zone, and this one must never be in its path. It only ever touches
-  // DNS records under local.prodeck.live, DNS-only.
+  // DNS records under local.prodeck.live (DNS-only) and <name>-crew.prodeck.live
+  // (proxied, pointing at 100::, i.e. nowhere but the crew Worker's route).
   //
   // Set once (Zach types these; never commit them):
   //   npx wrangler secret put CF_API_TOKEN   (Zone.DNS:Edit on prodeck.live only)
@@ -18,7 +20,14 @@
   "vars": {
     // The prodeck.live zone id. Empty = looked up by name with the API token.
     "ZONE_ID": "",
-    "BASE": "local.prodeck.live"
+    "BASE": "local.prodeck.live",
+    // Crew addresses (<name>-crew.prodeck.live, crew-cloud/). Leave "0" until
+    // prodeck-crew is deployed: booths check this and do nothing until "1".
+    "CREW_READY": "0",
+    // "per-name": a proxied record per church that turns it on (the default,
+    // nothing else under prodeck.live resolves). "wildcard": you added one
+    // proxied  *  AAAA 100::  record yourself; then this writes none.
+    "CREW_DNS": "per-name"
   },
   "durable_objects": { "bindings": [{ "name": "REGISTRY", "class_name": "Registry" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Registry"] }],

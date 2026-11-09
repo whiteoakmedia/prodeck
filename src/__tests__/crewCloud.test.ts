@@ -12,23 +12,27 @@ import {
 
 describe("crew address", () => {
   it("knows a crew address when it sees one", () => {
-    expect(isCrewHost("cornerstone.crew.prodeck.live")).toBe(true);
-    expect(isCrewHost("grace.crew.localhost")).toBe(true);
+    expect(isCrewHost("cornerstone-crew.prodeck.live")).toBe(true);
+    expect(isCrewHost("grace-crew.localhost")).toBe(true);
     expect(isCrewHost("cornerstone.local.prodeck.live")).toBe(false);
+    expect(isCrewHost("prodeck.live")).toBe(false);
+    expect(isCrewHost("www.prodeck.live")).toBe(false);
+    expect(isCrewHost("grace.crew.prodeck.live")).toBe(false);
+    expect(isCrewHost("a.grace-crew.prodeck.live")).toBe(false);
     expect(isCrewHost("192.168.1.20")).toBe(false);
   });
 
   it("only remembers a real crew address", () => {
-    expect(cleanCrewUrl("https://Grace.crew.prodeck.live/")).toBe("https://grace.crew.prodeck.live");
-    expect(cleanCrewUrl("http://grace.crew.localhost:8787")).toBe("http://grace.crew.localhost:8787");
-    expect(cleanCrewUrl("http://grace.crew.prodeck.live")).toBe("");
+    expect(cleanCrewUrl("https://Grace-crew.prodeck.live/")).toBe("https://grace-crew.prodeck.live");
+    expect(cleanCrewUrl("http://grace-crew.localhost:8787")).toBe("http://grace-crew.localhost:8787");
+    expect(cleanCrewUrl("http://grace-crew.prodeck.live")).toBe("");
     expect(cleanCrewUrl("https://evil.com/?x=.crew.prodeck.live")).toBe("");
-    expect(cleanCrewUrl("https://a.b.crew.prodeck.live")).toBe("");
+    expect(cleanCrewUrl("https://a.b-crew.prodeck.live")).toBe("");
     expect(cleanCrewUrl(null)).toBe("");
   });
 
   it("asks the crew address first from the booth's own address", () => {
-    const crew = "https://grace.crew.prodeck.live";
+    const crew = "https://grace-crew.prodeck.live";
     expect(edgeBases("http://192.168.1.20:8088", crew, "http://192.168.1.20:8088")).toEqual([crew, "http://192.168.1.20:8088"]);
     expect(edgeBases("https://grace.local.prodeck.live", crew, "https://grace.local.prodeck.live")).toEqual([
       crew,
@@ -43,10 +47,10 @@ describe("crew address", () => {
   });
 
   it("moves to the crew address only when the booth is on and out of reach", () => {
-    const crew = "https://grace.crew.prodeck.live";
+    const crew = "https://grace-crew.prodeck.live";
     expect(shouldMoveToCrew("192.168.1.20", crew, true)).toBe(true);
     expect(shouldMoveToCrew("192.168.1.20", crew, false)).toBe(false);
-    expect(shouldMoveToCrew("grace.crew.prodeck.live", crew, true)).toBe(false);
+    expect(shouldMoveToCrew("grace-crew.prodeck.live", crew, true)).toBe(false);
     expect(shouldMoveToCrew("192.168.1.20", "", true)).toBe(false);
   });
 

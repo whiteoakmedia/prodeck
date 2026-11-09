@@ -273,7 +273,7 @@ pub fn run() {
             // Secure local address (claimed in Settings): keeps the name
             // pointed here and the certificate fresh.
             localhttps::spawn(app.handle().clone());
-            // Crew address (<name>.crew.prodeck.live): the cloud copy and the
+            // Crew address (<name>-crew.prodeck.live): the cloud copy and the
             // relay. On unless turned off in Settings, Crew & screens.
             crewcloud::spawn(app.handle().clone());
             ga4::spawn_ga4_poll(app.handle().clone());

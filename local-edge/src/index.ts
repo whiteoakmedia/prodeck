@@ -16,14 +16,21 @@
  *   booth  POST   /v1/challenge {name, secret, value}   certificate challenge TXT
  *   booth  DELETE /v1/challenge {name, secret}          ...and clean it up
  *   booth  DELETE /v1/address   {name, secret}          stop pointing the name anywhere (kept for the crew address)
+ *   booth  GET    /v1/crew/ready                          is the crew address service live? (CREW_READY)
+ *   booth  POST   /v1/crew      {name, secret, on}      add or remove <name>-crew.prodeck.live
  *   booth  POST   /v1/release   {name, secret}          give the name back
  *   Worker Names.fetch POST /verify {name, secret}   is this the name's secret? (service binding only)
  *   Zach   POST   /v1/admin/release {name}  (Authorization: Bearer ADMIN_TOKEN)
  *
  * Keeping prodeck.live safe (it also runs Cornerstone's crew app):
- *  - Every record this writes is under local.prodeck.live and DNS-only (never
- *    proxied), so nothing here can touch the zone's own names or the crew-edge
- *    Worker in front of them.
+ *  - Every address record this writes is under local.prodeck.live and
+ *    DNS-only (never proxied), so nothing here can touch the zone's own names
+ *    or the crew-edge Worker in front of them.
+ *  - Crew address records are exactly <valid name>-crew.prodeck.live (names.ts
+ *    crewHost), proxied, pointing at 100:: (nowhere): only the prodeck-crew
+ *    Worker's route (*-crew.prodeck.live/*) answers them. A record of that name
+ *    someone else made is never taken over, and they count against the same
+ *    record ceiling (MAX_RECORDS).
  *  - Address records only ever point at private network addresses
  *    (names.ts isPrivateIPv4), so this can't be used to point a prodeck.live
  *    name at a public site.
@@ -33,7 +40,7 @@
  *    record limit, so the crew app's own records can always be edited.
  */
 import { WorkerEntrypoint } from "cloudflare:workers";
-import { isPrivateIPv4, nameProblem } from "./names";
+import { crewHost, isPrivateIPv4, nameProblem } from "./names";
 
 interface Env {
   REGISTRY: DurableObjectNamespace;
@@ -43,10 +50,27 @@ interface Env {
   ADMIN_TOKEN?: string;
   ZONE_ID: string;
   BASE: string;
+  /**
+   * "1" once prodeck-crew (crew-cloud/) is deployed. Until then booths don't
+   * claim names for, sync to or link to the crew address at all.
+   */
+  CREW_READY?: string;
+  /**
+   * "per-name" (default): one proxied record per church that turned its crew
+   * address on, so nothing else under prodeck.live resolves. "wildcard": Zach
+   * added one proxied *.prodeck.live record instead, and this writes none.
+   */
+  CREW_DNS?: string;
 }
 
 /** Each booth uses an address record and, for a minute every two months, a TXT. */
 const MAX_NAMES = 150;
+/**
+ * Records this Worker may hold in the zone at once (address records plus crew
+ * records), leaving room under Cloudflare's 200 record free plan limit for the
+ * zone's own and the challenge TXTs. Past it, switch CREW_DNS to "wildcard".
+ */
+const MAX_RECORDS = 180;
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -77,6 +101,10 @@ export default {
       return registry.fetch(`https://do/available?name=${encodeURIComponent(name)}`);
     }
 
+    if (req.method === "GET" && url.pathname === "/v1/crew/ready") {
+      return json({ ok: true, ready: env.CREW_READY === "1" });
+    }
+
     if (url.pathname === "/v1/admin/release" && req.method === "POST") {
       const auth = req.headers.get("Authorization") ?? "";
       if (!env.ADMIN_TOKEN || !same(await sha256(auth), await sha256(`Bearer ${env.ADMIN_TOKEN}`)))
@@ -88,6 +116,7 @@ export default {
       "POST /v1/claim": "claim",
       "POST /v1/address": "address",
       "DELETE /v1/address": "unaddress",
+      "POST /v1/crew": "crew",
       "POST /v1/challenge": "challenge",
       "DELETE /v1/challenge": "unchallenge",
       "POST /v1/release": "release",
@@ -131,6 +160,7 @@ interface Row {
   ip: string;
   a_id: string;
   txt_ids: string;
+  crew_id: string;
 }
 
 /** One instance holds every name, so a name can never be handed out twice. */
@@ -145,6 +175,12 @@ export class Registry {
     this.sql.exec(`CREATE TABLE IF NOT EXISTS names (
       name TEXT PRIMARY KEY, hash TEXT NOT NULL, created INTEGER NOT NULL, seen INTEGER NOT NULL,
       ip TEXT NOT NULL DEFAULT '', a_id TEXT NOT NULL DEFAULT '', txt_ids TEXT NOT NULL DEFAULT '')`);
+    // Added with the crew address: the id of <name>-crew's record, if any.
+    try {
+      this.sql.exec(`ALTER TABLE names ADD COLUMN crew_id TEXT NOT NULL DEFAULT ''`);
+    } catch {
+      /* already there */
+    }
   }
 
   private row(name: string): Row | null {
@@ -199,6 +235,29 @@ export class Registry {
     return fqdn;
   }
 
+  /** <name>-crew.<zone>: one level, so the zone's free certificate covers it. */
+  private crewName(name: string) {
+    return crewHost(name, this.env.BASE.split(".").slice(1).join("."));
+  }
+
+  private recordCount(): number {
+    return Number(
+      this.sql.exec("SELECT (SELECT COUNT(*) FROM names WHERE a_id != '') + (SELECT COUNT(*) FROM names WHERE crew_id != '') AS n").one().n,
+    );
+  }
+
+  /** Records already in the zone with exactly this name. */
+  private async dnsList(fqdn: string): Promise<{ id: string; comment?: string }[]> {
+    if (!this.env.CF_API_TOKEN) throw new Error("This service isn't set up yet.");
+    const r = await fetch(
+      `https://api.cloudflare.com/client/v4/zones/${await this.zone()}/dns_records?name=${encodeURIComponent(fqdn)}`,
+      { headers: { Authorization: `Bearer ${this.env.CF_API_TOKEN}` } },
+    );
+    const out = (await r.json().catch(() => ({}))) as { success?: boolean; result?: { id: string; comment?: string }[] };
+    if (!out.success) throw new Error(`DNS lookup failed: ${r.status}`);
+    return out.result ?? [];
+  }
+
   private async authed(b: Record<string, unknown>): Promise<Row | Response> {
     const name = String(b.name ?? "").toLowerCase();
     const row = this.row(name);
@@ -248,6 +307,34 @@ export class Registry {
           this.sql.exec("UPDATE names SET ip = ?, a_id = ?, seen = ? WHERE name = ?", ip, id, Date.now(), row.name);
           return json({ ok: true, host: this.host(row.name), ip });
         }
+        case "/crew": {
+          // The crew address's DNS record, <name>-crew.prodeck.live: proxied
+          // (Cloudflare's own certificate, the prodeck-crew Worker in front),
+          // never pointing anywhere real (100:: is the discard prefix).
+          const row = await this.authed(b);
+          if (row instanceof Response) return row;
+          if (this.env.CREW_READY !== "1") return fail(503, "The crew address service isn't open yet.");
+          const on = b.on === true;
+          if (this.env.CREW_DNS === "wildcard") return json({ ok: true, host: this.crewName(row.name) });
+          if (!on) {
+            if (row.crew_id) await this.dns("DELETE", `/${row.crew_id}`);
+            this.sql.exec("UPDATE names SET crew_id = '', seen = ? WHERE name = ?", Date.now(), row.name);
+            return json({ ok: true });
+          }
+          const fqdn = this.crewName(row.name);
+          if (!row.crew_id) {
+            if (this.recordCount() >= MAX_RECORDS) return fail(503, "No more crew addresses can be set up right now. Tell White Oak Media.");
+            // Never take over a record somebody else made (the zone's own,
+            // or one added by hand).
+            const existing = await this.dnsList(fqdn);
+            const theirs = existing.find((r) => r.comment !== "prodeck crew");
+            if (theirs) return fail(409, "That crew address is already used for something else. Pick another name.");
+            const ours = existing.find((r) => r.comment === "prodeck crew");
+            const id = ours?.id ?? (await this.dns("POST", "", { type: "AAAA", name: fqdn, content: "100::", ttl: 1, proxied: true, comment: "prodeck crew" })).id ?? "";
+            this.sql.exec("UPDATE names SET crew_id = ?, seen = ? WHERE name = ?", id, Date.now(), row.name);
+          }
+          return json({ ok: true, host: fqdn });
+        }
         case "/unaddress": {
           // The booth gave up its secure local address but keeps the name for
           // its crew address: the name stops pointing at the church network.
@@ -295,6 +382,7 @@ export class Registry {
           if (row instanceof Response) return row;
           await this.clearChallenges(row);
           if (row.a_id) await this.dns("DELETE", `/${row.a_id}`);
+          if (row.crew_id) await this.dns("DELETE", `/${row.crew_id}`);
           this.sql.exec("DELETE FROM names WHERE name = ?", row.name);
           return json({ ok: true });
         }
