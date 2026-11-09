@@ -23,6 +23,8 @@
 //
 // Secrets: PCO_APP_ID, PCO_SECRET, ADMIN_TOKEN.
 
+import { wellKnown } from "../../crew-cloud/src/applinks";
+
 export interface Env {
   CREW_STATE: DurableObjectNamespace;
   PCO_APP_ID: string;
@@ -623,6 +625,11 @@ async function composePlan(env: Env, data: CrewStateData): Promise<any> {
 export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(req.url);
+    // ProDeck Crew claims *.prodeck.live for its crew codes, and for a
+    // wildcard iOS reads the association file from the base domain: here.
+    // Same file every <name>-crew host serves (crew-cloud/src/applinks.ts).
+    const known = wellKnown(url.pathname);
+    if (known) return known;
     // The route is now prodeck.live/* — the worker is the FRONT DOOR. Only
     // /edge/* (and bare paths on workers.dev) are edge API; everything else
     // goes booth-first with an edge-served shell when the booth is dark.

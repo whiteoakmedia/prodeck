@@ -15,9 +15,12 @@ describe("join poster", () => {
     const html = joinPosterHtml("data:image/png;base64,abc");
     expect(html).toContain('src="data:image/png;base64,abc"');
     expect(html).toContain("<h1>Join the ProDeck Crew</h1>");
-    expect(html).toContain("<li>Scan the code with your phone camera</li>");
-    expect(html).toContain("<li>Add ProDeck to your Home Screen when asked</li>");
-    expect(html).toContain("<li>Tap your name, pick a 4-digit PIN, and you're in</li>");
+    expect(html).toContain("<li>Open your phone's camera and point it at the code</li>");
+    // iPhones get the ProDeck Crew app from the code (crew-cloud applinks.ts).
+    expect(html).toContain(
+      "<li>iPhone: get the free ProDeck Crew app when asked, then scan again. Other phones open in the browser</li>",
+    );
+    expect(html).toContain("<li>Tap your name, pick a 4 digit PIN, and you're in</li>");
     expect(html).toContain(
       "<script>window.onload=function(){setTimeout(function(){window.print();},300);};</script>",
     );

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  crewJoinUrl,
   cleanCrewUrl,
   cloudCopyLine,
   cloudPlanSnapshot,
@@ -99,5 +100,19 @@ describe("crew address", () => {
     expect(snap.team[0]).toEqual({ name: "Sam", position: "Camera 1", status: "C", timeIds: ["t1"] });
     expect(snap.extras.positionGuides).toEqual({ "Camera 1": "Wide" });
     expect(cloudPlanSnapshot({ plan: null, items: [], serviceTimes: [], team: [], checkinTimes: {}, positionGuides: {} })).toBeNull();
+  });
+
+  it("puts the crew address in every join code when it's on, and today's link when it's off", () => {
+    const on = { crew_cloud: true, crew_url: "https://cornerstone-crew.prodeck.live" };
+    expect(crewJoinUrl(on, "https://prodeck.example")).toBe("https://cornerstone-crew.prodeck.live/join");
+    // Off, or not handed out yet (the booth sets crew_url once public DNS has it).
+    expect(crewJoinUrl({ ...on, crew_cloud: false }, "https://booth.church.org/")).toBe("https://booth.church.org/join");
+    expect(crewJoinUrl({ crew_cloud: true, crew_url: "" }, "http://192.168.1.20:8088")).toBe("http://192.168.1.20:8088/join");
+    // Only a real crew address, never a local test one, goes on a printed code.
+    expect(crewJoinUrl({ crew_cloud: true, crew_url: "http://grace-crew.localhost:8799" }, "http://10.0.0.5:8088")).toBe(
+      "http://10.0.0.5:8088/join",
+    );
+    expect(crewJoinUrl({ crew_cloud: true, crew_url: "https://evil.example" }, "http://10.0.0.5:8088")).toBe("http://10.0.0.5:8088/join");
+    expect(crewJoinUrl(null, "")).toBe("");
   });
 });

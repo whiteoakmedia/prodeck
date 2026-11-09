@@ -223,3 +223,33 @@ local prodeck-local by itself). Claim a name on 8798, then open
 `PRODECK_LOCAL_EDGE=http://127.0.0.1:8798`. Without a `CF_API_TOKEN` the local
 prodeck-local can't write the crew record, so `/v1/crew` errors there; use
 `--var CREW_DNS:wildcard` too.
+
+## Smart crew codes
+
+Every crew join QR (Settings crew invite card, first run setup, the printed
+poster, the crew code tile on TVs and kiosks) encodes
+`https://<name>-crew.prodeck.live/join` while the crew address is on and
+handed out (`src/lib/crewCloud.ts` `crewJoinUrl`), else today's link. Kiosk,
+tally and TV pairing codes are untouched.
+
+- **iPhone with ProDeck Crew:** a universal link. The app's entitlement is
+  `applinks:*.prodeck.live`; for a wildcard, iOS reads the association file
+  from the base domain, so crew-edge serves it at `prodeck.live` and every
+  crew host serves the same file (`crew-cloud/src/applinks.ts`). Only `/join`
+  (not `?web=1`) and `/?join=` / `/?invite=` are claimed. The app reads the
+  link (`crew-app/src/links.ts`), connects to the church, prefers the church's
+  own secure address when it can reach it, and remembers the crew address as
+  the fallback. A link that arrives while a church's page is showing goes
+  through `SceneDelegate.swift` `CrewLinks`, which brings the app's own page
+  back with `?openlink=`.
+- **iPhone or iPad without it:** the Worker answers `/join` with a short page:
+  "Get ProDeck Crew" (App Store) and "Continue in the browser"
+  (`/join?web=1`), plus Apple's Smart App Banner. No forced redirect. An
+  iPad asking as a Mac gets the browser page.
+- **Android and computers:** the church's join page, as before.
+  `/.well-known/assetlinks.json` is ready in `applinks.ts` (fill in the
+  package and certificate fingerprint when the Android app is signed).
+
+To ship: deploy crew-cloud and crew-edge (the file at the apex), turn on
+Associated Domains for the `app.prodeck.crew` App ID, then a new Crew app
+build through App Review. Apple's CDN picks the file up within a day.

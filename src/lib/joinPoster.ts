@@ -11,9 +11,9 @@ export function joinPosterHtml(qrDataUrl: string): string {
     `img{width:340px;height:340px;margin:28px 0}ol{display:inline-block;text-align:left;font-size:22px;line-height:1.7}</style></head><body>` +
     `<h1>Join the ProDeck Crew</h1><p>Your production &amp; worship team app</p>` +
     `<img src="${qrDataUrl.replace(/"/g, "")}" alt="QR">` +
-    `<ol><li>Scan the code with your phone camera</li>` +
-    `<li>Add ProDeck to your Home Screen when asked</li>` +
-    `<li>Tap your name, pick a 4-digit PIN, and you're in</li></ol>` +
+    `<ol><li>Open your phone's camera and point it at the code</li>` +
+    `<li>iPhone: get the free ProDeck Crew app when asked, then scan again. Other phones open in the browser</li>` +
+    `<li>Tap your name, pick a 4 digit PIN, and you're in</li></ol>` +
     `<script>window.onload=function(){setTimeout(function(){window.print();},300);};</script>` +
     `</body></html>`
   );

@@ -27,6 +27,7 @@ import { requestSettingsJump } from "../lib/settingsJump";
 import { STARTER_CHECKLISTS, addStarterChecklists } from "../lib/checklistTemplates";
 import { keepaliveStatus, keepaliveInstall, setDemo, crewJoinOpen, crewJoinState, openPrintHtml, lanAddress, type KeepaliveStatus } from "../lib/tauri";
 import { joinPosterHtml } from "../lib/joinPoster";
+import { crewJoinUrl } from "../lib/crewCloud";
 import { lanBaseUrl, secureBase } from "../lib/lanUrl";
 import { openHelp } from "../help/nav";
 import { isFreshInstall, readSetupDone, writeSetupDone, ONBOARDING_EVENT } from "../lib/onboarding";
@@ -276,7 +277,8 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
           await updateSettings({ ...s, web_invite_token: token } as unknown as Settings);
           await refreshSettings();
         }
-        const url = `${await lanBase(s)}/join`;
+        // The crew address when it's on (iPhones then get the app): crewJoinUrl.
+        const url = crewJoinUrl(s, await lanBase(s));
         if (!alive) return;
         setJoinUrl(url);
         setJoinMsg("");

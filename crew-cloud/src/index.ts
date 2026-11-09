@@ -15,6 +15,8 @@
  *   phone   GET  /edge/chat?token=&since= / POST /edge/chat
  *   phone   POST /edge/checklist          {token, session, listId, itemId, done}
  *   phone   POST /edge/register           booth-off signup
+ *   any     GET  /.well-known/apple-app-site-association (and assetlinks.json once there's an Android app)
+ *   iPhone  GET  /join without ProDeck Crew: "Get ProDeck Crew" or continue in the browser (applinks.ts)
  *   phone   anything else                 relayed to the booth while it's linked;
  *                                         booth off: /api/* → 503, pages → the app shell
  *
@@ -23,6 +25,7 @@
  * the same secret. This Worker never hands names out and never writes DNS.
  */
 import { Church, type Env } from "./church";
+import { appStepPage, wantsAppStep, wellKnown } from "./applinks";
 import { churchFor } from "./util";
 
 export { Church };
@@ -30,11 +33,22 @@ export { Church };
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
+    // The app link files (applinks.ts), on every host this Worker answers.
+    const known = wellKnown(url.pathname);
+    if (known) return known;
     const name = churchFor(url.host, req.headers.get("x-prodeck-church"));
     if (!name) {
       return new Response("This is a ProDeck crew address. Ask whoever runs your church's booth for yours.\n", {
         status: 404,
         headers: { "content-type": "text/plain; charset=utf-8" },
+      });
+    }
+
+    // A crew code opened on an iPhone without ProDeck Crew: offer the app,
+    // with the browser one tap away. Booth on or off, the same page.
+    if (wantsAppStep(req.method, url.pathname, url.searchParams, req.headers.get("user-agent") ?? "")) {
+      return new Response(appStepPage(url.toString()), {
+        headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
       });
     }
 

@@ -1,3 +1,4 @@
+import { crewJoinUrl } from "../lib/crewCloud";
 import { ndiForScreen } from "../lib/ndiMatch";
 import { deskControlSupported } from "../lib/consoles";
 import { requestWizard } from "../lib/wizards";
@@ -2389,8 +2390,9 @@ function SwitcherCuesWidget({ widget, editing, update }: WidgetProps) {
   );
 }
 
-// Permanent crew-signup QR — encodes PUBLIC_URL/join, which survives invite
-// rotation by design, so a screen can display it forever.
+// Permanent crew-signup QR: encodes the crew address /join (or PUBLIC_URL/join
+// without one), which survives invite rotation by design, so a screen can
+// display it forever.
 function CrewQrWidget() {
   const [qr, setQr] = useState("");
   // Read the URL from settings (reactive), not the module-level PUBLIC_URL
@@ -2402,16 +2404,18 @@ function CrewQrWidget() {
   useEffect(() => {
     if (!base) return;
     import("qrcode")
-      .then((Q) => Q.toDataURL(`${base.replace(/\/+$/, "")}/join`, { margin: 1, width: 320 }))
+      // The church's crew address when it's on: iPhones then get the app.
+      .then((Q) => Q.toDataURL(crewJoinUrl(settings, base), { margin: 1, width: 320 }))
       .then(setQr)
       .catch(() => {});
-  }, [base]);
+  }, [base, settings?.crew_cloud, settings?.crew_url]); // eslint-disable-line react-hooks/exhaustive-deps
   // On the booth, a QR that encodes tauri://localhost or a LAN address is
   // worse than none: phones need browser access on AND a public URL.
   if (!IS_WEB && settings) {
     if (!settings.web_enabled)
       return <NeedsWeb hint="Turn on browser access so the crew can join from their phones" />;
-    if (!(settings.public_url ?? "").trim())
+    // The crew address works from anywhere too, with nothing to set up.
+    if (!(settings.public_url ?? "").trim() && !crewJoinUrl(settings, ""))
       return (
         <NeedsWeb
           hint="Set a public URL so the join QR works away from the booth"

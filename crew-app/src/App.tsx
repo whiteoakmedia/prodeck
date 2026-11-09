@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import mark from "./mark.svg";
 import { Intro } from "./Intro";
 import { readLink, type LinkAction } from "./links";
-import { forget, parseTarget, pickBase, remember, shortName, type Church, type Target } from "./connect";
+import { cleanCrew, forget, parseTarget, pickBase, remember, shortName, type Church, type Target } from "./connect";
 import { captureError, reportNoBooth } from "./crash";
 import { checkBooth, crewAddress, findBooths, isNative, loadChurches, pushToken, saveChurches, scanCode, secureBase, type Found } from "./native";
 
@@ -36,6 +36,11 @@ export function App() {
   // when a link or a tap picks somewhere else gives up instead of winning.
   const openGen = useRef(0);
   useEffect(() => {
+    // A link that arrived while a church's page was showing: that page can't
+    // hear the app's link event, so the app (SceneDelegate.swift CrewLinks)
+    // came back here with it in ?openlink=.
+    const opened = new URLSearchParams(location.search).get("openlink");
+    if (opened) setLink(readLink(opened));
     if (!isNative()) {
       // Preview: ?link=prodeckcrew://… stands in for opening a link.
       const l = new URLSearchParams(location.search).get("link");
@@ -189,7 +194,15 @@ export function App() {
           target={screen.target}
           name={screen.name}
           onBack={() => go({ kind: "home" })}
-          onReady={(base) => void openChurch({ base, name: screen.name, lastMs: Date.now() }, screen.target.open, { checked: true })}
+          onReady={(base) =>
+            void openChurch(
+              // Reached by its crew address (a crew code): remember that too, for
+              // when the church's own address doesn't answer.
+              { base, name: screen.name, lastMs: Date.now(), ...(cleanCrew(screen.target.base) ? { crew: cleanCrew(screen.target.base) } : {}) },
+              screen.target.open,
+              { checked: true },
+            )
+          }
         />
       )}
     </div>

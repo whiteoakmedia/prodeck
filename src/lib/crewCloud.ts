@@ -190,3 +190,24 @@ export function readHandoff(hash: string): { handoff: Handoff | null; rest: stri
 export function shouldMoveToCrew(hostname: string, crewUrl: string, boothLinked: boolean): boolean {
   return !!crewUrl && boothLinked && !isCrewHost(hostname);
 }
+
+// ---------------------------------------------------------------- crew codes
+
+/**
+ * The link every crew join QR encodes (the Settings invite card, first run
+ * setup, the printed poster, the crew code tile on TVs and kiosks): the
+ * church's crew address /join when the crew address is on and phones have
+ * been told it (the booth only sets crew_url once public DNS has the name),
+ * so an iPhone with ProDeck Crew opens the app and one without gets the App
+ * Store step (crew-cloud/src/applinks.ts). Otherwise `fallback` /join, today's
+ * link. Kiosk, tally and TV pairing codes aren't join codes and don't use this.
+ */
+export function crewJoinUrl(
+  s: { crew_cloud?: boolean; crew_url?: string } | null | undefined,
+  fallback: string,
+): string {
+  const crew = s && s.crew_cloud !== false ? cleanCrewUrl(s.crew_url) : "";
+  if (crew && !crew.startsWith("http://")) return `${crew}/join`;
+  const base = (fallback ?? "").trim().replace(/\/+$/, "");
+  return base ? `${base}/join` : "";
+}

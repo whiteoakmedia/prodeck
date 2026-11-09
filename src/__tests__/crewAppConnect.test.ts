@@ -140,3 +140,27 @@ describe("crew app: the crew address", () => {
     expect(await pickBase({ ...c, crew: undefined }, async (b) => b !== c.base)).toBeNull();
   });
 });
+
+describe("crew app: crew codes open the app", () => {
+  it("takes a church's crew code or crew link handed over by iOS", async () => {
+    const { readLink } = await import("../../crew-app/src/links");
+    expect(readLink("https://cornerstone-crew.prodeck.live/join")).toEqual({ kind: "connect", to: "https://cornerstone-crew.prodeck.live/join" });
+    expect(readLink("https://grace-crew.prodeck.live/?join=abc")).toEqual({ kind: "connect", to: "https://grace-crew.prodeck.live/?join=abc" });
+    expect(readLink("https://grace.local.prodeck.live/?invite=xyz")).toEqual({ kind: "connect", to: "https://grace.local.prodeck.live/?invite=xyz" });
+    // And the connect step lands on the church's /join, keeping the link's way in.
+    expect(parseTarget("https://cornerstone-crew.prodeck.live/join")).toEqual({ base: "https://cornerstone-crew.prodeck.live", open: "/join" });
+  });
+
+  it("leaves everything else alone", async () => {
+    const { readLink } = await import("../../crew-app/src/links");
+    expect(readLink("https://grace-crew.prodeck.live/join?web=1")).toBeNull(); // chose the browser
+    expect(readLink("https://grace-crew.prodeck.live/")).toBeNull();
+    expect(readLink("https://grace-crew.prodeck.live/api/cmd")).toBeNull();
+    expect(readLink("https://prodeck.live/join")).toBeNull();
+    expect(readLink("https://evil.example/join")).toBeNull();
+    expect(readLink("https://a.b-crew.prodeck.live/join")).toBeNull();
+    expect(readLink("http://grace-crew.prodeck.live/join")).toBeNull();
+    // The old prodeckcrew:// links still work.
+    expect(readLink("prodeckcrew://demo")).toEqual({ kind: "demo" });
+  });
+});

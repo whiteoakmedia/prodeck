@@ -19,6 +19,7 @@ import { openFeedback } from "../lib/feedback";
 import { useChop } from "../chopStore";
 import { chopHost, createInbox, deleteInbox, fetchCurrentService, setInboxSecret, webhookUrl } from "../lib/chop";
 import { joinPosterHtml } from "../lib/joinPoster";
+import { crewJoinUrl } from "../lib/crewCloud";
 import { setCrashReportsEnabled } from "../lib/crashReports";
 import { setUsageCountEnabled, usageCountEnabled } from "../lib/usageCount";
 import { tallyQuery, tallySources, type TallyView } from "../lib/tally";
@@ -2639,7 +2640,9 @@ function CrewInviteLink({
   // The QR/poster encode the tokenless /join redirect, so a printed code
   // survives every rotation; the copyable text link stays on the raw token
   // (rotate to kill texted copies).
-  const posterLink = form.web_invite_token ? `${PUBLIC_URL}/join` : "";
+  // The church's crew address when it's on: ProDeck Crew opens straight
+  // from it on an iPhone (lib/crewCloud.ts crewJoinUrl).
+  const posterLink = form.web_invite_token ? crewJoinUrl(form, PUBLIC_URL) : "";
 
   useEffect(() => {
     if (!posterLink) return setQr("");

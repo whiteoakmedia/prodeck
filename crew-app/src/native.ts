@@ -192,6 +192,20 @@ export async function checkBooth(base: string, timeoutMs = 6000): Promise<{ ok: 
  * web filter blocks it, the plain address still works for everything else.
  */
 export async function secureBase(base: string): Promise<string> {
+  // A crew address (from a crew code) works anywhere, but the church's own
+  // secure address is the direct way on its Wi-Fi (comms, camera feeds):
+  // prefer it when this phone can reach it. The crew address is remembered
+  // as the fallback (App.tsx).
+  if (cleanCrew(base)) {
+    try {
+      const r = await fetch(`${base}/api/origin`, { cache: "no-store" });
+      const secure = ((await r.json()) as { secure?: string })?.secure ?? "";
+      if (/^https:\/\/[^/]+$/.test(secure) && secure !== base && (await checkBooth(secure, 3000)).ok) return secure;
+    } catch {
+      /* the booth is off: the crew address it is */
+    }
+    return base;
+  }
   if (base.startsWith("https://")) return base;
   try {
     const r = await fetch(`${base}/api/origin`, { cache: "no-store" });

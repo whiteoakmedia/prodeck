@@ -27,9 +27,34 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
         SceneDelegateProxy.shared.scene(scene, openURLContexts: URLContexts)
+        if let url = URLContexts.first?.url { CrewLinks.forward(url, in: window) }
     }
 
+    // A crew code (https://<name>-crew.prodeck.live/join) scanned with the
+    // camera while the app is running: iOS hands it over here.
     func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
         SceneDelegateProxy.shared.scene(scene, continue: userActivity)
+        if userActivity.activityType == NSUserActivityTypeBrowsingWeb, let url = userActivity.webpageURL {
+            CrewLinks.forward(url, in: window)
+        }
+    }
+}
+
+/// Links that open the app (a crew code, or prodeckcrew://) while the web view
+/// shows a church's own page. That page has no Capacitor bridge, so it can't
+/// hear the app's link event: load the app's own page instead, with the link
+/// in ?openlink= (App.tsx acts on it). On the app's own page the link event
+/// already reaches it, so nothing is done here. A cold start is the same: the
+/// app's page is showing and reads the launch link itself.
+enum CrewLinks {
+    static func forward(_ url: URL, in window: UIWindow?) {
+        guard let web = (window?.rootViewController as? CAPBridgeViewController)?.webView else { return }
+        if web.url?.scheme == "capacitor" || web.url == nil { return }
+        var c = URLComponents()
+        c.scheme = "capacitor"
+        c.host = "localhost"
+        c.path = "/"
+        c.queryItems = [URLQueryItem(name: "openlink", value: url.absoluteString)]
+        if let target = c.url { web.load(URLRequest(url: target)) }
     }
 }
