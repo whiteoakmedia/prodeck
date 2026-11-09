@@ -1,7 +1,7 @@
 {
   "name": "prodeck",
   "private": true,
-  "version": "0.9.120",
+  "version": "0.9.121",
   "type": "module",
   "scripts": {
     "dev": "vite",

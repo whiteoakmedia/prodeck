@@ -44,6 +44,16 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.121 — 9 November 2026
+
+Everything in 0.9.120, plus:
+
+### Fixed
+
+- **A secure local address takes over the crew address cleanly.** The crew
+  address follows the secure local name; its old name is now given back
+  instead of staying behind with an old copy of the plan.
+
 ## 0.9.120 — 9 November 2026
 
 Everything in 0.9.119, plus:
