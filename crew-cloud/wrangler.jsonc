@@ -19,7 +19,12 @@
   "name": "prodeck-crew",
   "main": "src/index.ts",
   "compatibility_date": "2026-07-01",
-  "workers_dev": false,
+  // On: booths reach this Worker at prodeck-crew.taplink-edge.workers.dev,
+  // naming their church in a header, so a booth never looks up its own new
+  // <name>-crew.prodeck.live (a lookup made before the record reached the
+  // internet gets "no such name" cached for up to half an hour). Phones can't
+  // use it: a page there names no church and gets the "not a crew address" 404.
+  "workers_dev": true,
   "routes": [{ "pattern": "*-crew.prodeck.live/*", "zone_name": "prodeck.live" }],
   "durable_objects": { "bindings": [{ "name": "CHURCH", "class_name": "Church" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Church"] }],

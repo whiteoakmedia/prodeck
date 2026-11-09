@@ -140,6 +140,32 @@ refuses anything else.
   named `team-crew` is `team-crew-crew.prodeck.live`; the Worker strips the
   suffix once.
 
+## The booth never looks up its own crew address
+
+A name looked up before its new DNS record reached the internet gets "no such
+name" cached (macOS kept it for about half an hour on the first live enable,
+2026-11-09, and the booth couldn't link until the cache was flushed). So:
+
+- The booth reaches prodeck-crew at its own workers.dev address,
+  `prodeck-crew.taplink-edge.workers.dev` (`workers_dev: true`), always
+  sending its church in `x-prodeck-church`. A page there names no church and
+  gets a 404, so phones can't use it.
+- The crew address is a second way in for the booth only once public DNS has
+  it (for a prodeck-crew deployed without workers.dev).
+- Phones are told the crew address (settings `crew_url`, `/api/origin`'s
+  `crew`) only once Cloudflare's public resolver answers for it, asked over
+  https so no local resolver caches a "no". If that can't be asked (a filter
+  blocks it), ten minutes after prodeck-local confirmed the record.
+
+## The first name
+
+A booth without a secure local address claims a name from the church's
+Planning Center organization name (`GET services/v2`) when it's signed in
+there, else from the computer's name with ".local", generic words (booth,
+Mac, command center...), someone's name ("Zach's MacBook") and machine
+numbers taken out, else `church`, `church-2`... Names already claimed stay
+until the church renames in the card.
+
 ## Nothing happens until it's open
 
 prodeck-local's `CREW_READY` var (`"0"` in the repo) gates everything. A booth
@@ -163,8 +189,9 @@ prodeck.live the booth-off screen still asks crew-edge first (same origin).
    `Names` entrypoint, `/v1/crew` and `/v1/crew/ready`, still with
    `CREW_READY = "0"`). Its API token already has DNS edit on prodeck.live.
 2. **prodeck-crew:** `npx vite build` at the repo root (the shell comes from
-   `dist/`), then in `crew-cloud/` uncomment `routes` in `wrangler.jsonc` and
-   `npx wrangler deploy`. Redeploy after each release so the shell matches.
+   `dist/`), then in `crew-cloud/` `npx wrangler deploy` (routes and
+   `workers_dev` are in `wrangler.jsonc`). Redeploy after each release so the
+   shell matches.
 3. **Open it:** set `CREW_READY` to `"1"` in `local-edge/wrangler.jsonc` and
    deploy prodeck-local again. Booths pick it up within the hour.
 4. **Release** a ProDeck with crewcloud.rs (any time; before step 3 it does

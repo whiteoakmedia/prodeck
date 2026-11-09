@@ -88,7 +88,7 @@ export function CrewAddressCard({ form, set }: { form: Settings; set: (on: boole
               <code className="kiosk-url">{url}</code>
             </p>
           ) : (
-            <p className="muted small">Getting your address</p>
+            <p className="muted small">Setting up your address. Phones get it once it can be looked up everywhere, usually within a few minutes.</p>
           )}
           <p className="muted small">
             {st?.linked ? "Linked: phones away from church reach the live booth." : "Not linked right now."} Last copy

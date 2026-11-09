@@ -56,10 +56,84 @@ const CHUNK: usize = 48 * 1024;
 const TICK_MAX_AGE_MS: u64 = 12 * 3600 * 1000;
 const B64: base64::engine::general_purpose::GeneralPurpose = base64::engine::general_purpose::STANDARD;
 
-/// Where the Worker is. Overridable for a local test (wrangler dev), where the
-/// church goes in a header instead of the host.
-fn origin(name: &str) -> String {
-    std::env::var("PRODECK_CREW_ORIGIN").unwrap_or_else(|_| crew_url(name))
+/// The crew Worker's own address, which always exists. The booth talks to it
+/// here, saying which church in a header, so it never has to look up its own
+/// <name>-crew.prodeck.live: a brand new name looked up before its record
+/// reached the internet gets "no such name" cached by the computer for up to
+/// half an hour (it happened on the first live enable, 2026-11-09).
+const API_ORIGIN: &str = "https://prodeck-crew.taplink-edge.workers.dev";
+
+/// The crew address once phones can be told it (public DNS has it).
+static PUBLISHED: Mutex<String> = Mutex::new(String::new());
+/// Which of `origins` answered last, tried first next time.
+static WORKING: Mutex<String> = Mutex::new(String::new());
+
+/// Where the booth reaches the crew Worker, in order: its own always-there
+/// address, then (only once public DNS has it) the church's crew address, for
+/// a Worker deployed without its workers.dev address. Overridable for a local
+/// test (wrangler dev). The church always goes in a header too.
+pub fn origins(name: &str, published: bool, override_origin: Option<&str>, working: &str) -> Vec<String> {
+    if let Some(o) = override_origin.filter(|o| !o.is_empty()) {
+        return vec![o.to_string()];
+    }
+    let mut v = vec![API_ORIGIN.to_string()];
+    if published {
+        v.push(crew_url(name));
+    }
+    if let Some(i) = v.iter().position(|o| o == working) {
+        let w = v.remove(i);
+        v.insert(0, w);
+    }
+    v
+}
+
+fn origins_now(name: &str) -> Vec<String> {
+    let published = *PUBLISHED.lock().unwrap_or_else(|p| p.into_inner()) == name;
+    let working = WORKING.lock().unwrap_or_else(|p| p.into_inner()).clone();
+    origins(name, published, std::env::var("PRODECK_CREW_ORIGIN").ok().as_deref(), &working)
+}
+
+/// POST to the crew Worker, trying each way in. Only a JSON answer counts as
+/// the Worker's: a workers.dev address that's switched off answers with a page.
+async fn booth_post(name: &str, secret: &str, path: &str, body: &Value) -> Result<reqwest::Response, String> {
+    let mut last = String::from("no way to reach it");
+    for o in origins_now(name) {
+        let r = http()?
+            .post(format!("{o}{path}"))
+            .bearer_auth(secret)
+            .header("x-prodeck-church", name)
+            .json(body)
+            .send()
+            .await;
+        match r {
+            Ok(r) if r.headers().get("content-type").and_then(|v| v.to_str().ok()).unwrap_or("").contains("json") => {
+                *WORKING.lock().unwrap_or_else(|p| p.into_inner()) = o;
+                return Ok(r);
+            }
+            Ok(r) => last = format!("{o} answered {}", r.status()),
+            Err(e) => last = e.to_string(),
+        }
+    }
+    Err(format!("Couldn't reach the crew address service: {last}"))
+}
+
+/// Does public DNS have the name yet? Asked of Cloudflare's resolver over https,
+/// so this computer's own resolver never caches a "no". None = couldn't ask.
+async fn publicly_resolves(host: &str) -> Option<bool> {
+    let r = http()
+        .ok()?
+        .get("https://cloudflare-dns.com/dns-query")
+        .query(&[("name", host), ("type", "A")])
+        .header("accept", "application/dns-json")
+        .send()
+        .await
+        .ok()?;
+    let v: Value = r.json().await.ok()?;
+    Some(dns_json_has_answer(&v))
+}
+
+pub fn dns_json_has_answer(v: &Value) -> bool {
+    v.get("Status").and_then(|s| s.as_u64()) == Some(0) && v.get("Answer").and_then(|a| a.as_array()).map(|a| !a.is_empty()).unwrap_or(false)
 }
 
 /// What phones open: https://<name>-crew.prodeck.live
@@ -162,14 +236,74 @@ pub fn candidates(from: &str, rand4: &str) -> Vec<String> {
     v.into_iter().filter(|n| name_ok(n)).collect()
 }
 
+/// The church's name from Planning Center (the organization's name on the
+/// Services API), when the booth is signed in there.
+async fn church_name(app: &AppHandle) -> Option<String> {
+    let auth = crate::pco::auth(app.state::<SettingsState>().inner()).await.ok()?;
+    let v = crate::pco::pco_request(&auth, "services/v2").await.ok()?;
+    v.pointer("/data/attributes/name").and_then(|n| n.as_str()).map(|n| n.trim().to_string()).filter(|n| !n.is_empty())
+}
+
+/// Words in a computer's name that say nothing about the church.
+const GENERIC: &[&str] = &[
+    "local", "lan", "home", "booth", "mac", "macbook", "imac", "mini", "pro", "air", "max", "studio", "computer", "pc",
+    "laptop", "desktop", "workstation", "command", "center", "centre", "control", "room", "production", "prod", "av",
+    "media", "sound", "audio", "video", "foh", "tech", "office", "admin", "user", "the", "windows", "server", "main",
+];
+
+/// What a first claim's name is made from: the church's name when ProDeck
+/// knows it, else the computer's name with ".local", generic words, someone's
+/// name ("Zach's MacBook") and machine numbers taken out. "" = nothing usable
+/// ("church" is then used).
+pub fn name_source(church: Option<&str>, device: &str) -> String {
+    if let Some(c) = church.map(fold).filter(|c| suggest_name(c).len() >= 3) {
+        return c;
+    }
+    let d = fold(device);
+    let d = d.trim().trim_end_matches('.');
+    let d = d.strip_suffix(".local").or_else(|| d.strip_suffix(".lan")).unwrap_or(d);
+    d.split(|c: char| !c.is_alphanumeric() && c != '\'' && c != '’')
+        .filter(|w| !w.is_empty())
+        .filter(|w| !w.ends_with("'s") && !w.ends_with("’s"))
+        .filter(|w| !GENERIC.contains(&w.to_lowercase().as_str()))
+        // DESKTOP-4F2K9QZ and the like: a machine number, not a name.
+        .filter(|w| !(w.len() >= 5 && w.chars().any(|c| c.is_ascii_digit()) && w.chars().any(|c| c.is_alphabetic())))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// Common accented letters to their plain ones ("Église" → "Eglise").
+fn fold(s: &str) -> String {
+    s.chars()
+        .map(|c| match c {
+            'à' | 'á' | 'â' | 'ã' | 'ä' | 'å' => 'a',
+            'À' | 'Á' | 'Â' | 'Ã' | 'Ä' | 'Å' => 'A',
+            'è' | 'é' | 'ê' | 'ë' => 'e',
+            'È' | 'É' | 'Ê' | 'Ë' => 'E',
+            'ì' | 'í' | 'î' | 'ï' => 'i',
+            'Ì' | 'Í' | 'Î' | 'Ï' => 'I',
+            'ò' | 'ó' | 'ô' | 'õ' | 'ö' => 'o',
+            'Ò' | 'Ó' | 'Ô' | 'Õ' | 'Ö' => 'O',
+            'ù' | 'ú' | 'û' | 'ü' => 'u',
+            'Ù' | 'Ú' | 'Û' | 'Ü' => 'U',
+            'ñ' => 'n',
+            'Ñ' => 'N',
+            'ç' => 'c',
+            'Ç' => 'C',
+            other => other,
+        })
+        .collect()
+}
+
 /// Claim a name just for the crew address, from the same service the secure
 /// local address uses. Nothing is pointed anywhere: no DNS record is made.
 async fn claim(app: &AppHandle) -> Result<(String, String), String> {
-    let from = {
+    let device = {
         let g = app.state::<SettingsState>();
         let g = g.lock().unwrap_or_else(|p| p.into_inner());
         g.device_name.clone()
     };
+    let from = name_source(church_name(app).await.as_deref(), &device);
     let rand4: String = uuid::Uuid::new_v4().simple().to_string().chars().take(4).collect();
     let mut last = String::from("No name could be claimed.");
     for name in candidates(&from, &rand4) {
@@ -423,8 +557,9 @@ async fn service_ready() -> bool {
     ready
 }
 
-/// The name whose DNS record (<name>-crew) was confirmed this run.
+/// The name whose DNS record (<name>-crew) was confirmed this run, and when.
 static RECORD_FOR: Mutex<String> = Mutex::new(String::new());
+static RECORD_SINCE: AtomicU64 = AtomicU64::new(0);
 
 /// Make sure <name>-crew.prodeck.live exists (prodeck-local writes it, proxied).
 async fn ensure_record(name: &str, secret: &str) -> Result<(), String> {
@@ -433,6 +568,7 @@ async fn ensure_record(name: &str, secret: &str) -> Result<(), String> {
     }
     crate::localhttps::edge_call(reqwest::Method::POST, "/v1/crew", json!({ "name": name, "secret": secret, "on": true })).await?;
     *RECORD_FOR.lock().unwrap_or_else(|p| p.into_inner()) = name.to_string();
+    RECORD_SINCE.store(crate::identity::now_ms(), Ordering::Relaxed);
     Ok(())
 }
 
@@ -450,13 +586,9 @@ async fn ensure_name(app: &AppHandle) -> Result<Option<(String, String)>, String
         let mut st = read_state();
         if st.get("live").and_then(|v| v.as_bool()).unwrap_or(false) {
             if let Some((name, secret)) = claim_now {
-                let r = http()?
-                    .post(format!("{}/_booth/forget", origin(&name)))
-                    .bearer_auth(&secret)
-                    .header("x-prodeck-church", &name)
-                    .send()
+                let r = booth_post(&name, &secret, "/_booth/forget", &json!({}))
                     .await
-                    .map_err(|e| format!("Couldn't reach the crew address service to delete the copy: {e}"))?;
+                    .map_err(|e| format!("{e} (to delete the copy)"))?;
                 if !r.status().is_success() && r.status() != reqwest::StatusCode::FORBIDDEN {
                     return Err(format!("The crew address service didn't delete the copy ({}).", r.status()));
                 }
@@ -484,10 +616,26 @@ async fn ensure_name(app: &AppHandle) -> Result<Option<(String, String)>, String
         }
     };
     ensure_record(&name, &secret).await?;
-    // Only now do phones learn it: an address that doesn't resolve yet is no
-    // use to remember.
+    // Phones learn the address only once public DNS has it: a phone (or the
+    // church's own resolver) asking too early would cache "no such name" for
+    // up to half an hour. If public DNS can't be asked (a filter blocks it),
+    // ten minutes after the record was confirmed is long enough.
     let url = crew_url(&name);
-    save_settings(app, |s| s.crew_url = url.clone());
+    let already = {
+        let g = app.state::<SettingsState>();
+        let s = g.lock().unwrap_or_else(|p| p.into_inner());
+        s.crew_url == url
+    };
+    let published = already
+        || std::env::var("PRODECK_CREW_ORIGIN").is_ok()
+        || match publicly_resolves(url.trim_start_matches("https://")).await {
+            Some(yes) => yes,
+            None => crate::identity::now_ms().saturating_sub(RECORD_SINCE.load(Ordering::Relaxed)) > 10 * 60 * 1000,
+        };
+    if published {
+        *PUBLISHED.lock().unwrap_or_else(|p| p.into_inner()) = name.clone();
+        save_settings(app, |s| s.crew_url = url.clone());
+    }
     Ok(Some((name, secret)))
 }
 
@@ -498,9 +646,11 @@ async fn sync_once(app: &AppHandle) -> Result<(), String> {
         set_status(app, |s| *s = Status { phase: phase.into(), ..Default::default() });
         return Ok(());
     };
+    // The card shows the address once phones are told it (public DNS has it).
+    let published = *PUBLISHED.lock().unwrap_or_else(|p| p.into_inner()) == name;
     set_status(app, |s| {
         s.name = name.clone();
-        s.url = crew_url(&name);
+        s.url = if published { crew_url(&name) } else { String::new() };
         if s.phase.is_empty() || s.phase == "off" {
             s.phase = "starting".into();
         }
@@ -509,14 +659,7 @@ async fn sync_once(app: &AppHandle) -> Result<(), String> {
     let acked = p.ack_ticks.clone();
     let consumed = p.consumed_joins.clone();
     let body = tokio::task::spawn_blocking(move || build_copy(&p, &cached_verifier)).await.map_err(|e| e.to_string())?;
-    let r = http()?
-        .post(format!("{}/_booth/sync", origin(&name)))
-        .bearer_auth(&secret)
-        .header("x-prodeck-church", &name)
-        .json(&body)
-        .send()
-        .await
-        .map_err(|e| format!("Couldn't reach the crew address service: {e}"))?;
+    let r = booth_post(&name, &secret, "/_booth/sync", &body).await?;
     if r.status() == reqwest::StatusCode::FORBIDDEN {
         // The name isn't this booth's any more (freed by White Oak Media). A
         // crew-only name is claimed afresh next round; a secure local address
@@ -734,8 +877,8 @@ fn gateway_port(app: &AppHandle) -> u16 {
 
 /// The WebSocket request for the link: the church in a header as well as the
 /// host, so a local test Worker (PRODECK_CREW_ORIGIN) knows it too.
-fn link_request(name: &str, secret: &str) -> Result<tokio_tungstenite::tungstenite::handshake::client::Request, String> {
-    let url = format!("{}/_booth/link", origin(name).replacen("https://", "wss://", 1).replacen("http://", "ws://", 1));
+fn link_request(origin: &str, name: &str, secret: &str) -> Result<tokio_tungstenite::tungstenite::handshake::client::Request, String> {
+    let url = format!("{}/_booth/link", origin.replacen("https://", "wss://", 1).replacen("http://", "ws://", 1));
     let mut req = url.as_str().into_client_request().map_err(|e| e.to_string())?;
     req.headers_mut().insert("authorization", format!("Bearer {secret}").parse().map_err(|_| "bad secret")?);
     req.headers_mut().insert("x-prodeck-church", name.parse().map_err(|_| "bad name")?);
@@ -750,10 +893,21 @@ async fn link_once(app: &AppHandle) -> Result<(), String> {
     }) else {
         return Ok(());
     };
-    let (ws, _) = tokio::time::timeout(Duration::from_secs(20), tokio_tungstenite::connect_async(link_request(&name, &secret)?))
-        .await
-        .map_err(|_| "The crew address service didn't answer.".to_string())?
-        .map_err(|e| format!("Couldn't link to the crew address service: {e}"))?;
+    // Each way in, as booth_post does (the Worker's own address first).
+    let mut linked = None;
+    let mut last = String::from("no way to reach it");
+    for o in origins_now(&name) {
+        match tokio::time::timeout(Duration::from_secs(20), tokio_tungstenite::connect_async(link_request(&o, &name, &secret)?)).await {
+            Ok(Ok((ws, _))) => {
+                *WORKING.lock().unwrap_or_else(|p| p.into_inner()) = o;
+                linked = Some(ws);
+                break;
+            }
+            Ok(Err(e)) => last = e.to_string(),
+            Err(_) => last = format!("{o} didn't answer"),
+        }
+    }
+    let ws = linked.ok_or_else(|| format!("Couldn't link to the crew address service: {last}"))?;
     set_status(app, |s| s.linked = true);
     crate::diag::log(format!("[crew-cloud] linked as {name}"));
     let result = serve_link(
@@ -998,6 +1152,45 @@ mod tests {
     }
 
     #[test]
+    fn the_booth_never_needs_its_own_crew_address_looked_up() {
+        // Before public DNS has the name: only the Worker's own address.
+        assert_eq!(origins("grace", false, None, ""), vec![API_ORIGIN.to_string()]);
+        // After: the crew address as a second way in, the last one that worked first.
+        assert_eq!(origins("grace", true, None, ""), vec![API_ORIGIN.to_string(), "https://grace-crew.prodeck.live".to_string()]);
+        assert_eq!(
+            origins("grace", true, None, "https://grace-crew.prodeck.live"),
+            vec!["https://grace-crew.prodeck.live".to_string(), API_ORIGIN.to_string()]
+        );
+        // A local test Worker replaces both.
+        assert_eq!(origins("grace", true, Some("http://127.0.0.1:8799"), ""), vec!["http://127.0.0.1:8799".to_string()]);
+        assert!(!API_ORIGIN.contains("prodeck.live"), "never under prodeck.live: it must always exist");
+    }
+
+    #[test]
+    fn public_dns_answers_are_read_carefully() {
+        assert!(dns_json_has_answer(&json!({ "Status": 0, "Answer": [{ "data": "104.21.1.1" }] })));
+        assert!(!dns_json_has_answer(&json!({ "Status": 3, "Authority": [] })), "NXDOMAIN");
+        assert!(!dns_json_has_answer(&json!({ "Status": 0 })), "no records yet");
+        assert!(!dns_json_has_answer(&json!({})));
+    }
+
+    #[test]
+    fn a_first_name_comes_from_the_church_not_the_computer() {
+        assert_eq!(name_source(Some("Cornerstone Church"), "Command-Center.local"), "Cornerstone Church");
+        assert_eq!(suggest_name(&name_source(Some("Église Saint-Jean"), "x")), "eglise-saint-jean");
+        // No church name: the computer's, minus what says nothing.
+        assert_eq!(name_source(None, "Command-Center.local"), "");
+        assert_eq!(suggest_name(&name_source(None, "Grace-Booth-Mac.local")), "grace");
+        assert_eq!(suggest_name(&name_source(None, "Zach's MacBook Pro")), "", "never someone's name");
+        assert_eq!(suggest_name(&name_source(None, "DESKTOP-4F2K9QZ")), "");
+        assert_eq!(suggest_name(&name_source(None, "Hope Fellowship FOH")), "hope-fellowship");
+        // A church name too short to use falls back too.
+        assert_eq!(name_source(Some("  "), "Hope Fellowship Booth"), "Hope Fellowship");
+        // And nothing usable at all still claims a valid name.
+        assert!(candidates(&name_source(None, "Command-Center.local"), "a1b2").iter().all(|n| name_ok(n) && n.starts_with("church")));
+    }
+
+    #[test]
     fn asks_whether_the_service_is_open_at_most_hourly() {
         assert!(should_ask_ready(false, 0, 1_000));
         assert!(!should_ask_ready(false, 1_000, 1_000 + 60_000));
@@ -1168,7 +1361,7 @@ mod tests {
                 });
             }
         });
-        let (ws, _) = tokio_tungstenite::connect_async(link_request(&name, &secret).unwrap()).await.expect("link");
+        let (ws, _) = tokio_tungstenite::connect_async(link_request(&origin, &name, &secret).unwrap()).await.expect("link");
         let stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
         let stop2 = stop.clone();
         let link = tokio::spawn(async move { serve_link(ws, move || port, move || !stop2.load(Ordering::Relaxed)).await });

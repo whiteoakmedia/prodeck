@@ -114,6 +114,25 @@ describe("the booth", () => {
   });
 });
 
+describe("the booth's way in", () => {
+  it("reaches its church through the Worker's own address with the church in a header", async () => {
+    const r = await SELF.fetch("https://prodeck-crew.taplink-edge.workers.dev/_booth/sync", {
+      method: "POST",
+      headers: { authorization: "Bearer secret-grace", "x-prodeck-church": "grace", "content-type": "application/json" },
+      body: JSON.stringify(await copy()),
+    });
+    expect(r.status).toBe(200);
+    expect(r.headers.get("content-type")).toContain("json");
+    // Same store as the crew address.
+    expect((await plan("grace", "crew-pw")).status).toBe(200);
+  });
+
+  it("gives a page there nothing: it names no church", async () => {
+    const r = await SELF.fetch("https://prodeck-crew.taplink-edge.workers.dev/");
+    expect(r.status).toBe(404);
+  });
+});
+
 describe("switching it off", () => {
   it("deletes the church's copy, chat and queued ticks", async () => {
     await sync("grace", await copy());
