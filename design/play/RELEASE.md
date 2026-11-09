@@ -56,22 +56,19 @@ signed with the upload key. A release build refuses to run without
    new personal account must run a closed test with 12 testers for 14 days
    before it can publish. The organization route skips that test, so it's the
    quicker way to the store as well.
-2. **Firebase project** (console.firebase.google.com), signed in as White Oak:
-   - Add an Android app, package `app.prodeck.crew`. Download
-     `google-services.json` and put it in `crew-app/android/app/` (git ignores
-     it).
-   - Project settings, Service accounts, Generate new private key. That JSON
-     file is the relay's secret (step 5). Keep it out of the repo.
-   - Cloud Messaging: make sure "Firebase Cloud Messaging API (V1)" is
-     enabled.
+2. **Firebase project: done 2026-11-09.** Project "ProDeck Crew"
+   (`prodeck-crew`, White Oak's account, no Analytics), Android app
+   `app.prodeck.crew`, FCM API (V1) on. `google-services.json` is in
+   `crew-app/android/app/` on this Mac (git ignores it); the service account
+   key is `~/.prodeck/keys/prodeck-crew-firebase-adminsdk-*.json`.
 3. **Build the AAB** (above, now with google-services.json) and install it on
    an Android phone to try a real page before uploading.
 4. **Play Console:** create the app "ProDeck Crew", fill the listing from
    design/play/LISTING.md, upload the AAB to Internal testing first, then
    Production. Accept Play App Signing (the default).
 5. **Deploys:**
-   - **prodeck-push relay:** `cd push-edge && npx wrangler secret put FCM_SERVICE_ACCOUNT`
-     (paste the whole service account JSON), then `npx wrangler deploy`.
+   - **prodeck-push relay:**
+     `cd push-edge && npx wrangler secret put FCM_SERVICE_ACCOUNT < ~/.prodeck/keys/prodeck-crew-firebase-adminsdk-fbsvc-8ca41d76c3.json && npx wrangler deploy`
      `GET https://prodeck-push.taplink-edge.workers.dev/` should then say
      `"fcm": true`. APNs keeps working as today.
    - **crew-cloud and crew-edge** (with commit 95e6853, the smart crew codes):
@@ -101,5 +98,9 @@ signed with the upload key. A release build refuses to run without
   verified, a page and a chat sent with the right shape, a gone phone came
   back as dead, one Google sign in for many phones.
 
-Not checked: a real Firebase delivery (needs step 2), App Link verification
-(needs step 5), the lock screen with a PIN set, and a physical phone.
+- A real page through Google (2026-11-09): the relay run locally with the
+  real service account sent a page to the emulator's Firebase token; it
+  arrived on the Pages channel with Got it, and Got it confirmed and cleared.
+
+Not checked: App Link verification (needs step 5), the lock screen with a PIN
+set, and a physical phone.
