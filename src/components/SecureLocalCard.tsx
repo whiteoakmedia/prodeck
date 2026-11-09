@@ -113,6 +113,12 @@ export function SecureLocalCard({ form }: { form: Settings }) {
               <span className="local-suffix">.local.prodeck.live</span>
             </div>
           </label>
+          {form.crew_cloud !== false && form.crew_name && form.crew_name !== name && (
+            <p className="muted small">
+              Your crew address moves to this name too ({name || "your-church"}-crew.prodeck.live), and{" "}
+              {form.crew_name}-crew.prodeck.live is given back. Phones learn the new one the next time they reach the booth.
+            </p>
+          )}
           <p className={`small ${problem || (check && !check.ok) ? "local-name-bad" : "muted"}`}>
             {problem || (check?.name === name ? check.text : "Checking…")}
           </p>

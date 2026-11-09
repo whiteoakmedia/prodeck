@@ -186,6 +186,51 @@ pub fn claim_of(s: &crate::settings::Settings) -> Option<(String, String)> {
     None
 }
 
+/// A crew-only name left behind once a secure local address took over the
+/// crew address (claim_of prefers the local name): it's still claimed, still
+/// has its DNS record and its cloud copy, and nothing uses it. Some = retire
+/// it (name, secret). Seen live 2026-11-09: "cornerstone" was claimed as a
+/// secure local address while the crew address was "command-center-local".
+pub fn superseded_crew_name(s: &crate::settings::Settings) -> Option<(String, String)> {
+    let local = !s.local_name.is_empty() && !s.local_secret.is_empty();
+    (local && !s.crew_name.is_empty() && s.crew_name != s.local_name).then(|| (s.crew_name.clone(), s.crew_secret.clone()))
+}
+
+/// Delete the superseded name's cloud copy, give the name back (which removes
+/// its DNS record too) and forget it here. A refusal (already released, the
+/// secret no longer works) still forgets it; only "couldn't reach" waits for
+/// the next sync.
+async fn retire_crew_name(app: &AppHandle, name: &str, secret: &str) {
+    if secret.is_empty() {
+        save_settings(app, |s| {
+            if s.crew_name == name {
+                s.crew_name.clear();
+                s.crew_secret.clear();
+            }
+        });
+        return;
+    }
+    // The copy first: once the name is given back its secret proves nothing.
+    if let Err(e) = booth_post(name, secret, "/_booth/forget", &json!({})).await {
+        crate::diag::log(format!("[crew-cloud] retiring {name}: {e}"));
+        return;
+    }
+    match crate::localhttps::edge_call(reqwest::Method::POST, "/v1/release", json!({ "name": name, "secret": secret })).await {
+        Err(e) if e.starts_with("Couldn't reach") => {
+            crate::diag::log(format!("[crew-cloud] retiring {name}: {e}"));
+            return;
+        }
+        Err(e) => crate::diag::log(format!("[crew-cloud] retiring {name}: {e} (forgotten here anyway)")),
+        Ok(_) => crate::diag::log(format!("[crew-cloud] gave back {name}: the crew address uses the secure local name now")),
+    }
+    save_settings(app, |s| {
+        if s.crew_name == name {
+            s.crew_name.clear();
+            s.crew_secret.clear();
+        }
+    });
+}
+
 /// Mirrors local-edge/src/names.ts RESERVED.
 const RESERVED: &[&str] = &[
     "www", "api", "app", "admin", "root", "mail", "smtp", "ftp", "ns1", "ns2", "dns", "local", "localhost", "edge", "claim",
@@ -603,6 +648,14 @@ async fn ensure_name(app: &AppHandle) -> Result<Option<(String, String)>, String
     }
     if !service_ready().await {
         return Ok(None);
+    }
+    let superseded = {
+        let g = app.state::<SettingsState>();
+        let s = g.lock().unwrap_or_else(|p| p.into_inner());
+        superseded_crew_name(&s)
+    };
+    if let Some((old, old_secret)) = superseded {
+        retire_crew_name(app, &old, &old_secret).await;
     }
     let (name, secret) = match claim_now {
         Some(c) => c,
@@ -1196,6 +1249,25 @@ mod tests {
         assert!(!should_ask_ready(false, 1_000, 1_000 + 60_000));
         assert!(should_ask_ready(false, 1_000, 1_000 + 3600 * 1000));
         assert!(!should_ask_ready(true, 0, 1_000), "open stays open");
+    }
+
+    #[test]
+    fn a_crew_name_left_behind_by_a_secure_local_claim_is_retired() {
+        // The live booth's settings after claiming "cornerstone" in the Secure
+        // local address card: the crew address follows the local name, and
+        // the old crew-only claim is still held.
+        let mut s = crate::settings::Settings::default();
+        s.crew_name = "command-center-local".into();
+        s.crew_secret = "old".into();
+        s.crew_url = "https://cornerstone-crew.prodeck.live".into();
+        assert_eq!(superseded_crew_name(&s), None, "no local name: the crew name is the one in use");
+        s.local_name = "cornerstone".into();
+        s.local_secret = "new".into();
+        assert_eq!(claim_of(&s), Some(("cornerstone".into(), "new".into())), "linked and synced as cornerstone");
+        assert_eq!(superseded_crew_name(&s), Some(("command-center-local".into(), "old".into())));
+        // Claiming the crew name itself as the local address adopts it instead (localhttps.rs).
+        s.local_name = "command-center-local".into();
+        assert_eq!(superseded_crew_name(&s), None);
     }
 
     #[test]
