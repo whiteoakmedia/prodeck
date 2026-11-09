@@ -322,10 +322,22 @@ fn apps_for(push: &PushState, user_ids: &[String]) -> Vec<AppSub> {
 
 /// What the relay is asked to send: the notification's words only. Nothing
 /// about the church or the person goes with it.
-fn relay_body(apps: &[AppSub], payload: &serde_json::Value) -> serde_json::Value {
+/// `extras`: per person, extra fields for that person's phones only (a page's
+/// own confirm link).
+fn relay_body(
+    apps: &[AppSub],
+    payload: &serde_json::Value,
+    extras: &std::collections::HashMap<String, serde_json::Value>,
+) -> serde_json::Value {
     let text = |k: &str| payload.get(k).and_then(|v| v.as_str()).unwrap_or("").to_string();
     json!({
-        "to": apps.iter().map(|a| json!({ "p": a.platform, "t": a.token })).collect::<Vec<_>>(),
+        "to": apps
+            .iter()
+            .map(|a| match extras.get(&a.user_id) {
+                Some(x) => json!({ "p": a.platform, "t": a.token, "x": x }),
+                None => json!({ "p": a.platform, "t": a.token }),
+            })
+            .collect::<Vec<_>>(),
         "title": text("title"),
         "body": text("body"),
         "tag": text("tag"),
@@ -333,8 +345,14 @@ fn relay_body(apps: &[AppSub], payload: &serde_json::Value) -> serde_json::Value
     })
 }
 
-async fn send_apps(client: &reqwest::Client, push: &PushState, apps: &[AppSub], payload: &serde_json::Value) {
-    let r = client.post(format!("{}/v1/send", relay_url())).json(&relay_body(apps, payload)).send().await;
+async fn send_apps(
+    client: &reqwest::Client,
+    push: &PushState,
+    apps: &[AppSub],
+    payload: &serde_json::Value,
+    extras: &std::collections::HashMap<String, serde_json::Value>,
+) {
+    let r = client.post(format!("{}/v1/send", relay_url())).json(&relay_body(apps, payload, extras)).send().await;
     match r {
         Ok(r) if r.status().is_success() => {
             let v: serde_json::Value = r.json().await.unwrap_or_default();
@@ -375,6 +393,16 @@ fn drop_endpoint(push: &PushState, endpoint: &str) {
 /// Fire-and-forget push to a set of crew users. Never blocks the caller: a
 /// page must appear on open screens instantly even if a push service is slow.
 pub fn notify(app: &AppHandle, user_ids: Vec<String>, payload: serde_json::Value) {
+    notify_with(app, user_ids, payload, std::collections::HashMap::new());
+}
+
+/// `notify`, with extra fields for some people's app phones (see relay_body).
+pub fn notify_with(
+    app: &AppHandle,
+    user_ids: Vec<String>,
+    payload: serde_json::Value,
+    extras: std::collections::HashMap<String, serde_json::Value>,
+) {
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
         let push = app.state::<PushState>().inner().clone();
@@ -396,7 +424,7 @@ pub fn notify(app: &AppHandle, user_ids: Vec<String>, payload: serde_json::Value
         // up the browser pages behind it.
         if !apps.is_empty() {
             let (client, push, payload) = (client.clone(), push.clone(), payload.clone());
-            tauri::async_runtime::spawn(async move { send_apps(&client, &push, &apps, &payload).await });
+            tauri::async_runtime::spawn(async move { send_apps(&client, &push, &apps, &payload, &extras).await });
         }
 
         for sub in targets {
@@ -527,10 +555,26 @@ mod tests {
     #[test]
     fn relay_gets_the_words_and_tokens_only() {
         let apps = vec![AppSub { user_id: "u1".into(), platform: "apns".into(), token: tok('a'), created_ms: 0 }];
-        let body = relay_body(&apps, &json!({ "title": "ProDeck · Page", "body": "Zach: mics", "tag": "page-1", "page": true, "pageId": "p1", "url": "/" }));
+        let body = relay_body(&apps, &json!({ "title": "ProDeck · Page", "body": "Zach: mics", "tag": "page-1", "page": true, "pageId": "p1", "url": "/" }), &Default::default());
         assert_eq!(body["to"][0]["t"], tok('a'));
         assert_eq!(body["page"], true);
         assert!(body.get("pageId").is_none() && body.to_string().find("u1").is_none());
+        assert!(body["to"][0].get("x").is_none());
+    }
+
+    #[test]
+    fn a_confirm_link_goes_only_to_its_own_persons_phones() {
+        let apps = vec![
+            AppSub { user_id: "u1".into(), platform: "apns".into(), token: tok('a'), created_ms: 0 },
+            AppSub { user_id: "u2".into(), platform: "apns".into(), token: tok('b'), created_ms: 0 },
+        ];
+        let mut extras = std::collections::HashMap::new();
+        extras.insert("u1".to_string(), json!({ "ack": "https://booth.example/api/page/ack?k=one" }));
+        let body = relay_body(&apps, &json!({ "title": "t", "body": "b", "page": true }), &extras);
+        assert_eq!(body["to"][0]["x"]["ack"], "https://booth.example/api/page/ack?k=one");
+        assert!(body["to"][1].get("x").is_none(), "u2 must never see u1's link");
+        // Still nothing that names the person.
+        assert!(body.to_string().find("u1").is_none());
     }
 
     // The private half must be loadable by the signer we actually sign with.

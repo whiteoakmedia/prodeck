@@ -650,6 +650,29 @@ async fn handle_conn(
         return write_bytes(&mut stream, 200, "application/json", body.to_string().as_bytes()).await;
     }
 
+    // A page's own confirm link (pages.rs ack_key): the Crew app's lock
+    // screen "Got it" posts it without opening the app. The random key is the
+    // credential; a wrong one counts against the throttle like a password.
+    if method == "POST" && path.starts_with("/api/page/ack") {
+        let key = path
+            .split_once("k=")
+            .map(|(_, k)| k.split('&').next().unwrap_or("").to_string())
+            .unwrap_or_default();
+        if let Some(wait) = auth_backoff(&auth_key) {
+            return write_bytes(&mut stream, 429, "application/json", format!("{{\"error\":\"too many attempts, wait {wait}s\"}}").as_bytes()).await;
+        }
+        if crate::pages::ack_key_owner(&key).is_none() {
+            note_wrong_token(&auth_key, &key);
+            return write_bytes(&mut stream, 404, "application/json", b"{\"error\":\"that confirm link isn't valid any more\"}").await;
+        }
+        let pages = app.state::<crate::pages::PagesState>().inner().clone();
+        let out = match crate::pages::ack_by_key(&app, &pages, &key) {
+            Ok(r) => (200, json!({ "result": r })),
+            Err(e) => (410, json!({ "error": e })),
+        };
+        return write_bytes(&mut stream, out.0, "application/json", &serde_json::to_vec(&out.1).unwrap_or_default()).await;
+    }
+
     // SSE event stream.
     if method == "GET" && path.starts_with("/api/events") {
         let token = path
@@ -1604,6 +1627,26 @@ async fn serve_audio_mp3(mut stream: tokio::net::TcpStream, app: AppHandle) -> s
 /// that isn't a plain path on this site falls back to the tally board.
 /// The booth's secure address for the crew app: the public one, else the
 /// secure local one, and only if it's https. "" = none.
+/// The address a crew phone can reach this booth at, for links the booth
+/// hands out (a page's confirm link): the secure address when there is one,
+/// otherwise this Mac's address on the church network. "" when neither is
+/// known.
+pub fn phone_origin(app: &AppHandle) -> String {
+    let (public, local, port) = {
+        let st = app.state::<SettingsState>();
+        let g = st.lock().unwrap_or_else(|p| p.into_inner());
+        (g.public_url.clone(), g.local_url.clone(), g.web_port)
+    };
+    let secure = secure_origin(&public, &local);
+    if !secure.is_empty() {
+        return secure;
+    }
+    match crate::localhttps::default_route_ip() {
+        Some(ip) if port > 0 => format!("http://{ip}:{port}"),
+        _ => String::new(),
+    }
+}
+
 fn secure_origin(public: &str, local: &str) -> String {
     [public, local]
         .iter()

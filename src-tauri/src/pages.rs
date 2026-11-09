@@ -16,7 +16,7 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, Manager};
@@ -215,13 +215,27 @@ fn push_page(app: &AppHandle, page: &Page, to: &[String]) {
         return;
     }
     let first = page.from.split_whitespace().next().unwrap_or("Booth");
-    crate::push::notify(
+    // Each person gets their own confirm link, so the Crew app's lock screen
+    // "Got it" can confirm without opening the app or knowing who's signed in
+    // (crew-app AppDelegate.swift). No link when phones have no way back to
+    // the booth yet.
+    let origin = crate::web::phone_origin(app);
+    let extras: HashMap<String, serde_json::Value> = if origin.is_empty() {
+        HashMap::new()
+    } else {
+        to.iter()
+            .map(|id| (id.clone(), json!({ "ack": format!("{origin}/api/page/ack?k={}", ack_key(page.id, id)) })))
+            .collect()
+    };
+    crate::push::notify_with(
         app,
         to.to_vec(),
         json!({
             "title": "ProDeck · Page",
             "body": format!("{first}: {}", page.body),
-            // Same tag per page so a re-buzz replaces rather than stacks.
+            // Same tag per page: browsers replace rather than stack. The Crew
+            // app gets each repeat as a fresh alert instead (push-edge), since
+            // a replaced notification doesn't ring again.
             "tag": format!("page-{}", page.id),
             "page": true,
             // The service worker needs this to confirm from the lock screen
@@ -229,7 +243,68 @@ fn push_page(app: &AppHandle, page: &Page, to: &[String]) {
             "pageId": page.id,
             "url": "/",
         }),
+        extras,
     );
+}
+
+/// One-time confirm links for pages, by key: (page id, crew id). Keys are
+/// random and only ever leave the booth inside that person's own push, so
+/// holding one is proof enough. Pages live in memory, so these do too.
+static ACK_KEYS: std::sync::LazyLock<Mutex<HashMap<String, (u64, String)>>> =
+    std::sync::LazyLock::new(|| Mutex::new(HashMap::new()));
+
+/// The confirm key for this person and page, the same one for every repeat.
+fn ack_key(page_id: u64, user_id: &str) -> String {
+    let mut m = ACK_KEYS.lock().unwrap_or_else(|p| p.into_inner());
+    if let Some((k, _)) = m.iter().find(|(_, v)| v.0 == page_id && v.1 == user_id) {
+        return k.clone();
+    }
+    // More than any ring of pages could need; a fresh start loses nothing
+    // that a phone opening the app can't do instead.
+    if m.len() > 5_000 {
+        m.clear();
+    }
+    let k = uuid::Uuid::new_v4().simple().to_string();
+    m.insert(k.clone(), (page_id, user_id.to_string()));
+    k
+}
+
+/// Which page and person a confirm key belongs to.
+pub fn ack_key_owner(key: &str) -> Option<(u64, String)> {
+    ACK_KEYS.lock().unwrap_or_else(|p| p.into_inner()).get(key.trim()).cloned()
+}
+
+/// Confirm by a push's confirm link (the lock screen "Got it").
+pub fn ack_by_key(app: &AppHandle, pages: &PagesState, key: &str) -> Result<Receipt, String> {
+    let (page_id, user_id) = ack_key_owner(key).ok_or("that confirm link isn't valid any more")?;
+    let mut h = pages.pages.lock().unwrap_or_else(|p| p.into_inner());
+    let name = h
+        .iter()
+        .find(|p| p.id == page_id)
+        .and_then(|p| p.recipients.iter().find(|r| r.id == user_id))
+        .map(|r| r.name.clone())
+        .ok_or("that page is no longer active")?;
+    let (receipt, read, of, is_new) = record_receipt(&mut h, page_id, &user_id, &name)?;
+    drop(h);
+    if is_new {
+        emit_receipt(app, page_id, &receipt, read, of);
+    }
+    Ok(receipt)
+}
+
+fn emit_receipt(app: &AppHandle, page_id: u64, receipt: &Receipt, read: usize, of: usize) {
+    app.emit(
+        "page:receipt",
+        json!({
+            "pageId": page_id,
+            "userId": receipt.user_id,
+            "name": receipt.name,
+            "readMs": receipt.read_ms,
+            "read": read,
+            "of": of,
+        }),
+    )
+    .ok();
 }
 
 /// Record a confirm. Idempotent: a phone that acks twice (retry, double-tap)
@@ -249,18 +324,7 @@ pub fn ack_core(
     drop(h);
     // Only a genuinely new confirm is worth waking the sender's screen for.
     if is_new {
-        app.emit(
-            "page:receipt",
-            json!({
-                "pageId": page_id,
-                "userId": receipt.user_id,
-                "name": receipt.name,
-                "readMs": receipt.read_ms,
-                "read": read,
-                "of": of,
-            }),
-        )
-        .ok();
+        emit_receipt(app, page_id, &receipt, read, of);
     }
     Ok(receipt)
 }
@@ -398,6 +462,18 @@ pub fn page_list(pages: tauri::State<'_, PagesState>) -> Vec<Page> {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn each_person_gets_their_own_confirm_link_that_names_their_page() {
+        let a = ack_key(9_001, "u-ruth");
+        let b = ack_key(9_001, "u-luke");
+        assert_ne!(a, b, "two people must never share a link");
+        assert_eq!(ack_key(9_001, "u-ruth"), a, "a repeat of the page reuses the link");
+        assert_eq!(a.len(), 32);
+        assert_eq!(ack_key_owner(&a), Some((9_001, "u-ruth".to_string())));
+        assert_eq!(ack_key_owner("not-a-key"), None);
+    }
+
     use super::*;
 
     fn page_with(recipients: &[(&str, &str)]) -> VecDeque<Page> {

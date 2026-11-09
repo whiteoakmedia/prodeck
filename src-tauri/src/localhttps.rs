@@ -149,7 +149,7 @@ pub fn is_private(ip: &str) -> bool {
 /// The address on the default route: where the phones' Wi-Fi is, on a booth
 /// that also has a Dante network. Asking the OS which source it would use for
 /// an outside address sends nothing.
-fn default_route_ip() -> Option<String> {
+pub(crate) fn default_route_ip() -> Option<String> {
     let s = std::net::UdpSocket::bind("0.0.0.0:0").ok()?;
     s.connect("1.1.1.1:53").ok()?;
     let ip = s.local_addr().ok()?.ip().to_string();

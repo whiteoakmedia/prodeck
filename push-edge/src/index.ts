@@ -23,6 +23,7 @@
  * carry a page's words, a push token or the sender's address.
  */
 
+import { apnsPayload, collapses, type TargetExtras } from "./payload";
 import * as Sentry from "@sentry/cloudflare";
 
 /** Workers reach sentry.io directly; only booths need the feedback Worker's tunnel. */
@@ -40,6 +41,8 @@ interface Env {
 interface Target {
   p: string;
   t: string;
+  /** Extra fields for this phone only (a page's confirm link). */
+  x?: TargetExtras;
 }
 
 const MAX_TO = 100;
@@ -85,7 +88,7 @@ async function sendApns(env: Env, token: string, body: string, tag: string, page
     "apns-push-type": "alert",
     "apns-priority": "10",
   };
-  if (tag) headers["apns-collapse-id"] = tag.slice(0, 64);
+  if (tag && collapses(page)) headers["apns-collapse-id"] = tag.slice(0, 64);
   if (page) headers["apns-expiration"] = String(Math.floor(Date.now() / 1000) + PAGE_TTL_S);
 
   let lastReason = "";
@@ -126,15 +129,7 @@ async function send(req: Request, env: Env): Promise<Response> {
   const page = input.page === true;
   if (!to.length || !text) return fail(400, "nothing to send");
 
-  const body = JSON.stringify({
-    aps: {
-      alert: { title, body: text },
-      sound: "default",
-      "thread-id": page ? "pages" : "crew",
-      // Pages break through Focus, the way a page on a radio would.
-      "interruption-level": page ? "time-sensitive" : "active",
-    },
-  });
+  const words = { title, body: text, page };
 
   const dead: string[] = [];
   let sent = 0;
@@ -143,6 +138,7 @@ async function send(req: Request, env: Env): Promise<Response> {
       const t = String(x?.t ?? "");
       if (x?.p !== "apns" || !/^[0-9a-f]{64,200}$/i.test(t)) return;
       if (!(await env.PHONES.limit({ key: t })).success) return;
+      const body = JSON.stringify(apnsPayload(words, x?.x));
       const r = await sendApns(env, t, body, tag, page).catch((e) => {
         console.log(`apns error: ${e}`);
         Sentry.captureException(e);

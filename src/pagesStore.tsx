@@ -9,6 +9,7 @@ import {
 import {
   IS_WEB,
   on,
+  onGatewayState,
   pageAck,
   pageList,
   pageRebuzz,
@@ -58,9 +59,25 @@ export function PagesProvider({ children }: { children: ReactNode }) {
   nameRef.current = chat.name;
 
   useEffect(() => {
-    pageList()
-      .then(setPages)
-      .catch(() => {});
+    const refresh = () =>
+      pageList()
+        .then(setPages)
+        .catch(() => {});
+    refresh();
+    // A page usually arrives while the phone is asleep. Tapping its
+    // notification wakes the page here, but "page:new" is never replayed on
+    // reconnect, so the takeover used to wait for the booth's next re-buzz,
+    // up to 20 seconds later. Ask again whenever the phone comes back to the
+    // screen or reaches the booth again.
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    let wasUp = true;
+    const offGateway = onGatewayState((up) => {
+      if (up && !wasUp) refresh();
+      wasUp = up;
+    });
     const subs = [
       on<CrewPage>("page:new", (p) =>
         // Re-buzz re-emits the same page; replace rather than duplicate.
@@ -85,6 +102,8 @@ export function PagesProvider({ children }: { children: ReactNode }) {
       ),
     ];
     return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      offGateway();
       subs.forEach((u) => u.then((f) => f()));
     };
   }, []);
