@@ -44,6 +44,17 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.120 — 9 November 2026
+
+Everything in 0.9.119, plus:
+
+### Fixed
+
+- **A new crew address works straight away.** The booth could wait up to half
+  an hour to connect the first time it turned its crew address on.
+- **Crew addresses are named after the church** (its Planning Center name), not
+  the booth computer. Addresses already set up keep their name.
+
 ## 0.9.119 — 9 November 2026
 
 Everything in 0.9.118, plus:
