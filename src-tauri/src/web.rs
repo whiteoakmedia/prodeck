@@ -148,9 +148,21 @@ const ONE_SHOT: &[&str] = &[
     "pco:sync_stopped",
 ];
 
-/// Failed gateway auths per peer: (count, first_failure_ms).
+/// Failed gateway auths per peer: (count, last_failure_ms).
 static AUTH_FAILS: std::sync::LazyLock<Mutex<HashMap<String, (u32, u64)>>> =
     std::sync::LazyLock::new(|| Mutex::new(HashMap::new()));
+/// The wrong passwords each peer has already been charged for, as short
+/// hashes, so the same one again costs nothing. Guessing means trying
+/// different passwords; a phone, TV or Home Screen copy still holding an old
+/// password repeats one, many times a minute. Charging every repeat locked
+/// that device's whole address out within seconds, and behind the church's
+/// own web address every phone in the building shares one address, so one
+/// stale device dropped everyone (connection drops reported 2026-11-09).
+static AUTH_SEEN: std::sync::LazyLock<Mutex<HashMap<String, Vec<u64>>>> =
+    std::sync::LazyLock::new(|| Mutex::new(HashMap::new()));
+/// Distinct wrong passwords remembered per peer; past this, every new one
+/// still counts, so a guesser can't hide by cycling a short list.
+const AUTH_SEEN_MAX: usize = 32;
 const AUTH_FREE_TRIES: u32 = 8;
 const AUTH_WINDOW_MS: u64 = 300_000;
 
@@ -164,6 +176,7 @@ fn auth_backoff(peer: &str) -> Option<u64> {
     let (n, since) = *m.get(peer)?;
     if now.saturating_sub(since) > AUTH_WINDOW_MS {
         m.remove(peer);
+        AUTH_SEEN.lock().unwrap_or_else(|p| p.into_inner()).remove(peer);
         return None;
     }
     if n <= AUTH_FREE_TRIES {
@@ -191,9 +204,39 @@ fn note_auth_failure(peer: &str) {
     e.1 = now;
 }
 
+/// A wrong password from `peer`: charged against its throttle only the first
+/// time this peer sends this particular one (see AUTH_SEEN).
+fn note_wrong_token(peer: &str, token: &str) {
+    if peer.is_empty() {
+        return;
+    }
+    use std::hash::{Hash, Hasher};
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    token.hash(&mut h);
+    let fp = h.finish();
+    {
+        let mut seen = AUTH_SEEN.lock().unwrap_or_else(|p| p.into_inner());
+        if seen.len() > 2_000 {
+            seen.clear();
+        }
+        let list = seen.entry(peer.to_string()).or_default();
+        if list.contains(&fp) {
+            return;
+        }
+        if list.len() < AUTH_SEEN_MAX {
+            list.push(fp);
+        }
+    }
+    note_auth_failure(peer);
+}
+
 fn clear_auth_failures(peer: &str) {
     if !peer.is_empty() {
         AUTH_FAILS
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .remove(peer);
+        AUTH_SEEN
             .lock()
             .unwrap_or_else(|p| p.into_inner())
             .remove(peer);
@@ -307,8 +350,11 @@ fn get_auth(app: &AppHandle, key: &str, token: &str, need_admin: bool) -> GetAut
             }
             GetAuth::Ok
         }
-        _ => {
-            note_auth_failure(key);
+        // The crew password on an admin-only route: refused, but it is a real
+        // password, not a guess at the admin one, so it costs nothing.
+        Some(_) => GetAuth::Denied,
+        None => {
+            note_wrong_token(key, token);
             GetAuth::Denied
         }
     }
@@ -758,7 +804,7 @@ async fn handle_conn(
             return write_bytes(&mut stream, 200, "application/json", &serde_json::to_vec(&out).unwrap_or_default()).await;
         }
         let Some(tier) = token_tier(&app, token) else {
-            note_auth_failure(&auth_key);
+            note_wrong_token(&auth_key, token);
             return write_bytes(&mut stream, 401, "application/json", b"{\"error\":\"unauthorized\"}")
                 .await;
         };
@@ -1457,8 +1503,10 @@ async fn serve_sse(
             Ok(Err(broadcast::error::RecvError::Lagged(_))) => continue,
             Ok(Err(_)) => break,
             Err(_) => {
-                // Heartbeat keeps proxies / the EventSource alive.
-                if stream.write_all(b": ping\n\n").await.is_err() {
+                // Heartbeat: keeps proxies from closing a quiet stream, and is a
+                // real frame (a comment never reaches the page) so browsers can
+                // tell a quiet stream from a dead one (lib/sseRetry.ts).
+                if stream.write_all(b"data: {\"event\":\"gateway:ping\",\"payload\":null}\n\n").await.is_err() {
                     break;
                 }
             }
@@ -2836,7 +2884,7 @@ pub fn web_stop(state: tauri::State<'_, WebState>) {
 #[cfg(test)]
 mod member_pp_tests {
     use super::{
-        auth_backoff, clear_auth_failures, member_pp_read_ok, note_auth_failure, AUTH_FREE_TRIES,
+        auth_backoff, clear_auth_failures, member_pp_read_ok, note_auth_failure, note_wrong_token, AUTH_FREE_TRIES,
     };
 
     #[test]
@@ -2915,6 +2963,32 @@ mod member_pp_tests {
         // chat_send is handled separately (team channel only), so it must not
         // pass this predicate.
         assert!(!member_cmd_ok("chat_send"));
+    }
+
+    #[test]
+    fn a_device_repeating_one_old_password_never_locks_its_address() {
+        // A phone, TV or Home Screen copy still holding the crew password from
+        // before it was changed asks again and again. Behind the church's web
+        // address every phone in the building shares this one key, so charging
+        // each repeat dropped the whole room (2026-11-09).
+        let peer = "cf:198.51.100.20";
+        clear_auth_failures(peer);
+        for _ in 0..200 {
+            note_wrong_token(peer, "last-months-crew-password");
+        }
+        assert!(auth_backoff(peer).is_none(), "one stale password must not throttle the address");
+        clear_auth_failures(peer);
+    }
+
+    #[test]
+    fn guessing_different_passwords_is_still_throttled() {
+        let peer = "203.0.113.77:1";
+        clear_auth_failures(peer);
+        for i in 0..(AUTH_FREE_TRIES + 2) {
+            note_wrong_token(peer, &format!("guess-{i}"));
+        }
+        assert!(auth_backoff(peer).is_some(), "a run of different guesses must be slowed down");
+        clear_auth_failures(peer);
     }
 
     #[test]

@@ -1,3 +1,4 @@
+import { sseRetryDelay, sseStalled, SSE_RESUME_MS } from "./sseRetry";
 import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 import { listen as tauriListen, type UnlistenFn } from "@tauri-apps/api/event";
 import { IS_DEMO, IS_SHOTS, demoInvoke, demoOn } from "./demo";
@@ -128,22 +129,62 @@ type WebHandler = (payload: unknown) => void;
 const webHandlers = new Map<string, Set<WebHandler>>();
 let sse: EventSource | null = null;
 
+// The live stream from the booth has to come back by itself, whatever broke
+// it. EventSource only retries on its own after a plain network error: if a
+// reconnect is answered with anything but the stream (Cloudflare's "can't
+// reach the booth" page while the booth's internet blips, a 429 from the
+// password throttle, a booth mid restart behind the secure address) it closes
+// for good, and the phone sat on "booth offline" until someone reloaded it. A
+// phone that sleeps or changes network can also keep a stream that is dead
+// without ever erroring. So: reopen a closed stream with a growing wait, treat
+// a stream with no frames for too long as dead (the booth sends a heartbeat
+// frame every 15 seconds), and reopen straight away when the phone comes back
+// online or back to the screen. Rules in lib/sseRetry.ts.
+let sseRetryTimer: ReturnType<typeof setTimeout> | null = null;
+let sseFailures = 0;
+let sseLastFrame = 0;
+
+function scheduleSseRetry() {
+  if (sseRetryTimer) return;
+  sseRetryTimer = setTimeout(() => {
+    sseRetryTimer = null;
+    reconnectSse();
+  }, sseRetryDelay(sseFailures++));
+}
+
 function reconnectSse() {
   if (!IS_WEB) return;
+  if (sseRetryTimer) {
+    clearTimeout(sseRetryTimer);
+    sseRetryTimer = null;
+  }
   try {
     sse?.close();
   } catch {
     /* ignore */
   }
+  sse = null;
   const t = getWebToken();
   if (!t) return;
-  sse = new EventSource(`/api/events?token=${encodeURIComponent(t)}`);
+  const es = new EventSource(`/api/events?token=${encodeURIComponent(t)}`);
+  sse = es;
+  sseLastFrame = Date.now();
   // Whether this browser can actually reach the booth. NOT the same as
   // ProDeck's `connected`, which is the booth's link to ProPresenter — a phone
   // must not be told "Command Center offline" just because Pro dropped.
-  sse.onopen = () => setGatewayOnline(true);
-  sse.onerror = () => setGatewayOnline(false);
-  sse.onmessage = (e) => {
+  es.onopen = () => {
+    sseFailures = 0;
+    sseLastFrame = Date.now();
+    setGatewayOnline(true);
+  };
+  es.onerror = () => {
+    setGatewayOnline(false);
+    // CONNECTING: the browser is already retrying. CLOSED: it gave up, so we
+    // take over.
+    if (es.readyState === EventSource.CLOSED && sse === es) scheduleSseRetry();
+  };
+  es.onmessage = (e) => {
+    sseLastFrame = Date.now();
     try {
       const msg = JSON.parse(e.data) as { event: string; payload: unknown };
       const set = webHandlers.get(msg.event);
@@ -152,6 +193,25 @@ function reconnectSse() {
       /* ignore malformed frame */
     }
   };
+}
+
+if (IS_WEB && typeof window !== "undefined") {
+  // A stream that stopped delivering, even the heartbeat, is dead.
+  setInterval(() => {
+    if (sse && sseStalled(sseLastFrame, Date.now())) reconnectSse();
+  }, 5_000);
+  const revive = () => {
+    if (!getWebToken()) return;
+    if (!sse || sse.readyState === EventSource.CLOSED || sseStalled(sseLastFrame, Date.now(), SSE_RESUME_MS)) {
+      sseFailures = 0;
+      reconnectSse();
+    }
+  };
+  window.addEventListener("online", revive);
+  window.addEventListener("pageshow", revive);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") revive();
+  });
 }
 // Kiosk bootstrap (?kiosk=<dashboard name>&token=<access password>): the
 // bookmark carries auth so an unattended screen (office Mac mini, no
