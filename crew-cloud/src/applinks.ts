@@ -98,7 +98,13 @@ export function wantsAppStep(method: string, path: string, search: URLSearchPara
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
-/** The page an iPhone without the app sees. `self` is the code's own address. */
+/**
+ * The page an iPhone without the app sees. `self` is the code's own address.
+ * Step 2 says to scan from inside the app: the App Store build has no
+ * Associated Domains yet, so a second camera scan would only show this page
+ * again. Once a Crew build with applinks:*.prodeck.live is out, it can say the
+ * camera opens the app straight into the church.
+ */
 export function appStepPage(self: string): string {
   const browser = new URL(self);
   browser.searchParams.set("web", "1");
@@ -128,7 +134,7 @@ a.ghost{color:var(--accent)}
 <p>Your church uses ProDeck Crew for the production team.</p>
 <ol>
 <li>Get the free ProDeck Crew app.</li>
-<li>Scan this code again with the camera. The app opens straight into your church.</li>
+<li>Open ProDeck Crew, tap Scan crew code and scan this code.</li>
 </ol>
 <a class="btn primary" href="${APP_STORE_URL}">Get ProDeck Crew</a>
 <a class="btn ghost" href="${esc(browser.toString())}">Continue in the browser</a>

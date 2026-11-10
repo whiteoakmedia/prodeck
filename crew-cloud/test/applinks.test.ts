@@ -49,6 +49,8 @@ describe("a crew code on each kind of phone", () => {
       const html = await r.text();
       expect(html).toContain('href="https://apps.apple.com/app/id6829868156"');
       expect(html).toContain("Get ProDeck Crew");
+      // Works with the App Store app today: scan from inside it, not the camera again.
+      expect(html).toContain("Open ProDeck Crew, tap Scan crew code and scan this code.");
       expect(html).toContain('href="https://grace-crew.prodeck.live/join?web=1"');
       expect(html).toContain('name="apple-itunes-app" content="app-id=6829868156, app-argument=https://grace-crew.prodeck.live/join"');
       // Plain words: no dashes in what people read.
