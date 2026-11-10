@@ -30,6 +30,8 @@ export const APP_STORE_URL = `https://apps.apple.com/app/id${APP_STORE_ID}`;
  */
 export const ANDROID_PACKAGE = "app.prodeck.crew";
 export const ANDROID_CERT_SHA256: string[] = [
+  // Google Play's app signing key (Play Console, App integrity), 2026-11-10.
+  "22:9A:7A:07:20:7E:36:28:87:71:69:07:46:BD:BE:FE:33:88:40:71:C3:F2:6A:9E:E4:99:B9:EA:63:F5:37:61",
   // Upload key, made 2026-11-09.
   "B1:F9:D5:DF:05:41:BA:D6:40:CC:82:DD:27:20:B2:34:5E:EB:42:A0:63:64:F4:70:0E:02:6A:30:AD:02:95:27",
 ];

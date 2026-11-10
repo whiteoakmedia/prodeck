@@ -76,7 +76,7 @@ signed with the upload key. A release build refuses to run without
      address with the app page, so Android can't verify the link yet.
    - **Play's signing key:** after the first upload, Play Console, Test and
      release, App integrity, App signing key certificate, copy the SHA-256 into
-     `ANDROID_CERT_SHA256` in crew-cloud/src/applinks.ts and deploy crew-cloud
+     `ANDROID_CERT_SHA256` in crew-cloud/src/applinks.ts (done 2026-11-10) and deploy crew-cloud
      and crew-edge again. Without it, crew codes open the browser instead of
      the app on phones that installed from Play.
 6. **A ProDeck release.** The booth only accepts Android tokens from the
