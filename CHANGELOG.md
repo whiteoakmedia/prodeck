@@ -44,6 +44,25 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.122 — 10 November 2026
+
+Everything in 0.9.121, plus:
+
+### New
+
+- **A clearer screen while the booth is off.** Call time and position first,
+  then the week's plan, the checklist and team chat.
+- **Next Slide,** a silent game for while the booth is off: tap Next slide as
+  the last word of the line is sung. It speeds up with every slide.
+- **A Next Slide leaderboard across every church,** this week and all time.
+  Only players who choose a nickname are on it.
+- **One crew code for everything.** Crew QR codes point at your church's crew
+  address; iPhones are offered the ProDeck Crew app.
+
+### Fixed
+
+- **ProDeck Crew opens your church while the booth is off.**
+
 ## 0.9.121 — 9 November 2026
 
 Everything in 0.9.120, plus:
