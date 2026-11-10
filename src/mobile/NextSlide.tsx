@@ -14,6 +14,17 @@ import {
   wordsLit,
   type Verdict,
 } from "../lib/nextSlide";
+import { nickProblem } from "../lib/boardNick";
+import {
+  loadBoard,
+  recordRun,
+  saveNick,
+  savedNick,
+  submit,
+  suggestNick,
+  type Board,
+  type BoardRow,
+} from "../lib/nextSlideBoard";
 
 // Next Slide (lib/nextSlide.ts): a stage screen shows a lyric line lighting up
 // word by word; tap Next slide as the last word lands. A confidence monitor
@@ -33,6 +44,7 @@ export function NextSlide({ onClose }: { onClose: () => void }) {
   const [elapsed, setElapsed] = useState(0);
   const start = useRef(0);
   const raf = useRef(0);
+  const [board, setBoard] = useState(false);
 
   const text = HYMNS[pos.song].lines[pos.line];
   const words = text.split(" ");
@@ -67,11 +79,14 @@ export function NextSlide({ onClose }: { onClose: () => void }) {
     if (onTime(v)) {
       const s = streak + 1;
       setStreak(s);
+      recordRun(s);
       if (s > best) {
         setBest(s);
         saveBest(s);
       }
     } else {
+      // The run's over: its best goes on the board (once there's a nickname).
+      if (streak > 0) post();
       setStreak(0);
     }
     // On to the next line by itself: a clean change keeps the song moving.
@@ -83,6 +98,27 @@ export function NextSlide({ onClose }: { onClose: () => void }) {
       },
       gapAfter(onTime(v), slides, streak),
     );
+  }
+
+  /** Post this phone's bests to the all churches board, quietly. */
+  function post() {
+    submit().catch(() => {});
+  }
+
+  function close() {
+    cancelAnimationFrame(raf.current);
+    if (streak > 0) post();
+    onClose();
+  }
+
+  function openBoard() {
+    // The board pauses the game: the line being sung is let go.
+    cancelAnimationFrame(raf.current);
+    if (streak > 0) post();
+    setStreak(0);
+    setVerdict(null);
+    setPhase("ready");
+    setBoard(true);
   }
 
   function tap() {
@@ -104,9 +140,14 @@ export function NextSlide({ onClose }: { onClose: () => void }) {
           <div className="ns-title">Next Slide</div>
           <div className="ns-song">{HYMNS[pos.song].title}</div>
         </div>
-        <button className="ns-close" onClick={onClose} aria-label="Close the game">
-          ✕
-        </button>
+        <div className="ns-top-actions">
+          <button className="ns-board-btn" onClick={openBoard}>
+            Leaderboard
+          </button>
+          <button className="ns-close" onClick={close} aria-label="Close the game">
+            ✕
+          </button>
+        </div>
       </div>
 
       <div className={`ns-screen${verdict && !good ? " off" : ""}`} aria-live="polite">
@@ -150,6 +191,130 @@ export function NextSlide({ onClose }: { onClose: () => void }) {
       <button className="ns-go" onPointerDown={tap}>
         {phase === "ready" ? "Start" : "Next slide"}
       </button>
+      {board && <BoardPanel onClose={() => setBoard(false)} />}
     </div>
   );
+}
+
+/**
+ * The all churches leaderboard: this week (from Monday morning) and all time.
+ * A player is on it once they save a nickname; their church shows as its
+ * crew name. Everyone signed in sees it.
+ */
+function BoardPanel({ onClose }: { onClose: () => void }) {
+  const [tab, setTab] = useState<"week" | "all">("week");
+  const [data, setData] = useState<Board | null>(null);
+  const [err, setErr] = useState("");
+  const [nick, setNick] = useState(() => savedNick() || suggestNick(localStorage.getItem("prodeck.crewName") ?? ""));
+  const [editing, setEditing] = useState(() => !savedNick());
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    loadBoard()
+      .then(setData)
+      .catch((e) => setErr(String((e as Error)?.message ?? e)));
+  }, []);
+
+  const problem = nickProblem(nick);
+  async function save() {
+    if (problem || busy) return;
+    setBusy(true);
+    setErr("");
+    try {
+      saveNick(nick);
+      const b = await submit(nick.trim().replace(/\s+/g, " "));
+      if (b) setData(b);
+      setEditing(false);
+    } catch (e) {
+      setErr(String((e as Error)?.message ?? e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const view = data ? (tab === "week" ? data.week : data.all) : null;
+  const you = view?.you ?? null;
+
+  return (
+    <div className="ns-board" role="dialog" aria-label="Leaderboard">
+      <div className="ns-top">
+        <div>
+          <div className="ns-title">Leaderboard</div>
+          <div className="ns-song">Every church on ProDeck</div>
+        </div>
+        <button className="ns-close" onClick={onClose} aria-label="Back to the game">
+          ✕
+        </button>
+      </div>
+
+      <div className="ns-tabs" role="tablist">
+        <button role="tab" aria-selected={tab === "week"} className={tab === "week" ? "on" : ""} onClick={() => setTab("week")}>
+          This week
+        </button>
+        <button role="tab" aria-selected={tab === "all"} className={tab === "all" ? "on" : ""} onClick={() => setTab("all")}>
+          All time
+        </button>
+      </div>
+
+      <ol className="ns-rows">
+        {view?.top.map((r: BoardRow) => (
+          <li key={`${r.rank}${r.nick}${r.church}`} className="ns-row">
+            <span className="ns-rank">{r.rank}</span>
+            <span className="ns-who">
+              <span className="ns-nick">{r.nick}</span>
+              <span className="ns-church">{r.church}</span>
+            </span>
+            <span className="ns-best">{r.best}</span>
+          </li>
+        ))}
+        {view && view.top.length === 0 && (
+          <li className="ns-empty">{tab === "week" ? "Nobody yet this week. Be the first." : "Nobody yet."}</li>
+        )}
+        {!view && !err && <li className="ns-empty">Loading</li>}
+      </ol>
+
+      {you && (
+        <div className="ns-you">
+          You: {ordinal(you.rank)}, best {you.best}
+        </div>
+      )}
+
+      {editing ? (
+        <div className="ns-nick-card">
+          <label htmlFor="ns-nick">Your name on the board</label>
+          <div className="ns-nick-row">
+            <input
+              id="ns-nick"
+              className="crew-input"
+              value={nick}
+              maxLength={16}
+              onChange={(e) => setNick(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && void save()}
+            />
+            <button className="ns-save" disabled={!!problem || busy} onClick={() => void save()}>
+              {busy ? "Saving" : "Save"}
+            </button>
+          </div>
+          {nick && problem && <p className="ns-nick-problem">{problem}</p>}
+          <p className="ns-fine">
+            Your nickname, your church's crew name and your best streak are shown to crew at every church using ProDeck.
+          </p>
+        </div>
+      ) : (
+        <div className="ns-nick-done">
+          On the board as <strong>{savedNick()}</strong>
+          <button className="crew-link" onClick={() => setEditing(true)}>
+            Change
+          </button>
+        </div>
+      )}
+      {err && <p className="ns-nick-problem">{err}</p>}
+    </div>
+  );
+}
+
+function ordinal(n: number): string {
+  const v = n % 100;
+  const s = v >= 11 && v <= 13 ? "th" : ({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[n % 10] ?? "th";
+  return `${n}${s}`;
 }

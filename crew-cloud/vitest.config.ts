@@ -8,6 +8,7 @@ export default defineConfig({
     cloudflareTest({
       wrangler: { configPath: "./wrangler.test.jsonc" },
       miniflare: {
+        bindings: { BOARD_ADMIN_TOKEN: "board-admin" },
         serviceBindings: {
           NAMES: async (req: Request) => {
             const b = (await req.json()) as { name: string; secret: string };

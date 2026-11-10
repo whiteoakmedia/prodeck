@@ -121,3 +121,44 @@
   touch-action: manipulation; user-select: none; -webkit-user-select: none;
 }
 .ns-go:active { transform: scale(.985); }
+
+/* Leaderboard (NextSlide.tsx BoardPanel) */
+.ns-top-actions { display: flex; gap: 8px; }
+.ns-board-btn {
+  height: 40px; padding: 0 14px; border-radius: 12px; border: none; cursor: pointer;
+  background: var(--accent-quiet-2); color: var(--accent-hi); font-family: var(--font-sans); font-weight: 600; font-size: 0.875rem;
+  box-shadow: inset 0 0 0 1px var(--accent-line);
+}
+.ns-board {
+  position: absolute; inset: 0; z-index: 2; background: var(--bg); overflow-y: auto;
+  display: flex; flex-direction: column; gap: 12px;
+  padding: max(16px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+}
+.ns-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: var(--panel-sunk); padding: 4px; border-radius: 12px; }
+.ns-tabs button {
+  height: 36px; border: none; border-radius: 9px; background: none; color: var(--muted);
+  font-family: var(--font-sans); font-weight: 600; font-size: 0.875rem; cursor: pointer;
+}
+.ns-tabs button.on { background: var(--panel-raised); color: var(--text); }
+.ns-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ns-row { display: flex; align-items: center; gap: 12px; background: var(--panel); border-radius: 12px; padding: 9px 12px; }
+.ns-rank { font-family: var(--font-mono); font-weight: 700; color: var(--dim); width: 22px; text-align: right; }
+.ns-row:nth-child(1) .ns-rank { color: var(--warn); }
+.ns-who { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ns-nick { font-weight: 600; font-size: 0.9375rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ns-church { font-family: var(--font-mono); font-size: 0.6875rem; color: var(--muted); }
+.ns-best { font-family: var(--font-mono); font-weight: 700; font-size: 1.125rem; color: var(--accent-hi); }
+.ns-empty { color: var(--muted); font-size: 0.875rem; padding: 14px 4px; }
+.ns-you { font-size: 0.875rem; color: var(--text-soft); padding: 2px 4px; }
+.ns-nick-card { background: var(--panel); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+.ns-nick-card label { font-size: 0.8125rem; color: var(--text-soft); font-weight: 600; }
+.ns-nick-row { display: flex; gap: 8px; }
+.ns-nick-row .crew-input { flex: 1; min-width: 0; }
+.ns-save {
+  padding: 0 16px; border-radius: 12px; border: none; cursor: pointer;
+  background: var(--accent); color: #0e131b; font-family: var(--font-sans); font-weight: 700;
+}
+.ns-save:disabled { background: var(--panel-raised); color: var(--disabled-text); cursor: default; }
+.ns-nick-problem { margin: 0; font-size: 0.8125rem; color: #f3a39c; }
+.ns-fine { margin: 0; font-size: 0.75rem; color: var(--dim); line-height: 1.4; }
+.ns-nick-done { font-size: 0.875rem; color: var(--text-soft); display: flex; align-items: center; gap: 8px; }

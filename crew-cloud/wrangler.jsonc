@@ -26,8 +26,17 @@
   // use it: a page there names no church and gets the "not a crew address" 404.
   "workers_dev": true,
   "routes": [{ "pattern": "*-crew.prodeck.live/*", "zone_name": "prodeck.live" }],
-  "durable_objects": { "bindings": [{ "name": "CHURCH", "class_name": "Church" }] },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Church"] }],
+  "durable_objects": {
+    "bindings": [
+      { "name": "CHURCH", "class_name": "Church" },
+      // The Next Slide leaderboard across every church (src/board.ts).
+      { "name": "BOARD", "class_name": "Leaderboard" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Church"] },
+    { "tag": "v2", "new_sqlite_classes": ["Leaderboard"] }
+  ],
   "services": [{ "binding": "NAMES", "service": "prodeck-local", "entrypoint": "Names" }],
   // The app's built dist/ (npx vite build at the repo root before deploying):
   // the shell phones get while the booth is off, and the hashed files phones

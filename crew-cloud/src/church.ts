@@ -40,6 +40,10 @@ export interface Env {
   ASSETS: Fetcher;
   /** prodeck-local's `Names` entrypoint: POST /verify {name, secret}. */
   NAMES: Fetcher;
+  /** The Next Slide leaderboard across every church (board.ts), one object "global". */
+  BOARD: DurableObjectNamespace;
+  /** White Oak Media's key for taking someone off the leaderboard. Unset = no remove switch. */
+  BOARD_ADMIN_TOKEN?: string;
 }
 
 // ------------------------------------------------------------------ shapes
@@ -650,6 +654,25 @@ export class Church extends DurableObject<Env> {
     }
 
     if (path === "/register" && req.method === "POST") return this.register(body);
+
+    // Next Slide's leaderboard across every church (board.ts). Signed in crew
+    // only; the church is this one's crew name, never anything the phone says.
+    if (path === "/game/board" || path === "/game/score") {
+      const board = this.env.BOARD.get(this.env.BOARD.idFromName("global"));
+      if (path === "/game/board" && req.method === "GET") {
+        const player = url.searchParams.get("player") ?? "";
+        const r = await board.fetch(`https://board/board?player=${encodeURIComponent(player)}`);
+        return json(await r.json(), r.status);
+      }
+      if (path === "/game/score" && req.method === "POST") {
+        const church = req.headers.get("x-prodeck-church") ?? "";
+        const r = await board.fetch("https://board/submit", {
+          method: "POST",
+          body: JSON.stringify({ player: body.player, nick: body.nick, week: body.week, all: body.all, church }),
+        });
+        return json(await r.json(), r.status);
+      }
+    }
 
     return json({ error: "not found" }, 404);
   }

@@ -25,10 +25,11 @@
  * the same secret. This Worker never hands names out and never writes DNS.
  */
 import { Church, type Env } from "./church";
+import { Leaderboard } from "./board";
 import { appStepPage, wantsAppStep, wellKnown } from "./applinks";
-import { churchFor } from "./util";
+import { churchFor, same, sha256 } from "./util";
 
-export { Church };
+export { Church, Leaderboard };
 
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
@@ -36,6 +37,16 @@ export default {
     // The app link files (applinks.ts), on every host this Worker answers.
     const known = wellKnown(url.pathname);
     if (known) return known;
+
+    // White Oak Media takes someone off the Next Slide leaderboard:
+    //   POST /_admin/board/remove  {nick, church?}  Authorization: Bearer <BOARD_ADMIN_TOKEN>
+    if (url.pathname === "/_admin/board/remove" && req.method === "POST") {
+      const auth = req.headers.get("authorization") ?? "";
+      if (!env.BOARD_ADMIN_TOKEN || !(await sameSecret(auth, `Bearer ${env.BOARD_ADMIN_TOKEN}`))) {
+        return new Response("Not allowed.\n", { status: 401 });
+      }
+      return env.BOARD.get(env.BOARD.idFromName("global")).fetch("https://board/remove", { method: "POST", body: await req.text() });
+    }
     const name = churchFor(url.host, req.headers.get("x-prodeck-church"));
     if (!name) {
       return new Response("This is a ProDeck crew address. Ask whoever runs your church's booth for yours.\n", {
@@ -98,4 +109,9 @@ async function shellFor(req: Request, env: Env): Promise<Response> {
   // index.html must be asked for again next time: the booth may be back.
   if (!assetLike) out.headers.set("cache-control", "no-store");
   return out;
+}
+
+/** Constant time compare of two secrets (by their hashes, so length can't leak). */
+async function sameSecret(a: string, b: string): Promise<boolean> {
+  return same(await sha256(a), await sha256(b));
 }
