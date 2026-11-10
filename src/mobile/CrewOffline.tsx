@@ -12,6 +12,8 @@ import {
   type TeamMember,
 } from "../pcoStore";
 import { ChartSheet } from "./ChartSheet";
+import { NextSlide } from "./NextSlide";
+import "./crewOffline.css";
 
 // S11 — booth offline. The nav is deliberately hidden: the LIVE features all
 // need the booth. But the week's plan doesn't — the crew-edge worker serves
@@ -381,6 +383,8 @@ export function CrewOffline({ onCached }: { onCached: () => void }) {
   } | null>(null);
   // Bumped after an edge join so EdgeChat re-reads the stored name.
   const [, bump] = useState(0);
+  // Next Slide, the game for while the booth is off.
+  const [game, setGame] = useState(false);
 
   const [signedIn, setSignedIn] = useState(0);
   useEffect(() => {
@@ -472,142 +476,138 @@ export function CrewOffline({ onCached }: { onCached: () => void }) {
     );
   }
 
-  return (
-    <div className="crew-onboard">
-      <img className="crew-mark dim" src={markWhite} alt="" aria-hidden />
-      <h1 className="crew-onboard-title">Command Center offline</h1>
-      <p className="crew-onboard-sub">
-        {edge?.source === "booth"
-          ? "The plan, team chat and your checklist still work. Anything you tick or send reaches the booth when it's back; pages and check in return with it."
-          : "The plan, charts, chat, and your checklist still work; pages and check-in return with the booth."}
-      </p>
-      <div className="crew-caution">
-        <span className="pulse-dot" style={{ background: "var(--warn)" }} />
-        <span className="mono">Waiting for the booth</span>
-      </div>
-      {/* Plainly: this is the copy the booth left, not the live booth. */}
-      {edge?.source === "booth" && (
-        <p className="crew-hint" role="status" style={{ margin: "8px 0", color: "var(--warn)" }}>
-          {cloudCopyLine(edge.sentMs ?? 0)}
-        </p>
-      )}
-      {tried && !getWebToken() && <CloudSignIn onIn={() => setSignedIn((n) => n + 1)} />}
-      <button className="crew-btn primary" onClick={onCached}>
-        Open checklist
-      </button>
+  const fmtTime = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const onTeam = team.filter((m) => !isDeclined(m.status));
+  const fromBooth = edge?.source === "booth";
 
-      {/* Your Sunday, from the cloud — current even with the booth Mac off. */}
+  return (
+    <div className="crew-off">
+      {/* Plainly what this is: the booth is off, and where this copy came from. */}
+      <header className="crew-off-status" role="status">
+        <img className="crew-off-mark" src={markWhite} alt="" aria-hidden />
+        <div className="crew-off-status-text">
+          <div className="crew-off-status-title">
+            <span className="pulse-dot" style={{ background: "var(--warn)" }} /> The booth is off
+          </div>
+          <div className="crew-off-status-sub">
+            {fromBooth
+              ? cloudCopyLine(edge?.sentMs ?? 0).replace(/^The booth is off\. /, "")
+              : edge
+                ? "This week, live from Planning Center."
+                : "Waiting for it to come back."}
+          </div>
+        </div>
+      </header>
+
+      {tried && !getWebToken() && <CloudSignIn onIn={() => setSignedIn((n) => n + 1)} />}
+
+      {/* Your Sunday first: it's what a volunteer opens this for. */}
+      {edge && (arrival.scheduled || guide) && (
+        <section className="crew-off-card accent">
+          <div className="crew-off-kicker">Your Sunday</div>
+          {arrival.scheduled && (
+            <div className="crew-off-call">
+              <span className="crew-off-call-time">{callTs ? fmtTime(callTs) : "Scheduled"}</span>
+              <span className="crew-off-call-meta">
+                {callTs ? `Call time, ${new Date(callTs).toLocaleDateString([], { weekday: "long" })}` : "No call time set"}
+                {arrival.position ? ` · ${arrival.position}` : ""}
+              </span>
+            </div>
+          )}
+          {guide && <p className="crew-off-guide">{guide}</p>}
+        </section>
+      )}
+
+      <div className="crew-off-actions">
+        <button className="crew-btn primary" onClick={onCached}>
+          Checklist
+        </button>
+        <button className="crew-btn quiet" onClick={() => setGame(true)}>
+          Play Next Slide
+        </button>
+      </div>
+
       {edge && (
-        <div className="crew-card edge crew-offline-plan">
-          <div className="crew-row-head">
-            <span className="mono" style={{ color: "var(--accent-hi)" }}>
-              This week
-            </span>
-            <span className="mono-data crew-count-of">{edge.plan.date}</span>
+        <section className="crew-off-card">
+          <div className="crew-off-head">
+            <span className="crew-off-kicker">This week</span>
+            <span className="crew-off-date">{edge.plan.date}</span>
           </div>
           {nextTime?.ts && (
-            <p className="crew-hint muted" style={{ margin: "4px 0 0" }}>
-              {nextTime.name || nextTime.type || "Service"} · {fmtDay(nextTime.ts)}
-            </p>
+            <div className="crew-off-when">
+              {nextTime.name || nextTime.type || "Service"}, {fmtDay(nextTime.ts)}
+            </div>
           )}
-          {arrival.scheduled && (
-            <p className="crew-hint" style={{ margin: "4px 0 0", color: "var(--accent-hi)" }}>
-              Your call{callTs ? ` · ${fmtDay(callTs)}` : ""}
-              {arrival.position ? ` · ${arrival.position}` : ""}
-            </p>
-          )}
-          {guide && (
-            <p className="crew-hint muted" style={{ margin: "6px 0 0", whiteSpace: "pre-wrap" }}>
-              {guide}
-            </p>
-          )}
-          <div style={{ marginTop: 8 }}>
-            {items.map((s) =>
-              s.type === "song" ? (
-                <div
-                  key={s.id}
-                  className="crew-setlist-row"
-                  style={{ padding: "4px 0", cursor: s.songId && s.arrangementId ? "pointer" : undefined }}
-                  onClick={() =>
-                    s.songId &&
-                    s.arrangementId &&
-                    setChart({
-                      songId: s.songId,
-                      arrangementId: s.arrangementId,
-                      title: s.title,
-                      itemKey: s.key,
-                    })
-                  }
-                >
-                  <span className="crew-setlist-title">
+          <ol className="crew-off-plan">
+            {items.map((s) => {
+              if (s.type === "header") {
+                return (
+                  <li key={s.id} className="crew-off-section">
                     {s.title}
-                    {s.songId && s.arrangementId && (
-                      <span className="crew-hint muted" style={{ marginLeft: 6 }}>
-                        ♪ chart
+                  </li>
+                );
+              }
+              if (s.type === "song") {
+                const chartable = !!(s.songId && s.arrangementId);
+                return (
+                  <li key={s.id}>
+                    <button
+                      className="crew-off-song"
+                      disabled={!chartable}
+                      onClick={() =>
+                        chartable &&
+                        setChart({ songId: s.songId!, arrangementId: s.arrangementId!, title: s.title, itemKey: s.key })
+                      }
+                    >
+                      <span className="crew-off-song-main">
+                        <span className="crew-off-song-title">{s.title}</span>
+                        <span className="crew-off-song-sub">
+                          {[s.leader, chartable ? "Chart" : ""].filter(Boolean).join(" · ")}
+                        </span>
                       </span>
-                    )}
-                  </span>
-                  {s.leader && (
-                    <span className="crew-hint muted" style={{ whiteSpace: "nowrap" }}>
-                      {s.leader}
-                    </span>
-                  )}
-                  {s.key && <span className="crew-setlist-key">{s.key}</span>}
+                      {s.key && <span className="crew-off-key">{s.key}</span>}
+                    </button>
+                  </li>
+                );
+              }
+              return (
+                <li key={s.id} className="crew-off-item">
+                  <span className="crew-off-item-title">{s.title}</span>
+                  {s.length > 0 && <span className="crew-off-item-len">{Math.round(s.length / 60)} min</span>}
+                </li>
+              );
+            })}
+          </ol>
+          {onTeam.length > 0 && (
+            <details className="crew-off-team">
+              <summary>Who's on this week ({onTeam.length})</summary>
+              {onTeam.map((m) => (
+                <div key={m.id + m.position} className="crew-off-item">
+                  <span className="crew-off-item-title">{m.name}</span>
+                  <span className="crew-off-item-len">{m.position}</span>
                 </div>
-              ) : s.type === "header" ? (
-                <div key={s.id} className="mono-data crew-count-of" style={{ padding: "8px 0 2px" }}>
-                  {s.title}
-                </div>
-              ) : (
-                <div key={s.id} className="crew-setlist-row" style={{ padding: "2px 0", opacity: 0.75 }}>
-                  <span className="crew-hint">{s.title}</span>
-                  {s.length > 0 && (
-                    <span className="crew-hint muted" style={{ whiteSpace: "nowrap" }}>
-                      {Math.round(s.length / 60)} min
-                    </span>
-                  )}
-                </div>
-              ),
-            )}
-          </div>
-          {team.length > 0 && (
-            <details style={{ marginTop: 8 }}>
-              <summary className="crew-hint" style={{ cursor: "pointer" }}>
-                Who's on this week ({team.filter((m) => !isDeclined(m.status)).length})
-              </summary>
-              {team
-                .filter((m) => !isDeclined(m.status))
-                .map((m) => (
-                  <div key={m.id + m.position} className="crew-setlist-row" style={{ padding: "2px 0" }}>
-                    <span className="crew-hint">{m.name}</span>
-                    <span className="crew-hint muted" style={{ whiteSpace: "nowrap" }}>
-                      {m.position}
-                    </span>
-                  </div>
-                ))}
+              ))}
             </details>
           )}
-          <p className="crew-hint muted" style={{ marginTop: 8 }}>
-            {edge.source === "booth"
-              ? "As the booth last sent it."
-              : "Live from Planning Center. Tap a song for its chart."}
+          <p className="crew-off-foot">
+            {fromBooth ? "As the booth last sent it." : "Tap a song for its chart. Pages and check in come back with the booth."}
           </p>
-        </div>
+        </section>
       )}
       {!joined && edge && (
         <EdgeJoin
-          roster={productionRoster(
-            (edge.team ?? []).map((m) => ({ ...m, team: "" })),
-          ).map((m) => ({ name: m.name, position: m.position }))}
+          roster={productionRoster((edge.team ?? []).map((m) => ({ ...m, team: "" }))).map((m) => ({
+            name: m.name,
+            position: m.position,
+          }))}
           onJoined={() => bump((n) => n + 1)}
         />
       )}
       <EdgeChat />
       {tried && !edge && getWebToken() && (
-        <p className="crew-hint muted">
-          The week's plan wasn't reachable either. Check your connection.
-        </p>
+        <p className="crew-hint muted">The week's plan wasn't reachable either. Check your connection.</p>
       )}
+      {game && <NextSlide onClose={() => setGame(false)} />}
     </div>
   );
 }

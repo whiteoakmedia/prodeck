@@ -1,0 +1,123 @@
+/* The booth-off screen (CrewOffline.tsx) and Next Slide (NextSlide.tsx).
+   Left aligned cards on the crew tokens (tokens.css), same rhythm as Home. */
+
+.crew-off { display: flex; flex-direction: column; gap: 12px; padding: 4px 0 24px; text-align: left; }
+
+/* Status: one compact strip in place of the old full screen splash. */
+.crew-off-status {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--warn-bg); box-shadow: inset 0 0 0 1px var(--warn-line);
+  border-radius: 18px; padding: 12px 14px;
+}
+.crew-off-mark { width: 30px; height: 30px; opacity: .8; flex: 0 0 auto; }
+.crew-off-status-text { min-width: 0; }
+.crew-off-status-title {
+  display: flex; align-items: center; gap: 8px;
+  font-weight: 600; font-size: 1rem; color: var(--warn-heading);
+}
+.crew-off-status-sub { font-size: 0.8125rem; color: var(--warn-text); line-height: 1.4; margin-top: 2px; }
+
+/* Cards */
+.crew-off-card,
+.crew-off .crew-card.edge { background: var(--panel); border-radius: 20px; padding: 16px; text-align: left; }
+.crew-off-card.accent { background: var(--accent-quiet-2); box-shadow: inset 0 0 0 1px var(--accent-line); }
+.crew-off-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.crew-off-kicker {
+  font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--accent-hi);
+}
+.crew-off-date { font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); }
+.crew-off-when { font-size: 0.875rem; color: var(--text-soft); margin-top: 4px; }
+
+/* Your Sunday */
+.crew-off-call { display: flex; flex-direction: column; margin-top: 6px; }
+.crew-off-call-time { font-size: 2rem; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
+.crew-off-call-meta { font-size: 0.875rem; color: var(--text-soft); margin-top: 2px; }
+.crew-off-guide {
+  margin: 10px 0 0; padding-top: 10px; border-top: 1px solid var(--accent-line);
+  font-size: 0.875rem; color: var(--text-soft); line-height: 1.45; white-space: pre-wrap;
+}
+
+.crew-off-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.crew-off-actions .crew-btn { width: 100%; max-width: none; }
+.crew-off-actions .crew-btn.quiet { background: var(--panel); color: var(--text); box-shadow: inset 0 0 0 1px var(--border-mid); }
+
+/* The plan */
+.crew-off-plan { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; }
+.crew-off-section {
+  font-family: var(--font-mono); font-size: 0.6875rem; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--dim); padding: 14px 0 4px;
+}
+.crew-off-section:first-child { padding-top: 2px; }
+.crew-off-song {
+  width: 100%; display: flex; align-items: center; gap: 12px; text-align: left;
+  background: var(--panel-sunk); border: none; border-radius: 14px; padding: 10px 12px; margin: 3px 0;
+  color: var(--text); font-family: var(--font-sans); cursor: pointer;
+}
+.crew-off-song:disabled { cursor: default; }
+.crew-off-song-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.crew-off-song-title { font-weight: 600; font-size: 0.9688rem; line-height: 1.3; }
+.crew-off-song-sub { font-size: 0.75rem; color: var(--muted); margin-top: 1px; }
+.crew-off-song-sub:empty { display: none; }
+.crew-off-key {
+  font-family: var(--font-mono); font-weight: 700; font-size: 1.25rem; color: var(--accent-hi);
+  min-width: 36px; text-align: right;
+}
+.crew-off-item {
+  display: flex; justify-content: space-between; gap: 12px; align-items: baseline;
+  padding: 6px 2px; font-size: 0.875rem; border-bottom: 1px solid var(--border-soft);
+}
+.crew-off-item:last-child { border-bottom: none; }
+.crew-off-item-title { color: var(--text-soft); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crew-off-item-len { color: var(--dim); font-size: 0.8125rem; white-space: nowrap; flex: 0 0 auto; }
+.crew-off-team { margin-top: 12px; }
+.crew-off-team summary { cursor: pointer; font-size: 0.875rem; color: var(--accent-hi); padding: 4px 0; }
+.crew-off-foot { margin: 12px 0 0; font-size: 0.75rem; color: var(--dim); }
+
+/* ---------------------------------------------------------- Next Slide */
+.ns-sheet {
+  position: fixed; inset: 0; z-index: 90; background: var(--bg);
+  display: flex; flex-direction: column; gap: 14px;
+  padding: max(16px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+}
+.ns-top { display: flex; align-items: flex-start; justify-content: space-between; }
+.ns-title { font-size: 1.375rem; font-weight: 600; letter-spacing: -0.02em; }
+.ns-song { font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; margin-top: 2px; }
+.ns-close {
+  width: 40px; height: 40px; border-radius: 12px; border: none; cursor: pointer;
+  background: var(--panel); color: var(--text); font-size: 1rem;
+}
+/* The stage screen: black, 16:9, big centred lyric like the real thing. */
+.ns-screen {
+  position: relative; aspect-ratio: 16 / 9; width: 100%;
+  background: #000; border-radius: 14px; box-shadow: inset 0 0 0 1px var(--border-mid);
+  display: grid; place-items: center; padding: 16px; overflow: hidden;
+  transition: box-shadow .2s;
+}
+.ns-screen.off { box-shadow: inset 0 0 0 2px var(--danger); }
+.ns-line { margin: 0; text-align: center; font-size: clamp(1.1rem, 5.4vw, 1.6rem); font-weight: 600; line-height: 1.3; color: #3b4452; }
+.ns-line .sung { color: #fff; transition: color .08s; }
+.ns-intro { margin: 0; text-align: center; color: #c9d6e6; font-size: 0.9375rem; line-height: 1.45; max-width: 300px; }
+.ns-verdict {
+  position: absolute; left: 10px; right: 10px; bottom: 10px; text-align: center;
+  font-size: 0.8125rem; font-weight: 600; padding: 6px 10px; border-radius: 10px;
+}
+.ns-verdict.good { background: var(--success-quiet); color: var(--success); }
+.ns-verdict.bad { background: var(--danger-bg); color: #f3a39c; }
+/* Confidence monitor strip: what's coming up. */
+.ns-confidence {
+  display: flex; gap: 10px; align-items: baseline;
+  background: var(--panel-sunk); border-radius: 12px; padding: 10px 12px;
+}
+.ns-next-label { font-family: var(--font-mono); font-size: 0.6875rem; letter-spacing: .12em; text-transform: uppercase; color: var(--warn); }
+.ns-next-text { font-size: 0.875rem; color: var(--text-soft); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ns-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; text-align: center; }
+.ns-stats > div { background: var(--panel); border-radius: 14px; padding: 10px; }
+.ns-stat { font-family: var(--font-mono); font-size: 1.75rem; font-weight: 700; }
+.ns-stat-label { font-size: 0.75rem; color: var(--muted); }
+.ns-go {
+  margin-top: auto; height: 96px; border-radius: 22px; border: none; cursor: pointer;
+  background: var(--accent); color: #0e131b; font-family: var(--font-sans); font-size: 1.25rem; font-weight: 700;
+  touch-action: manipulation; user-select: none; -webkit-user-select: none;
+}
+.ns-go:active { transform: scale(.985); }
