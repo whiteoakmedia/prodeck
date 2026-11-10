@@ -831,5 +831,9 @@ async function frontDoor(req: Request, env: Env): Promise<Response> {
       : await env.ASSETS.fetch(new Request(new URL("/", req.url).toString(), { headers: req.headers }));
   const out = new Response(res.body, res);
   out.headers.set("x-prodeck-fallback", "edge");
+  // ProDeck Crew checks the booth is there by fetching /manifest.json from its
+  // own page (a cross origin request); the booth sends this header itself, so
+  // the booth-off copy must too, or the app can't open the church (2026-11-10).
+  out.headers.set("access-control-allow-origin", "*");
   return out;
 }

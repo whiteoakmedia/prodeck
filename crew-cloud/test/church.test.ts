@@ -223,6 +223,14 @@ describe("booth off: the app still opens", () => {
     expect(missing.status).toBe(404);
   });
 
+  it("lets ProDeck Crew check the church is there while the booth is off", async () => {
+    // The app asks from its own page (capacitor://localhost): cross origin.
+    const r = await SELF.fetch(`${host("grace")}/manifest.json`, { headers: { origin: "capacitor://localhost" } });
+    expect(r.status).toBe(200);
+    expect(r.headers.get("access-control-allow-origin")).toBe("*");
+    expect(((await r.json()) as { name: string }).name).toBe("ProDeck");
+  });
+
   it("says nothing for an address that isn't a church", async () => {
     const r = await SELF.fetch("https://www.prodeck.live/");
     expect(r.status).toBe(404);

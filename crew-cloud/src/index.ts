@@ -90,6 +90,11 @@ async function shellFor(req: Request, env: Env): Promise<Response> {
       : await env.ASSETS.fetch(new Request(new URL("/", url).toString(), { method: req.method, headers: req.headers }));
   const out = new Response(res.body, res);
   out.headers.set("x-prodeck-fallback", "cloud");
+  // ProDeck Crew checks a church is there by fetching /manifest.json from its
+  // own page (capacitor://localhost): a cross origin request, refused without
+  // this. The booth sends it itself; with the booth off this answers instead,
+  // and without it the app said "Couldn't reach" (2026-11-10). Public files only.
+  out.headers.set("access-control-allow-origin", "*");
   // index.html must be asked for again next time: the booth may be back.
   if (!assetLike) out.headers.set("cache-control", "no-store");
   return out;
