@@ -60,3 +60,36 @@ describe("ProPresenter messages for the Child Call tile", () => {
     expect(likelyChildCall([])).toBeNull();
   });
 });
+
+import { childCallBody, withCodeBlank } from "../lib/ppMessages";
+
+describe("making a child call message in ProPresenter", () => {
+  const theme = { name: "Messages", uuid: "T", index: 0 };
+  const plain = parseMessages([{ id: { name: "Thanks for Joining Us", uuid: "A", index: 0 }, message: "Thank you for joining us!", tokens: [], theme }]);
+
+  it("prefers a message with a blank over one without, whatever it's called", () => {
+    const both = parseMessages([...RAW].reverse());
+    expect(likelyChildCall(both)?.name).toBe("Child Call");
+    expect(likelyChildCall(plain)?.name).toBe("Thanks for Joining Us");
+  });
+
+  it("always leaves a Code blank in the wording", () => {
+    expect(withCodeBlank("Parent of {Code}, see the nursery")).toBe("Parent of {Code}, see the nursery");
+    expect(withCodeBlank("  Nursery call  ")).toBe("Nursery call {Code}");
+    expect(withCodeBlank("")).toBe("Parent of {Code}, please come to the nursery");
+  });
+
+  it("borrows the church's message theme and doesn't reuse a name", () => {
+    const body = childCallBody(plain, "Parent of {Code}");
+    expect(body).toMatchObject({
+      id: { name: "Child Call" },
+      message: "Parent of {Code}",
+      tokens: [{ name: "Code", text: { text: "" } }],
+      theme,
+      is_active: false,
+    });
+    const again = childCallBody([...plain, ...parseMessages([{ id: { name: "Child Call", uuid: "B" }, theme }])], "x");
+    expect((again?.id as { name: string }).name).toBe("Child Call 2");
+    expect(childCallBody([], "x")).toBeNull();
+  });
+});

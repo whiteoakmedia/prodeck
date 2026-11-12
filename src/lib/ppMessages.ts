@@ -17,6 +17,8 @@ export interface ProMessage {
   text: string;
   tokens: MessageToken[];
   showing: boolean;
+  /** Pro's theme reference, as it sent it: a new message borrows it. */
+  theme?: unknown;
 }
 
 /** Pro's GET /v1/messages, read defensively: older builds leave fields out. */
@@ -43,6 +45,7 @@ export function parseMessages(raw: unknown): ProMessage[] {
       text: String(r.message ?? ""),
       tokens,
       showing: r.is_active === true,
+      theme: r.theme,
     });
   }
   return out;
@@ -79,5 +82,45 @@ export function missingTokens(m: ProMessage, values: Record<string, string>): st
 /** The message a church most likely uses for child calls, if any. */
 export function likelyChildCall(list: ProMessage[]): ProMessage | null {
   const re = /child|kid|nursery|parent|pager|call/i;
-  return list.find((m) => re.test(m.name)) ?? list.find((m) => textTokens(m).length > 0) ?? list[0] ?? null;
+  const blank = (m: ProMessage) => textTokens(m).length > 0;
+  return (
+    list.find((m) => re.test(m.name) && blank(m)) ??
+    list.find(blank) ??
+    list.find((m) => re.test(m.name)) ??
+    list[0] ??
+    null
+  );
+}
+
+/** The blank a made-for-you child call message uses. */
+export const CODE_TOKEN = "Code";
+export const DEFAULT_CHILD_CALL = `Parent of {${CODE_TOKEN}}, please come to the nursery`;
+
+/** The wording, with exactly the code blank in it somewhere. */
+export function withCodeBlank(text: string): string {
+  const t = text.trim().replace(/\s+/g, " ");
+  if (!t) return DEFAULT_CHILD_CALL;
+  return t.includes(`{${CODE_TOKEN}}`) ? t : `${t} {${CODE_TOKEN}}`;
+}
+
+/**
+ * The body for POST /v1/messages: a "Child Call" message with a code blank,
+ * in the same theme as the church's other messages (Pro requires a theme, and
+ * theirs already looks right on their screens). null with no message to
+ * borrow a theme from.
+ */
+export function childCallBody(list: ProMessage[], text: string): Record<string, unknown> | null {
+  const theme = list.find((m) => m.theme)?.theme;
+  if (!theme) return null;
+  const taken = new Set(list.map((m) => m.name));
+  let name = "Child Call";
+  for (let n = 2; taken.has(name); n++) name = `Child Call ${n}`;
+  return {
+    id: { name, uuid: "", index: list.length },
+    message: withCodeBlank(text),
+    tokens: [{ name: CODE_TOKEN, text: { text: "" } }],
+    theme,
+    visible_on_network: true,
+    is_active: false,
+  };
 }

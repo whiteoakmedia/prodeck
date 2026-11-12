@@ -54,6 +54,7 @@ import {
   ppSetStageMessage,
   ppTriggerMessage,
   ppClearMessage,
+  ppCreateMessage,
   ppTimerOp,
   startAudioCapture,
   musicControl,
@@ -86,7 +87,7 @@ import { usePco, fmtLen, type TeamMember , isDeclined } from "../pcoStore";
 import { stageCallState, stageCallServiceState, serviceEndsAt, fmtClock } from "../lib/stageCall";
 import { servicePhase, displayServiceTimeId, serviceTimesOnly } from "../lib/serviceClock";
 import { silentAt } from "../lib/walkIn";
-import { likelyChildCall, messagePreview, missingTokens, parseMessages, textTokens, triggerBody, type ProMessage } from "../lib/ppMessages";
+import { DEFAULT_CHILD_CALL, childCallBody, likelyChildCall, messagePreview, missingTokens, parseMessages, textTokens, triggerBody, type ProMessage } from "../lib/ppMessages";
 import { itemStartTimes } from "../lib/planTimes";
 import { freshness } from "../lib/planPick";
 import { useAlerts } from "../alertsStore";
@@ -3795,7 +3796,7 @@ function LobbyTvWidget(_: WidgetProps) {
 // slide operator mid-service. Which message is remembered per tile.
 function ChildCallWidget({ widget, update, editing }: WidgetProps) {
   const { connected } = useProDeck();
-  const { can } = usePerms();
+  const { can, isAdmin } = usePerms();
   const { viewOnly } = useProControl();
   const locked = !can("control") || viewOnly;
   const [list, setList] = useState<ProMessage[] | null>(null);
@@ -3855,6 +3856,27 @@ function ChildCallWidget({ widget, update, editing }: WidgetProps) {
       load();
     }
   }
+  // Pro only fills in a {blank}; a message without one can't carry a code.
+  // One tap makes a Child Call message with a Code blank in Pro itself.
+  async function makeChildCall() {
+    const text = await askText("What the screens say. {Code} is where the code goes.", DEFAULT_CHILD_CALL);
+    if (text === null) return;
+    const body = childCallBody(list ?? [], text);
+    if (!body) return setErr("Make any message in ProPresenter first, so the new one can use its look.");
+    setErr("");
+    setBusy(true);
+    try {
+      const made = (await ppCreateMessage(body)) as { id?: { uuid?: string } } | null;
+      const fresh = parseMessages(await ppGet("messages"));
+      setList(fresh);
+      const id = made?.id?.uuid || fresh.find((m) => m.name === (body.id as { name: string }).name)?.id;
+      if (id) update({ messageId: id });
+    } catch (e) {
+      setErr(`ProPresenter didn't make the message: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="w-childcall" onMouseDown={(e) => e.stopPropagation()}>
@@ -3891,6 +3913,19 @@ function ChildCallWidget({ widget, update, editing }: WidgetProps) {
         />
       ))}
       <p className="w-childcall-preview">{messagePreview(msg, values) || msg.name}</p>
+      {blanks.length === 0 && (
+        <div className="w-childcall-noblank">
+          <p className="muted small">
+            This message has no blank for a code.{" "}
+            {list.some((m) => textTokens(m).length > 0) ? "Pick one that has one, or make a new one." : "Make one with a blank for the code:"}
+          </p>
+          {isAdmin && (
+            <button className="btn small" disabled={busy || locked} onClick={makeChildCall}>
+              Make a child call message
+            </button>
+          )}
+        </div>
+      )}
       {err && <p className="error small">{err}</p>}
       <div className="w-childcall-actions">
         <button className="btn primary" disabled={busy || locked} onClick={show}>

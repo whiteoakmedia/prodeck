@@ -2660,6 +2660,12 @@ async fn dispatch(
             crate::propresenter::trigger_message(&client, &base, &id, &tokens).await?;
             Ok(Value::Null)
         }
+        // Admin only (not in perm_for_cmd): it adds to ProPresenter's library.
+        "pp_create_message" => {
+            let body = args.get("body").cloned().ok_or("missing body")?;
+            let (client, base) = current_config(&pp_handle(app)).await?;
+            crate::propresenter::create_message(&client, &base, &body).await
+        }
         "pp_clear_message" => {
             let id = s("id").ok_or("missing id")?;
             let (client, base) = current_config(&pp_handle(app)).await?;
@@ -3023,7 +3029,7 @@ mod member_pp_tests {
         // how the booth is configured.
         for cmd in [
             "update_settings", "pp_action", "pp_set_stage_message", "pp_clear_stage_message",
-            "pp_trigger_message", "pp_clear_message",
+            "pp_trigger_message", "pp_clear_message", "pp_create_message",
             "avantis_set_mute", "avantis_set_fader", "avantis_recall_scene",
             "obs_set_scene", "atem_cut", "atem_auto", "atem_set_preview", "atem_set_program",
             "atem_dsk_on_air", "atem_dsk_auto", "atem_macro_run", "atem_macro_stop", "atem_ftb",

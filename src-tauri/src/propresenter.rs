@@ -466,6 +466,35 @@ pub(crate) async fn clear_message(client: &reqwest::Client, base: &str, id: &str
     ensure_ok(resp)
 }
 
+/// Make a new ProPresenter message (POST /v1/messages). Pro answers with the
+/// message it made, uuid and all.
+pub(crate) async fn create_message(
+    client: &reqwest::Client,
+    base: &str,
+    body: &serde_json::Value,
+) -> Result<serde_json::Value, String> {
+    guard("POST", "messages")?;
+    let resp = client
+        .post(format!("{}/v1/messages", base))
+        .json(body)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    if !resp.status().is_success() {
+        return Err(format!("ProPresenter returned {} making the message", resp.status()));
+    }
+    Ok(resp.json::<serde_json::Value>().await.unwrap_or(serde_json::Value::Null))
+}
+
+#[tauri::command]
+pub async fn pp_create_message(
+    body: serde_json::Value,
+    state: tauri::State<'_, ProPresenterState>,
+) -> Result<serde_json::Value, String> {
+    let (client, base) = current_config(&state).await?;
+    create_message(&client, &base, &body).await
+}
+
 #[tauri::command]
 pub async fn pp_trigger_message(
     id: String,

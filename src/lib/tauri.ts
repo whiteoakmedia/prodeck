@@ -666,6 +666,8 @@ export const ppPut = (path: string, body?: unknown) =>
 export const ppTriggerMessage = (id: string, tokens: { name: string; text: { text: string } }[] = []) =>
   ctrl(invoke<void>("pp_trigger_message", { id, tokens }));
 export const ppClearMessage = (id: string) => ctrl(invoke<void>("pp_clear_message", { id }));
+// Make a new message in ProPresenter (the Child Call tile's one-time setup).
+export const ppCreateMessage = (body: unknown) => invoke<Json>("pp_create_message", { body });
 // ProPresenter trigger/clear actions are GET (a PUT 404s). Use this for every
 // "do it now" action (slide trigger, prop/clear, next/previous, …).
 export const ppAction = (path: string) => ctrl(invoke<void>("pp_action", { path }));
