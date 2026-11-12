@@ -541,6 +541,7 @@ export interface Settings {
   /** Fade out so the music is silent as each service starts. */
   music_auto_fade: boolean;
   music_fade_secs: number;
+  music_fade_lead_secs?: number;
 }
 
 export interface MusicState {

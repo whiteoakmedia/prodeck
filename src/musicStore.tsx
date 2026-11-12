@@ -42,12 +42,13 @@ export function WalkInRunner() {
   const { serviceTimes } = usePco();
   const on = !IS_WEB && !IS_DEMO && !!settings?.music_app && settings.music_auto_fade !== false;
   const secs = settings?.music_fade_secs ?? 15;
+  const lead = settings?.music_fade_lead_secs ?? 0;
 
   useEffect(() => {
     if (!on) return;
     const tick = () => {
       const done = loadDone();
-      const plan = fadeDue(serviceTimes, Date.now(), secs, done);
+      const plan = fadeDue(serviceTimes, Date.now(), secs, done, lead);
       if (!plan) return;
       // Recorded before fading, so a slow fade is never started twice.
       try {
@@ -64,7 +65,7 @@ export function WalkInRunner() {
     tick();
     const iv = setInterval(tick, 1000);
     return () => clearInterval(iv);
-  }, [on, secs, serviceTimes]);
+  }, [on, secs, lead, serviceTimes]);
 
   return null;
 }

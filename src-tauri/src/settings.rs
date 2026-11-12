@@ -342,6 +342,9 @@ pub struct Settings {
     pub music_auto_fade: bool,
     /// How long that fade takes, in seconds.
     pub music_fade_secs: u32,
+    /// Be silent this many seconds before each service time, not right at it:
+    /// for a countdown with its own audio in the last minutes.
+    pub music_fade_lead_secs: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -508,6 +511,7 @@ impl Default for Settings {
             music_volume: 60,
             music_auto_fade: true,
             music_fade_secs: 15,
+            music_fade_lead_secs: 0,
         }
     }
 }

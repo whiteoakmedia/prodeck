@@ -3885,7 +3885,7 @@ function WalkInCard({ form, set }: { form: Settings; set: <K extends keyof Setti
         </label>
         <label className="field check">
           <input type="checkbox" id="set-music-autofade" checked={form.music_auto_fade !== false} onChange={(e) => set("music_auto_fade", e.target.checked)} />
-          <span>Fade out by itself so it's silent as each service starts</span>
+          <span>Fade out by itself before each service starts</span>
         </label>
         <label className="field">
           <span>Fade length (seconds)</span>
@@ -3899,10 +3899,24 @@ function WalkInCard({ form, set }: { form: Settings; set: <K extends keyof Setti
             onChange={(e) => set("music_fade_secs", Math.max(3, Math.min(120, parseInt(e.target.value) || 15)))}
           />
         </label>
+        <label className="field">
+          <span>Silent this many minutes before the service</span>
+          <input
+            className="input"
+            id="set-music-fade-lead"
+            type="number"
+            min={0}
+            max={30}
+            step={0.5}
+            value={(form.music_fade_lead_secs ?? 0) / 60}
+            onChange={(e) => set("music_fade_lead_secs", Math.round(Math.max(0, Math.min(30, parseFloat(e.target.value) || 0)) * 60))}
+          />
+        </label>
       </div>
       <p className="hint">
         The first time, macOS asks whether ProDeck may control {appName}: choose Allow. The fade follows the service
-        times in Planning Center. Playing music in church needs the right licence: Spotify's and Apple's own terms are
+        times in Planning Center. If your countdown has its own audio near the end, set how many minutes before the
+        service the music should already be silent. Playing music in church needs the right licence: Spotify's and Apple's own terms are
         for personal listening, so check your church's licensing before using them for walk-in music.
       </p>
     </section>

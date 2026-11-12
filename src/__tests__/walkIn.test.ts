@@ -33,3 +33,18 @@ describe("fadeDue", () => {
     expect(fadeDue([], at("09:29:50"), 15, [])).toBeNull();
   });
 });
+
+describe("fadeDue with a lead time (countdown with its own audio)", () => {
+  it("is silent two minutes before the service, not at it", () => {
+    expect(fadeDue(TIMES, at("09:27:30"), 15, [], 120)).toBeNull();
+    expect(fadeDue(TIMES, at("09:27:45"), 15, [], 120)).toEqual({ timeId: "t930", secs: 15 });
+  });
+
+  it("fades quickly if ProDeck notices after the silent point but before the service", () => {
+    expect(fadeDue(TIMES, at("09:29:00"), 15, [], 120)).toEqual({ timeId: "t930", secs: 1 });
+  });
+
+  it("still fades only once per service", () => {
+    expect(fadeDue(TIMES, at("09:29:00"), 15, ["t930"], 120)).toBeNull();
+  });
+});

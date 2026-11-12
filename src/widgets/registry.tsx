@@ -82,6 +82,7 @@ import type { Widget } from "../lib/dashboards";
 import { usePco, fmtLen, type TeamMember , isDeclined } from "../pcoStore";
 import { stageCallState, stageCallServiceState, serviceEndsAt, fmtClock } from "../lib/stageCall";
 import { servicePhase, displayServiceTimeId, serviceTimesOnly } from "../lib/serviceClock";
+import { silentAt } from "../lib/walkIn";
 import { itemStartTimes } from "../lib/planTimes";
 import { freshness } from "../lib/planPick";
 import { useAlerts } from "../alertsStore";
@@ -742,7 +743,7 @@ function WalkInMusicWidget() {
   if (settings?.music_auto_fade !== false) {
     const next = serviceTimesOnly(serviceTimes).find((t) => t.ts > now);
     if (next) {
-      const at = new Date(next.ts - (settings?.music_fade_secs ?? 15) * 1000);
+      const at = new Date(silentAt(next.ts, settings?.music_fade_lead_secs ?? 0) - (settings?.music_fade_secs ?? 15) * 1000);
       fadeLine = `Fades out by itself at ${at.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" })} for the ${new Date(next.ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} service.`;
     }
   }
