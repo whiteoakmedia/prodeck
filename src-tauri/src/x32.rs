@@ -432,6 +432,12 @@ async fn session(
             }
             _ = renew.tick() => {
                 sock.send(&msg("/xremote", vec![])?).await.map_err(|e| e.to_string())?;
+                // /xremote itself is never answered: the desk only talks when
+                // something on it changes. A desk nobody is touching went
+                // silent past the liveness check below and was dropped and
+                // reconnected every ~20 s (West Church, 0.9.117). /info always
+                // gets a reply, so it doubles as the heartbeat.
+                sock.send(&msg("/info", vec![])?).await.map_err(|e| e.to_string())?;
             }
             _ = emit.tick() => {
                 if dirty {
@@ -444,9 +450,9 @@ async fn session(
                 if now != cfg {
                     return Ok(()); // settings changed — reconnect with them
                 }
-                // Nothing at all in ~10s means the desk went away. /xremote is
-                // renewed every 8s and the console answers, so silence past
-                // that is real — whether or not we ever heard from it.
+                // Nothing at all in ~10s means the desk went away. The /info
+                // heartbeat goes out every 8s and the console answers it, so
+                // silence past that is real, whether or not we ever heard from it.
                 if !seen_any || last_rx.elapsed() > Duration::from_secs(12) {
                     return Err("no reply from the console".into());
                 }
