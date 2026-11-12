@@ -2,6 +2,7 @@ import { IS_SHOTS, SHOT_TAB } from "../lib/tauri";
 import { useEffect, useState } from "react";
 import { usePerms } from "../lib/perms";
 import { CrewNav, type CrewTab } from "./CrewNav";
+import { canGoBack, goBack, isBackSwipe, useNavHistory } from "../lib/navHistory";
 import { CrewWalk } from "./CrewWalk";
 import { CrewChat } from "./CrewChat";
 import { CrewJoin } from "./CrewJoin";
@@ -48,9 +49,84 @@ import { onTrack, seekTrack, skipTrack, stopTrack, toggleTrack, trackSnapshot } 
 // desktop Shell on phone-width web clients. v1 ships the frame + working
 // Chat and Dashboards; Home/Checklist arrive with their screens (S03/S08).
 
+type CrewSub = "" | "walk" | "comms" | "leader";
+interface CrewView {
+  tab: CrewTab;
+  sub: CrewSub;
+}
+
+/**
+ * Swipe in from the left edge to go back, the way iPhone apps work. Only
+ * where iOS gives no swipe of its own: inside ProDeck Crew and on a Home
+ * Screen app. In Safari the browser already does it, and both would fire.
+ * Android's back gesture goes through history by itself.
+ */
+function useEdgeSwipeBack() {
+  useEffect(() => {
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const standalone =
+      (navigator as Navigator & { standalone?: boolean }).standalone === true || matchMedia("(display-mode: standalone)").matches;
+    if (!ios || !(IN_CREW_APP || standalone)) return;
+    let start: { x: number; y: number } | null = null;
+    const main = () => document.querySelector<HTMLElement>(".crew-main");
+    const reset = () => {
+      const m = main();
+      if (m) {
+        m.style.transition = "transform 160ms ease-out";
+        m.style.transform = "";
+      }
+      start = null;
+    };
+    const onStart = (e: TouchEvent) => {
+      const t = e.touches[0];
+      start = e.touches.length === 1 && t.clientX <= 28 && canGoBack() ? { x: t.clientX, y: t.clientY } : null;
+    };
+    const onMove = (e: TouchEvent) => {
+      if (!start) return;
+      const t = e.touches[0];
+      const dx = t.clientX - start.x;
+      const m = main();
+      // Follow the finger a little, so it's plain the swipe is being taken.
+      if (m && dx > 0 && Math.abs(t.clientY - start.y) < dx) {
+        m.style.transition = "none";
+        m.style.transform = `translateX(${Math.min(dx, 120) / 2}px)`;
+      }
+    };
+    const onEnd = (e: TouchEvent) => {
+      if (!start) return;
+      const t = e.changedTouches[0];
+      const back = isBackSwipe(start.x, t.clientX - start.x, t.clientY - start.y);
+      reset();
+      if (back) goBack();
+    };
+    document.addEventListener("touchstart", onStart, { passive: true });
+    document.addEventListener("touchmove", onMove, { passive: true });
+    document.addEventListener("touchend", onEnd, { passive: true });
+    document.addEventListener("touchcancel", reset, { passive: true });
+    return () => {
+      document.removeEventListener("touchstart", onStart);
+      document.removeEventListener("touchmove", onMove);
+      document.removeEventListener("touchend", onEnd);
+      document.removeEventListener("touchcancel", reset);
+    };
+  }, []);
+}
+
 export function MobileShell() {
   const shotTab = IS_SHOTS && SHOT_TAB && ["home", "chat", "checklist", "dashboards", "more"].includes(SHOT_TAB) ? (SHOT_TAB as CrewTab) : null;
-  const [tab, setTab] = useState<CrewTab>(shotTab ?? "home");
+  // Where the phone is: a tab, and maybe a screen opened from it (No sound?,
+  // Comms, Leader board). Each change is a history step, so a swipe back (or
+  // Android's back) returns to the screen before (lib/navHistory).
+  const view = useNavHistory<CrewView>("crew", { tab: shotTab ?? "home", sub: IS_SHOTS && SHOT_TAB === "walk" ? "walk" : "" });
+  const { tab, sub } = view.value;
+  const setTab = (t: CrewTab) => view.go({ tab: t, sub: "" });
+  const open = (s: CrewSub) => view.go({ tab, sub: s });
+  // A screen's own Back button: one step back, or to its tab if it was the
+  // first thing opened.
+  const close = () => {
+    if (!goBack()) view.replace({ tab, sub: "" });
+  };
+  useEdgeSwipeBack();
   useEffect(() => {
     setCrashTag("layout", "crew");
     setCrashTag("crew_app", IN_CREW_APP ? "yes" : "no");
@@ -62,9 +138,9 @@ export function MobileShell() {
   const [homeKey, setHomeKey] = useState(0);
   // "No sound?" is reached from Home (and More), not a sixth tab: the nav is
   // five tabs by design and this is an occasional screen, not a daily one.
-  const [walk, setWalk] = useState(IS_SHOTS && SHOT_TAB === "walk");
+  const walk = sub === "walk";
   // Comms is a More screen too; the chip above every tab brings it back.
-  const [comms, setComms] = useState(false);
+  const comms = sub === "comms";
   // Comms is the booth's switch (Settings, Comms): off, it's nowhere on the
   // phone, and a phone that was on it hangs up. Known = settings arrived;
   // until then nothing rejoins by itself.
@@ -94,7 +170,7 @@ export function MobileShell() {
   useEffect(() => onGatewayState(setBoothUp), []);
   // Leader board is admin-only; the gateway enforces the underlying calls too.
   const { isAdmin, can } = usePerms();
-  const [leader, setLeader] = useState(false);
+  const leader = sub === "leader";
   // Identity (id + role) is fetched ONCE at the shell so every tab agrees.
   // It used to live only in the Checklist tab — Home read an empty role until
   // you visited Checklist at least once, hiding role lists and the duty card.
@@ -183,20 +259,15 @@ export function MobileShell() {
       <div className="crew-chip-stack">
         <CommsChip
           hidden={!commsOn || (tab === "more" && comms && !walk && !leader)}
-          onOpen={() => {
-            setTab("more");
-            setLeader(false);
-            setWalk(false);
-            setComms(true);
-          }}
+          onOpen={() => view.go({ tab: "more", sub: "comms" })}
         />
         <ListenChip />
       </div>
       <main className="crew-main">
-        {tab === "home" && walk && <CrewWalk onBack={() => setWalk(false)} />}
+        {tab === "home" && walk && <CrewWalk onBack={close} />}
         {/* Onboarding's last step, until page notifications are on. */}
         {IS_WEB && tab === "home" && !walk && <CrewNotifyStep onShowInstall={() => setOnboarding(true)} />}
-        {tab === "home" && !walk && <CrewHome key={homeKey} onGoChecklist={() => setTab("checklist")} onGoWalk={() => setWalk(true)} onGoChat={() => setTab("chat")} />}
+        {tab === "home" && !walk && <CrewHome key={homeKey} onGoChecklist={() => setTab("checklist")} onGoWalk={() => open("walk")} onGoChat={() => setTab("chat")} />}
         {tab === "chat" && (
           <div className="crew-page crew-page-chat">
             <CrewChat />
@@ -204,9 +275,9 @@ export function MobileShell() {
         )}
         {tab === "checklist" && <CrewChecklist />}
         {tab === "dashboards" && <CrewDash />}
-        {tab === "more" && leader && <CrewLeader />}
-        {tab === "more" && !leader && walk && <CrewWalk onBack={() => setWalk(false)} />}
-        {tab === "more" && !leader && !walk && comms && commsOn && <CrewComms onBack={() => setComms(false)} />}
+        {tab === "more" && leader && <CrewLeader onBack={close} />}
+        {tab === "more" && !leader && walk && <CrewWalk onBack={close} />}
+        {tab === "more" && !leader && !walk && comms && commsOn && <CrewComms onBack={close} />}
         {tab === "more" && !leader && !walk && !(comms && commsOn) && (
           <div className="crew-page crew-more">
             <h1 className="crew-title">More</h1>
@@ -222,11 +293,11 @@ export function MobileShell() {
             </div>
 
             <MoreGroup label="Tools">
-              {commsOn && <MoreRow icon={<IconComms />} title="Comms" sub="Talk to the crew" onClick={() => setComms(true)} />}
+              {commsOn && <MoreRow icon={<IconComms />} title="Comms" sub="Talk to the crew" onClick={() => open("comms")} />}
               <TallyRow onStart={() => tallyOn(true)} />
-              <MoreRow icon={<IconNoSound />} title="No sound?" sub="Find the fault, step by step" onClick={() => setWalk(true)} />
+              <MoreRow icon={<IconNoSound />} title="No sound?" sub="Find the fault, step by step" onClick={() => open("walk")} />
               {(isAdmin || can("manage")) && (
-                <MoreRow icon={<IconPeople />} title="Leader board" sub="Who's here, who needs help" onClick={() => setLeader(true)} />
+                <MoreRow icon={<IconPeople />} title="Leader board" sub="Who's here, who needs help" onClick={() => open("leader")} />
               )}
             </MoreGroup>
 
@@ -299,15 +370,14 @@ export function MobileShell() {
         unread={chat.unread}
         overdue={overdueCount > 0}
         onSelect={(t) => {
-          setLeader(false); // leaving More closes the leader board
-          setWalk(false); // and any tab tap leaves the troubleshooter
-          setComms(false); // and the comms screen (comms itself keeps running)
           // Tapping the tab you're on takes you to its top, as on iOS. Before,
           // it did nothing and read as a dead button.
           if (t === tab) {
             document.querySelector(".crew-main")?.scrollTo({ top: 0, behavior: "smooth" });
             if (t === "home") setHomeKey((k) => k + 1);
           }
+          // A tab tap closes any screen opened from a tab (comms itself
+          // keeps running).
           setTab(t);
         }}
       />

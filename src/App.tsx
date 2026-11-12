@@ -80,6 +80,7 @@ import { AutomixProvider } from "./automix";
 import { RecorderProvider } from "./recorder";
 import { DialogHost, askConfirm } from "./lib/dialogs";
 import { isSettingsDirty } from "./lib/settingsDirty";
+import { goBack, useNavHistory } from "./lib/navHistory";
 import { ChecklistsPage } from "./pages/Checklists";
 import { ClearDock } from "./components/ClearDock";
 import { Icon } from "./components/Icon";
@@ -136,7 +137,42 @@ const NAV: { id: Page; label: string; icon: string }[] = [
 ];
 
 function Shell() {
-  const [page, setPage] = useState<Page>((IS_SHOTS && (SHOT_PAGE as Page)) || "dashboard");
+  // Each page change is a history step, so Back (Cmd+[, the mouse's back
+  // button, the arrow by the logo) returns to the page before. Backing out of
+  // Settings with edits not saved asks first, like the sidebar does.
+  const nav = useNavHistory<Page>(
+    "page",
+    (IS_SHOTS && (SHOT_PAGE as Page)) || "dashboard",
+    async (from, to) =>
+      !(from === "settings" && to !== "settings" && isSettingsDirty()) ||
+      askConfirm("Leave Settings without saving your changes?", "Leave without saving"),
+  );
+  const page = nav.value;
+  const setPage = nav.go;
+  useEffect(() => {
+    const editable = (t: EventTarget | null) =>
+      t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === "[") {
+        if (goBack()) e.preventDefault();
+      } else if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === "]") {
+        history.forward();
+      } else if (e.altKey && e.key === "ArrowLeft" && !editable(e.target)) {
+        if (goBack()) e.preventDefault();
+      }
+    };
+    // Mice with side buttons: 3 is back, 4 is forward.
+    const onMouse = (e: MouseEvent) => {
+      if (e.button === 3) goBack();
+      else if (e.button === 4) history.forward();
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("mouseup", onMouse);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("mouseup", onMouse);
+    };
+  }, []);
   // An iPad on the full layout can be added to the Home Screen too.
   useEffect(() => syncHomeScreenManifest(), []);
   // Which help topic to open; set by the `?` on a Settings card, or anywhere
@@ -182,7 +218,7 @@ function Shell() {
       .then((o) => o.connected)
       .catch(() => false)
       .then((pco) => {
-        if (isFreshInstall(settings, pco)) setPage("setup");
+        if (isFreshInstall(settings, pco)) nav.replace("setup");
       });
   }, [settings === null]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -270,6 +306,11 @@ function Shell() {
         <div className="brand">
           <span className="brand-mark" />
           <span className="brand-name">ProDeck</span>
+          {nav.depth > 0 && (
+            <button className="nav-back" title="Back to the page before (⌘[)" aria-label="Back" onClick={() => goBack()}>
+              ‹
+            </button>
+          )}
           <button className="nav-collapse" title="Hide sidebar" onClick={toggleNav}>
             «
           </button>

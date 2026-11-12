@@ -128,7 +128,7 @@ export function TallyPage({ param, onExit }: { param: string; onExit?: () => voi
     if (!inApp) {
       const u = new URL(location.href);
       u.searchParams.set("tally", v);
-      history.replaceState(null, "", u.toString());
+      history.replaceState(history.state, "", u.toString());
     }
     setPicking(false);
   };

@@ -30,7 +30,7 @@ import { CrewPageComposer } from "./CrewPages";
 const clock = (ms: number) =>
   new Date(ms).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
-export function CrewLeader() {
+export function CrewLeader({ onBack }: { onBack?: () => void }) {
   const pco = usePco();
   const [crew, setCrew] = useState<CrewUser[]>([]);
   const [arrivals, setArrivals] = useState<Record<string, number>>({});
@@ -101,7 +101,16 @@ export function CrewLeader() {
 
   return (
     <div className="crew-page">
-      <h1 className="crew-title">Leader board</h1>
+      <div className="crew-row-head">
+        {onBack && (
+          <button className="crew-back" onClick={onBack} aria-label="Back">
+            ‹
+          </button>
+        )}
+        <h1 className="crew-title" style={{ margin: 0 }}>
+          Leader board
+        </h1>
+      </div>
       <p className="crew-hint muted" style={{ marginTop: -4 }}>
         {scheduled.length} scheduled · {needAttention.length} need attention
       </p>
