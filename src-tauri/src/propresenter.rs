@@ -215,7 +215,9 @@ pub(crate) fn is_action_path(path: &str) -> bool {
     let p = path.trim_start_matches('/').to_ascii_lowercase();
     let p = p.strip_prefix("v1/").unwrap_or(&p);
     let p = p.split('?').next().unwrap_or("");
-    p.starts_with("clear/layer") || p.split('/').any(|seg| ACTION_SEGMENTS.contains(&seg))
+    p.starts_with("clear/layer")
+        || p.split('/').any(|seg| ACTION_SEGMENTS.contains(&seg))
+        || p.split('/').skip(1).any(|seg| seg == "clear")
 }
 
 /// Every request that could change ProPresenter asks this first. In view-only
@@ -324,7 +326,9 @@ pub async fn pp_action(
     path: String,
     state: tauri::State<'_, ProPresenterState>,
 ) -> Result<(), String> {
-    guard("GET", &path)?;
+    // An action whatever its path looks like: message/<id>/clear has no verb
+    // segment a read check would catch.
+    guard("POST", &path)?;
     let (client, base) = current_config(&state).await?;
     let url = format!("{}/v1/{}", base, path.trim_start_matches('/'));
     let resp = client.get(&url).send().await.map_err(|e| e.to_string())?;
@@ -428,6 +432,57 @@ pub async fn pp_clear_stage_message(
         .await
         .map_err(|e| e.to_string())?;
     ensure_ok(resp)
+}
+
+/// Show a ProPresenter message with its token values filled in, e.g. a child
+/// call's {Number}. `tokens` is Pro's own shape: [{"name","text":{"text"}}].
+/// The API spec says POST; earlier ProDeck sent PUT, so a Pro that refuses
+/// the POST gets the PUT before we give up.
+pub(crate) async fn trigger_message(
+    client: &reqwest::Client,
+    base: &str,
+    id: &str,
+    tokens: &serde_json::Value,
+) -> Result<(), String> {
+    let path = format!("message/{}/trigger", urlencoding::encode(id));
+    guard("POST", &path)?;
+    let url = format!("{}/v1/{}", base, path);
+    let resp = client.post(&url).json(tokens).send().await.map_err(|e| e.to_string())?;
+    if resp.status().is_success() {
+        return Ok(());
+    }
+    if matches!(resp.status().as_u16(), 404 | 405) {
+        let resp = client.put(&url).json(tokens).send().await.map_err(|e| e.to_string())?;
+        return ensure_ok(resp);
+    }
+    ensure_ok(resp)
+}
+
+/// Hide a ProPresenter message (a GET, like Pro's other clears).
+pub(crate) async fn clear_message(client: &reqwest::Client, base: &str, id: &str) -> Result<(), String> {
+    let path = format!("message/{}/clear", urlencoding::encode(id));
+    guard("POST", &path)?;
+    let resp = client.get(format!("{}/v1/{}", base, path)).send().await.map_err(|e| e.to_string())?;
+    ensure_ok(resp)
+}
+
+#[tauri::command]
+pub async fn pp_trigger_message(
+    id: String,
+    tokens: Option<serde_json::Value>,
+    state: tauri::State<'_, ProPresenterState>,
+) -> Result<(), String> {
+    let (client, base) = current_config(&state).await?;
+    trigger_message(&client, &base, &id, &tokens.unwrap_or_else(|| serde_json::json!([]))).await
+}
+
+#[tauri::command]
+pub async fn pp_clear_message(
+    id: String,
+    state: tauri::State<'_, ProPresenterState>,
+) -> Result<(), String> {
+    let (client, base) = current_config(&state).await?;
+    clear_message(&client, &base, &id).await
 }
 
 /// Fetch a slide thumbnail and return it as a base64 data URL.
@@ -940,6 +995,16 @@ mod health_tests {
 #[cfg(test)]
 mod view_only_tests {
     use super::*;
+
+    #[test]
+    fn clearing_a_message_or_prop_is_an_action_but_listing_clear_groups_is_a_read() {
+        for act in ["message/abc/clear", "/v1/message/Child%20Call/clear", "prop/1/clear", "clear/group/2/trigger"] {
+            assert!(is_action_path(act), "{act}");
+        }
+        for read in ["clear/groups", "clear/group/2", "messages", "message/abc"] {
+            assert!(!is_action_path(read), "{read}");
+        }
+    }
 
     #[test]
     fn view_only_lets_reads_through_and_stops_everything_else() {

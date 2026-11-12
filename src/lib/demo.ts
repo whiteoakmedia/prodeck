@@ -568,6 +568,9 @@ const PP_SONGS: { name: string; groups: [string, [number, number, number], strin
   ] },
 ];
 
+// Which Pro message the demo is "showing", so the Child Call tile can be seen working.
+let demoMessageOn = "";
+
 function ppLibrary(path: string): unknown {
   const named = (names: string[], prefix: string) => names.map((name, index) => ({ id: { uuid: `${prefix}-${index}`, name, index } }));
   if (path === "looks") return named(["Default", "Worship", "Sermon", "Announcements"], "look");
@@ -580,7 +583,18 @@ function ppLibrary(path: string): unknown {
     }));
   }
   if (path === "props") return named(["Lower Third", "Logo Bug", "Countdown Frame"], "prop");
-  if (path === "messages") return named(["Parent Pickup", "Car Lights On", "Welcome Guests"], "msg");
+  if (path === "messages") {
+    const texts = [
+      { message: "Parent of {Number}, please come to the nursery", tokens: [{ name: "Number", text: { text: "" } }] },
+      { message: "Lights are on: {Car}", tokens: [{ name: "Car", text: { text: "" } }] },
+      { message: "Welcome, guests. Stop by the Welcome Center after the service.", tokens: [] },
+    ];
+    return named(["Parent Pickup", "Car Lights On", "Welcome Guests"], "msg").map((m, i) => ({
+      ...m,
+      ...texts[i],
+      is_active: demoMessageOn === m.id.uuid,
+    }));
+  }
   if (path === "timers") return named(["Service Countdown", "Sermon Clock", "Walk-in"], "timer");
   if (path === "status/screens")
     return [
@@ -984,6 +998,14 @@ export async function demoInvoke<T>(cmd: string, args?: Record<string, unknown>)
   if (cmd === "pp_set_stage_message") {
     const msg = String(args?.message ?? "");
     setTimeout(() => demoSetStageMessage(msg), 120);
+    return out(null);
+  }
+  if (cmd === "pp_trigger_message") {
+    demoMessageOn = String(args?.id ?? "");
+    return out(null);
+  }
+  if (cmd === "pp_clear_message") {
+    if (demoMessageOn === String(args?.id ?? "")) demoMessageOn = "";
     return out(null);
   }
   if (cmd === "pp_clear_stage_message") {

@@ -7710,6 +7710,52 @@ select.input {
   }
 }
 
+.w-childcall {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow: auto;
+}
+.w-childcall-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.w-childcall-head select {
+  flex: 1;
+  min-width: 0;
+}
+.w-childcall-on {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  white-space: nowrap;
+}
+.w-childcall-input {
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+.w-childcall-preview {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.w-childcall-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+.w-childcall-actions .btn {
+  flex: 1;
+}
 .w-stagemsg {
   height: 100%;
   display: flex;

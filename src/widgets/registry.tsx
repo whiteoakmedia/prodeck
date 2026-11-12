@@ -5,6 +5,7 @@ import { requestWizard } from "../lib/wizards";
 import { useDragReorder } from "../lib/useDragReorder";
 import { moveTo } from "../lib/reorder";
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -51,6 +52,8 @@ import {
   ppGet,
   ppTriggerMacro,
   ppSetStageMessage,
+  ppTriggerMessage,
+  ppClearMessage,
   ppTimerOp,
   startAudioCapture,
   musicControl,
@@ -83,6 +86,7 @@ import { usePco, fmtLen, type TeamMember , isDeclined } from "../pcoStore";
 import { stageCallState, stageCallServiceState, serviceEndsAt, fmtClock } from "../lib/stageCall";
 import { servicePhase, displayServiceTimeId, serviceTimesOnly } from "../lib/serviceClock";
 import { silentAt } from "../lib/walkIn";
+import { likelyChildCall, messagePreview, missingTokens, parseMessages, textTokens, triggerBody, type ProMessage } from "../lib/ppMessages";
 import { itemStartTimes } from "../lib/planTimes";
 import { freshness } from "../lib/planPick";
 import { useAlerts } from "../alertsStore";
@@ -3786,6 +3790,120 @@ function LobbyTvWidget(_: WidgetProps) {
  * this widget, so it only counts down while a dashboard showing it is open;
  * that is stated on screen rather than assumed, and Keep up cancels it.
  */
+// Child calls, and any other ProPresenter message with blanks to fill (Kris,
+// Haven): pick the message, type the number, Show. Saves walking over to the
+// slide operator mid-service. Which message is remembered per tile.
+function ChildCallWidget({ widget, update, editing }: WidgetProps) {
+  const { connected } = useProDeck();
+  const { can } = usePerms();
+  const { viewOnly } = useProControl();
+  const locked = !can("control") || viewOnly;
+  const [list, setList] = useState<ProMessage[] | null>(null);
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  const load = useCallback(async () => {
+    try {
+      setList(parseMessages(await ppGet("messages")));
+    } catch {
+      setList((l) => l ?? []);
+    }
+  }, []);
+  // Read again every so often, so "On screen" stays true when the operator
+  // clears it from Pro.
+  useEffect(() => {
+    if (!connected) return;
+    load();
+    const t = setInterval(load, 10_000);
+    return () => clearInterval(t);
+  }, [connected, load]);
+
+  if (!connected) return <Disconnected />;
+  if (list === null) return <div className="widget-empty">Reading ProPresenter's messages…</div>;
+  if (list.length === 0)
+    return (
+      <div className="widget-empty">
+        No messages in ProPresenter yet. Make one in Pro's Messages panel, like "Parent of {"{Number}"}, please come to
+        the nursery".
+      </div>
+    );
+
+  const picked = list.find((m) => m.id === widget.config.messageId);
+  const msg = picked ?? likelyChildCall(list)!;
+  const blanks = textTokens(msg);
+  const missing = missingTokens(msg, values);
+
+  async function show() {
+    if (missing.length) return setErr(`Fill in ${missing.join(" and ")} first.`);
+    setErr("");
+    setBusy(true);
+    try {
+      await ppTriggerMessage(msg.id, triggerBody(msg, values));
+    } finally {
+      setBusy(false);
+      load();
+    }
+  }
+  async function clear() {
+    setBusy(true);
+    try {
+      await ppClearMessage(msg.id);
+      setValues({});
+    } finally {
+      setBusy(false);
+      load();
+    }
+  }
+
+  return (
+    <div className="w-childcall" onMouseDown={(e) => e.stopPropagation()}>
+      <div className="w-childcall-head">
+        <select
+          className="input small"
+          id={`childcall-msg-${widget.id}`}
+          value={msg.id}
+          onChange={(e) => update({ messageId: e.target.value })}
+          aria-label="ProPresenter message"
+        >
+          {list.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
+          ))}
+        </select>
+        {msg.showing && <span className="w-childcall-on">On screen</span>}
+      </div>
+      {blanks.map((t, i) => (
+        <input
+          key={t.name}
+          className="input w-childcall-input"
+          id={`childcall-${widget.id}-${i}`}
+          placeholder={locked ? "Needs the Control permission" : t.name}
+          aria-label={t.name}
+          value={values[t.name] ?? ""}
+          disabled={busy || locked}
+          autoFocus={!editing && i === 0}
+          onChange={(e) => setValues((v) => ({ ...v, [t.name]: e.target.value }))}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") show();
+          }}
+        />
+      ))}
+      <p className="w-childcall-preview">{messagePreview(msg, values) || msg.name}</p>
+      {err && <p className="error small">{err}</p>}
+      <div className="w-childcall-actions">
+        <button className="btn primary" disabled={busy || locked} onClick={show}>
+          {msg.showing ? "Update" : "Show"}
+        </button>
+        <button className="btn" disabled={busy || locked} onClick={clear}>
+          Clear
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function StageMessageWidget({ widget, update, editing }: WidgetProps) {
   const { connected, status } = useProDeck();
   const { can } = usePerms();
@@ -4298,6 +4416,7 @@ export const WIDGETS: WidgetDef[] = [
   { type: "tap_link", label: "TapLink (NFC)", group: "ProPresenter", w: 4, h: 3, component: TapLinkWidget },
   { type: "lobby_tv", label: "Lobby TVs (Announcements)", group: "ProPresenter", w: 4, h: 3, component: LobbyTvWidget },
   { type: "stage_message", label: "Stage Message (Alerts)", group: "ProPresenter", w: 4, h: 4, component: StageMessageWidget },
+  { type: "child_call", label: "Child Call (Pro Messages)", group: "ProPresenter", w: 4, h: 4, component: ChildCallWidget },
   { type: "confidence", label: "Confidence Banner", group: "ProPresenter", w: 6, h: 3, component: ConfidenceWidget },
   // Planning Center
   { type: "show_flow", label: "Show Flow", group: "Planning Center", w: 4, h: 6, component: ShowFlowWidget },

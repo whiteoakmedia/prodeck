@@ -660,10 +660,12 @@ export const ppIsConnected = () => invoke<boolean>("pp_is_connected");
 export const ppGet = (path: string) => invoke<Json>("pp_get", { path });
 export const ppPut = (path: string, body?: unknown) =>
   invoke<void>("pp_put", { path, body });
-// Messages carry token values, so triggering one is a PUT-with-body (unlike
-// other triggers, which are GET). Routed through the control-failure toast.
-export const ppTriggerMessage = (id: string) =>
-  ctrl(invoke<void>("pp_put", { path: `message/${encodeURIComponent(id)}/trigger`, body: [] }));
+// Messages carry token values (a child call's number), so showing one sends
+// them along: POST per Pro's API, with a PUT fallback on the booth side.
+// Routed through the control-failure toast.
+export const ppTriggerMessage = (id: string, tokens: { name: string; text: { text: string } }[] = []) =>
+  ctrl(invoke<void>("pp_trigger_message", { id, tokens }));
+export const ppClearMessage = (id: string) => ctrl(invoke<void>("pp_clear_message", { id }));
 // ProPresenter trigger/clear actions are GET (a PUT 404s). Use this for every
 // "do it now" action (slide trigger, prop/clear, next/previous, …).
 export const ppAction = (path: string) => ctrl(invoke<void>("pp_action", { path }));

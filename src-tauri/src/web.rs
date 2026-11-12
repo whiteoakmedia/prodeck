@@ -1827,7 +1827,7 @@ async fn pco_auth(app: &AppHandle) -> Result<pco::Auth, String> {
 
 // ProPresenter trigger/clear endpoints are GET (a PUT 404s).
 async fn pp_action_raw(app: &AppHandle, full_path: &str) -> Result<Value, String> {
-    crate::propresenter::guard("GET", full_path)?;
+    crate::propresenter::guard("POST", full_path)?;
     let (client, base) = current_config(&pp_handle(app)).await?;
     client
         .get(format!("{}{}", base, full_path))
@@ -1945,6 +1945,7 @@ pub(crate) fn perm_for_cmd(cmd: &str) -> Option<&'static str> {
         "page_send" | "page_rebuzz" => Some("page"),
         "pp_set_stage_message" | "pp_clear_stage_message" | "chat_clear_confidence" | "chat_clear_screens" => Some("stage"),
         "pp_action" | "pp_clear_layer" | "pp_put" | "pp_delete" | "pp_timer_op"
+        | "pp_trigger_message" | "pp_clear_message"
         | "pp_trigger_look" | "pp_trigger_macro" | "pp_trigger_next" | "pp_trigger_previous"
         | "avantis_set_mute" | "avantis_set_fader" | "avantis_set_name" | "avantis_recall_scene"
         | "avantis_reconnect" | "obs_reconnect"
@@ -2652,6 +2653,19 @@ async fn dispatch(
             let op = s("op").unwrap_or_default();
             pp_action_raw(app, &format!("/v1/timer/{}/{}", urlencoding::encode(&id), op)).await
         }
+        "pp_trigger_message" => {
+            let id = s("id").ok_or("missing id")?;
+            let tokens = args.get("tokens").filter(|t| !t.is_null()).cloned().unwrap_or_else(|| json!([]));
+            let (client, base) = current_config(&pp_handle(app)).await?;
+            crate::propresenter::trigger_message(&client, &base, &id, &tokens).await?;
+            Ok(Value::Null)
+        }
+        "pp_clear_message" => {
+            let id = s("id").ok_or("missing id")?;
+            let (client, base) = current_config(&pp_handle(app)).await?;
+            crate::propresenter::clear_message(&client, &base, &id).await?;
+            Ok(Value::Null)
+        }
         "pp_set_stage_message" => {
             let msg = s("message").unwrap_or_default();
             crate::propresenter::guard("PUT", "stage/message")?;
@@ -3009,6 +3023,7 @@ mod member_pp_tests {
         // how the booth is configured.
         for cmd in [
             "update_settings", "pp_action", "pp_set_stage_message", "pp_clear_stage_message",
+            "pp_trigger_message", "pp_clear_message",
             "avantis_set_mute", "avantis_set_fader", "avantis_recall_scene",
             "obs_set_scene", "atem_cut", "atem_auto", "atem_set_preview", "atem_set_program",
             "atem_dsk_on_air", "atem_dsk_auto", "atem_macro_run", "atem_macro_stop", "atem_ftb",

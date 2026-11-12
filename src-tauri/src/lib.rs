@@ -297,6 +297,8 @@ pub fn run() {
             propresenter::pp_trigger_look,
             propresenter::pp_timer_op,
             propresenter::pp_set_stage_message,
+            propresenter::pp_trigger_message,
+            propresenter::pp_clear_message,
             propresenter::pp_clear_stage_message,
             propresenter::pp_thumbnail,
             propresenter::pp_playlist_thumbnail,

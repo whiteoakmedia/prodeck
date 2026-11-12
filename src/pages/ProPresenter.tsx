@@ -12,6 +12,7 @@ import {
   ppTriggerMacro,
   ppTimerOp,
   ppTriggerMessage,
+  ppClearMessage,
   ppAction,
   ppSetStageMessage,
   ppClearStageMessage,
@@ -284,7 +285,7 @@ export function ProPresenterPage() {
             actionLabel="Show"
             secondary={{
               label: "Clear",
-              action: (id) => ppAction(`message/${id}/clear`),
+              action: (id) => ppClearMessage(id),
             }}
           />
         </section>

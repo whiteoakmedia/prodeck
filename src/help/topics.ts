@@ -461,6 +461,18 @@ It exists mainly for child alerts: the person who knows a parent is needed is ra
 Edit the quick buttons in the widget's edit mode — one per line.`,
     related: ["dashboards-widgets"],
   },
+  {
+    id: "child-call",
+    group: "ProPresenter",
+    title: "Child calls on the main screens",
+    aliases: ["child call", "parent pager", "nursery number", "pro message", "propresenter messages", "show a message on screen"],
+    body: `The **Child Call (Pro Messages)** tile shows one of ProPresenter's own messages on the audience screens, with the blanks filled in, so nobody has to interrupt the person running slides.
+
+Make the message in ProPresenter first, in the Messages panel, with a text blank where the number goes, like "Parent of {Number}, please come to the nursery". Add the tile to a dashboard, pick that message, type the number and press **Show** (or Enter). **Clear** takes it down. **On screen** shows while it's up, even if it was put up from ProPresenter.
+
+The tile finds a message named like a child call on its own; pick another from the list and the tile remembers it. Timers and clocks in a message fill themselves. Phones need the **Control** permission to use it, and it does nothing while ProPresenter is view only.`,
+    related: ["stage-message", "dashboards-widgets"],
+  },
 
   // ----------------------------------------------------------- planning center
   {
