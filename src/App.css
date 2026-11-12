@@ -1311,7 +1311,7 @@ select.input {
 }
 .wpick-body {
   padding: 8px 14px 14px;
-  max-height: 56vh;
+  max-height: 66vh;
   overflow-y: auto;
 }
 .wpick-group {
@@ -1327,14 +1327,16 @@ select.input {
 }
 .wpick-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+  gap: 10px;
 }
 .wpick-item {
+  position: relative;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 8px;
-  padding: 10px 12px;
+  padding: 8px 8px 10px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-sm);
@@ -1347,19 +1349,45 @@ select.input {
   border-color: var(--accent);
   background: var(--accent-soft);
 }
+.wpick-art {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 120 / 68;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.wpick-item:hover .wpick-art {
+  border-color: var(--accent-line);
+}
+.wpick-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0 4px;
+}
 .wpick-name {
-  flex: 1;
   font-size: 13px;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-weight: 600;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+.wpick-blurb {
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--muted);
 }
 .wpick-size {
+  position: absolute;
+  top: 12px;
+  right: 12px;
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 9.5px;
   color: var(--faint);
-  flex-shrink: 0;
+  background: var(--panel);
+  border-radius: 4px;
+  padding: 1px 4px;
 }
 
 /* DS edit-mode cue: dashed border + emphasized hairline on widgets */

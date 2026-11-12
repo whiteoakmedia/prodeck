@@ -8,6 +8,7 @@ import { useRelay } from "../relayStore";
 import { Icon } from "../components/Icon";
 import { DashTopBar } from "../components/DashTopBar";
 import { WIDGETS, WIDGET_MAP, WIDGET_GROUP_ORDER } from "../widgets/registry";
+import { WIDGET_BLURBS, WidgetPreview } from "../widgets/previews";
 import { askConfirm, askText } from "../lib/dialogs";
 import { IS_SHOTS, IS_WEB, SHOT_DASH } from "../lib/tauri";
 import {
@@ -370,7 +371,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: any) => void }) {
           <input
             className="input wpick-search"
             autoFocus
-            placeholder="Search widgets…"
+            placeholder="Search widgets, like slides, mic or countdown"
             value={pickQuery}
             onChange={(e) => setPickQuery(e.target.value)}
           />
@@ -378,7 +379,9 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: any) => void }) {
             {WIDGET_GROUP_ORDER.map((group) => {
               const q = pickQuery.trim().toLowerCase();
               const items = WIDGETS.filter(
-                (w) => w.group === group && w.label.toLowerCase().includes(q),
+                (w) =>
+                  w.group === group &&
+                  (w.label.toLowerCase().includes(q) || (WIDGET_BLURBS[w.type] ?? "").toLowerCase().includes(q)),
               );
               if (items.length === 0) return null;
               return (
@@ -391,8 +394,14 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: any) => void }) {
                         className="wpick-item"
                         onClick={() => addWidget(w.type)}
                       >
-                        <span className="wpick-name">{w.label}</span>
-                        <span className="wpick-size">{w.w}×{w.h}</span>
+                        <WidgetPreview type={w.type} />
+                        <span className="wpick-text">
+                          <span className="wpick-name">{w.label}</span>
+                          {WIDGET_BLURBS[w.type] && <span className="wpick-blurb">{WIDGET_BLURBS[w.type]}</span>}
+                        </span>
+                        <span className="wpick-size" title="Starting size, in grid squares">
+                          {w.w}×{w.h}
+                        </span>
                       </button>
                     ))}
                   </div>
