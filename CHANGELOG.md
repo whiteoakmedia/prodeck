@@ -44,6 +44,17 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.124 — 12 November 2026
+
+Everything in 0.9.123, plus:
+
+### New
+
+- **Child Call makes its own message.** No ProPresenter message with a blank
+  for the code? The tile makes one, in the look of your other messages.
+- **A picture for every widget** in the Add widget library, with a line on
+  what each one does.
+
 ## 0.9.123 — 12 November 2026
 
 Everything in 0.9.122, plus:
