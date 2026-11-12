@@ -3,7 +3,7 @@
 // stand-ins, so the screens can be built and seen without a phone.
 
 import { Capacitor, registerPlugin } from "@capacitor/core";
-import { hostsToTry, orderAddresses, probeDetail, type PhoneAddress, type ProbeResult } from "./sweep";
+import { hostsToTry, localNetworkBlocked, orderAddresses, probeDetail, type PhoneAddress, type ProbeResult } from "./sweep";
 import { DEFAULT_PORT, cleanCrew, type Church } from "./connect";
 
 export const isNative = () => Capacitor.isNativePlatform();
@@ -38,6 +38,8 @@ export interface Search {
   phoneIp: string;
   /** How the address check went, for the "No booth found" screen. */
   detail: string;
+  /** The phone refused every address: Local Network is off for this app. */
+  blocked?: boolean;
 }
 
 /**
@@ -65,6 +67,7 @@ export async function findBooths(onProgress?: (msg: string) => void): Promise<Se
   const bonjour = bonjourSearch(() => found.size > 0, addresses).then((list) => list.forEach(add));
   const hosts = addresses.flatMap(hostsToTry);
   let detail = "";
+  let blocked = false;
   const swept = (async () => {
     if (!hosts.length) return;
     onProgress?.(`Checking ${hosts.length} addresses on this Wi-Fi`);
@@ -76,6 +79,7 @@ export async function findBooths(onProgress?: (msg: string) => void): Promise<Se
       r = await netInfo().probe({ hosts, port: DEFAULT_PORT, timeoutMs: 1800, width: 24 });
     }
     detail = probeDetail(hosts.length, r);
+    blocked = localNetworkBlocked(hosts.length, r);
     // A handful at most: printers, cameras, the booth. Confirm which is ProDeck.
     for (const ip of r.open ?? []) {
       const base = `http://${ip}:${DEFAULT_PORT}`;
@@ -87,7 +91,7 @@ export async function findBooths(onProgress?: (msg: string) => void): Promise<Se
   // Done when both are, or a moment after the first booth turns up: the
   // address check can take a while longer and has nothing more to add.
   await Promise.race([Promise.all([bonjour, swept]), first.then(() => new Promise((r) => setTimeout(r, 400)))]);
-  return { found: [...found.values()], phoneIp, detail };
+  return { found: [...found.values()], phoneIp, detail, blocked };
 }
 
 /** The app's own plugin (ios/App/App/NetInfoPlugin.swift, android NetInfoPlugin.java). */

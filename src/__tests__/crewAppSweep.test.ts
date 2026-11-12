@@ -54,3 +54,27 @@ describe("crew app: which of the booth's addresses to try first", () => {
     expect(orderAddresses(["172.20.80.54", "172.20.0.243"], phone)[0]).toBe("172.20.0.243");
   });
 });
+
+import { localNetworkBlocked } from "../../crew-app/src/sweep";
+
+describe("crew app: Local Network turned off on the phone", () => {
+  const r = (over: Partial<{ open: string[]; refused: number; silent: number; errors: Record<string, number> }>) => ({
+    open: [],
+    refused: 0,
+    silent: 0,
+    errors: {},
+    ms: 10,
+    ...over,
+  });
+  it("spots every address failing with no route to host", () => {
+    expect(localNetworkBlocked(509, r({ errors: { "65": 509 } }))).toBe(true);
+  });
+  it("is not blocked when anything answered or refused", () => {
+    expect(localNetworkBlocked(509, r({ errors: { "65": 500 }, refused: 1 }))).toBe(false);
+    expect(localNetworkBlocked(509, r({ errors: { "65": 500 }, open: ["10.0.0.4"] }))).toBe(false);
+  });
+  it("is not blocked when the network was just quiet", () => {
+    expect(localNetworkBlocked(509, r({ silent: 509 }))).toBe(false);
+    expect(localNetworkBlocked(0, r({}))).toBe(false);
+  });
+});

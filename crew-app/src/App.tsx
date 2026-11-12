@@ -368,6 +368,7 @@ function Nearby({ onBack, onPick, onType }: { onBack: () => void; onPick: (f: Fo
   const [found, setFound] = useState<Found[] | null>(null);
   const [phoneIp, setPhoneIp] = useState("");
   const [detail, setDetail] = useState("");
+  const [blocked, setBlocked] = useState(false);
   const [progress, setProgress] = useState("");
   const [round, setRound] = useState(0);
   useEffect(() => {
@@ -379,6 +380,7 @@ function Nearby({ onBack, onPick, onType }: { onBack: () => void; onPick: (f: Fo
         if (!alive) return;
         setPhoneIp(r.phoneIp);
         setDetail(r.detail);
+        setBlocked(!!r.blocked && r.found.length === 0);
         setFound(r.found);
         if (r.found.length === 0) reportNoBooth(r.detail);
       })
@@ -388,6 +390,7 @@ function Nearby({ onBack, onPick, onType }: { onBack: () => void; onPick: (f: Fo
         if (!alive) return;
         captureError(e);
         setDetail("");
+        setBlocked(false);
         setFound([]);
       });
     return () => {
@@ -414,7 +417,23 @@ function Nearby({ onBack, onPick, onType }: { onBack: () => void; onPick: (f: Fo
           ))}
         </section>
       )}
-      {found && found.length === 0 && (
+      {found && found.length === 0 && blocked && (
+        <div className="empty">
+          <h2>Allow Local Network</h2>
+          <p className="hint">
+            ProDeck Crew needs to see devices on this Wi-Fi to find the booth. Open Settings, then Privacy and
+            Security, then Local Network, and turn on ProDeck Crew. Then come back and look again.
+          </p>
+          {detail && <p className="hint mono detail">{detail}</p>}
+          <button className="btn" onClick={() => setRound((n) => n + 1)}>
+            Look again
+          </button>
+          <button className="link" onClick={onType}>
+            Enter address
+          </button>
+        </div>
+      )}
+      {found && found.length === 0 && !blocked && (
         <div className="empty">
           <h2>No booth found</h2>
           <p className="hint">

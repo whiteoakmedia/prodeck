@@ -86,6 +86,16 @@ export function probeDetail(n: number, r: ProbeResult): string {
 }
 
 /**
+ * iOS answers every address with error 65 (no route to host) when the person
+ * turned off Local Network for the app. Nothing on the network can be reached
+ * then, so "check ProDeck is open" is the wrong advice (PRODECK-C: 509 of 509).
+ */
+export function localNetworkBlocked(n: number, r: ProbeResult): boolean {
+  if (n === 0 || r.open.length || r.refused) return false;
+  return (r.errors?.["65"] ?? 0) >= n * 0.9;
+}
+
+/**
  * The booth's address on the phone's own network first, then the usual Wi-Fi
  * ranges (192.168, then 10), so a Dante address is tried last.
  */
