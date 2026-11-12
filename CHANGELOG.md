@@ -44,6 +44,24 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.123 — 12 November 2026
+
+Everything in 0.9.122, plus:
+
+### New
+
+- **Child Call tile.** Show a ProPresenter message with the number filled in,
+  and clear it, from any dashboard.
+- **Back goes to where you were.** Swipe in from the left on crew phones;
+  Command [ , a mouse's back button or the arrow by the logo on the booth.
+- **Walk-in music can go quiet minutes before the service,** for a countdown
+  with its own audio.
+
+### Fixed
+
+- **X32 and M32 desks stay connected while nobody is touching them.**
+- **ProPresenter message Show buttons** send what ProPresenter expects.
+
 ## 0.9.122 — 10 November 2026
 
 Everything in 0.9.121, plus:
