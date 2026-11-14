@@ -1,0 +1,82 @@
+import { useEffect, useRef, useState } from "react";
+type Ask =
+  | { kind: "text"; title: string; initial: string; resolve: (v: string | null) => void }
+  | { kind: "confirm"; title: string; okLabel: string; resolve: (v: boolean) => void };
+let push: ((a: Ask) => void) | null = null;
+export function askText(title: string, initial = ""): Promise<string | null> {
+  return new Promise((resolve) => {
+    if (push) push({ kind: "text", title, initial, resolve });
+    else resolve(null);
+  });
+}
+export function askConfirm(title: string, okLabel = "OK"): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (push) push({ kind: "confirm", title, okLabel, resolve });
+    else resolve(false);
+  });
+}
+export function DialogHost() {
+  const [queue, setQueue] = useState<Ask[]>([]);
+  const [draft, setDraft] = useState("");
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const cur = queue[0] ?? null;
+  useEffect(() => {
+    push = (a) => setQueue((q) => [...q, a]);
+    return () => {
+      push = null;
+    };
+  }, []);
+  useEffect(() => {
+    if (cur?.kind === "text") {
+      setDraft(cur.initial);
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      });
+    }
+  }, [cur]);
+  useEffect(() => {
+    if (!cur) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") cancel();
+      if (e.key === "Enter" && cur.kind === "confirm") ok();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [cur]);
+  if (!cur) return null;
+  const settle = (fn: () => void) => {
+    fn();
+    setQueue((q) => q.slice(1));
+  };
+  const cancel = () =>
+    settle(() => (cur.kind === "text" ? cur.resolve(null) : cur.resolve(false)));
+  const ok = () =>
+    settle(() => (cur.kind === "text" ? cur.resolve(draft) : cur.resolve(true)));
+  return (
+    <div className="dlg-backdrop" onMouseDown={cancel}>
+      <div className="dlg" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="dlg-title">{cur.title}</div>
+        {cur.kind === "text" && (
+          <input
+            ref={inputRef}
+            className="input"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") ok();
+            }}
+          />
+        )}
+        <div className="dlg-actions">
+          <button className="btn small ghost" onClick={cancel}>
+            Cancel
+          </button>
+          <button className="btn small primary" onClick={ok}>
+            {cur.kind === "confirm" ? cur.okLabel : "OK"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

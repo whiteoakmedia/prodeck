@@ -33,3 +33,7 @@ changes here on request branches; Zach merges.
   design/LOCAL_HTTPS.md) and `<name>-crew.prodeck.live` (crew addresses, the `crew-cloud/` Worker,
   design/CREW_ADDRESS.md). Nothing else under prodeck.live.
 - Anything a user sees: plain words, no dashes, at most one exclamation mark.
+- For localization changes, follow `LOCALIZATION.md`: test first, preserve technical
+  and caller-owned values, manually review protection baselines, extend registered
+  coverage per slice, then run focused tests, TypeScript, the full suite and build.
+  Report visual/platform checks not performed; the bounded guard is not a guarantee.

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { uiText } from "./uiText";
 
 // window.prompt / window.confirm are silent no-ops in the desktop webview —
 // wry implements none of the WKUIDelegate JavaScript-dialog handlers on macOS,
@@ -23,7 +24,7 @@ export function askText(title: string, initial = ""): Promise<string | null> {
 }
 
 // Ask a yes/no question. Resolves true only on explicit confirm.
-export function askConfirm(title: string, okLabel = "OK"): Promise<boolean> {
+export function askConfirm(title: string, okLabel = uiText.ok): Promise<boolean> {
   return new Promise((resolve) => {
     if (push) push({ kind: "confirm", title, okLabel, resolve });
     else resolve(false);
@@ -97,10 +98,10 @@ export function DialogHost() {
         )}
         <div className="dlg-actions">
           <button className="btn small ghost" onClick={cancel}>
-            Cancel
+            {uiText.cancel}
           </button>
           <button className="btn small primary" onClick={ok}>
-            {cur.kind === "confirm" ? cur.okLabel : "OK"}
+            {cur.kind === "confirm" ? cur.okLabel : uiText.ok}
           </button>
         </div>
       </div>
