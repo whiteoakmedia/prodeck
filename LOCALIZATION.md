@@ -57,7 +57,43 @@ callbacks, queueing, cancellation, supplied values and rendered controls.
 The guard, tests, catalog and baseline fixtures themselves require ordinary code
 review. This is bounded regression evidence, not proof of all platforms, pixels,
 interaction paths or unregistered files. Native builds, layout and visual quality
-need separate checks. No other component has been migrated by this slice.
+need separate checks. The completed first slice migrated only the two components
+listed above.
+
+### Navigation and widget catalog slices
+
+`src/__tests__/localizationNavigation.test.tsx` registers App navigation and
+NeedsConnection with explicit copy slots and frozen AST hashes. Its 36 tests
+passed in the writer and parent integration runs. After the human-authorized
+preparation repair, isolated verification passed 36 project tests, 38 independent
+public-boundary tests, four baseline-provenance checks and 19 negative mutations.
+Earlier dependency-copy timeouts remain recorded in the feature log; they are
+not counted as successful test runs.
+
+`src/__tests__/localizationWidgets.test.ts` registers widget registry metadata,
+previews, Dashboard picker presentation and the display-only widget group map;
+the companion TSX file exercises the catalog and picker. Independent probes
+found that reviewed Dashboard copy slots accepted surrounding nonbreaking
+whitespace. The human-authorized continuation reproduced six failures and
+corrected the projector without changing production or frozen hashes. It now
+compares exact fixture spaces and ignores only nonrendered multiline ASCII
+indentation. Parent checks passed: 26 structural tests, all 713 suite tests,
+TypeScript and diff-check. The six companion interaction tests skipped by the
+focused structural name filter all ran in the full suite.
+
+After the human-authorized preparation repair, isolated widget verification
+passed all 32 project tests and 15 independent assertions. The six previously
+reported whitespace escapes reject; harmless multiline ASCII indentation passes;
+original baseline and candidate hashes and exact inline fixture spaces match.
+No remaining blocker was found in this bounded recheck.
+
+These are bounded functional and structural results, not native review approval
+or visual/mobile/kiosk/native-platform evidence. Those platform checks remain
+separate; passing tests does not claim complete application localization.
+
+These tests use checked-in projections under `fixtures/localization/`, never
+Git history at test runtime. Finish the bounded correction and missing
+independent checks before closing the second slice.
 
 ## Approved glossary
 

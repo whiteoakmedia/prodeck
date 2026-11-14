@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePerms } from "../lib/perms";
+import { WIDGET_GROUP_LABELS } from "../lib/widgetText";
 import GridLayout, { WidthProvider, type Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
@@ -371,7 +372,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: any) => void }) {
           <input
             className="input wpick-search"
             autoFocus
-            placeholder="Search widgets, like slides, mic or countdown"
+            placeholder="Buscar widgets, como diapositivas, micrófonos o cuenta regresiva"
             value={pickQuery}
             onChange={(e) => setPickQuery(e.target.value)}
           />
@@ -381,12 +382,12 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: any) => void }) {
               const items = WIDGETS.filter(
                 (w) =>
                   w.group === group &&
-                  (w.label.toLowerCase().includes(q) || (WIDGET_BLURBS[w.type] ?? "").toLowerCase().includes(q)),
+                  (w.label.toLowerCase().includes(q) || (WIDGET_BLURBS[w.type] ?? "").toLowerCase().includes(q) || WIDGET_GROUP_LABELS[w.group].toLowerCase().includes(q)),
               );
               if (items.length === 0) return null;
               return (
                 <div key={group} className="wpick-group">
-                  <div className="wpick-gh">{group}</div>
+                  <div className="wpick-gh">{WIDGET_GROUP_LABELS[group]}</div>
                   <div className="wpick-grid">
                     {items.map((w) => (
                       <button
@@ -399,7 +400,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: any) => void }) {
                           <span className="wpick-name">{w.label}</span>
                           {WIDGET_BLURBS[w.type] && <span className="wpick-blurb">{WIDGET_BLURBS[w.type]}</span>}
                         </span>
-                        <span className="wpick-size" title="Starting size, in grid squares">
+                        <span className="wpick-size" title="Tamaño inicial en cuadros de la cuadrícula">
                           {w.w}×{w.h}
                         </span>
                       </button>
@@ -415,13 +416,13 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: any) => void }) {
       {active.widgets.length === 0 ? (
         <div className="dash-empty">
           <Icon name="dashboard" size={34} />
-          <h2>This dashboard is empty</h2>
+          <h2>Este panel está vacío</h2>
           <p className="muted">
-            Turn on <strong>Edit</strong> and add widgets to build your layout.
+            Activa <strong>Editar</strong> y agrega widgets para armar tu diseño.
           </p>
           {!editing && canEdit && (
             <button className="btn primary" onClick={() => { setEditing(true); setAdding(true); }}>
-              Start building
+              Comenzar
             </button>
           )}
         </div>

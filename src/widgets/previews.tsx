@@ -56,9 +56,9 @@ const ART: Record<string, () => ReactNode> = {
   run_order: () => (
     <>
       {B(8, 8, 104, 22, "as", 3)}
-      {T(14, 17, "NOW", 6, "a")}
+      {T(14, 17, "AHORA", 6, "a")}
       {L(14, 21, 60, "t", 4)}
-      {T(14, 41, "NEXT", 6, "f")}
+      {T(14, 41, "SIGUIENTE", 6, "f")}
       {L(14, 45, 48, "m")}
       {L(14, 55, 36, "f")}
     </>
@@ -136,7 +136,7 @@ const ART: Record<string, () => ReactNode> = {
   stage_message: () => (
     <>
       {B(8, 8, 104, 22, "as", 3)}
-      {T(14, 16, "ON STAGE", 5.5, "a")}
+      {T(14, 16, "EN ESCENARIO", 5.5, "a")}
       {L(14, 21, 70, "t", 4)}
       {O(8, 36, 76, 12, "b", 3)}
       {B(88, 36, 24, 12, "a", 3)}
@@ -177,10 +177,10 @@ const ART: Record<string, () => ReactNode> = {
   ),
   plan_item: () => (
     <>
-      {T(10, 16, "NOW", 6, "l")}
+      {T(10, 16, "AHORA", 6, "l")}
       {L(10, 21, 84, "t", 6)}
       {L(10, 31, 50, "m")}
-      {T(10, 48, "NEXT", 6, "f")}
+      {T(10, 48, "SIGUIENTE", 6, "f")}
       {L(10, 52, 60, "m", 4)}
     </>
   ),
@@ -264,7 +264,7 @@ const ART: Record<string, () => ReactNode> = {
   automix: () => (
     <>
       {B(8, 6, 32, 9, "gs", 4)}
-      {T(24, 12.5, "ARMED", 5, "g", "middle")}
+      {T(24, 12.5, "ACTIVO", 5, "g", "middle")}
       {rows(5, (i) => (
         <>
           {L(8, 22 + i * 9, 22, "m")}
@@ -291,7 +291,7 @@ const ART: Record<string, () => ReactNode> = {
   obs: () => (
     <>
       {B(8, 6, 28, 9, "l", 4)}
-      {T(22, 12.5, "LIVE", 5, "t", "middle")}
+      {T(22, 12.5, "EN VIVO", 5, "t", "middle")}
       {rows(6, (i) => (
         <>
           {B(8 + (i % 3) * 36, 20 + Math.floor(i / 3) * 22, 32, 18, i === 0 ? "ls" : "s", 3)}
@@ -415,45 +415,45 @@ const ART: Record<string, () => ReactNode> = {
 
 /** One plain line per tile, for the widget library. */
 export const WIDGET_BLURBS: Record<string, string> = {
-  health_strip: "Green, amber or red for Pro, Planning Center, audio and the desk.",
-  run_order: "What's on now and what's next, from Planning Center.",
-  service_timeline: "The whole service as a bar, with where you are and how you're tracking.",
-  service_clock: "Counts down to the next service time.",
-  service_tracking: "Each item's planned time against how long it really ran.",
-  slide_preview: "The slide on screen right now.",
-  slide_grid: "The playlist as slide pictures. Tap one to put it up.",
-  timer: "A ProPresenter timer, with start, stop and reset.",
-  tap_link: "What the NFC giving tap opens right now.",
-  lobby_tv: "What the lobby TVs are showing.",
-  stage_message: "Put a line of text on the stage displays.",
-  child_call: "Show a child's code on the screens with a ProPresenter message.",
-  confidence: "A big line for the band and pastor to read.",
-  show_flow: "The service order, with the live item marked.",
-  plan_item: "Now and Next in big type.",
-  people: "Who's serving and whether they've arrived.",
-  song_leaders: "Each song with its key and who leads it.",
-  mic_assignment: "Which mic goes to whom.",
-  stage_call: "Who's needed on stage next, and how long until.",
-  audio_meter: "Room level and the sound's shape, live.",
-  listen: "Hear the service audio on this screen.",
-  avantis: "Mutes and faders from the sound desk.",
-  key_change: "Send the song's key to Waves.",
-  automix: "Automix rides the mix; see what it's doing.",
-  recorder: "Start and watch the multitrack recording.",
-  readiness: "A checklist of what has to be ready for Sunday.",
-  obs: "OBS scenes, with the live one marked.",
-  atem: "Program and Preview, with Cut and Auto.",
-  "atem-macros": "Run ATEM macros with one tap.",
-  pro_macros: "Run ProPresenter macros with one tap.",
-  video_input: "The stage camera feed from NDI.",
-  church_online: "Viewers, prayer requests and salvations from Church Online.",
-  stream_monitor: "Watch the livestream and its health.",
-  walk_in_music: "Play walk-in music; it fades before each service.",
-  live_viewers: "How many are watching online.",
-  switcher_cues: "Which camera is next for each moment.",
-  crew_qr: "A code volunteers scan to join the crew.",
-  clock: "The time, big.",
-  checklist: "One of your checklists, to tick off.",
+  health_strip: "Estado de Pro, Planning Center, audio y consola por color.",
+  run_order: "Lo que está en curso y lo que sigue, desde Planning Center.",
+  service_timeline: "Todo el evento en una barra, con el avance y el ritmo actual.",
+  service_clock: "Cuenta regresiva hasta el próximo evento.",
+  service_tracking: "Tiempo planeado de cada elemento comparado con su duración real.",
+  slide_preview: "La diapositiva que está en pantalla ahora.",
+  slide_grid: "Diapositivas de la lista. Toca una para mostrarla.",
+  timer: "Temporizador de ProPresenter con inicio, parada y reinicio.",
+  tap_link: "Lo que abre ahora el enlace NFC para donaciones.",
+  lobby_tv: "Lo que muestran las TV del vestíbulo.",
+  stage_message: "Muestra una línea de texto en las pantallas del escenario.",
+  child_call: "Muestra el código de un niño con un mensaje de ProPresenter.",
+  confidence: "Texto grande para que lo lean la banda y el pastor.",
+  show_flow: "Orden del evento con el elemento en curso marcado.",
+  plan_item: "Ahora y siguiente en letras grandes.",
+  people: "Quiénes participan y si ya llegaron.",
+  song_leaders: "Cada canción con su tonalidad y su líder.",
+  mic_assignment: "Qué micrófono usa cada persona.",
+  stage_call: "Quién sigue en el escenario y cuánto falta.",
+  audio_meter: "Nivel de sonido de la sala y su espectro en vivo.",
+  listen: "Escucha el audio del evento en esta pantalla.",
+  avantis: "Silencios y faders de la consola de audio.",
+  key_change: "Envía la tonalidad de la canción a Waves.",
+  automix: "Automix ajusta la mezcla. Mira lo que está haciendo.",
+  recorder: "Inicia y supervisa la grabación multipista.",
+  readiness: "Checklist de lo que debe estar listo para el domingo.",
+  obs: "Escenas de OBS con la que está en vivo marcada.",
+  atem: "Program y Preview con Cut y Auto.",
+  "atem-macros": "Ejecuta macros de ATEM con un toque.",
+  pro_macros: "Ejecuta macros de ProPresenter con un toque.",
+  video_input: "Video de la cámara del escenario por NDI.",
+  church_online: "Espectadores, peticiones de oración y salvaciones de Church Online.",
+  stream_monitor: "Supervisa la transmisión en vivo y su estado.",
+  walk_in_music: "Reproduce música de entrada que se desvanece antes de cada evento.",
+  live_viewers: "Cuántas personas están mirando en línea.",
+  switcher_cues: "Qué cámara sigue en cada momento.",
+  crew_qr: "Código que los voluntarios escanean para unirse al equipo.",
+  clock: "La hora en grande.",
+  checklist: "Una de tus Checklist para marcar tareas completadas.",
 };
 
 export function WidgetPreview({ type }: { type: string }) {
