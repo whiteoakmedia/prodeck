@@ -123,17 +123,17 @@ type Page =
 // stage output — there are no NDI cameras. The Captions page came back in
 // Sep 2026 as "Auto-Follow" (lyrics → ProPresenter slides live there).
 const NAV: { id: Page; label: string; icon: string }[] = [
-  { id: "dashboard", label: "Dashboard", icon: "dashboard" },
-  { id: "setup", label: "Setup", icon: "checklist" },
+  { id: "dashboard", label: "Panel", icon: "dashboard" },
+  { id: "setup", label: "Configuración inicial", icon: "checklist" },
   { id: "propresenter", label: "ProPresenter", icon: "slides" },
-  { id: "captions", label: "Auto-Follow", icon: "captions" },
+  { id: "captions", label: "Seguimiento automático", icon: "captions" },
   { id: "planning", label: "Planning Center", icon: "calendar" },
-  { id: "checklists", label: "Checklists", icon: "checklist" },
-  { id: "routing", label: "Routing", icon: "grid" },
-  { id: "recording", label: "Recording", icon: "mic" },
-  { id: "report", label: "Analytics", icon: "report" },
-  { id: "help", label: "Help", icon: "help" },
-  { id: "settings", label: "Settings", icon: "settings" },
+  { id: "checklists", label: "Checklist", icon: "checklist" },
+  { id: "routing", label: "Ruteo", icon: "grid" },
+  { id: "recording", label: "Grabación", icon: "mic" },
+  { id: "report", label: "Estadísticas", icon: "report" },
+  { id: "help", label: "Ayuda", icon: "help" },
+  { id: "settings", label: "Configuración", icon: "settings" },
 ];
 
 function Shell() {
@@ -307,11 +307,11 @@ function Shell() {
           <span className="brand-mark" />
           <span className="brand-name">ProDeck</span>
           {nav.depth > 0 && (
-            <button className="nav-back" title="Back to the page before (⌘[)" aria-label="Back" onClick={() => goBack()}>
+            <button className="nav-back" title="Volver a la página anterior (⌘[)" aria-label="Atrás" onClick={() => goBack()}>
               ‹
             </button>
           )}
-          <button className="nav-collapse" title="Hide sidebar" onClick={toggleNav}>
+          <button className="nav-collapse" title="Ocultar barra lateral" onClick={toggleNav}>
             «
           </button>
         </div>
@@ -342,7 +342,7 @@ function Shell() {
             onClick={() => chat.setOpen(!chat.open)}
           >
             <Icon name="captions" />
-            <span>Messages</span>
+            <span>Mensajes</span>
             {chat.unread > 0 && <span className="nav-badge">{chat.unread}</span>}
           </button>
         </nav>
@@ -354,7 +354,7 @@ function Shell() {
               light, the phone tabs. Never offered on the booth computer. */}
           {IS_WEB && (
             <button className="btn ghost small crew-layout-switch" onClick={() => switchLayout("crew")}>
-              Crew view: comms and tally light
+              Vista del equipo: comunicación y luz Tally
             </button>
           )}
           <div className="fb-links">
@@ -371,7 +371,7 @@ function Shell() {
 
       <main className="main">
         {navHidden && (
-          <button className="nav-show" title="Show sidebar" onClick={toggleNav}>
+          <button className="nav-show" title="Mostrar barra lateral" onClick={toggleNav}>
             »
           </button>
         )}
