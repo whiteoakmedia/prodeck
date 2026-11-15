@@ -44,6 +44,15 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.125 — 15 November 2026
+
+Everything in 0.9.124, plus:
+
+### New
+
+- **Behringer WING, WING Compact and WING Rack.** Names, mutes and faders for
+  every channel, bus, matrix, main, DCA and mute group, plus scene recall.
+
 ## 0.9.124 — 12 November 2026
 
 Everything in 0.9.123, plus:
