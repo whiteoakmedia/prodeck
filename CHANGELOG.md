@@ -44,6 +44,16 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.127 — 15 November 2026
+
+Everything in 0.9.126, plus:
+
+### New
+
+- **Pages before every service.** Before service alerts fire for each
+  service time on the day's plan and reach the whole team on this week's
+  plan, checked in or not.
+
 ## 0.9.126 — 15 November 2026
 
 Everything in 0.9.125, plus:
