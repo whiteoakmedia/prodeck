@@ -768,6 +768,8 @@ export function SettingsPage() {
                     ? "(MixRack 51325 · Surface 51328)"
                     : (form.avantis_model || "avantis") === "x32"
                       ? "(10023)"
+                      : (form.avantis_model || "avantis") === "wing"
+                        ? "(2223)"
                       : (form.avantis_model || "avantis") === "yamaha"
                         ? "(49280, rarely needs a change)"
                         : "(51325)"}
@@ -805,6 +807,15 @@ export function SettingsPage() {
                 10023 and reads every channel, DCA, bus, matrix and mute group on
                 connect. Give the desk a fixed IP so this keeps working after a router
                 restart. Scenes 1–100.
+              </p>
+            )}
+            {(form.avantis_model || "avantis") === "wing" && (
+              <p className="hint wide">
+                Nothing to set on the console, as long as Remote Lock for OSC is off (Setup → Remote). ProDeck
+                connects over OSC on port 2223 and reads every channel, aux input, bus, matrix, main, DCA and mute
+                group. Scene recall loads scenes from the show open on the desk. The WING sends live changes to one
+                OSC app at a time; if Companion also talks OSC to it, ProDeck still catches up every 30 seconds.
+                Give the desk a fixed IP so this keeps working after a router restart.
               </p>
             )}
             {(form.avantis_model || "avantis") === "yamaha" && (

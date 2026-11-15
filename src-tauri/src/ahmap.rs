@@ -24,6 +24,9 @@ pub enum DeskModel {
     X32,
     /// Yamaha CL / QL / TF — RCP, plain text over TCP (yamaha.rs). Read only.
     Yamaha,
+    /// Behringer WING / WING Compact / WING Rack: OSC over UDP in its own
+    /// dialect (wing.rs).
+    Wing,
 }
 
 impl DeskModel {
@@ -34,6 +37,7 @@ impl DeskModel {
             "qu" | "qu5" | "qu6" | "qu7" | "qu-5" | "qu-6" | "qu-7" => DeskModel::Qu,
             "x32" | "m32" | "x32/m32" => DeskModel::X32,
             "yamaha" | "cl" | "ql" | "tf" | "cl/ql/tf" => DeskModel::Yamaha,
+            "wing" | "wing compact" | "wing rack" => DeskModel::Wing,
             _ => DeskModel::Avantis,
         }
     }
@@ -45,6 +49,7 @@ impl DeskModel {
             DeskModel::Qu => "qu",
             DeskModel::X32 => "x32",
             DeskModel::Yamaha => "yamaha",
+            DeskModel::Wing => "wing",
         }
     }
     pub fn label(self) -> &'static str {
@@ -55,6 +60,7 @@ impl DeskModel {
             DeskModel::Qu => "Qu",
             DeskModel::X32 => "X32 / M32",
             DeskModel::Yamaha => "Yamaha",
+            DeskModel::Wing => "WING",
         }
     }
     /// Highest base MIDI channel the desk lets you pick (1-based).
@@ -69,6 +75,8 @@ impl DeskModel {
             DeskModel::Sq | DeskModel::Qu => 300,
             DeskModel::X32 => 100,
             DeskModel::Yamaha => 300,
+            // Scenes are entries in the show open on the desk.
+            DeskModel::Wing => 999,
             _ => 500,
         }
     }
@@ -77,6 +85,10 @@ impl DeskModel {
     /// The MIDI mirror must stand down for these; x32.rs drives them.
     pub fn is_osc(self) -> bool {
         self == DeskModel::X32
+    }
+    /// True for the Behringer WING, spoken to over OSC by wing.rs.
+    pub fn is_wing(self) -> bool {
+        self == DeskModel::Wing
     }
     /// True for Yamaha desks, spoken to over RCP by yamaha.rs.
     pub fn is_rcp(self) -> bool {
@@ -166,7 +178,7 @@ pub fn note_map(model: DeskModel) -> &'static [NoteRange] {
         // Neither speaks the Note dialect: SQ is all-NRPN, and the X32 isn't
         // MIDI at all (OSC over UDP — see x32.rs).
         // Yamaha speaks RCP (yamaha.rs).
-        DeskModel::Sq | DeskModel::Qu | DeskModel::X32 | DeskModel::Yamaha => &[],
+        DeskModel::Sq | DeskModel::Qu | DeskModel::X32 | DeskModel::Yamaha | DeskModel::Wing => &[],
     }
 }
 

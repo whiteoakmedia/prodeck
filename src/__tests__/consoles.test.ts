@@ -130,3 +130,26 @@ describe("Qu-5/6/7", () => {
     for (const st of ["ok", "bad", "idle"]) expect(deskHealthText("qu", st)).not.toMatch(/[—–]/);
   });
 });
+
+describe("Behringer WING", () => {
+  it("is a desk ProDeck can mirror and control, with no MIDI channel", () => {
+    expect(consoleInfo("wing")?.label).toBe("WING");
+    expect(consoleLabel("WING")).toBe("WING");
+    expect(consoleNeedsMidi("wing")).toBe(false);
+    expect(deskControlSupported("wing")).toBe(true);
+    expect(setupFields("wing")).toEqual({ form: true, midi: false, port: 2223, unsupported: false });
+  });
+
+  it("takes its own port when switching from another desk's default, and keeps a typed one", () => {
+    expect(portForSwitch("wing", 10023)).toBe(2223);
+    expect(portForSwitch("wing", 51325)).toBe(2223);
+    expect(portForSwitch("x32", 2223)).toBe(10023);
+    expect(portForSwitch("wing", 3000)).toBe(3000);
+  });
+
+  it("says Can't reach the WING, without the Allen & Heath MIDI advice", () => {
+    const t = deskHealthText("wing", "down");
+    expect(t).toMatch(/Can't reach the WING/);
+    expect(t).not.toMatch(/MIDI/);
+  });
+});

@@ -501,7 +501,7 @@ export interface Settings {
   keep_awake: boolean;
   avantis_enabled: boolean;
   avantis_host: string;
-  /** Which console: "avantis" | "dlive" | "sq" | "qu" | "x32" | "yamaha". */
+  /** Which console: "avantis" | "dlive" | "sq" | "qu" | "x32" | "wing" | "yamaha". */
   avantis_model: string;
   /** TCP port — 51325 for Avantis / dLive MixRack / SQ, 51328 for a dLive Surface. */
   avantis_port: number;
@@ -583,7 +583,7 @@ export interface AvantisSoftkey {
 
 // Avantis console mirror (read-only). Keys are "kind:index", e.g. "input:5".
 export interface AvantisSnapshot {
-  /** "avantis" | "dlive" | "sq" | "qu" | "x32" | "yamaha": which protocol the mirror is speaking. */
+  /** "avantis" | "dlive" | "sq" | "qu" | "x32" | "wing" | "yamaha": which protocol the mirror is speaking. */
   model?: string;
   /** False on desks ProDeck only watches (Yamaha, for now). */
   controlSupported?: boolean;

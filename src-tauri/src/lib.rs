@@ -46,6 +46,7 @@ mod settings;
 mod tap;
 mod transcription;
 mod web;
+mod wing;
 mod x32;
 mod yamaha;
 
@@ -268,6 +269,7 @@ pub fn run() {
             obs::spawn_client(app.handle().clone());
             atem::spawn_client(app.handle().clone());
             x32::spawn_mirror(app.handle().clone());
+            wing::spawn_mirror(app.handle().clone());
             yamaha::spawn_mirror(app.handle().clone());
             edge::spawn_edge_push(app.handle().clone());
             // Secure local address (claimed in Settings): keeps the name

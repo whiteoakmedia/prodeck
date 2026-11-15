@@ -40,6 +40,7 @@ const CONSOLES = [
   { id: "sq", name: "Allen & Heath SQ", port: 51325, maxBase: 16 },
   { id: "qu", name: "Allen & Heath Qu-5 / Qu-6 / Qu-7", port: 51325, maxBase: 16 },
   { id: "x32", name: "Behringer X32 or Midas M32", port: 10023, maxBase: 1 },
+  { id: "wing", name: "Behringer WING", port: 2223, maxBase: 1 },
 ];
 
 /** Faders the automix may ride: DCAs, groups and auxes (never mains). */
@@ -317,7 +318,7 @@ export function AutomixWizard({ onClose, onAway }: { onClose: () => void; onAway
                   <span>Port</span>
                   <input className="input" type="number" id="wz-am-port" value={port} onChange={(e) => setPort(parseInt(e.target.value, 10) || 0)} />
                 </label>
-                {model !== "x32" && (
+                {model !== "x32" && model !== "wing" && (
                   <label className="field">
                     <span>MIDI channel</span>
                     <input className="input" type="number" id="wz-am-base" min={1} max={16} value={base} onChange={(e) => setBase(parseInt(e.target.value, 10) || 1)} />

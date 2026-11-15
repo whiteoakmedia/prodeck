@@ -685,11 +685,12 @@ This is the most involved optional setup. The Adopter's Guide covers it end to e
     id: "console",
     group: "Sound console",
     title: "Connecting a sound console",
-    aliases: ["avantis", "dlive", "sq5", "x32", "m32", "yamaha", "ql5", "ql1", "cl5", "cl3", "cl1", "tf5", "tf3", "tf1", "rcp", "port 49280", "digico", "presonus", "soundcraft", "my console isn't listed", "console shows disconnected", "midi over tcp", "osc port 10023"],
+    aliases: ["avantis", "dlive", "sq5", "x32", "m32", "yamaha", "ql5", "ql1", "cl5", "cl3", "cl1", "tf5", "tf3", "tf1", "rcp", "port 49280", "digico", "presonus", "soundcraft", "my console isn't listed", "console shows disconnected", "midi over tcp", "osc port 10023", "wing", "behringer wing", "wing compact", "wing rack", "osc port 2223"],
     body: `**Settings → Sound Console**: pick the model, type the console's IP, and watch it connect.
 
 - **Allen & Heath Avantis / dLive / SQ** — MIDI over TCP. Avantis and dLive use port 51325 (dLive Surface: 51328). Match the **MIDI base channel** to the console's *Utility → Control → MIDI* setting.
 - **Behringer X32 / Midas M32** — OSC, port 10023. Nothing to configure on the console.
+- **Behringer WING, WING Compact and WING Rack**: OSC, port 2223. Nothing to configure on the console, as long as Remote Lock for OSC is off under *Setup → Remote*. ProDeck mirrors names, mutes and faders for all 40 channels, the 8 aux inputs, 16 buses, 8 matrices, 4 mains, 16 DCAs and 8 mute groups. Scene recall loads scenes from the show open on the desk. The WING sends live changes to one OSC app at a time, so if Companion also talks OSC to it, ProDeck still catches up every 30 seconds.
 - **Yamaha CL, QL and TF**: Yamaha's remote control protocol, port 49280. Nothing to configure on the console and no MIDI channel to match: pick **Yamaha CL, QL or TF**, type the desk's IP, and ProDeck reads which model it is by itself.
 
 **Yamaha desks, step by step.** Find the console's IP address on its network setup screen, make sure the Mac and the desk are on the same network, then enter that IP in Settings or on the setup step. Leave the port at 49280. ProDeck mirrors channel names, mutes and fader levels for every input, stereo input, mix bus, matrix (CL and QL), DCA and mute group, plus the stereo and mono masters and the current scene with its name. On a TF the scene shows with its bank, like A05. For now ProDeck only **watches** a Yamaha desk: mute, fader, rename and scene recall buttons stay off, and Automix can't move its faders. RIVAGE PM and DM series desks use a different scene format and aren't supported yet.

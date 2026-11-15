@@ -821,6 +821,8 @@ export function FirstRunSetup({ onNavigate }: { onNavigate?: (p: string) => void
                 <p className="muted small ob-note">
                   {deskModel === "x32"
                     ? "Nothing to set on the console itself. ProDeck subscribes over OSC. "
+                    : deskModel === "wing"
+                      ? "Nothing to set on the console itself, as long as Remote Lock for OSC is off under Setup, Remote. "
                     : deskModel === "yamaha"
                       ? "Nothing to set on the console itself. ProDeck reads it over Yamaha's remote control protocol and only watches for now: it can't change anything on a Yamaha desk yet. "
                       : `Set the desk's MIDI channel under ${isNrpnConsole(deskModel) ? "Utility → General → MIDI" : "Utility → Control → MIDI"} and enter the same number here. `}
