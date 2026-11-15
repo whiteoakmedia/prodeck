@@ -44,6 +44,15 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.126 — 15 November 2026
+
+Everything in 0.9.125, plus:
+
+### New
+
+- **Practice never moves Planning Center LIVE.** Follow ProPresenter only
+  moves LIVE from 5 minutes before each service until it's over.
+
 ## 0.9.125 — 15 November 2026
 
 Everything in 0.9.124, plus:
