@@ -1630,8 +1630,8 @@ export function SettingsPage() {
               <div className={`guide-step ${form.web_invite_token ? "done" : ""}`}>
                 <span className="guide-step-n">2</span>
                 <div>
-                  <strong>Open joining and share the poster — or send personal invites</strong>
-                  <span className="muted small">The poster works only while joining is open (below). A personal invite is for one person and arrives pre-approved.</span>
+                  <strong>Share the poster, or send personal invites</strong>
+                  <span className="muted small">While joining is open (below), people who scan the poster join straight away. While it's closed, they ask to join and you approve them here. A personal invite is for one person and arrives pre-approved.</span>
                 </div>
               </div>
               <div className={`guide-step ${crew.some((u) => u.approved) ? "done" : ""}`}>

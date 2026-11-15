@@ -125,11 +125,11 @@ export const HEADLINERS: Feature[] = [
     art: "app",
     tone: "accent",
     title: "ProDeck Crew, an app for your volunteers",
-    tagline: "On the App Store for iPhone and iPad. Android is coming.",
+    tagline: "On the App Store for iPhone and iPad, and on Google Play for Android.",
     what:
       "Your crew has ProDeck as a real app. It finds your booth on the church wifi, even on networks that hide it, remembers the church, and rings for pages with the phone locked, with a Got it button right on the notification. Someone who serves at two churches can switch between them.",
     steps: [
-      "Volunteers search the App Store for ProDeck Crew and install it.",
+      "Volunteers find ProDeck Crew on the App Store or Google Play and install it, or scan the crew code to be sent to the right one.",
       "In the app they tap Scan crew code and scan the crew poster.",
       "Phones without the app still join from the poster in their browser, and everything here works there.",
     ],

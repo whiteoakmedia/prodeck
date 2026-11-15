@@ -92,8 +92,8 @@ export function CrewAddressCard({ form, set }: { form: Settings; set: (on: boole
           )}
           <p className="muted small">
             {st?.linked ? "Linked: phones away from church reach the live booth." : "Not linked right now."} Last copy
-            sent {ago(st?.last_sync_ms ?? 0)}. Crew links and the poster keep using this computer's own address; a phone
-            moves to the crew address by itself when it can't reach the booth.
+            sent {ago(st?.last_sync_ms ?? 0)}. The crew code and the poster point at the crew address, so they work from anywhere. A phone on
+            the church wifi still talks to this computer directly.
           </p>
           {st?.error && (
             <div className="hint">
