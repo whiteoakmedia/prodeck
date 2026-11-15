@@ -2265,7 +2265,7 @@ function ScheduledAlerts({ crew }: { crew: CrewUser[] }) {
   return (
     <section className="card">
       <div className="card-head">
-        <h3>Scheduled alerts</h3>
+        <h3 id="set-schedule">Scheduled alerts</h3>
         <button className="btn small" onClick={sch.add}>
           Add alert
         </button>
