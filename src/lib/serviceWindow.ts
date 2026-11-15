@@ -88,3 +88,39 @@ export function tapWindow(b: {
   const to = Math.min(b.endedAt ?? b.startedAt, cap);
   return to > from ? { from, to } : null;
 }
+
+/**
+ * Follow ProPresenter only moves Planning Center Live from this long before a
+ * service until its window ends. Clicking through slides at practice used to
+ * step LIVE along with them, and LIVE's item times can't be reset, so the
+ * service's real timings were spoiled before it began.
+ */
+export const FOLLOW_LEAD_MS = 5 * 60 * 1000;
+
+/**
+ * May Follow move Planning Center Live at `now`? Open from `leadMs` before
+ * each service until the plan's length plus the overrun allowance has passed,
+ * or until the next service's own window opens, whichever is first. Not the
+ * analytics window: that closes 15 minutes before the next service, which
+ * would stop following a first service that runs long. A plan with no
+ * scheduled times can't be judged by the clock, so it stays open, as before.
+ * `opensAt` is when it next opens, for "Practice until 8:55".
+ */
+export function followWindow(
+  now: number,
+  times: ServiceSlot[],
+  planMs: number,
+  leadMs = FOLLOW_LEAD_MS,
+): { open: boolean; opensAt: number | null } {
+  const length = planMs > 0 ? planMs : DEFAULT_PLAN_MS;
+  const sorted = times.filter((t) => t.ts > 0).sort((a, b) => a.ts - b.ts);
+  if (sorted.length === 0) return { open: true, opensAt: null };
+  const open = sorted.some((t, i) => {
+    const next = sorted[i + 1];
+    const end = Math.min(t.ts + length + OVERRUN_MS, next ? next.ts - leadMs : Infinity);
+    return now >= t.ts - leadMs && now < end;
+  });
+  if (open) return { open: true, opensAt: null };
+  const next = sorted.find((t) => t.ts - leadMs > now);
+  return { open: false, opensAt: next ? next.ts - leadMs : null };
+}

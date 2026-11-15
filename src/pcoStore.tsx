@@ -549,6 +549,16 @@ export function parseLiveEndsAt(j: Json | null): number | null {
   return null;
 }
 
+/** What Follow ProPresenter last did. `heldUntil`: it matched, but kept
+ *  Planning Center Live still because it's practice (lib/serviceWindow
+ *  followWindow); the epoch ms it opens, or null when no later service today. */
+export interface FollowStatus {
+  presName: string;
+  matched: boolean;
+  held?: boolean;
+  heldUntil?: number | null;
+}
+
 export interface ServiceTime {
   id: string;
   name: string;
@@ -669,8 +679,8 @@ interface PcoStore {
   ) => { uuid: string; name: string; auto: boolean } | null;
   autoAdvance: boolean;
   followPro: boolean;
-  followStatus: { presName: string; matched: boolean } | null;
-  setFollowStatus: (s: { presName: string; matched: boolean } | null) => void;
+  followStatus: FollowStatus | null;
+  setFollowStatus: (s: FollowStatus | null) => void;
   library: { uuid: string; name: string }[];
   setLink: (title: string, link: { uuid: string; name: string } | null) => void;
   suppressLink: (title: string) => void;
@@ -773,10 +783,7 @@ export function PcoProvider({ children }: { children: ReactNode }) {
   >({});
   const [autoAdvance, setAutoAdvanceState] = useState(false);
   const [followPro, setFollowProState] = useState(false);
-  const [followStatus, setFollowStatus] = useState<{
-    presName: string;
-    matched: boolean;
-  } | null>(null);
+  const [followStatus, setFollowStatus] = useState<FollowStatus | null>(null);
   const [library, setLibrary] = useState<{ uuid: string; name: string }[]>([]);
   const lastAdvanced = useRef<string | null>(null);
   const advancing = useRef(false);

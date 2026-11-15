@@ -57,3 +57,47 @@ describe("tap windows", () => {
     expect(tapWindow({ rehearsal: false })).toBeNull();
   });
 });
+
+import { followWindow, FOLLOW_LEAD_MS } from "../lib/serviceWindow";
+
+describe("Follow ProPresenter only moves Planning Center Live near a service", () => {
+  const at = (hhmm: string) => Date.parse(`2026-11-15T${hhmm}:00`);
+  const times = [
+    { id: "9", ts: at("09:00") },
+    { id: "11", ts: at("11:00") },
+  ];
+  const plan = 75 * 60 * 1000;
+
+  it("holds during a Sunday morning run through", () => {
+    expect(followWindow(at("06:15"), times, plan)).toEqual({ open: false, opensAt: at("09:00") - FOLLOW_LEAD_MS });
+    expect(followWindow(at("08:54"), times, plan).open).toBe(false);
+  });
+
+  it("opens 5 minutes before the service and stays open through it", () => {
+    expect(followWindow(at("08:55"), times, plan).open).toBe(true);
+    expect(followWindow(at("09:40"), times, plan).open).toBe(true);
+  });
+
+  it("keeps following a first service that runs long, right up to the next one", () => {
+    expect(followWindow(at("10:50"), times, plan).open).toBe(true);
+    expect(followWindow(at("10:56"), times, plan).open).toBe(true);
+  });
+
+  it("holds between services once the first is well over", () => {
+    const spaced = [
+      { id: "9", ts: at("09:00") },
+      { id: "18", ts: at("18:00") },
+    ];
+    // 9:00 + 75 min + 45 min overrun = 11:00.
+    expect(followWindow(at("10:59"), spaced, plan).open).toBe(true);
+    expect(followWindow(at("13:00"), spaced, plan)).toEqual({ open: false, opensAt: at("18:00") - FOLLOW_LEAD_MS });
+  });
+
+  it("holds after the last service with nothing later today", () => {
+    expect(followWindow(at("15:00"), times, plan)).toEqual({ open: false, opensAt: null });
+  });
+
+  it("never holds a plan with no service times, as before", () => {
+    expect(followWindow(at("06:15"), [], plan)).toEqual({ open: true, opensAt: null });
+  });
+});

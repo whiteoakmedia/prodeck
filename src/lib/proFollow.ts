@@ -1,7 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useProDeck } from "../store";
 import { usePco } from "../pcoStore";
 import { IS_WEB } from "./tauri";
+import { followWindow } from "./serviceWindow";
 
 import { matchPresentationToItem } from "./presMatch";
 
@@ -26,6 +27,24 @@ export function useProFollow() {
   const { status } = useProDeck();
   const pco = usePco();
   const lastKey = useRef<string | null>(null);
+  // Follow only moves Planning Center Live from 5 minutes before a service
+  // (lib/serviceWindow followWindow). Checked every 15 s, so when the window
+  // opens with pre-service slides already up, LIVE catches up then.
+  const planMs = pco.items.filter((i) => i.type !== "header").reduce((n, i) => n + (i.length || 0) * 1000, 0);
+  const times = pco.serviceTimes.map((t) => ({ id: t.id, ts: t.ts ?? 0 }));
+  const [win, setWin] = useState(() => followWindow(Date.now(), times, planMs));
+  const timesKey = times.map((t) => t.ts).join(",");
+  useEffect(() => {
+    const check = () => {
+      const w = followWindow(Date.now(), times, planMs);
+      setWin((prev) => (prev.open === w.open && prev.opensAt === w.opensAt ? prev : w));
+    };
+    check();
+    const iv = setInterval(check, 15_000);
+    return () => clearInterval(iv);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timesKey, planMs]);
+  const prevOpen = useRef(win.open);
   const prevFollow = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -54,7 +73,10 @@ export function useProFollow() {
     // concurrent controller stepping PCO Live (both fire go_to_next/previous,
     // overshooting and oscillating around the target).
     if (IS_WEB) return;
-    const justEnabled = pco.followPro && !prevFollow.current;
+    // Turning Follow on, or the service window opening, catches up at once.
+    const justOpened = win.open && !prevOpen.current;
+    prevOpen.current = win.open;
+    const justEnabled = (pco.followPro && !prevFollow.current) || (pco.followPro && justOpened);
     prevFollow.current = pco.followPro;
     // Any change to the live presentation cancels a pending follow — so a brief
     // roll into the next item that's corrected within the settle window never
@@ -83,6 +105,11 @@ export function useProFollow() {
         presName,
         pco.liveItemId,
       );
+      if (targetId && !win.open) {
+        // Practice: say what Follow would have done, and leave LIVE alone.
+        pco.setFollowStatus({ presName: presName ?? "", matched: true, held: true, heldUntil: win.opensAt });
+        return;
+      }
       pco.setFollowStatus({ presName: presName ?? "", matched: !!targetId });
       if (targetId) pco.goToItem(targetId);
     };
@@ -97,5 +124,5 @@ export function useProFollow() {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, pco.followPro]);
+  }, [key, pco.followPro, win.open]);
 }

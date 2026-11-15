@@ -550,12 +550,14 @@ Only an **Organization Administrator** can create one (Planning Center's rule si
     id: "pco-live",
     group: "Planning Center",
     title: "Planning Center LIVE: Take control, Next and Previous",
-    aliases: ["take control", "next does nothing", "someone else is controlling", "auto advance", "follow propresenter"],
+    aliases: ["take control", "next does nothing", "someone else is controlling", "auto advance", "follow propresenter", "live moved during practice", "rehearsal moved live", "reset live"],
     body: `Planning Center only moves LIVE for whoever holds the **controller**. An untouched plan has nobody holding it, which is why Next did nothing on its own. ProDeck takes control for you when the plan is free, and refuses — telling you who has it — when a teammate is driving from their own device.
 
 - **Take control / Release** is on the Planning Center page.
 - **Auto-advance** moves LIVE when ProPresenter moves to the next item. **Follow ProPresenter** does the reverse.
-- If Next appears to do nothing, look for the message under the buttons: it names who holds control, or says it couldn't confirm and to try again.`,
+- If Next appears to do nothing, look for the message under the buttons: it names who holds control, or says it couldn't confirm and to try again.
+
+**Practice never moves LIVE.** Follow ProPresenter only moves Planning Center LIVE from 5 minutes before each service time until that service is over. Click through the slides at a rehearsal or a Sunday morning run through and LIVE stays where it is, so the service's real timings aren't spoiled before it starts (Planning Center can't reset them). The Planning Center page says so while it's holding. When the window opens with pre-service slides already up, LIVE catches up by itself. A plan with no service times in Planning Center isn't held, and Next and Previous always work.`,
     related: ["pco-connect"],
   },
 
