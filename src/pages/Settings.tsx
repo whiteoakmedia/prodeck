@@ -2277,7 +2277,8 @@ function ScheduledAlerts({ crew }: { crew: CrewUser[] }) {
       <p className="muted small">
         Scope an alert to a service type and the days it runs, and it stays out of the way of
         every other service. Address a PCO team instead of named people and it follows whoever
-        is rostered that week.
+        is rostered that week. A before service alert fires for each service time on the day's
+        plan, and reaches the ProDeck Crew app on locked phones.
       </p>
 
       {sch.alerts.length === 0 && (
@@ -2374,6 +2375,16 @@ function ScheduledAlerts({ crew }: { crew: CrewUser[] }) {
                 </option>
               ))}
             </select>
+            {a.team && (
+              <label className="field check" style={{ margin: 0 }} title="Off: everyone from the team on this week's plan, wherever they are">
+                <input
+                  type="checkbox"
+                  checked={a.hereOnly}
+                  onChange={(e) => sch.update(a.id, { hereOnly: e.target.checked })}
+                />
+                <span>Only people who have checked in</span>
+              </label>
+            )}
           </div>
 
           <div className="sched-days">
