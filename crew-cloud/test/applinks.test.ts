@@ -61,7 +61,7 @@ describe("a crew code on each kind of phone", () => {
 
   it("lets everyone else (and an iPhone that chose the browser, or the app itself) through to the church", async () => {
     // Booth off in the tests: the church's own page is the app shell.
-    for (const [ua, q] of [[ANDROID, ""], [MAC, ""], [IPHONE, "?web=1"], [IN_APP, ""]] as const) {
+    for (const [ua, q] of [[MAC, ""], [IPHONE, "?web=1"], [ANDROID, "?web=1"], [IN_APP, ""]] as const) {
       const r = await join(ua, q);
       expect(r.status).toBe(200);
       expect(r.headers.get("x-prodeck-fallback")).toBe("cloud");
@@ -76,7 +76,14 @@ describe("a crew code on each kind of phone", () => {
     expect(wantsAppStep("POST", "/join", q, IPHONE)).toBe(false);
     expect(wantsAppStep("GET", "/join", new URLSearchParams("web=1"), IPHONE)).toBe(false);
     expect(wantsAppStep("GET", "/join", q, IN_APP)).toBe(false);
-    expect(wantsAppStep("GET", "/join", q, ANDROID)).toBe(false);
+    expect(wantsAppStep("GET", "/join", q, ANDROID)).toBe(true);
+  });
+
+  it("sends Android to Google Play and iPhone to the App Store", async () => {
+    expect(appStepPage("https://grace-crew.prodeck.live/join", ANDROID)).toContain("https://play.google.com/store/apps/details?id=app.prodeck.crew");
+    expect(appStepPage("https://grace-crew.prodeck.live/join", IPHONE)).toContain("https://apps.apple.com/app/id6829868156");
+    const r = await join(ANDROID, "");
+    expect(await r.text()).toContain("play.google.com");
   });
 
   it("never lets the address break out of the page", () => {

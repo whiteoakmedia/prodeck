@@ -16,7 +16,7 @@
  *   phone   POST /edge/checklist          {token, session, listId, itemId, done}
  *   phone   POST /edge/register           booth-off signup
  *   any     GET  /.well-known/apple-app-site-association (and assetlinks.json once there's an Android app)
- *   iPhone  GET  /join without ProDeck Crew: "Get ProDeck Crew" or continue in the browser (applinks.ts)
+ *   phone   GET  /join without ProDeck Crew: "Get ProDeck Crew" (App Store or Google Play) or continue in the browser (applinks.ts)
  *   phone   anything else                 relayed to the booth while it's linked;
  *                                         booth off: /api/* → 503, pages → the app shell
  *
@@ -58,7 +58,7 @@ export default {
     // A crew code opened on an iPhone without ProDeck Crew: offer the app,
     // with the browser one tap away. Booth on or off, the same page.
     if (wantsAppStep(req.method, url.pathname, url.searchParams, req.headers.get("user-agent") ?? "")) {
-      return new Response(appStepPage(url.toString()), {
+      return new Response(appStepPage(url.toString(), req.headers.get("user-agent") ?? ""), {
         headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
       });
     }
