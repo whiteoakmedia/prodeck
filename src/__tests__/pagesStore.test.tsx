@@ -46,7 +46,15 @@ let root: Root;
 beforeEach(() => {
   seen = null;
   pageList.mockReset();
-  localStorage.setItem("prodeck.crewId", "u1");
+  // A plain map, as the other tests use: newer Node versions put their own
+  // empty localStorage on the global, which hides jsdom's.
+  const store = new Map<string, string>([["prodeck.crewId", "u1"]]);
+  vi.stubGlobal("localStorage", {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => void store.set(k, String(v)),
+    removeItem: (k: string) => void store.delete(k),
+    clear: () => store.clear(),
+  });
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
@@ -55,7 +63,7 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount());
   host.remove();
-  localStorage.clear();
+  vi.unstubAllGlobals();
 });
 
 async function mount() {
