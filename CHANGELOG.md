@@ -44,6 +44,19 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.128 — 19 November 2026
+
+Everything in 0.9.127, plus:
+
+### New
+
+- **Ask ProDeck is quicker and sharper:** Claude Opus 5.5, with the routing
+  map and notes kept ready between steps.
+- **Help answers from all of Help,** with links to the topics it used and
+  follow up questions, using the troubleshooter's key.
+- **A fully updated Help section.**
+- **ProDeck Crew on Google Play.**
+
 ## 0.9.127 — 15 November 2026
 
 Everything in 0.9.126, plus:
