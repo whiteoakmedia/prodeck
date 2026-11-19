@@ -1,3 +1,4 @@
+import { assistModel } from "../lib/assist";
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { openWhatsNew } from "../lib/whatsNew";
 import { tvStatus, type TvScreen } from "../lib/tvScreens";
@@ -1286,10 +1287,10 @@ export function SettingsPage() {
             </label>
             <label className="field">
               <span>Model</span>
-              <select className="input" value={form.assist_model || "claude-sonnet-5"} onChange={(e) => set("assist_model", e.target.value)}>
-                <option value="claude-sonnet-5">Claude Sonnet 5 — fast, recommended</option>
-                <option value="claude-opus-5">Claude Opus 5 — deeper, slower</option>
-                <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 — cheapest</option>
+              <select className="input" id="set-assist-model" value={assistModel(form.assist_model)} onChange={(e) => set("assist_model", e.target.value)}>
+                <option value="claude-opus-5-5">Claude Opus 5.5, best answers (recommended)</option>
+                <option value="claude-sonnet-5-5">Claude Sonnet 5.5, about half the cost</option>
+                <option value="claude-haiku-5-5">Claude Haiku 5.5, cheapest</option>
               </select>
             </label>
             <label className="field">

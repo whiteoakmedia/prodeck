@@ -14,9 +14,37 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 const ENDPOINT: &str = "https://api.anthropic.com/v1/messages";
-const API_VERSION: &str = "2023-06-01";
-pub const DEFAULT_MODEL: &str = "claude-sonnet-5";
-const MAX_OUTPUT_TOKENS: u64 = 1500;
+const API_VERSION: &str = "2026-10-21";
+pub const DEFAULT_MODEL: &str = "claude-opus-5-5";
+/// Claude Opus 5.5 always thinks before it answers, and thinking counts
+/// against this, so it needs room; 1,500 cut answers off.
+const MAX_OUTPUT_TOKENS: u64 = 8000;
+/// Lets Claude re-run a declined request on a model its safety routing
+/// picks, inside the same call, instead of the volunteer getting nothing.
+const FALLBACK_BETA: &str = "server-side-fallback-2026-07-01";
+
+/// The model to call. Empty = the default. The Settings picker used to offer
+/// last generation's models; a church that picked one gets its successor
+/// (same tier, same intent), so nobody is left on a retired model.
+pub(crate) fn effective_model(saved: &str) -> String {
+    match saved.trim() {
+        "" => DEFAULT_MODEL.to_string(),
+        "claude-sonnet-5" => "claude-sonnet-5-5".to_string(),
+        "claude-opus-5" => "claude-opus-5-5".to_string(),
+        "claude-haiku-4-5-20251001" | "claude-haiku-4-5" => "claude-haiku-5-5".to_string(),
+        other => other.to_string(),
+    }
+}
+
+/// Server-side refusal fallback is offered on these models (not Haiku).
+fn takes_fallbacks(model: &str) -> bool {
+    ["claude-opus-5-5", "claude-opus-5", "claude-sonnet-5-5", "claude-fable-5-1", "claude-fable-5-2"].contains(&model)
+}
+
+/// Models that take `output_config.effort`.
+fn takes_effort(model: &str) -> bool {
+    model.starts_with("claude-opus-5") || model.starts_with("claude-sonnet-5") || model.starts_with("claude-fable-5") || model == "claude-haiku-5-5"
+}
 /// Knowledge is prompt text; a runaway folder must not become a runaway bill.
 const KNOWLEDGE_CAP_CHARS: usize = 200_000;
 
@@ -81,7 +109,7 @@ pub(crate) fn key_model_cap(settings: &SettingsState) -> Result<(String, String,
         Some(k) if !k.trim().is_empty() => k.trim().to_string(),
         _ => return Err("The troubleshooter isn't set up: add an Anthropic API key in Settings → Troubleshooter.".into()),
     };
-    let model = if s.assist_model.trim().is_empty() { DEFAULT_MODEL.to_string() } else { s.assist_model.trim().to_string() };
+    let model = effective_model(&s.assist_model);
     Ok((key, model, s.assist_monthly_cap, s.assist_members, s.assist_workspace_id.trim().to_string()))
 }
 
@@ -91,7 +119,7 @@ pub(crate) fn status_core(settings: &SettingsState) -> Value {
         let s = settings.lock().unwrap_or_else(|p| p.into_inner());
         (
             s.assist_api_key.as_deref().map(|k| !k.trim().is_empty()).unwrap_or(false),
-            if s.assist_model.trim().is_empty() { DEFAULT_MODEL.to_string() } else { s.assist_model.clone() },
+            effective_model(&s.assist_model),
             s.assist_monthly_cap,
             s.assist_members,
         )
@@ -169,6 +197,20 @@ pub(crate) async fn complete_core(settings: &SettingsState, mut body: Value, who
     let max = obj.get("max_tokens").and_then(|v| v.as_u64()).unwrap_or(MAX_OUTPUT_TOKENS).min(MAX_OUTPUT_TOKENS);
     obj.insert("max_tokens".into(), json!(max));
     obj.remove("stream");
+    // Retired on this API version; the frontend never sends them, but a
+    // stray one must not turn every question into an error.
+    for k in ["temperature", "top_p", "top_k"] {
+        obj.remove(k);
+    }
+    // Medium: a volunteer is waiting at the desk. Deep enough to walk the
+    // routing, quick enough to answer in seconds.
+    if takes_effort(&model) && !obj.contains_key("output_config") {
+        obj.insert("output_config".into(), json!({ "effort": "medium" }));
+    }
+    let fallbacks = takes_fallbacks(&model);
+    if fallbacks {
+        obj.insert("fallbacks".into(), json!("default"));
+    }
 
     let client = reqwest::Client::builder().timeout(Duration::from_secs(75)).build().map_err(|e| e.to_string())?;
     let mut req = client
@@ -178,6 +220,9 @@ pub(crate) async fn complete_core(settings: &SettingsState, mut body: Value, who
         .header("content-type", "application/json");
     if !workspace.is_empty() {
         req = req.header("anthropic-workspace-id", &workspace);
+    }
+    if fallbacks {
+        req = req.header("anthropic-beta", FALLBACK_BETA);
     }
     let resp = req
         .json(&body)
@@ -280,4 +325,26 @@ pub fn assist_knowledge_dir() -> Result<String, String> {
         );
     }
     Ok(dir.to_string_lossy().to_string())
+}
+
+#[cfg(test)]
+mod model_tests {
+    use super::*;
+
+    #[test]
+    fn old_picker_choices_move_to_their_successors() {
+        assert_eq!(effective_model(""), "claude-opus-5-5");
+        assert_eq!(effective_model("claude-sonnet-5"), "claude-sonnet-5-5");
+        assert_eq!(effective_model("claude-opus-5"), "claude-opus-5-5");
+        assert_eq!(effective_model("claude-haiku-4-5-20251001"), "claude-haiku-5-5");
+        assert_eq!(effective_model("claude-opus-5-5"), "claude-opus-5-5");
+    }
+
+    #[test]
+    fn effort_and_fallbacks_only_where_the_model_takes_them() {
+        assert!(takes_effort("claude-opus-5-5") && takes_fallbacks("claude-opus-5-5"));
+        assert!(takes_effort("claude-sonnet-5-5") && takes_fallbacks("claude-sonnet-5-5"));
+        assert!(takes_effort("claude-haiku-5-5") && !takes_fallbacks("claude-haiku-5-5"));
+        assert!(!takes_effort("claude-haiku-4-5") && !takes_fallbacks("claude-haiku-4-5"));
+    }
 }
