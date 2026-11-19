@@ -111,7 +111,9 @@ export function useProFollow() {
         return;
       }
       pco.setFollowStatus({ presName: presName ?? "", matched: !!targetId });
-      if (targetId) pco.goToItem(targetId);
+      // goToItem reports its own failures through liveError; the catch is a
+      // safety net so nothing from Follow ends up as an unhandled rejection.
+      if (targetId) void pco.goToItem(targetId).catch(() => {});
     };
 
     if (justEnabled) doFollow();

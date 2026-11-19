@@ -61,7 +61,13 @@ export function PagesProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const refresh = () =>
       pageList()
-        .then(setPages)
+        .then((r) => {
+          // The browser build's webInvoke hands back undefined when the booth's
+          // reply has no result or isn't JSON (a phone waking mid hiccup). Keep
+          // the pages we already have rather than wiping them, and never store
+          // a non array: the render below would throw and blank the crew app.
+          if (Array.isArray(r)) setPages(r);
+        })
         .catch(() => {});
     refresh();
     // A page usually arrives while the phone is asleep. Tapping its
@@ -88,11 +94,11 @@ export function PagesProvider({ children }: { children: ReactNode }) {
         (r) =>
           setPages((prev) =>
             prev.map((p) =>
-              p.id === r.pageId && !p.receipts.some((x) => x.user_id === r.userId)
+              p.id === r.pageId && !(p.receipts ?? []).some((x) => x.user_id === r.userId)
                 ? {
                     ...p,
                     receipts: [
-                      ...p.receipts,
+                      ...(p.receipts ?? []),
                       { user_id: r.userId, name: r.name, read_ms: r.readMs },
                     ],
                   }
@@ -128,7 +134,9 @@ export function PagesProvider({ children }: { children: ReactNode }) {
     myId && r.user_id ? r.user_id === myId : r.name === me;
   const incoming =
     pages
-      .filter((p) => p.recipients.some(isMe) && !p.receipts.some(ackedByMe))
+      // `?? []` guards a malformed page from the booth: one missing list must
+      // not throw and take the whole provider tree down with it.
+      .filter((p) => (p.recipients ?? []).some(isMe) && !(p.receipts ?? []).some(ackedByMe))
       .sort((a, b) => a.sent_ms - b.sent_ms)[0] ?? null;
 
   /// Give up on a page the booth will never accept an ack for.
@@ -161,8 +169,8 @@ export function PagesProvider({ children }: { children: ReactNode }) {
       // could never clear again.
       setPages((prev) =>
         prev.map((p) =>
-          p.id === pageId && !p.receipts.some((x) => x.user_id === receipt.user_id)
-            ? { ...p, receipts: [...p.receipts, receipt] }
+          p.id === pageId && !(p.receipts ?? []).some((x) => x.user_id === receipt.user_id)
+            ? { ...p, receipts: [...(p.receipts ?? []), receipt] }
             : p,
         ),
       );

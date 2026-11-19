@@ -38,6 +38,7 @@ import {
 import { cloudPlanSnapshot } from "./lib/crewCloud";
 import { normTitle, bestMatch } from "./lib/match";
 import { autoTargetPlan, mergePlanPages } from "./lib/planPick";
+import { pcoLiveErrorMessage } from "./lib/pcoLiveError";
 import { micPool } from "./lib/micPool";
 
 export interface ServiceType {
@@ -686,7 +687,7 @@ interface PcoStore {
   suppressLink: (title: string) => void;
   setAutoAdvance: (on: boolean) => void;
   setFollowPro: (on: boolean) => void;
-  goToItem: (itemId: string) => void;
+  goToItem: (itemId: string) => Promise<void>;
   loadLibrary: () => Promise<void>;
   triggerPresentation: (uuid: string, force?: boolean) => void;
   saveCredentials: (appId: string, secret: string) => Promise<void>;
@@ -1076,8 +1077,8 @@ export function PcoProvider({ children }: { children: ReactNode }) {
       // Surfaced on the widget itself now. This used to go only to pco.status,
       // which is rendered on the Planning Center page — so a failure pressed
       // from a dashboard was completely invisible.
-      setLiveError(String(e));
-      setStatus(String(e));
+      setLiveError(pcoLiveErrorMessage(e, "button"));
+      setStatus(pcoLiveErrorMessage(e, "button"));
     } finally {
       setLiveBusy(false);
     }
@@ -1573,8 +1574,16 @@ export function PcoProvider({ children }: { children: ReactNode }) {
         return;
       }
       if (!c.controllerId) {
-        await pcoLiveAction(st, plan, "toggle_control");
-        await refreshController();
+        // Caught here because Follow calls this without awaiting it: a login
+        // without permission to control Services Live (PCO 403) used to escape
+        // as an unhandled rejection on every slide change.
+        try {
+          await pcoLiveAction(st, plan, "toggle_control");
+          await refreshController();
+        } catch (e) {
+          setLiveError(pcoLiveErrorMessage(e, "follow"));
+          return;
+        }
       }
       for (let i = 0; i < 30; i++) {
         try {
