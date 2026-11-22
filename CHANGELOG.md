@@ -44,6 +44,21 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.130 — 22 November 2026
+
+Everything in 0.9.129, plus:
+
+### New
+
+- **Director:** a crew app tab for whoever runs the service. PCO Live, Pro
+  slides and clears, pages, screens, video, people and a log, with a new
+  Director permission. Sound is view only. Opens with the crew PIN.
+
+### Fixed
+
+- PCO Live buttons on phones now move LIVE, checked at the booth first.
+- Chat taps no longer get lost when a message arrives.
+
 ## 0.9.129 — 22 November 2026
 
 Everything in 0.9.128, plus:
