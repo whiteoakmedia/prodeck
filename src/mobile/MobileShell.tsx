@@ -6,6 +6,7 @@ import { canGoBack, goBack, isBackSwipe, useNavHistory } from "../lib/navHistory
 import { useCrewSplit, useCrewWide } from "./useCrewWide";
 import { CrewWalk } from "./CrewWalk";
 import { CrewChat } from "./CrewChat";
+import { CrewDirector, type DirectorSub } from "./CrewDirector";
 import { CrewJoin } from "./CrewJoin";
 import {
   IconBell,
@@ -50,7 +51,8 @@ import { onTrack, seekTrack, skipTrack, stopTrack, toggleTrack, trackSnapshot } 
 // desktop Shell on phone-width web clients. v1 ships the frame + working
 // Chat and Dashboards; Home/Checklist arrive with their screens (S03/S08).
 
-type CrewSub = "" | "walk" | "comms" | "leader";
+// Director's own screens ride the same history: screens, sound, video, dash.
+type CrewSub = "" | "walk" | "comms" | "leader" | DirectorSub;
 interface CrewView {
   tab: CrewTab;
   sub: CrewSub;
@@ -114,7 +116,7 @@ function useEdgeSwipeBack() {
 }
 
 export function MobileShell() {
-  const shotTab = IS_SHOTS && SHOT_TAB && ["home", "chat", "checklist", "dashboards", "more"].includes(SHOT_TAB) ? (SHOT_TAB as CrewTab) : null;
+  const shotTab = IS_SHOTS && SHOT_TAB && ["home", "chat", "checklist", "dashboards", "director", "more"].includes(SHOT_TAB) ? (SHOT_TAB as CrewTab) : null;
   // Where the phone is: a tab, and maybe a screen opened from it (No sound?,
   // Comms, Leader board). Each change is a history step, so a swipe back (or
   // Android's back) returns to the screen before (lib/navHistory).
@@ -130,6 +132,11 @@ export function MobileShell() {
     if (!goBack()) view.replace({ tab, sub: "" });
   };
   useEdgeSwipeBack();
+  // A screen opened from a tab (Director's Screens, the Leader board) starts
+  // at its top, not wherever the screen before it was scrolled.
+  useEffect(() => {
+    if (sub) document.querySelector(".crew-main")?.scrollTo({ top: 0 });
+  }, [tab, sub]);
   useEffect(() => {
     setCrashTag("layout", "crew");
     setCrashTag("crew_app", IN_CREW_APP ? "yes" : "no");
@@ -173,6 +180,8 @@ export function MobileShell() {
   useEffect(() => onGatewayState(setBoothUp), []);
   // Leader board is admin-only; the gateway enforces the underlying calls too.
   const { isAdmin, can } = usePerms();
+  // Director takes Dashboards' place in the tab bar (CrewNav crewTabs).
+  const director = can("director");
   const leader = sub === "leader";
   // Identity (id + role) is fetched ONCE at the shell so every tab agrees.
   // It used to live only in the Checklist tab — Home read an empty role until
@@ -288,7 +297,19 @@ export function MobileShell() {
           </div>
         )}
         {tab === "checklist" && <CrewChecklist />}
-        {tab === "dashboards" && <CrewDash />}
+        {tab === "dashboards" && !director && <CrewDash />}
+        {(tab === "director" || (tab === "dashboards" && director)) &&
+          (leader ? (
+            <CrewLeader onBack={close} />
+          ) : (
+            <CrewDirector
+              sub={sub === "screens" || sub === "sound" || sub === "video" || sub === "dash" ? sub : ""}
+              onOpen={(s) => view.go({ tab: "director", sub: s })}
+              onBack={close}
+              onPeople={() => view.go({ tab: "director", sub: "leader" })}
+            />
+          ))}
+        {tab === "director" && !director && <CrewDash />}
         {tab === "more" && !split && moreDetail}
         {tab === "more" && (split || !moreDetail) && (
           <div className={split ? "crew-split" : "crew-split-off"}>
@@ -386,7 +407,8 @@ export function MobileShell() {
       <TrackBar />
       </div>
       <CrewNav
-        active={tab}
+        director={director}
+        active={tab === "dashboards" && director ? "director" : tab === "director" && !director ? "dashboards" : tab}
         unread={chat.unread}
         overdue={overdueCount > 0}
         onSelect={(t) => {

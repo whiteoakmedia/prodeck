@@ -65,11 +65,14 @@ pub struct User {
 ///   control  drive ProPresenter, the console, OBS scenes, Planning Center LIVE
 ///   tap      override the TapLink discs
 ///   manage   approve, edit, remove crew; invites; open joining
+///   director the Director tab in the crew app: pages, run of show, screens,
+///            video. It carries page, stage and control (web::member_gate),
+///            never tap or manage, and the console stays read only.
 ///
 /// `manage` deliberately does NOT include granting permissions — a manager
 /// who could grant `control` to themselves would be an admin with extra steps.
 /// Only the admin password grants.
-pub const PERMS: &[&str] = &["page", "stage", "control", "tap", "manage"];
+pub const PERMS: &[&str] = &["page", "stage", "control", "tap", "manage", "director"];
 
 /// Who is on the other end of a gateway request, resolved from the crew
 /// session the phone sends with every command.

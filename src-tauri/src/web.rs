@@ -910,8 +910,12 @@ async fn handle_conn(
             let identity = app.state::<crate::identity::IdentityState>().inner().clone();
             crate::identity::session_caller(&identity, &session)
         };
+        let who = caller.as_ref().map(|c| c.name.clone());
         let out = match dispatch(&app, cmd, &args, tier, caller).await {
-            Ok(val) => json!({ "result": val }),
+            Ok(val) => {
+                director_log_push(cmd, &args, who.as_deref(), tier == Tier::Admin);
+                json!({ "result": val })
+            }
             Err(e) => json!({ "error": e }),
         };
         let bytes = serde_json::to_vec(&out).unwrap_or_default();
@@ -1937,6 +1941,88 @@ pub(crate) fn member_cmd_ok(cmd: &str) -> bool {
     )
 }
 
+// ------------------------------------------------------------ Director log
+// What phones did to the room: who, what, when. In memory only (the last 200),
+// so it never writes a file; the Director tab shows it, and it starts fresh
+// with the app, which is a service's worth and then some.
+
+static DIRECTOR_LOG: std::sync::LazyLock<Mutex<std::collections::VecDeque<Value>>> =
+    std::sync::LazyLock::new(|| Mutex::new(std::collections::VecDeque::new()));
+const DIRECTOR_LOG_MAX: usize = 200;
+
+/// A short line for a command a phone ran that touches the room, or None for
+/// reads, team chat and everything else that isn't worth a log entry.
+pub(crate) fn director_log_line(cmd: &str, args: &Value) -> Option<String> {
+    let s = |k: &str| args.get(k).and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+    let clip = |t: String| -> String {
+        let t: String = t.chars().take(60).collect();
+        t
+    };
+    Some(match cmd {
+        "page_send" => {
+            let n = args.get("recipients").and_then(|v| v.as_array()).map(|a| a.len()).unwrap_or(0);
+            let to = if n == 0 { "everyone".to_string() } else if n == 1 { "1 person".to_string() } else { format!("{n} people") };
+            format!("paged {to}: \u{201c}{}\u{201d}", clip(s("body")))
+        }
+        "page_rebuzz" => "rang a page again".into(),
+        "pco_live_step" => format!("moved PCO Live {}", if s("action") == "previous" { "back" } else { "to the next item" }),
+        "pco_live_action" => match s("action").as_str() {
+            "go_to_next_item" => "moved PCO Live to the next item".into(),
+            "go_to_previous_item" => "moved PCO Live back".into(),
+            _ => "took or released PCO Live control".into(),
+        },
+        "pp_trigger_next" => "next slide in Pro".into(),
+        "pp_trigger_previous" => "previous slide in Pro".into(),
+        "pp_clear_layer" => format!("cleared the {} layer in Pro", s("layer")),
+        "pp_set_stage_message" => format!("stage message: \u{201c}{}\u{201d}", clip(s("message"))),
+        "pp_clear_stage_message" => "cleared the stage message".into(),
+        "pp_trigger_message" => {
+            let code = args
+                .get("tokens")
+                .and_then(|v| v.as_array())
+                .and_then(|a| a.first())
+                .and_then(|t| t.pointer("/text/text"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            if code.is_empty() { "showed a Pro message".into() } else { format!("showed a Pro message ({})", clip(code.to_string())) }
+        }
+        "pp_clear_message" => "took down a Pro message".into(),
+        "chat_send" => match s("target").as_str() {
+            "stage" => format!("stage: \u{201c}{}\u{201d}", clip(s("text"))),
+            "confidence" => format!("confidence: \u{201c}{}\u{201d}", clip(s("text"))),
+            "screen" => format!("TV screens: \u{201c}{}\u{201d}", clip(s("text"))),
+            _ => return None,
+        },
+        "chat_clear_confidence" => "cleared the confidence banner".into(),
+        "chat_clear_screens" => "cleared the TV screens".into(),
+        "atem_cut" => "cut on the ATEM".into(),
+        "atem_auto" => "auto transition on the ATEM".into(),
+        "atem_set_preview" => format!("ATEM preview to input {}", args.get("source").map(|v| v.to_string()).unwrap_or_default()),
+        "atem_ftb" => "fade to black on the ATEM".into(),
+        _ => return None,
+    })
+}
+
+fn director_log_push(cmd: &str, args: &Value, who: Option<&str>, admin: bool) {
+    let Some(what) = director_log_line(cmd, args) else { return };
+    let who = who.map(str::to_string).unwrap_or_else(|| if admin { "Admin phone".into() } else { "A phone".into() });
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+    let mut log = DIRECTOR_LOG.lock().unwrap_or_else(|p| p.into_inner());
+    log.push_back(json!({ "ts": ts, "who": who, "what": what }));
+    while log.len() > DIRECTOR_LOG_MAX {
+        log.pop_front();
+    }
+}
+
+/// Newest first.
+fn director_log_read() -> Vec<Value> {
+    let log = DIRECTOR_LOG.lock().unwrap_or_else(|p| p.into_inner());
+    log.iter().rev().cloned().collect()
+}
+
 /// Which grant unlocks a command for a member-tier phone. `None` = admin only,
 /// no grant will do. Everything a viewer may always do is in `member_cmd_ok`
 /// and never reaches this table.
@@ -1952,7 +2038,8 @@ pub(crate) fn perm_for_cmd(cmd: &str) -> Option<&'static str> {
         | "obs_set_scene" | "atem_cut" | "atem_auto" | "atem_set_preview" | "atem_set_program"
         | "atem_reconnect" | "atem_dsk_on_air" | "atem_dsk_auto" | "atem_dsk_tie" | "atem_macro_run"
         | "atem_macro_stop" | "atem_macro_continue" | "atem_ftb" | "pco_live_action" | "midi_send_key" | "osc_send_key" | "keysend_request"
-        | "music_control" => Some("control"),
+        | "music_control" | "pco_live_step" => Some("control"),
+        "director_log" => Some("director"),
         "tap_override" => Some("tap"),
         "identity_list" | "identity_approve" | "identity_remove" | "identity_set_role"
         | "identity_update_profile" | "invite_create" | "invite_list" | "invite_revoke"
@@ -1971,13 +2058,23 @@ pub(crate) fn member_gate(cmd: &str, args: &Value, perms: &[String]) -> Result<(
     }
     if cmd == "chat_send" {
         let target = args.get("target").and_then(|v| v.as_str()).unwrap_or("");
-        if target == "team" || has("stage") {
+        if target == "team" || has("stage") || has("director") {
             return Ok(());
         }
         return Err("team messages only — sending to stage or confidence needs the \"stage\" permission".into());
     }
     match perm_for_cmd(cmd) {
         Some(p) if has(p) => Ok(()),
+        // Director is a bundle: whoever runs the service from a phone needs
+        // to page, put text on the screens and drive the show. Not tap, not
+        // manage, and it grants nothing the control grant doesn't.
+        Some(p @ ("page" | "stage" | "control")) if has("director") => {
+            let _ = p;
+            Ok(())
+        }
+        // Director's People screen reads the roster (who's here, who's late).
+        // Approving, removing and inviting stay with manage.
+        Some("manage") if has("director") && cmd == "identity_list" => Ok(()),
         Some(p) => Err(format!("'{cmd}' needs the \"{p}\" permission — ask whoever runs the booth to grant it")),
         None => Err(format!("'{cmd}' needs admin access")),
     }
@@ -2813,6 +2910,39 @@ async fn dispatch(
             let a = pco_auth(app).await?;
             pco::pco_request(&a, "people/v2/me").await
         }
+        "director_log" => Ok(json!(director_log_read())),
+        "pco_live_step" => {
+            // PCO Live from a phone, with the booth's own safety: Planning
+            // Center ignores next/previous unless someone holds the
+            // controller, and toggle_control is a TOGGLE, so read who holds it
+            // first and never toggle away a teammate's (or our own) control.
+            let st = s("serviceTypeId").ok_or("missing serviceTypeId")?;
+            let plan = s("planId").ok_or("missing planId")?;
+            let action = match s("action").as_deref() {
+                Some("next") => "go_to_next_item",
+                Some("previous") => "go_to_previous_item",
+                _ => return Err("action must be next or previous".into()),
+            };
+            let c = crate::pco::pco_live_controller(st.clone(), plan.clone(), app.state::<SettingsState>()).await?;
+            let held = c.get("controllerId").and_then(|v| v.as_str());
+            let me = c.get("meId").and_then(|v| v.as_str());
+            match (held, me) {
+                (Some(_), None) => {
+                    return Err("Couldn't confirm who is controlling Planning Center Live. Try again in a moment.".into())
+                }
+                (Some(h), Some(m)) if h != m => {
+                    let name = c.get("controllerName").and_then(|v| v.as_str()).unwrap_or("Someone else");
+                    return Err(format!("{name} is controlling Planning Center Live. Take control at the booth to drive it from here."));
+                }
+                _ => {}
+            }
+            let a = pco_auth(app).await?;
+            let base = format!("services/v2/service_types/{st}/plans/{plan}/live");
+            if held.is_none() {
+                pco::pco_post(&a, &format!("{base}/toggle_control")).await?;
+            }
+            pco::pco_post(&a, &format!("{base}/{action}")).await
+        }
         "pco_live_action" => {
             let st = s("serviceTypeId").ok_or("missing serviceTypeId")?;
             let plan = s("planId").ok_or("missing planId")?;
@@ -3020,6 +3150,47 @@ mod member_pp_tests {
             let all: Vec<String> = super::super::identity::PERMS.iter().map(|p| p.to_string()).collect();
             assert!(member_gate(cmd, &json!({}), &all).is_err(), "{cmd} must stay admin-only");
         }
+    }
+
+    #[test]
+    fn director_bundles_page_stage_control_only() {
+        use super::member_gate;
+        use serde_json::json;
+        let d = vec!["director".to_string()];
+        assert!(member_gate("page_send", &json!({}), &d).is_ok());
+        assert!(member_gate("pp_trigger_next", &json!({}), &d).is_ok());
+        assert!(member_gate("pco_live_step", &json!({}), &d).is_ok());
+        assert!(member_gate("chat_send", &json!({ "target": "stage" }), &d).is_ok());
+        assert!(member_gate("director_log", &json!({}), &d).is_ok());
+        // Not the TapLink discs, not crew management, not granting.
+        assert!(member_gate("tap_override", &json!({}), &d).is_err());
+        assert!(member_gate("identity_approve", &json!({}), &d).is_err());
+        assert!(member_gate("identity_list", &json!({}), &d).is_ok());
+        assert!(member_gate("invite_create", &json!({}), &d).is_err());
+        assert!(member_gate("identity_set_perms", &json!({}), &d).is_err());
+        // The log is Director's, not every control grant's.
+        assert!(member_gate("director_log", &json!({}), &vec!["control".to_string()]).is_err());
+    }
+
+    #[test]
+    fn director_log_lines() {
+        use super::director_log_line;
+        use serde_json::json;
+        assert_eq!(
+            director_log_line("page_send", &json!({ "body": "Booth, now", "recipients": ["a", "b"] })).as_deref(),
+            Some("paged 2 people: \u{201c}Booth, now\u{201d}")
+        );
+        assert_eq!(
+            director_log_line("pco_live_step", &json!({ "action": "next" })).as_deref(),
+            Some("moved PCO Live to the next item")
+        );
+        assert_eq!(
+            director_log_line("pp_trigger_message", &json!({ "tokens": [{ "name": "Code", "text": { "text": "A42" } }] })).as_deref(),
+            Some("showed a Pro message (A42)")
+        );
+        // Team chat and reads are not the room.
+        assert_eq!(director_log_line("chat_send", &json!({ "target": "team", "text": "hi" })), None);
+        assert_eq!(director_log_line("get_settings", &json!({})), None);
     }
 
     #[test]

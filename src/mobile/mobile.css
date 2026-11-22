@@ -1500,3 +1500,115 @@ button.home-tile:active { background: var(--panel-raised); }
 }
 /* Single column pages stay a readable width on an iPad, centred. */
 .crew.crew-wide .crew-main > .crew-page:not(.crew-page-chat) { width: 100%; max-width: 900px; margin: 0 auto; }
+
+/* ------------------------------------------------------------- Director */
+/* CrewDirector.tsx. Amber marks the elevated mode (the tab, the gate);
+   everything else is the crew app's own cards and blue. */
+.crew-nav-item.director.active { color: var(--warn); }
+.crew.crew-wide .crew-nav-item.director.active { background: var(--warn-bg); }
+.dir { display: flex; flex-direction: column; gap: 14px; }
+.dir .crew-card { display: flex; flex-direction: column; gap: 12px; }
+.dir-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.dir-head-text { display: flex; flex-direction: column; gap: 4px; }
+.dir-head .crew-title { margin: 0; }
+.dir-sub, .dir-dim { color: var(--dim); }
+.dir-accent { color: var(--accent-hi); }
+.dir-icon-btn {
+  width: 44px; height: 44px; border-radius: 14px; border: none; flex-shrink: 0;
+  background: var(--panel); color: var(--text-soft);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.dir-status { flex-direction: row !important; align-items: center; justify-content: space-between; }
+.dir-status-cd, .dir-status-room { display: flex; flex-direction: column; gap: 4px; }
+.dir-status-room { align-items: flex-end; }
+.dir .dir-big { font-size: 2rem; font-weight: 600; color: var(--accent-hi); line-height: 1; }
+.dir-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.dir-now { margin: 0; font-size: 1.375rem; font-weight: 600; line-height: 1.2; letter-spacing: -0.01em; }
+.dir-next { margin: -6px 0 0; font-size: 0.875rem; color: var(--muted); }
+.dir-pair { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
+.dir-pair.even { grid-template-columns: 1fr 1fr; }
+.dir-btn {
+  min-height: 52px; border-radius: 16px; border: none; cursor: pointer;
+  background: var(--panel-sunk); color: var(--text-soft);
+  box-shadow: inset 0 0 0 1px var(--control-outline);
+  font-family: var(--font-sans); font-size: 1rem; font-weight: 500;
+}
+.dir-btn.primary { background: var(--accent); color: #0e131b; box-shadow: none; font-weight: 600; }
+.dir-btn.small { min-height: 44px; font-size: 0.875rem; border-radius: 12px; }
+.dir-btn:disabled { opacity: 0.5; cursor: default; }
+.dir-btn:active:not(:disabled) { transform: scale(0.98); }
+.dir-err { margin: 0; font-size: 0.8438rem; color: var(--danger); line-height: 1.4; }
+.dir-link {
+  background: none; border: none; padding: 4px 0; cursor: pointer; align-self: flex-start;
+  color: var(--accent-hi); font-family: var(--font-sans); font-size: 0.875rem;
+}
+.dir-quick { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.dir-quick-btn {
+  min-height: 48px; border-radius: 14px; border: none; cursor: pointer; padding: 6px 10px;
+  background: var(--panel-sunk); color: var(--text); box-shadow: inset 0 0 0 1px var(--control-outline);
+  font-family: var(--font-sans); font-size: 0.9375rem;
+}
+.dir-quick-btn.hot { background: var(--warn-bg); color: var(--warn-heading); box-shadow: inset 0 0 0 1px var(--warn-line); }
+.dir-last {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  background: none; border: none; padding: 2px 0; cursor: pointer; text-align: left;
+  font-family: var(--font-sans); font-size: 0.8125rem; color: var(--muted);
+}
+.dir-last-body { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dir .dir-seen { color: var(--success); flex-shrink: 0; font-size: 0.75rem; }
+.dir-hold {
+  position: relative; overflow: hidden; min-height: 50px; border-radius: 14px; border: none; cursor: pointer;
+  background: var(--danger-bg); box-shadow: inset 0 0 0 1px var(--danger-line); color: var(--danger);
+  font-family: var(--font-sans); font-size: 0.9375rem; font-weight: 600;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none;
+}
+.dir-hold-fill { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--danger-line); }
+.dir-hold.holding .dir-hold-fill { width: 100%; transition: width var(--hold-ms, 1200ms) linear; }
+.dir-hold.done { background: var(--success-quiet); box-shadow: inset 0 0 0 1px var(--success); color: var(--success); }
+.dir-hold-label { position: relative; }
+.dir-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.dir-tile {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 14px;
+  border-radius: 18px; border: none; cursor: pointer; text-align: left;
+  background: var(--panel); color: var(--text); font-family: var(--font-sans);
+}
+.dir-tile:active { background: var(--panel-raised); }
+.dir-tile-icon { color: var(--accent-hi); }
+.dir-tile-title { font-size: 1rem; font-weight: 600; }
+.dir .dir-tile-sub { font-size: 0.75rem; color: var(--muted); }
+.dir-row-link {
+  display: flex; justify-content: space-between; align-items: center; min-height: 52px; padding: 0 16px;
+  border-radius: 16px; border: none; cursor: pointer; background: var(--panel); color: var(--text);
+  font-family: var(--font-sans); font-size: 1rem;
+}
+.dir-log-row { display: flex; gap: 10px; font-size: 0.8438rem; line-height: 1.4; color: var(--text-soft); }
+.dir-log-row b { color: var(--text); font-weight: 600; }
+.dir .dir-log-row .mono-data { flex-shrink: 0; font-size: 0.75rem; }
+.dir-log-empty { margin: 0; font-size: 0.8438rem; color: var(--muted); line-height: 1.45; }
+.dir-gate { display: flex; flex-direction: column; gap: 20px; min-height: 100%; }
+.dir-gate-mid { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; padding: 24px 0; }
+.dir-gate-mark {
+  width: 104px; height: 104px; border-radius: 30px; color: var(--warn);
+  background: var(--warn-bg); box-shadow: inset 0 0 0 1px var(--warn-line);
+  display: flex; align-items: center; justify-content: center;
+}
+.dir-gate-title { margin: 0; font-size: 1.25rem; font-weight: 600; }
+.dir-gate-body { margin: 0; max-width: 300px; font-size: 0.9375rem; line-height: 1.5; color: var(--muted); }
+.dir-gate .crew-btn { max-width: none; align-self: stretch; }
+.crew-btn.dir-amber { background: var(--warn); color: #221803; }
+.crew-btn.dir-amber:disabled { background: var(--panel); color: var(--disabled-text); }
+.dir-gate-pin { display: flex; flex-direction: column; gap: 10px; }
+.dir-gate-label { font-size: 0.8438rem; color: var(--muted); }
+.dir-input {
+  height: 52px; border-radius: 16px; border: none; padding: 0 16px;
+  background: var(--panel-sunk); box-shadow: inset 0 0 0 1px var(--control-outline);
+  color: var(--text); font-size: 1.375rem; letter-spacing: 0.3em; text-align: center;
+}
+.dir-gate-foot { margin: 0; text-align: center; font-size: 0.8125rem; color: var(--dim); }
+.dir-col { display: contents; }
+/* iPhone Duo opened, an iPad: the show on the left, everything else on the
+   right, as in the Director canvas. */
+.crew-wide .dir { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 14px 16px; }
+.crew-wide .dir-head, .crew-wide .dir-status { grid-column: 1 / -1; }
+.crew-wide .dir-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.crew.crew-wide .crew-main > .crew-page.dir { max-width: 1100px; }

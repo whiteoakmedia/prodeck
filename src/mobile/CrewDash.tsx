@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useProDeck } from "../store";
 import { usePco } from "../pcoStore";
 import { ListenWidget, WIDGET_MAP } from "../widgets/registry";
-import { loadDashboards, type Dashboard } from "../lib/dashboards";
+import { loadDashboards, type Dashboard, type Widget } from "../lib/dashboards";
 import { usePerms } from "../lib/perms";
 
 // S10 — Dashboard on a phone.
@@ -36,7 +36,7 @@ const splPct = (spl: number) => Math.max(0, Math.min(100, ((spl - 40) / 60) * 10
 // show "quiet" rather than a floor number — "−100 dB" on a phone reads as broken.
 const QUIET_DBFS = -85;
 
-export function CrewDash() {
+export function CrewDash({ title = "Dashboards", onBack }: { title?: string; onBack?: () => void } = {}) {
   const [dashes, setDashes] = useState<Dashboard[]>([]);
   const [pick, setPick] = useState(() => {
     try {
@@ -66,7 +66,16 @@ export function CrewDash() {
 
   return (
     <div className="crew-page">
-      <h1 className="crew-title">Dashboards</h1>
+      {onBack ? (
+        <header className="crew-thread-head">
+          <button className="crew-back" onClick={onBack} aria-label="Back">
+            ‹
+          </button>
+          <h1 className="crew-title">{title}</h1>
+        </header>
+      ) : (
+        <h1 className="crew-title">{title}</h1>
+      )}
       {dashes.length > 0 && (
         <div className="dash-pick" role="tablist" aria-label="Dashboard">
           {[{ id: "service", name: "Service" }, ...dashes].map((d) => (
@@ -97,16 +106,16 @@ const BOOTH_CONTROLS = new Set([
 ]);
 
 /** Which of a booth dashboard's widgets a phone shows. */
-export function phoneWidgets<T extends { type: string; x: number; y: number }>(widgets: T[], admin: boolean): T[] {
+export function phoneWidgets<T extends { type: string; x: number; y: number }>(widgets: T[], canControl: boolean): T[] {
   return widgets
-    .filter((w) => !PHONE_NEVER.has(w.type) && (admin || !BOOTH_CONTROLS.has(w.type)))
+    .filter((w) => !PHONE_NEVER.has(w.type) && (canControl || !BOOTH_CONTROLS.has(w.type)))
     .sort((a, b) => a.y - b.y || a.x - b.x);
 }
 
 /** A booth dashboard on a phone: its widgets full width, top to bottom. */
 function BoothDash({ dash }: { dash: Dashboard }) {
-  const { isAdmin } = usePerms();
-  const widgets = phoneWidgets(dash.widgets, isAdmin);
+  const { can } = usePerms();
+  const widgets = phoneWidgets(dash.widgets, can("control"));
   const left = dash.widgets.length - widgets.length;
   return (
     <div className="dash-stack">
@@ -115,24 +124,29 @@ function BoothDash({ dash }: { dash: Dashboard }) {
           {left === 1 ? "One part of this dashboard is" : `${left} parts of this dashboard are`} only on the booth screen.
         </p>
       )}
-      {widgets.map((w) => {
-        const def = WIDGET_MAP[w.type];
-        if (!def) return null; // a widget this build doesn't have
-        const Comp = def.component;
-        // The booth's grid rows are about 48px; a phone gets the same height
-        // for each widget, within reason.
-        const height = Math.max(176, Math.min(460, w.h * 48));
-        return (
-          <div key={w.id} className="widget dash-widget" style={{ height }}>
-            <div className="widget-bar">
-              <span className="widget-title">{def.label}</span>
-            </div>
-            <div className="widget-body">
-              <Comp widget={w} editing={false} update={() => {}} />
-            </div>
-          </div>
-        );
-      })}
+      {widgets.map((w) => (
+        <WidgetCard key={w.id} w={w} />
+      ))}
+    </div>
+  );
+}
+
+/** One booth widget on a phone, full width (also Director's Screens, Sound
+ *  and Video). The booth's grid rows are about 48px; a phone gets the same
+ *  height for each widget, within reason. */
+export function WidgetCard({ w, title }: { w: Widget; title?: string }) {
+  const def = WIDGET_MAP[w.type];
+  if (!def) return null; // a widget this build doesn't have
+  const Comp = def.component;
+  const height = Math.max(176, Math.min(460, w.h * 48));
+  return (
+    <div className="widget dash-widget" style={{ height }}>
+      <div className="widget-bar">
+        <span className="widget-title">{title ?? def.label}</span>
+      </div>
+      <div className="widget-body">
+        <Comp widget={w} editing={false} update={() => {}} />
+      </div>
     </div>
   );
 }

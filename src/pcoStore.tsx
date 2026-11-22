@@ -19,6 +19,7 @@ import {
   pcoGet,
   pcoGetAll,
   pcoLiveAction,
+  pcoLiveStep,
   pcoLiveController,
   pcoSetLiveInterval,
   pcoStartSync,
@@ -1031,6 +1032,13 @@ export function PcoProvider({ children }: { children: ReactNode }) {
     setLiveBusy(true);
     setLiveError(null);
     try {
+      // A phone (Director, a crew dashboard) can't read the controller
+      // itself, so the booth does the same check and step in one call. The
+      // new live item arrives on the pco:live event.
+      if (IS_WEB && !IS_DEMO && action !== "toggle_control") {
+        await pcoLiveStep(st, plan, action === "go_to_next_item" ? "next" : "previous");
+        return;
+      }
       // PCO ignores next/previous unless someone holds the controller, and an
       // untouched plan has nobody holding it — which is why these buttons did
       // nothing at all. Take control first when it's free. Never take it from

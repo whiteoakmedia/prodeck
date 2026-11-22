@@ -1163,6 +1163,17 @@ export interface PcoController {
   controllerName: string | null;
   meId: string | null;
 }
+/** PCO Live from a phone: the booth checks who holds the controller first,
+ *  takes it only when nobody does, then steps (web.rs pco_live_step). */
+export const pcoLiveStep = (serviceTypeId: string, planId: string, action: "next" | "previous") =>
+  invoke<Json | null>("pco_live_step", { serviceTypeId, planId, action });
+/** What phones did to the room, newest first (web.rs director_log). */
+export interface DirectorLogEntry {
+  ts: number;
+  who: string;
+  what: string;
+}
+export const directorLog = () => invoke<DirectorLogEntry[]>("director_log");
 export const pcoLiveController = (serviceTypeId: string, planId: string) =>
   invoke<PcoController>("pco_live_controller", { serviceTypeId, planId });
 export const loadPcoData = () => invoke<Json | null>("load_pco_data");
@@ -1552,6 +1563,7 @@ export const PERMS = [
   { id: "control", label: "Control", blurb: "Drive ProPresenter, the console, OBS scenes and Planning Center LIVE" },
   { id: "tap", label: "Tap discs", blurb: "Override where the lobby NFC discs point" },
   { id: "manage", label: "Manage crew", blurb: "Approve, edit and remove crew; invites; open joining" },
+  { id: "director", label: "Director", blurb: "The Director tab on their phone: pages, run of show, screens and video. Includes Page, Stage and Control" },
 ] as const;
 export type Perm = (typeof PERMS)[number]["id"];
 

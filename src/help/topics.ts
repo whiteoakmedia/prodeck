@@ -231,12 +231,47 @@ The ProDeck Crew app has its own **Try a demo** on its first screen, for a volun
 - **Control:** drive ProPresenter (next and previous, clear, macros, looks, child calls), the sound console, the ATEM switcher, OBS scenes, walk-in music and Planning Center LIVE. Your ProPresenter operator, director and worship leader.
 - **Tap discs:** override where the lobby NFC discs point.
 - **Manage crew:** approve, edit and remove crew, create invites, open joining. Your team lead. It does **not** include granting permissions; only the admin password can grant.
+- **Director:** the Director tab on their phone, for whoever runs the service. It includes Page, Stage and Control, and lets them see who's here. It does not include Tap discs or Manage crew, and sound stays view only. See Director mode.
 
 Grants take effect on their phone within a few seconds, no sign out needed. Revoking approval removes every grant at once. If a phone says *"needs the page permission"* (or control, or stage), that's exactly what to tick.
 
 > Why not just give them the admin password? Because it can't be taken back from one person: you'd change it for everyone. A grant can be taken back.`,
     settings: "set-crew",
-    related: ["crew-overview", "gateway-passwords", "pages"],
+    related: ["crew-overview", "gateway-passwords", "pages", "director-mode"],
+  },
+  {
+    id: "director-mode",
+    group: "Crew",
+    title: "Director mode: run the service from your phone",
+    aliases: [
+      "director",
+      "director tab",
+      "run the service from my phone",
+      "page from my phone",
+      "next item from my phone",
+      "admin on my phone",
+      "clear the screens from my phone",
+      "face id",
+    ],
+    body: `**Director** is a tab in ProDeck Crew (and the crew pages in a browser) for whoever runs the service. It takes the place of **Dashboards** in the tab bar; Dashboards is inside it.
+
+**Who gets it:** admins, and anyone you give the **Director** permission (Settings, Crew & screens, Crew Members, Edit). Director includes Page, Stage and Control.
+
+**Opening it:** the first time each service, Director asks for Face ID in ProDeck Crew 1.5 and later, or your crew PIN everywhere else. It stays open until the service ends (an hour outside a service). The lock button at the top closes it.
+
+**What's on it:**
+- **PCO Live:** what's live and what's next, with **Back** and **Next item**. If someone else is controlling Planning Center Live, it says who instead of taking it from them.
+- **ProPresenter:** next and previous slide, clear the slide or props, and **Hold to clear the screens** (slides, media, props, messages and announcements; audio keeps playing). It's a press and hold, so a pocket can't do it.
+- **Page:** quick pages, a new page, and who saw the last one.
+- **Screens:** stage message, confidence banner, child call and lobby TVs.
+- **Video:** the ATEM switcher, OBS and online viewers.
+- **Sound:** the console and the room level, view only. Changes stay at the desk.
+- **People:** the leader board, who's here and who's late.
+- **Log:** everything a phone did to the room today, with who and when.
+
+On an iPhone Duo opened up, or an iPad, Director shows the show on the left and everything else on the right.`,
+    settings: "set-crew",
+    related: ["crew-permissions", "crew-app", "pages"],
   },
   {
     id: "crew-joining",

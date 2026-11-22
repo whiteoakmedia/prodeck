@@ -791,7 +791,7 @@ export async function demoInvoke<T>(cmd: string, args?: Record<string, unknown>)
       if (path.includes("/items")) return out(pcoItems());
       if (path.includes("/team_members")) return out(pcoTeam());
       if (path.includes("/plan_times")) return out(pcoPlanTimes());
-      if (path.endsWith("/live")) return out(pcoLive());
+      if (path.endsWith("/live") || path.includes("/live/current_item_time")) return out(pcoLive());
       if (path.includes("service_types?")) return out(pcoServiceTypes());
       if (path.includes("/plans")) return out(pcoPlans());
       return out({ data: [] });
@@ -856,6 +856,12 @@ export async function demoInvoke<T>(cmd: string, args?: Record<string, unknown>)
     }
     case "identity_list":
       return out(CREW);
+    case "director_log":
+      return out([
+        { ts: NOW() - 2 * 60_000, who: "Devon Clark", what: "moved PCO Live to the next item" },
+        { ts: NOW() - 9 * 60_000, who: "Devon Clark", what: "paged 1 person: \u201cCheck your mic\u201d" },
+        { ts: NOW() - 14 * 60_000, who: "Renee Alvarez", what: "stage message: \u201cWalk in music down at 9:58\u201d" },
+      ]);
     case "identity_roles":
       return out(Array.from(new Set(CREW.map((c) => c.role))));
     case "checkin_list": {
@@ -865,7 +871,7 @@ export async function demoInvoke<T>(cmd: string, args?: Record<string, unknown>)
     }
     case "web_whoami":
       // The demo booth is an admin: every grant, so every control shows.
-      return out({ tier: "admin", perms: ["page", "stage", "control", "tap", "manage"], name: "Booth" });
+      return out({ tier: "admin", perms: ["page", "stage", "control", "tap", "manage", "director"], name: "Booth" });
     case "keepalive_status":
       return out({
         installed: true, program: "/Applications/ProDeck.app/Contents/MacOS/prodeck",
