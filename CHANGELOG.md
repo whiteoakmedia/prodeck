@@ -44,6 +44,15 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.129 — 22 November 2026
+
+Everything in 0.9.128, plus:
+
+### New
+
+- **Crew screens on iPhone Duo and iPad:** a sidebar, and lists beside what
+  they open. Folding switches back to the phone layout live.
+
 ## 0.9.128 — 19 November 2026
 
 Everything in 0.9.127, plus:
