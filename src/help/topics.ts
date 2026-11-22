@@ -291,6 +291,8 @@ Someone who already has an account and gets a new phone just signs in with the s
     ],
     body: `**ProDeck Crew** is ProDeck as a real app for your volunteers, free on the **App Store** (iPhone and iPad) and **Google Play** (Android). It does everything the crew pages in a browser do, and it's the best way to get pages with the phone locked.
 
+**On a big screen.** Open an iPhone Duo, or use an iPad, and the tabs move to a sidebar on the left. Chat keeps the channel list beside the conversation, and with room for both (iPhone Duo turned sideways, an iPad) More keeps its list beside the screen it opens. Fold the phone and it goes back to the phone layout, right where you were.
+
 **Getting started:**
 1. Search the App Store or Google Play for **ProDeck Crew** and install it. (Or scan your crew poster with the phone's camera: it offers the app.)
 2. Open it and tap **Scan crew code**, then scan the crew poster. Or tap **Find on this Wi-Fi** at church to find the booth, or **Enter address** to type it (Settings, Crew & screens, Browser Access shows it).

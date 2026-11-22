@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { usePerms } from "../lib/perms";
 import { CrewNav, type CrewTab } from "./CrewNav";
 import { canGoBack, goBack, isBackSwipe, useNavHistory } from "../lib/navHistory";
+import { useCrewSplit, useCrewWide } from "./useCrewWide";
 import { CrewWalk } from "./CrewWalk";
 import { CrewChat } from "./CrewChat";
 import { CrewJoin } from "./CrewJoin";
@@ -117,6 +118,8 @@ export function MobileShell() {
   // Where the phone is: a tab, and maybe a screen opened from it (No sound?,
   // Comms, Leader board). Each change is a history step, so a swipe back (or
   // Android's back) returns to the screen before (lib/navHistory).
+  const wide = useCrewWide();
+  const split = useCrewSplit();
   const view = useNavHistory<CrewView>("crew", { tab: shotTab ?? "home", sub: IS_SHOTS && SHOT_TAB === "walk" ? "walk" : "" });
   const { tab, sub } = view.value;
   const setTab = (t: CrewTab) => view.go({ tab: t, sub: "" });
@@ -254,8 +257,18 @@ export function MobileShell() {
     );
   }
 
+  // iPhone Duo opened up, or an iPad: a sidebar (wide), and when there's room
+  // for both, More's list beside the screen it opens (split; useCrewWide).
+  const moreDetail = leader ? (
+    <CrewLeader onBack={close} />
+  ) : walk && tab === "more" ? (
+    <CrewWalk onBack={close} />
+  ) : comms && commsOn ? (
+    <CrewComms onBack={close} />
+  ) : null;
+
   return (
-    <div className="crew">
+    <div className={`crew ${wide ? "crew-wide" : ""}`}>
       <div className="crew-chip-stack">
         <CommsChip
           hidden={!commsOn || (tab === "more" && comms && !walk && !leader)}
@@ -263,6 +276,7 @@ export function MobileShell() {
         />
         <ListenChip />
       </div>
+      <div className="crew-body">
       <main className="crew-main">
         {tab === "home" && walk && <CrewWalk onBack={close} />}
         {/* Onboarding's last step, until page notifications are on. */}
@@ -275,10 +289,9 @@ export function MobileShell() {
         )}
         {tab === "checklist" && <CrewChecklist />}
         {tab === "dashboards" && <CrewDash />}
-        {tab === "more" && leader && <CrewLeader onBack={close} />}
-        {tab === "more" && !leader && walk && <CrewWalk onBack={close} />}
-        {tab === "more" && !leader && !walk && comms && commsOn && <CrewComms onBack={close} />}
-        {tab === "more" && !leader && !walk && !(comms && commsOn) && (
+        {tab === "more" && !split && moreDetail}
+        {tab === "more" && (split || !moreDetail) && (
+          <div className={split ? "crew-split" : "crew-split-off"}>
           <div className="crew-page crew-more">
             <h1 className="crew-title">More</h1>
 
@@ -362,9 +375,16 @@ export function MobileShell() {
               </p>
             )}
           </div>
+          {split && (
+            <div className="crew-split-detail">
+              {moreDetail ?? <p className="crew-split-empty">Pick something on the left.</p>}
+            </div>
+          )}
+          </div>
         )}
       </main>
       <TrackBar />
+      </div>
       <CrewNav
         active={tab}
         unread={chat.unread}

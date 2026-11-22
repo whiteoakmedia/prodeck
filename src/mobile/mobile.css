@@ -32,8 +32,12 @@
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
-  padding: max(14px, env(safe-area-inset-top)) 20px 0;
+  /* Left and right too: iPhone Duo's safe areas are uneven (the camera sits
+     on one side), and a phone on its side has the notch at one edge. */
+  padding: max(14px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) 0 max(20px, env(safe-area-inset-left));
 }
+/* Main content plus the track bar; the nav sits beside it when wide. */
+.crew-body { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; }
 .crew-page { display: flex; flex-direction: column; gap: 12px; padding-bottom: 16px; }
 .crew-page-chat { height: 100%; }
 .crew-page-chat .w-chat { flex: 1; min-height: 0; }
@@ -1427,3 +1431,61 @@ button.home-tile:active { background: var(--panel-raised); }
 .dash-chip.on { background: var(--accent); color: #0e131b; font-weight: 600; box-shadow: none; }
 .dash-stack { display: flex; flex-direction: column; gap: 12px; }
 .crew .dash-widget { border-radius: 20px; overflow: hidden; }
+
+/* ------------------------------------------------ Wide: iPhone Duo, iPad */
+/* useCrewWide.ts. A sidebar instead of the tab bar, and lists beside the item
+   they open, rather than a phone layout stretched across a big screen.
+   Folding and unfolding switches this live. */
+.crew-split-off { display: contents; }
+.crew.crew-wide { flex-direction: row; }
+.crew.crew-wide .crew-nav {
+  order: -1;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  gap: 2px;
+  width: 88px;
+  flex-shrink: 0;
+  padding: max(16px, env(safe-area-inset-top)) 6px max(16px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
+  box-shadow: inset -1px 0 0 var(--border-soft);
+}
+.crew.crew-wide .crew-nav-item {
+  flex: 0 0 auto;
+  max-width: none;
+  padding: 12px 0;
+  border-radius: 14px;
+}
+.crew.crew-wide .crew-nav-item.active { background: var(--accent-quiet); }
+.crew.crew-wide .crew-main {
+  padding-left: 24px;
+  padding-right: max(24px, env(safe-area-inset-right));
+}
+.crew-split {
+  display: grid;
+  grid-template-columns: minmax(240px, 2fr) 3fr;
+  gap: 20px;
+  height: 100%;
+  min-height: 0;
+}
+.crew-split-list,
+.crew-split-detail,
+.crew-split > .crew-page {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+.crew-split-detail { display: flex; flex-direction: column; }
+.crew-split-detail > .crew-thread,
+.crew-split-detail > .crew-page { flex: 1; min-height: 0; }
+.crew-split-empty {
+  margin: auto;
+  color: var(--dim);
+  font-size: 0.9375rem;
+  text-align: center;
+}
+/* The list is right there, so the thread needs no back arrow. */
+.crew-wide .crew-split-detail .crew-thread-head .crew-back { display: none; }
+.crew-wide .dash-stack { display: grid; grid-template-columns: 1fr 1fr; align-items: start; }
+.crew-wide .home-tiles { grid-template-columns: repeat(4, 1fr); }
+/* Single column pages stay a readable width on an iPad, centred. */
+.crew.crew-wide .crew-main > .crew-page:not(.crew-page-chat) { width: 100%; max-width: 900px; margin: 0 auto; }

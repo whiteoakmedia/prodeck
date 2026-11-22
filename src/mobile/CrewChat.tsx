@@ -5,6 +5,7 @@ import { CrewPageComposer, CrewPageTracking } from "./CrewPages";
 import { CrewChannels, type Channel } from "./CrewChannels";
 import { IS_WEB, type ChatMsg, type CrewPage } from "../lib/tauri";
 import { usePerms } from "../lib/perms";
+import { useCrewWide } from "./useCrewWide";
 
 // S05a / S05b — chat thread (design/mobile/README.md).
 //
@@ -42,6 +43,7 @@ export function CrewChat() {
   const { can, isAdmin } = usePerms();
   // null = the channel list (S04). Opening a channel scopes the thread to it.
   const [channel, setChannel] = useState<Channel | null>(null);
+  const wide = useCrewWide();
   const myRole = localStorage.getItem("prodeck.crewRole") ?? "";
 
   // Messages filed to the open channel. Older messages predate channels and
@@ -87,9 +89,23 @@ export function CrewChat() {
         ? "Send to Stage"
         : "Send to Confidence";
 
-  if (!channel) return <CrewChannels myRole={myRole} onOpen={openChannel} />;
+  // Wide (iPhone Duo opened up, an iPad): the channel list stays beside the
+  // conversation.
+  const list = <CrewChannels myRole={myRole} onOpen={openChannel} />;
+  if (!channel) {
+    return wide ? (
+      <div className="crew-split">
+        <div className="crew-split-list">{list}</div>
+        <div className="crew-split-detail">
+          <p className="crew-split-empty">Pick a channel.</p>
+        </div>
+      </div>
+    ) : (
+      list
+    );
+  }
 
-  return (
+  const thread = (
     <div className="crew-thread">
       <header className="crew-thread-head">
         <button className="crew-back" onClick={() => setChannel(null)} aria-label="Back">
@@ -209,5 +225,13 @@ export function CrewChat() {
         />
       )}
     </div>
+  );
+  return wide ? (
+    <div className="crew-split">
+      <div className="crew-split-list">{list}</div>
+      <div className="crew-split-detail">{thread}</div>
+    </div>
+  ) : (
+    thread
   );
 }
