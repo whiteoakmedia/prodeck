@@ -5,6 +5,8 @@ import { readLink, type LinkAction } from "./links";
 import { cleanCrew, forget, parseTarget, pickBase, remember, shortName, type Church, type Target } from "./connect";
 import { captureError, reportNoBooth } from "./crash";
 import { checkBooth, crewAddress, findBooths, isNative, loadChurches, pushToken, saveChurches, scanCode, secureBase, type Found } from "./native";
+import { directorAnswer, directorBack, directorCode } from "./director";
+import { NativeBiometric } from "@capgo/capacitor-native-biometric";
 
 // ProDeck Crew: find your church's booth, then open its crew app.
 // (design/CREW_APP.md)
@@ -23,6 +25,9 @@ const params = typeof location !== "undefined" ? new URLSearchParams(location.se
 const asked = params.has("home");
 /** The booth's Turn on notifications button comes back here with ?notify=1. */
 const askNotify = params.has("notify");
+/** The booth's Director asks for Face ID with ?director=<code>&back=<booth>. */
+const askDirector = directorCode(params.get("director"));
+const directorTo = params.get("back") ?? "";
 
 /** True the first time this launch sees this link. Session storage lasts as
  *  long as the app is running, so a new launch with the same link still counts. */
@@ -42,9 +47,31 @@ export function App() {
   const [screen, setScreen] = useState<Screen>({ kind: "home" });
   const [err, setErr] = useState("");
   // The intro plays once per launch, not when coming back from a church.
-  const [intro, setIntro] = useState(!asked && !askNotify);
+  const [intro, setIntro] = useState(!asked && !askNotify && !askDirector);
   // A link that opened the app (links.ts), acted on once the intro is done.
   const [link, setLink] = useState<LinkAction>(null);
+  // Director's Face ID: ask, then straight back to the booth that asked.
+  useEffect(() => {
+    if (!askDirector) return;
+    const back = directorBack(directorTo, churches);
+    if (!back) return; // not a booth this phone knows: stay on the list
+    void (async () => {
+      let answer = "";
+      try {
+        const a = await NativeBiometric.isAvailable({ useFallback: true });
+        if (!a.isAvailable) answer = "pin";
+        else {
+          await NativeBiometric.verifyIdentity({ reason: "Open Director", title: "Open Director", useFallback: true });
+          answer = askDirector;
+        }
+      } catch {
+        // Cancelled or failed: back with no answer, and the booth asks again.
+        answer = "";
+      }
+      window.location.href = directorAnswer(back, answer);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Bumped whenever a new place to go is chosen. A church still being checked
   // when a link or a tap picks somewhere else gives up instead of winning.
   const openGen = useRef(0);
@@ -82,7 +109,7 @@ export function App() {
       setIntro(false);
       return; // the link decides where to go (below)
     }
-    if (isNative() && !asked && churches.length > 0) {
+    if (isNative() && !asked && !askDirector && churches.length > 0) {
       void openChurch(churches[0]);
       return;
     }
