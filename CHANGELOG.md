@@ -44,6 +44,20 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.131 — 22 November 2026
+
+Everything in 0.9.130, plus:
+
+### New
+
+- **Director countdowns:** ProPresenter's timers at the top of Director,
+  ticking live.
+
+### Fixed
+
+- Paging on iPhone Duo turned sideways and iPad stays clear of the status
+  bar, at a phone's width.
+
 ## 0.9.130 — 22 November 2026
 
 Everything in 0.9.129, plus:
