@@ -252,12 +252,14 @@ Grants take effect on their phone within a few seconds, no sign out needed. Revo
       "admin on my phone",
       "clear the screens from my phone",
       "face id",
+      "touch id",
+      "fingerprint",
     ],
     body: `**Director** is a tab in ProDeck Crew (and the crew pages in a browser) for whoever runs the service. It takes the place of **Dashboards** in the tab bar; Dashboards is inside it.
 
 **Who gets it:** admins, and anyone you give the **Director** permission (Settings, Crew & screens, Crew Members, Edit). Director includes Page, Stage and Control.
 
-**Opening it:** the first time each service, Director asks for Face ID in ProDeck Crew 1.5 and later, or your crew PIN everywhere else. It stays open until the service ends (an hour outside a service). The lock button at the top closes it.
+**Opening it:** the first time each service, Director asks for Face ID or Touch ID (a fingerprint on Android) in ProDeck Crew 1.5 and later, or your crew PIN everywhere else. It stays open until the service ends (an hour outside a service). The lock button at the top closes it.
 
 **What's on it:**
 - **PCO Live:** what's live and what's next, with **Back** and **Next item**. If someone else is controlling Planning Center Live, it says who instead of taking it from them.

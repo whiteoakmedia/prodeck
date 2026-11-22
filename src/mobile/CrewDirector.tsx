@@ -19,6 +19,7 @@ import { crewAppHome, IN_CREW_APP } from "../lib/crewApp";
 import { IS_DEMO } from "../lib/demo";
 import {
   appHasFaceId,
+  biometricLabel,
   directorOpen,
   directorUntil,
   faceIdHandoff,
@@ -154,7 +155,7 @@ function DirectorGate({ onUnlocked }: { onUnlocked: () => void }) {
       </div>
       {faceId ? (
         <button className="crew-btn dir-amber" onClick={withFaceId}>
-          Open with Face ID
+          {biometricLabel()}
         </button>
       ) : chat.name ? (
         <form

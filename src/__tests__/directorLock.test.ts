@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   appHasFaceId,
+  biometricLabel,
   DIRECTOR_IDLE_MS,
   DIRECTOR_MAX_MS,
   directorOpen,
@@ -54,6 +55,11 @@ describe("Face ID hand off", () => {
     expect(readFaceIdReturn("#crewdirector=abc123", "").ok).toBe(false);
     expect(readFaceIdReturn("#tab=x&crewdirector=abc123", "abc123")).toEqual({ ok: true, pin: false, rest: "#tab=x" });
     expect(readFaceIdReturn("#tab=x", "abc123")).toEqual({ ok: false, pin: false, rest: "#tab=x" });
+  });
+
+  it("names Touch ID too, and fingerprints on Android", () => {
+    expect(biometricLabel("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0) ProDeckCrew/0.1 Biometric")).toBe("Open with Face ID or Touch ID");
+    expect(biometricLabel("Mozilla/5.0 (Linux; Android 15) ProDeckCrew/0.1 Biometric")).toBe("Open with your fingerprint");
   });
 
   it("only trusts an app that says it can", () => {

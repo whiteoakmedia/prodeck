@@ -51,8 +51,15 @@ export function appHasFaceId(ua: string = typeof navigator !== "undefined" ? nav
   return /\bProDeckCrew\/[\d.]+\b/.test(ua) && /\bBiometric\b/.test(ua);
 }
 
+/** The unlock button's words. The booth page can't tell Face ID from Touch
+ *  ID, and the app's prompt handles whichever the phone has. */
+export function biometricLabel(ua: string = typeof navigator !== "undefined" ? navigator.userAgent : ""): string {
+  if (/Android/i.test(ua)) return "Open with your fingerprint";
+  return "Open with Face ID or Touch ID";
+}
+
 /**
- * Face ID happens in the app's own page (the booth page can't reach it), so
+ * Face ID (or Touch ID, or a fingerprint) happens in the app's own page (the booth page can't reach it), so
  * the booth hands off and the app comes straight back with the same one time
  * code in the address. `home` is crewAppHome()'s address.
  */
