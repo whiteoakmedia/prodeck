@@ -84,3 +84,18 @@ describe("director grant", () => {
     expect(crewTabs(true)).toEqual(["home", "chat", "checklist", "director", "more"]);
   });
 });
+
+import { orderTimers } from "../lib/liveTimers";
+describe("Director countdowns", () => {
+  it("puts running timers first and marks an overrun", () => {
+    const out = orderTimers([
+      { id: "a", name: "Sermon", time: "25:00", state: "stopped" },
+      { id: "b", name: "Service Countdown", time: "04:12", state: "running" },
+      { id: "c", name: "Walk in", time: "-00:30", state: "overrunning" },
+    ]);
+    expect(out.map((t) => t.id)).toEqual(["b", "c", "a"]);
+    expect(out.map((t) => t.overrun)).toEqual([false, true, false]);
+    expect(orderTimers([{ id: "d", name: "x", time: "00:04:12", state: "complete" }])[0].time).toBe("04:12");
+    expect(orderTimers([{ id: "e", name: "y", time: "01:04:12", state: "stopped" }])[0].time).toBe("01:04:12");
+  });
+});

@@ -36,6 +36,7 @@ import {
 import { CrewPageComposer, CrewPageTracking } from "./CrewPages";
 import { CrewDash, WidgetCard } from "./CrewDash";
 import { clock, countdown } from "./fmt";
+import { orderTimers, useLiveTimers } from "../lib/liveTimers";
 import type { Widget } from "../lib/dashboards";
 
 export type DirectorSub = "" | "screens" | "sound" | "video" | "dash";
@@ -206,7 +207,10 @@ function DirectorHome({
   onPeople: () => void;
 }) {
   const pco = usePco();
-  const { audioDb, audioRunning, splCalibration } = useProDeck();
+  const { audioDb, audioRunning, splCalibration, connected: proUp } = useProDeck();
+  // ProPresenter's own timers (the service countdown on the screens), ticking
+  // locally between Pro's pushes, running ones first.
+  const timers = orderTimers(useLiveTimers());
   const { pages } = usePages();
   const { can } = usePerms();
   const [composer, setComposer] = useState<{ body?: string } | null>(null);
@@ -258,6 +262,20 @@ function DirectorHome({
       </section>
 
       <div className="dir-col">
+      {proUp && timers.length > 0 && (
+        <section className="crew-card dir-timers" aria-label="ProPresenter countdowns">
+          <span className="mono dir-dim">Countdowns</span>
+          <div className="dir-timer-grid">
+            {timers.map((t) => (
+              <div key={t.id} className={`dir-timer ${t.state === "running" || t.state === "overrunning" ? "on" : ""}${t.overrun ? " over" : ""}`}>
+                <span className="dir-timer-name">{t.name}</span>
+                <span className="mono-data dir-timer-time">{t.time || "--:--"}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <section className="crew-card accent dir-live">
         <div className="dir-row">
           <span className="mono dir-accent">PCO Live</span>

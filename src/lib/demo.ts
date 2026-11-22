@@ -285,6 +285,19 @@ function ppStatusPayloads(): { stream: string; data: unknown }[] {
       data: { slide: true, media: idx === 6, audio: false, props: false, announcements: idx === 0, messages: false, video_input: false },
     },
     { stream: "stage_message", data: { message: demoStageMessage } },
+    { stream: "current_timers", data: demoTimers() },
+  ];
+}
+
+/** ProPresenter's timers, demo side: a sermon clock counting down, and the
+ *  pre-service countdown finished at zero. */
+function demoTimers() {
+  const left = 30 * 60 - Math.floor((NOW() / 1000) % (30 * 60));
+  const hms = (t: number) =>
+    [Math.floor(t / 3600), Math.floor((t % 3600) / 60), t % 60].map((n) => String(n).padStart(2, "0")).join(":");
+  return [
+    { id: { uuid: "demo-timer-sermon", name: "Sermon" }, time: hms(left), state: "running" },
+    { id: { uuid: "demo-timer-countdown", name: "Service Countdown" }, time: "00:00:00", state: "complete" },
   ];
 }
 

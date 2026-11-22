@@ -80,3 +80,18 @@ export function useLiveTimers(): TimerView[] {
     return { ...t, time: fmtHMS(sec) };
   });
 }
+
+/** Running timers first (a service countdown is the one that matters), then
+ *  the rest in ProPresenter's own order. "overrun" when a countdown passed 0. */
+export function orderTimers<T extends { state: string; time: string }>(timers: T[]): (T & { overrun: boolean })[] {
+  const run = (t: T) => (t.state === "running" || t.state === "overrunning" ? 0 : 1);
+  return timers
+    .map((t, i) => ({ t, i }))
+    .sort((a, b) => run(a.t) - run(b.t) || a.i - b.i)
+    .map(({ t }) => ({
+      ...t,
+      // "00:04:12" reads as "04:12", like a running timer already does.
+      time: t.time.trim().replace(/^(-?)00:(\d\d:\d\d)$/, "$1$2"),
+      overrun: t.state === "overrunning" || t.state === "overran" || t.time.trim().startsWith("-"),
+    }));
+}
