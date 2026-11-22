@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { useChat } from "../chatStore";
 import { usePages } from "../pagesStore";
 import { CrewPageComposer, CrewPageTracking } from "./CrewPages";
-import { CrewChannels, type Channel } from "./CrewChannels";
+import { CrewChannels, channelsFrom, type Channel } from "./CrewChannels";
 import { IS_WEB, type ChatMsg, type CrewPage } from "../lib/tauri";
 import { usePerms } from "../lib/perms";
-import { useCrewWide } from "./useCrewWide";
+import { useCrewSplit } from "./useCrewWide";
 
 // S05a / S05b — chat thread (design/mobile/README.md).
 //
@@ -43,7 +43,9 @@ export function CrewChat() {
   const { can, isAdmin } = usePerms();
   // null = the channel list (S04). Opening a channel scopes the thread to it.
   const [channel, setChannel] = useState<Channel | null>(null);
-  const wide = useCrewWide();
+  // Side by side only with room for both: upright, iPhone Duo's inner screen
+  // would leave the thread too narrow to type in, so there it's list, then thread.
+  const wide = useCrewSplit();
   const myRole = localStorage.getItem("prodeck.crewRole") ?? "";
 
   // Messages filed to the open channel. Older messages predate channels and
@@ -89,9 +91,13 @@ export function CrewChat() {
         ? "Send to Stage"
         : "Send to Confidence";
 
-  // Wide (iPhone Duo opened up, an iPad): the channel list stays beside the
-  // conversation.
-  const list = <CrewChannels myRole={myRole} onOpen={openChannel} />;
+  // Wide (iPhone Duo opened and turned, an iPad): the channel list stays beside the
+  // conversation, and the team thread opens rather than an empty half screen.
+  useEffect(() => {
+    if (wide && !channel) openChannel(channelsFrom([], myRole)[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wide, channel]);
+  const list = <CrewChannels myRole={myRole} onOpen={openChannel} selected={wide ? channel?.id : undefined} />;
   if (!channel) {
     return wide ? (
       <div className="crew-split">

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 // The crew layout on a big screen: iPhone Duo opened up (its inner display is
 // regular width and height, about 626 by 890 points), an iPad in crew view.
-// There the tab bar becomes a sidebar and Chat and More show their list
+// There the tab bar becomes a sidebar, and with room Chat and More show their list
 // beside the open item, as Apple asks for on the inner display, instead of a
 // phone layout stretched across it. Folding and unfolding resizes the window
 // in place, so this follows the size live; nothing reloads.
@@ -19,9 +19,9 @@ export function isCrewWide(width: number, height: number): boolean {
   return width >= WIDE_MIN_WIDTH && height >= WIDE_MIN_HEIGHT;
 }
 
-/** Wide enough for More's list beside a full phone-width screen (the Leader
- *  board, No sound?): iPhone Duo opened and turned, or an iPad. Upright, the
- *  Duo's inner display is 626 points, too narrow to fit both. */
+/** Wide enough for a list beside a full phone-width screen (Chat's thread,
+ *  More's Leader board and No sound?): iPhone Duo opened and turned, or an
+ *  iPad. Upright, the Duo's inner display is 626 points, too narrow for both. */
 export const SPLIT_MIN_WIDTH = 760;
 export const SPLIT_QUERY = `(min-width: ${SPLIT_MIN_WIDTH}px) and (min-height: ${WIDE_MIN_HEIGHT}px)`;
 

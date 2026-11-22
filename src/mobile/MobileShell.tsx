@@ -306,11 +306,11 @@ export function MobileShell() {
             </div>
 
             <MoreGroup label="Tools">
-              {commsOn && <MoreRow icon={<IconComms />} title="Comms" sub="Talk to the crew" onClick={() => open("comms")} />}
+              {commsOn && <MoreRow icon={<IconComms />} title="Comms" sub="Talk to the crew" active={split && comms} onClick={() => open("comms")} />}
               <TallyRow onStart={() => tallyOn(true)} />
-              <MoreRow icon={<IconNoSound />} title="No sound?" sub="Find the fault, step by step" onClick={() => open("walk")} />
+              <MoreRow icon={<IconNoSound />} title="No sound?" sub="Find the fault, step by step" active={split && walk} onClick={() => open("walk")} />
               {(isAdmin || can("manage")) && (
-                <MoreRow icon={<IconPeople />} title="Leader board" sub="Who's here, who needs help" onClick={() => open("leader")} />
+                <MoreRow icon={<IconPeople />} title="Leader board" sub="Who's here, who needs help" active={split && leader} onClick={() => open("leader")} />
               )}
             </MoreGroup>
 
@@ -610,6 +610,7 @@ function MoreRow({
   onClick,
   trailing,
   danger,
+  active,
 }: {
   icon: React.ReactNode;
   title: string;
@@ -617,6 +618,8 @@ function MoreRow({
   onClick?: () => void;
   trailing?: React.ReactNode;
   danger?: boolean;
+  /** Open beside the list (split). */
+  active?: boolean;
 }) {
   const body = (
     <>
@@ -631,7 +634,7 @@ function MoreRow({
     </>
   );
   return onClick && !trailing ? (
-    <button className={`more-row${danger ? " danger" : ""}`} onClick={onClick}>
+    <button className={`more-row${danger ? " danger" : ""}${active ? " on" : ""}`} aria-current={active || undefined} onClick={onClick}>
       {body}
     </button>
   ) : (
