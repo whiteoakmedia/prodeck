@@ -948,6 +948,20 @@ export async function demoInvoke<T>(cmd: string, args?: Record<string, unknown>)
       ]);
     case "page_list":
       return out([]);
+    case "page_send": {
+      // Answer like the booth: the page as sent, to whoever it was for.
+      const ids: string[] = Array.isArray(args?.recipients) ? args.recipients.map(String) : [];
+      const to = ids.length ? CREW.filter((c) => ids.includes(c.id)) : CREW;
+      return out({
+        id: NOW(),
+        from: "Devon Clark",
+        body: String(args?.body ?? ""),
+        recipients: to.map((c) => ({ id: c.id, name: c.name })),
+        buzz: !!args?.buzz,
+        sent_ms: NOW(),
+        receipts: [],
+      });
+    }
     case "diag_recent_log":
       return out(["(demo mode: the real log is hidden while sample data is on)"]);
     case "pp_get": {

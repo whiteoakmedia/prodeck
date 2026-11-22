@@ -194,6 +194,9 @@ export function PagesProvider({ children }: { children: ReactNode }) {
     const page = IS_WEB
       ? await pageSendAs(localStorage.getItem(CREW_SESSION_KEY) ?? "", body, recipientIds, buzz)
       : await pageSend(nameRef.current || "Booth", body, recipientIds, buzz);
+    // A booth that answered with nothing (an old build, the demo) mustn't
+    // put an empty page in the list: every screen that lists pages reads it.
+    if (!page || typeof page !== "object") throw new Error("The booth didn't confirm the page. Check it reached people.");
     setPages((prev) => [...prev.filter((x) => x.id !== page.id), page]);
     return page;
   }
