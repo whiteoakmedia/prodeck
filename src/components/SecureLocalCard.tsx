@@ -11,9 +11,9 @@ import {
   type LocalHttpsStatus,
   type Settings,
 } from "../lib/tauri";
-import { nameProblem, suggestName } from "../../local-edge/src/names";
+import { suggestName } from "../../local-edge/src/names";
 import { askConfirm } from "../lib/dialogs";
-import { localPhaseLabel } from "../lib/localHttps";
+import { localNameProblem, localPhaseLabel } from "../lib/localHttps";
 
 // Settings, Crew & screens: claim a secure local address
 // (<name>.local.prodeck.live). One name, one button; the booth does the rest
@@ -40,7 +40,7 @@ export function SecureLocalCard({ form }: { form: Settings }) {
   }, []);
 
   // Is the name free? Checked as you type, a moment after you stop.
-  const problem = nameProblem(name);
+  const problem = localNameProblem(name);
   useEffect(() => {
     if (st?.name || problem) return setCheck(null);
     const n = ++seq.current;
@@ -49,7 +49,7 @@ export function SecureLocalCard({ form }: { form: Settings }) {
         .then((r) => {
           if (n !== seq.current) return;
           if (r.error) setCheck({ name, ok: false, text: r.error });
-          else setCheck({ name, ok: !!r.available, text: r.available ? "Available" : r.problem || "Taken. Try another." });
+          else setCheck({ name, ok: !!r.available, text: r.available ? "Disponible" : r.problem || "Ya está en uso. Probá otro." });
         })
         .catch((e) => n === seq.current && setCheck({ name, ok: false, text: String(e) }));
     }, 450);
@@ -81,25 +81,25 @@ export function SecureLocalCard({ form }: { form: Settings }) {
   return (
     <section className="card">
       <div className="card-head">
-        <h3 id="set-local">Secure local address</h3>
+        <h3 id="set-local">Dirección local segura</h3>
         <span className={`chip ${label.tone}`}>{label.text}</span>
       </div>
       <p className="muted small">
-        Gives phones on your church Wi-Fi a secure (https) address for ProDeck. That's what comms, the microphone on
-        camera stations and page notifications need. No domain, no account, nothing to install: claim a name and this
-        computer does the rest, and keeps it working.
+        Ofrece a los celulares conectados al Wi-Fi de la iglesia una dirección segura (https) para ProDeck. La necesitan las
+        comunicaciones, el micrófono de las estaciones de cámara y las notificaciones de avisos. No hace falta un dominio,
+        una cuenta ni instalar nada: reservá un nombre y esta computadora se ocupa del resto.
       </p>
       {hasPublic && (
         <p className="hint">
-          You already have a public address (<code>{form.public_url}</code>), and links use it. A secure local address
-          is only needed without one.
+          Ya tenés una dirección pública (<code>{form.public_url}</code>) y los enlaces la usan. La dirección local segura
+          solo es necesaria si no tenés una dirección pública.
         </p>
       )}
 
       {!claimed ? (
         <>
           <label className="field">
-            <span>Choose a name</span>
+            <span>Elegí un nombre</span>
             <div className="local-name-row">
               <input
                 className="input"
@@ -115,25 +115,25 @@ export function SecureLocalCard({ form }: { form: Settings }) {
           </label>
           {form.crew_cloud !== false && form.crew_name && form.crew_name !== name && (
             <p className="muted small">
-              Your crew address moves to this name too ({name || "your-church"}-crew.prodeck.live), and{" "}
-              {form.crew_name}-crew.prodeck.live is given back. Phones learn the new one the next time they reach the booth.
+              La dirección del equipo también cambiará a este nombre ({name || "your-church"}-crew.prodeck.live) y se liberará{" "}
+              {form.crew_name}-crew.prodeck.live. Los celulares recibirán la nueva dirección cuando vuelvan a conectarse a Control.
             </p>
           )}
           <p className={`small ${problem || (check && !check.ok) ? "local-name-bad" : "muted"}`}>
-            {problem || (check?.name === name ? check.text : "Checking…")}
+            {problem || (check?.name === name ? check.text : "Comprobando…")}
           </p>
           <button
             className="btn primary"
             disabled={busy || !!problem || !(check?.name === name && check.ok)}
             onClick={() => void run(() => localHttpsClaim(name))}
           >
-            {busy ? "Claiming…" : "Claim this address"}
+            {busy ? "Reservando…" : "Reservar esta dirección"}
           </button>
           <p className="muted small">
-            The name is public: anyone can look it up, but it only leads to this computer from inside your building.
-            Certificates come from Let's Encrypt, and claiming agrees to their{" "}
+            El nombre es público: cualquiera puede consultarlo, pero solo permite acceder a esta computadora desde tu edificio.
+            Los certificados provienen de Let's Encrypt. Al reservar la dirección, aceptás su{" "}
             <a href="https://letsencrypt.org/repository/" target="_blank" rel="noreferrer" style={{ color: "var(--accent)" }}>
-              Subscriber Agreement
+              acuerdo de suscripción
             </a>
             .
           </p>
@@ -161,21 +161,21 @@ export function SecureLocalCard({ form }: { form: Settings }) {
                         .catch(() => {})
                     }
                   >
-                    {copied ? "Copied" : "Copy"}
+                    {copied ? "Copiado" : "Copiar"}
                   </button>
                 </div>
                 <p className="muted small">
-                  Scan the code with a phone on the church Wi-Fi to test it. Crew links, the poster and camera tally
-                  codes use this address now{hasPublic ? " when there's no public address" : ""}.
+                  Para probarlo, escaneá el código con un celular conectado al Wi-Fi de la iglesia. Los enlaces del equipo, el afiche
+                  y los códigos de Tally de cámara usan esta dirección{hasPublic ? " cuando no hay una dirección pública" : ""}.
                 </p>
               </>
             )}
             {!!st?.expires_ms && (
-              <p className="muted small">Certificate renews by itself (current one valid until {new Date(st.expires_ms).toLocaleDateString()}).</p>
+              <p className="muted small">El certificado se renueva automáticamente (el actual es válido hasta {new Date(st.expires_ms).toLocaleDateString()}).</p>
             )}
             {(st?.ips?.length ?? 0) > 1 && (
               <label className="field">
-                <span>Phones reach this computer at</span>
+                <span>Los celulares acceden a esta computadora en</span>
                 <select
                   className="input"
                   value={chosen}
@@ -186,7 +186,7 @@ export function SecureLocalCard({ form }: { form: Settings }) {
                     void run(() => localHttpsSetIp(ip));
                   }}
                 >
-                  <option value="">Automatic ({st?.ip || "the main network"})</option>
+                  <option value="">Automático ({st?.ip || "la red principal"})</option>
                   {st!.ips.map((ip) => (
                     <option key={ip} value={ip}>
                       {ip}
@@ -199,19 +199,19 @@ export function SecureLocalCard({ form }: { form: Settings }) {
               <div className="hint">
                 <p style={{ margin: 0 }}>{st.error}</p>
                 <button className="btn small" disabled={busy} style={{ marginTop: 6 }} onClick={() => void run(localHttpsRetry)}>
-                  {busy ? "Trying…" : "Try again"}
+                  {busy ? "Reintentando…" : "Reintentar"}
                 </button>
               </div>
             )}
             <details className="small muted" style={{ marginTop: 8 }}>
-              <summary>Phones can't open it?</summary>
+              <summary>¿Los celulares no pueden abrirla?</summary>
               <ul>
-                <li>The phone must be on the church Wi-Fi, not cellular or a guest network.</li>
+                <li>El celular debe estar conectado al Wi-Fi de la iglesia, no a datos móviles ni a una red de invitados.</li>
                 <li>
-                  Some web filters (Cisco Umbrella, OpenDNS, some routers) block names that point inside your network.
-                  Allow <code>local.prodeck.live</code> in yours.
+                  Algunos filtros web (Cisco Umbrella, OpenDNS y algunos routers) bloquean nombres que apuntan a tu red.
+                  Permití <code>local.prodeck.live</code> en el filtro.
                 </li>
-                <li>If this computer has more than one network, pick the one the phones are on above.</li>
+                <li>Si esta computadora tiene más de una red, elegí arriba la que usan los celulares.</li>
               </ul>
             </details>
             <button
@@ -219,15 +219,15 @@ export function SecureLocalCard({ form }: { form: Settings }) {
               disabled={busy}
               style={{ marginTop: 8 }}
               onClick={async () => {
-                if (!(await askConfirm(`Give back ${st?.host}? Phones using it stop working until you claim one again.`, "Give it back")))
+                if (!(await askConfirm(`¿Liberar ${st?.host}? Los celulares que la usan dejarán de funcionar hasta que reserves otra dirección.`, "Liberar dirección")))
                   return;
                 void run(localHttpsRelease);
               }}
             >
-              Give this address back
+              Liberar esta dirección
             </button>
           </div>
-          {qr && <img src={qr} alt={`Secure address ${url}`} className="kiosk-qr" />}
+          {qr && <img src={qr} alt={`Dirección segura ${url}`} className="kiosk-qr" />}
         </div>
       )}
       {err && <p className="error">{err}</p>}

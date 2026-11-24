@@ -98,27 +98,27 @@ describe("bounded localization protection", () => {
 describe("approved es-419 catalog", () => {
   it("pins the full approved glossary without applying it to user values", () => {
     expect(glossary).toEqual({
-      service: "Evento", program: "Evento", autoFollow: "Seguimiento automático", confidenceBanner: "Aviso al escenario",
-      rundown: "Crono", runOrderNowNext: "Ahora y siguiente", runOfShowTiming: "Tiempos del Crono", showFlow: "Orden del evento",
-      nowHeading: "Ahora", nowItemState: "En curso", next: "Siguiente",
+      service: "Evento", program: "Evento", autoFollow: "Seguimiento automático", confidenceBanner: "Aviso en Pantalla Retorno",
+      rundown: "Crono", runOrderNowNext: "En curso y próximo", runOfShowTiming: "Tiempos del Crono", showFlow: "Orden del evento",
+      nowHeading: "Ahora", nowItemState: "En curso", next: "Próximo",
       automixHold: "Pausar automatización", automixRelease: "Reanudar automatización",
-      crew: "Equipo", booth: "Cabina", stage: "Escenario", page: "Aviso", paging: "Enviar aviso", routing: "Ruteo",
-      setup: "Configuración inicial", soundDesk: "Consola de audio", console: "Consola de audio", commandCenter: "Centro de control",
-      dashboard: "Panel", dashboardExpanded: "Panel de control", settings: "Configuración", team: "Equipo", devices: "Dispositivos", equipment: "Equipamiento",
+      crew: "Equipo", booth: "Control", stage: "Escenario", page: "Aviso", paging: "Enviar aviso", routing: "Ruteo",
+      setup: "Configuración inicial", soundDesk: "Consola de sonido", console: "Consola de sonido", commandCenter: "Centro de control",
+      dashboard: "Panel de control", dashboardExpanded: "Panel de control", settings: "Configuración", team: "Equipo", devices: "Dispositivos", equipment: "Equipamiento",
     });
     expect(uiText.step(7, 12)).toBe("Paso 7 de 12");
   });
   it("preserves distinct app terms with the exact Automix spelling", () => {
-    expect(preservedTerms).toEqual(["Props", "Clear", "Automix", "Home", "Checklist", "Tally"]);
+    expect(preservedTerms).toEqual(["Props", "Clear", "Automix", "Home", "Tally"]);
   });
   it.each([
-    ["Run Order (Now/Next)", "runOrderNowNext", "Ahora y siguiente"],
+    ["Run Order (Now/Next)", "runOrderNowNext", "En curso y próximo"],
     ["Run-of-Show Timing", "runOfShowTiming", "Tiempos del Crono"],
     ["Show Flow", "showFlow", "Orden del evento"],
     ["Rundown", "rundown", "Crono"],
     ["Now, short heading", "nowHeading", "Ahora"],
     ["Now, item state", "nowItemState", "En curso"],
-    ["Next", "next", "Siguiente"],
+    ["Next", "next", "Próximo"],
   ])("pins the source context and semantic key for %s", (source, key, translation) => {
     expect(glossary).toMatchObject({ [key]: translation });
     expect(localizationDocs).toContain(`| ${source} | \`${key}\` | ${translation} |`);

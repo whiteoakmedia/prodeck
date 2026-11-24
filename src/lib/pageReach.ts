@@ -30,7 +30,8 @@ export function pageReach(users: ReachUser[], ids: string[]): Reach {
 /** One plain line for under the Send button, or "" for nothing to say. */
 export function reachLine(r: Reach): string {
   if (r.unknown || r.quiet.length === 0) return "";
-  const names = r.quiet.length <= 3 ? r.quiet.join(", ") : `${r.quiet.slice(0, 3).join(", ")} and ${r.quiet.length - 3} more`;
-  const verb = r.quiet.length === 1 ? "hasn't" : "haven't";
-  return `${names} ${verb} turned on notifications, so they'll only see this with ProDeck open.`;
+  const names = r.quiet.length <= 3 ? r.quiet.join(", ") : `${r.quiet.slice(0, 3).join(", ")} y ${r.quiet.length - 3} más`;
+  const verb = r.quiet.length === 1 ? "no tiene" : "no tienen";
+  const seeing = r.quiet.length === 1 ? "verá" : "verán";
+  return `${names} ${verb} activadas las notificaciones; solo ${seeing} este aviso con ProDeck abierto.`;
 }

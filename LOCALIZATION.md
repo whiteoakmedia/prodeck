@@ -62,6 +62,54 @@ listed above.
 
 ### Navigation and widget catalog slices
 
+`localizationPosterJoin.test.ts` compares the join screen with its reviewed
+baseline, permitting only the listed presentation substitutions. Form validation
+messages are checked by `posterJoin.test.ts`; dynamic server errors pass through.
+`localizationBackToChurches.test.ts` protects the return link and its destination.
+`localizationChatPanel.test.ts` protects reviewed chat copy, option values,
+message data and action wiring against its source baseline; a mounted test
+checks routing and preserves typed messages. `localizationChatDrawer.test.ts`
+protects the adjacent drawer presentation and actions.
+`localizationCrewPages.test.ts` checks the reviewed page composer, takeover and
+tracking copy against their baseline; `pageReach.test.ts` checks reach wording.
+`localizationCrewChannels.test.ts`, `localizationCrewChat.test.ts` and
+`localizationCrewChecklist.test.ts` protect reviewed mobile copy against source
+baselines while preserving identifiers, user text and action wiring.
+`localization-CrewHome.test.ts`, `localization-fmt.test.ts` and
+`localization-checklistStore.test.ts` protect reviewed home, time and recurring
+task descriptions against baselines; dates and schedule values are unchanged.
+`localizationCrewWalk.test.ts` protects the mobile routing help introduction;
+`localizationRoutingWalk.test.ts` protects the shared routing picker and
+walkthrough presentation. `localizationAskPanel.test.ts` and
+`localizationStagePockets.test.ts` protect their reviewed copy. The assistant
+requests Spanish answers while preserving tool contracts and citation syntax;
+`assist.test.ts` checks this instruction and the fallback. Generated routing diagnostics use a Spanish display mode tested by
+`routingSpanish.test.ts` and protected by `localizationRoutingSpanish.test.ts`;
+the assistant retains its existing default output and map-provided data pass
+through unchanged. Built-in routing steps and unchanged default rules are translated at display
+time; edited rules and map steps remain verbatim. Tests cover both cases.
+`localAddress.test.ts` checks localized address states and validation while the
+worker retains its existing validation messages and rules.
+
+`localizationGiftCredit.test.ts` compares GiftCredit against a checked-in
+baseline with only its two reviewed visible strings replaced. It preserves the
+remaining source exactly, including links and callbacks. The baseline requires
+manual review when the component intentionally changes.
+
+`localizationPlanningCenter.test.ts` protects the initial Planning Center copy
+slice by comparing the full source against a checked-in baseline with explicitly
+reviewed substitutions. The rest of the page is not yet translated; intentional
+future changes require manual review of the baseline and the protected slots.
+
+`localizationSetup.test.ts` protects the reviewed Setup page copy against a
+checked-in baseline. Shared HealthStrip descriptions are covered separately by
+`localizationHealthStrip.test.ts`; dynamic diagnostics require contextual review.
+
+After the later terminology review, the widget catalog aligns the reviewed
+stage-message, sound-console and task-list labels and descriptions. The
+structural and mounted catalog checks cover those changes. This does not imply
+that the contents of the widgets are localized.
+
 `src/__tests__/localizationNavigation.test.tsx` registers App navigation and
 NeedsConnection with explicit copy slots and frozen AST hashes. Its 36 tests
 passed in the writer and parent integration runs. After the human-authorized
@@ -99,34 +147,111 @@ independent checks before closing the second slice.
 
 Apply terms by context, never by replacing substrings in user or technical data.
 
+User terminology review (2026-11-19): use **Proponer una función** for the
+action that opens the feature request form.
+Use **Reportar un error** for the action that opens the bug report form.
+Use **Actualizar y reiniciar** for the available-update action; the current
+App copy has been aligned.
+Use **Cerrar** for the action that dismisses an on-screen notice. App notice
+controls have been aligned; review other surfaces by context.
+Use **Modo demo** for the sample-data mode; App and ErrorBoundary are aligned.
+Use **Control** for the technical team's physical booth, replacing the previous
+approved term “Cabina”; existing translations need contextual review and alignment.
+The user reconfirmed **Equipo** for the group working on the event.
+The user reconfirmed **Crono** for the event running order and **Enviar aviso**
+for paging a team member. Use **Panel de control** for the main dashboard;
+existing “Panel” labels need alignment in a tested slice.
+The user reconfirmed **Configuración** for Settings. For an interrupted
+ProPresenter connection, use **Se perdió la conexión con ProPresenter**;
+apply only where an established connection was actually lost.
+Use **Primeros pasos** for the first-run setup guide, superseding the earlier
+“Configuración inicial” choice in that context; review existing copy in a tested slice.
+Use **Pantalla Retorno** for the display providing supporting information to
+people on stage; apply by context rather than replacing technical identifiers.
+Use **Aviso en Pantalla Retorno** for Confidence Banner, replacing the earlier
+“Aviso al escenario” decision; align catalog, assertions and existing copy in a tested slice.
+The user reconfirmed **Pausar automatización** for pausing Automix and chose
+**Automático** for the automatic mode, and **En curso** for the state of the
+currently running song or event item.
+Use **Próximo** for the next item in the Crono, replacing the earlier
+“Siguiente” choice in that context; review labels and tests before alignment.
+Use **En curso y próximo** for the section showing the current and next Crono
+items, replacing the earlier “Ahora y siguiente” decision in that context.
+The user reconfirmed **Tiempos del Crono** and chose **Un momento…** for
+general waiting states. Keep specific progress messages when they convey useful
+information, and review affected copy and tests in a subsequent slice.
+Use **Reintentar** for an action that attempts a failed operation again; App's
+updater is aligned, and other controls remain to review.
+Use **Guardar cambios** for saving edits made in Configuración.
+Use **Salir sin guardar** to confirm leaving with unsaved settings and
+**Cancelar** to cancel an action and return without applying changes.
+Use **Finalizar** to confirm completion of a task; review existing “Listo”
+controls by context in a tested slice.
+Use **Agregar integrante** and **Quitar integrante** for adding/removing team
+members. Use **Lista de tareas** for the team's checklist, superseding the
+earlier decision to retain Checklist; review existing copy and tests by context.
+For task lists, use **Completada**, **Pendiente**, and **Plantilla** for a
+completed task, a pending task, and a reusable list template respectively.
+Use **Dispositivo** for a person's access device, **Equipamiento** for connected
+audio/video equipment, and **Conectado** for a connected device's status.
+Use **Sin conexión** for a disconnected device, **Buscar dispositivos** for
+discovery, and **Reconectar** for attempting to reconnect a device.
+Use **Consola de sonido** for the sound desk (replacing “Consola de audio”),
+**Canal** for an audio channel, and **Mutear** for muting it.
+Use **Desmutear** to restore a muted channel, **Nivel** for sound level, and
+**Escena** for a saved sound configuration that can be recalled.
+Use **Cargar escena** to recall a saved scene, **Ruteo** for audio routing,
+and **Prueba de sonido** for checking microphones before the event.
+Use **Proyección** for content displayed during the event, **Diapositiva** for
+an individual slide, and **Pausar proyección** for temporarily pausing it.
+Use **Reanudar proyección**, **Siguiente diapositiva**, and **Diapositiva
+anterior** for resuming projection and navigating slides. “Próximo” remains
+the user's choice for the next Crono item, not necessarily for other contexts.
+Use **Playlist** for the ProPresenter playlist, **Letra** for a song's lyrics,
+and **Avance automático** for automatically advancing lyrics. Review its
+relationship to the previous generic Auto Follow choice by context.
+Use **Integrante** for a team member with access, **Administrador** for the
+administrator role, and **Contraseña** for the password used to sign in.
+Use **Ingresar** to sign in, **Salir** to sign out, and **Tu sesión expiró.
+Volvé a ingresar.** for an expired session. Align current copy and tests in a
+subsequent tested slice.
+Use **Solo lectura** for view-only access, **Dar acceso** to grant access,
+and **Quitar acceso** to remove access.
+Terminology review: retain **Setlist**, **Multiview**, **Tally**, **Macro**,
+**Patch List**, **Patch Set** and **Virtual Sound Check**; use **Pantalla pública**
+for kiosk, **Zócalo** for lower third, **Mensaje a escenario** for stage message,
+**Asistencia** for crew check-in, **Reproducción para prueba de sonido** for
+soundcheck playback, and **Estadísticas** for Analytics. Retain **Look** for the ProPresenter feature, as confirmed by the user. Patch Set was supplied by the user for patch sheet;
+preserve that choice while confirming the actual feature context during implementation.
+
 | Source/context | Semantic key | es-419 |
 | --- | --- | --- |
 | Program or church Service | `program` / `service` | Evento |
 | Auto Follow | `autoFollow` | Seguimiento automático |
-| Confidence Banner | `confidenceBanner` | Aviso al escenario |
-| Run Order (Now/Next) | `runOrderNowNext` | Ahora y siguiente |
+| Confidence Banner | `confidenceBanner` | Aviso en Pantalla Retorno |
+| Run Order (Now/Next) | `runOrderNowNext` | En curso y próximo |
 | Run-of-Show Timing | `runOfShowTiming` | Tiempos del Crono |
 | Show Flow | `showFlow` | Orden del evento |
 | Rundown | `rundown` | Crono |
 | Now, short heading | `nowHeading` | Ahora |
 | Now, item state | `nowItemState` | En curso |
-| Next | `next` | Siguiente |
+| Next | `next` | Próximo |
 | Automix Hold / Release only | `automixHold` / `automixRelease` | Pausar automatización / Reanudar automatización |
 | Crew / Team | `crew` / `team` | Equipo |
-| Booth | `booth` | Cabina |
+| Booth | `booth` | Control |
 | Stage | `stage` | Escenario |
 | Page / Paging | `page` / `paging` | Aviso / Enviar aviso |
 | Routing | `routing` | Ruteo |
 | Wizard Setup | `setup` | Configuración inicial |
-| Sound desk / Console | `soundDesk` / `console` | Consola de audio |
+| Sound desk / Console | `soundDesk` / `console` | Consola de sonido |
 | Command Center | `commandCenter` | Centro de control |
-| Dashboard | `dashboard` / `dashboardExpanded` | Panel / Panel de control (for clarity) |
+| Dashboard | `dashboard` / `dashboardExpanded` | Panel de control |
 | Settings | `settings` | Configuración |
 | Devices | `devices` | Dispositivos |
 | Equipment | `equipment` | Equipamiento |
 
 Retain the distinct terms **Props**, **Clear**, **Automix**, **Home**,
-**Checklist** and **Tally**. Use the app's spelling Automix, not the speech
+and **Tally**. Use the app's spelling Automix, not the speech
 transcription Auto Mix; Clear and Automix are not one combined label.
 Tally may have explanatory text when its surface is migrated. Do not extend
 context-specific Automix or church-event terminology to technical services or
@@ -170,3 +295,16 @@ are part of this migration. Do not use DOM-wide rewriting or persisted migration
    focus/keyboard behavior and accessibility. Native/generated surfaces need
    platform-specific evidence when they are migrated. Record checks not performed
    rather than asserting a guarantee.
+
+Mobile joining, install and notification presentation is protected by the
+`localization-CrewJoinJoin`, `localization-CrewOnboardJoin`,
+`localization-CrewNotifyStepJoin` and `localization-notifyStepJoin` tests.
+Notification actions and timing remain covered by `notifyStep.test.ts`.
+
+`localization-CrewNavNav.test.ts` and `localization-MobileShellNav.test.ts`
+protect mobile navigation, account and notification copy against reviewed
+baselines without changing keys, permissions or actions.
+`localizationCrewOffline.test.ts` protects reviewed offline presentation;
+the cloud copy timestamp line is covered by `crewCloud.test.ts`.
+`localization-intercomComms.test.ts` and `localization-crewCloudComms.test.ts`
+protect the reviewed messages without changing communication or date logic.

@@ -1,0 +1,613 @@
+import { useEffect, useRef, useState } from "react";
+import markWhite from "../assets/prodeck-mark-white.svg";
+import { crewUrl, edgeFetch, getWebToken, setWebToken } from "../lib/tauri";
+import { CREW_SESSION_KEY } from "../chatStore";
+import { adoptCloudChecklists, type Checklist } from "../checklistStore";
+import { cloudCopyLine, handoffHash, shouldMoveToCrew } from "../lib/crewCloud";
+import {
+  arrivalForIn,
+  isDeclined,
+  manualArrival,
+  productionRoster,
+  type TeamMember,
+} from "../pcoStore";
+import { ChartSheet } from "./ChartSheet";
+import { NextSlide } from "./NextSlide";
+import "./crewOffline.css";
+
+// S11 — booth offline. The nav is deliberately hidden: the LIVE features all
+// need the booth. But the week's plan doesn't — the crew-edge worker serves
+// it straight from Planning Center: the full order of service, keys, leaders,
+// per-person call times, position guide, and the team roster all render here,
+// and song rows open the chart sheet (chord text comes from the edge too).
+// TEAM CHAT works via the cloud ring, JOINING works via the edge (a pending
+// account the booth adopts at its next heartbeat), and the checklist still
+// opens from cache.
+
+interface EdgePlan {
+  generatedMs: number;
+  plan: { id: string; date: string; title: string };
+  items: {
+    id: string;
+    title: string;
+    sequence: number;
+    length: number;
+    type: string;
+    key: string;
+    leader: string;
+    songId?: string;
+    arrangementId?: string;
+  }[];
+  serviceTimes: { id: string; name: string; type: string; ts: number | null }[];
+  team: { name: string; position: string; status: string; timeIds: string[] }[];
+  extras?: {
+    checkinTimes?: Record<string, string>;
+    positionGuides?: Record<string, string>;
+  };
+  /** "booth" when this is the crew address's copy (crew-cloud), which the
+   *  booth sent at sentMs; absent from crew-edge, which reads Planning Center. */
+  source?: string;
+  sentMs?: number;
+  /** The booth is on and linked to its crew address. */
+  boothOnline?: boolean;
+  checklists?: Checklist[];
+}
+
+/** Off to the crew address, taking this phone's sign in along. */
+function moveToCrew(url: string) {
+  const ls = (k: string) => localStorage.getItem(k) ?? "";
+  window.location.replace(
+    `${url}/${handoffHash({
+      token: getWebToken(),
+      session: ls(CREW_SESSION_KEY),
+      name: ls("prodeck.crewName"),
+      role: ls("prodeck.crewRole"),
+      id: ls("prodeck.crewId"),
+    })}`,
+  );
+}
+
+// No password on this phone yet (it opened the crew address for the first
+// time while the booth was off): the crew password reads the cloud copy.
+function CloudSignIn({ onIn }: { onIn: () => void }) {
+  const [pw, setPw] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const go = async () => {
+    if (!pw.trim() || busy) return;
+    setBusy(true);
+    setErr("");
+    try {
+      const r = await edgeFetch(`/plan?token=${encodeURIComponent(pw.trim())}`);
+      if (r.status === 401) throw new Error("That password didn't work.");
+      if (r.status === 429) throw new Error("Too many tries. Wait a few minutes.");
+      if (!r.ok && r.status !== 404) throw new Error("The crew address didn't answer.");
+      setWebToken(pw.trim());
+      onIn();
+    } catch (e) {
+      setErr(String((e as Error)?.message ?? e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="crew-card edge crew-offline-plan">
+      <div className="crew-row-head">
+        <span className="mono" style={{ color: "var(--accent-hi)" }}>
+          Sign in
+        </span>
+      </div>
+      <p className="crew-hint muted" style={{ margin: "4px 0 8px" }}>
+        Enter the crew password to see the week while the booth is off.
+      </p>
+      <input
+        className="crew-input"
+        type="password"
+        placeholder="Crew password"
+        value={pw}
+        onChange={(e) => setPw(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && go()}
+      />
+      <button className="crew-btn primary" style={{ marginTop: 8 }} disabled={busy} onClick={go}>
+        {busy ? "Checking" : "Sign in"}
+      </button>
+      {err && <p className="crew-join-err">{err}</p>}
+    </div>
+  );
+}
+
+interface EdgeMsg {
+  seq: number;
+  origin: string;
+  from: string;
+  text: string;
+  channel: string;
+  ts: number;
+}
+
+// Team chat against the cloud ring. Poll-based (10 s) — hibernating
+// WebSockets are stage 3; a booth-off Saturday night doesn't need realtime.
+function EdgeChat() {
+  const [msgs, setMsgs] = useState<EdgeMsg[]>([]);
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const seqRef = useRef(0);
+  const name = localStorage.getItem("prodeck.crewName") ?? "";
+  const token = getWebToken();
+
+  useEffect(() => {
+    if (!token) return;
+    let alive = true;
+    const poll = () =>
+      edgeFetch(`/chat?token=${encodeURIComponent(token)}&since=${seqRef.current}`)
+        .then((r) => (r.ok ? r.json() : Promise.reject()))
+        .then((j: { msgs: EdgeMsg[]; seq: number }) => {
+          if (!alive || j.msgs.length === 0) return;
+          seqRef.current = j.seq;
+          // Dedupe by seq: a poll already in flight when we SEND returns our
+          // own message again, which doubled it in the list (audit finding).
+          setMsgs((m) => {
+            const seen = new Set(m.map((x) => x.seq));
+            return [...m, ...j.msgs.filter((x) => !seen.has(x.seq))].slice(-100);
+          });
+        })
+        .catch(() => {});
+    poll();
+    const t = setInterval(poll, 10_000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, [token]);
+
+  if (!token) return null;
+
+  const send = async () => {
+    const body = text.trim();
+    if (!body || busy) return;
+    setBusy(true);
+    setErr("");
+    try {
+      const r = await edgeFetch(`/chat`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          token,
+          // The crew address names the sender from their session.
+          session: localStorage.getItem(CREW_SESSION_KEY) ?? "",
+          from: name,
+          text: body,
+          // Lets the edge skip buzzing the sender's own devices.
+          sender: localStorage.getItem("prodeck.crewId") ?? "",
+        }),
+      });
+      if (!r.ok) throw new Error((await r.json().catch(() => null))?.error ?? `HTTP ${r.status}`);
+      const j = (await r.json()) as { msg: EdgeMsg };
+      seqRef.current = Math.max(seqRef.current, j.msg.seq);
+      setMsgs((m) =>
+        m.some((x) => x.seq === j.msg.seq) ? m : [...m, j.msg].slice(-100),
+      );
+      setText("");
+    } catch (e) {
+      setErr(String((e as Error)?.message ?? e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="crew-card edge crew-offline-plan">
+      <div className="crew-row-head">
+        <span className="mono" style={{ color: "var(--accent-hi)" }}>
+          Team chat
+        </span>
+        <span className="mono-data crew-count-of">via cloud</span>
+      </div>
+      {msgs.length === 0 && (
+        <p className="crew-hint muted" style={{ margin: "4px 0" }}>
+          Nothing yet. Messages sent here reach the whole team and land in the
+          booth feed when it's back.
+        </p>
+      )}
+      {msgs.map((m) => (
+        <div key={m.seq} style={{ padding: "3px 0", textAlign: "left" }}>
+          <span className="mono-data" style={{ color: "var(--accent-hi)" }}>
+            {m.from}
+          </span>
+          <span className="crew-hint muted" style={{ marginLeft: 6 }}>
+            {new Date(m.ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+          </span>
+          <div>{m.text}</div>
+        </div>
+      ))}
+      {name ? (
+        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+          <input
+            className="crew-input"
+            style={{ flex: 1, minWidth: 0 }}
+            placeholder="Message the team…"
+            value={text}
+            maxLength={500}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && send()}
+          />
+          <button className="crew-btn primary" style={{ width: "auto" }} disabled={busy} onClick={send}>
+            Send
+          </button>
+        </div>
+      ) : (
+        <p className="crew-hint muted" style={{ marginTop: 8 }}>
+          Set up your crew profile (when the booth is back) to send messages.
+        </p>
+      )}
+      {err && <p className="crew-join-err">{err}</p>}
+    </div>
+  );
+}
+
+// Booth-off signup: name (tapped off the plan or typed) + 4-digit PIN. The
+// edge stores it pending; the booth creates the real account and adopts the
+// session at its next heartbeat, so this device never signs in twice.
+function EdgeJoin({
+  roster,
+  onJoined,
+}: {
+  roster: { name: string; position: string }[];
+  onJoined: () => void;
+}) {
+  const [name, setName] = useState("");
+  const [role, setRole] = useState("");
+  const [pin, setPin] = useState("");
+  const [pin2, setPin2] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const token = getWebToken();
+  if (!token) return null;
+
+  const submit = async () => {
+    const n = name.trim();
+    setErr("");
+    if (n.length < 2) return setErr("Enter your name (tap it above if it's listed).");
+    if (!/^\d{4}$/.test(pin)) return setErr("PIN must be exactly 4 digits.");
+    if (pin !== pin2) return setErr("PINs don't match.");
+    setBusy(true);
+    try {
+      const r = await edgeFetch(`/register`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token, name: n, pin, role }),
+      });
+      const j = (await r.json().catch(() => null)) as any;
+      if (!r.ok) throw new Error(j?.error ?? `HTTP ${r.status}`);
+      localStorage.setItem(CREW_SESSION_KEY, j.session);
+      localStorage.setItem("prodeck.crewName", j.name);
+      onJoined();
+    } catch (e) {
+      setErr(String((e as Error)?.message ?? e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="crew-card edge crew-offline-plan">
+      <div className="crew-row-head">
+        <span className="mono" style={{ color: "var(--accent-hi)" }}>
+          Join the crew
+        </span>
+        <span className="mono-data crew-count-of">works booth-off</span>
+      </div>
+      {roster.length > 0 && (
+        <>
+          <p className="crew-hint muted" style={{ margin: "4px 0" }}>
+            Tap your name on this week's plan
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, margin: "4px 0 8px" }}>
+            {roster.slice(0, 24).map((m) => (
+              <button
+                key={m.name + m.position}
+                className={`crew-btn${name === m.name ? " primary" : ""}`}
+                style={{ width: "auto", padding: "6px 10px" }}
+                onClick={() => {
+                  setName(m.name);
+                  setRole(m.position);
+                }}
+              >
+                {m.name}
+              </button>
+            ))}
+          </div>
+          <p className="crew-hint muted" style={{ margin: "0 0 4px" }}>
+            or type it
+          </p>
+        </>
+      )}
+      <input
+        className="crew-input"
+        placeholder="Your name"
+        value={name}
+        maxLength={32}
+        onChange={(e) => {
+          setName(e.target.value);
+          setRole("");
+        }}
+      />
+      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+        <input
+          className="crew-input"
+          style={{ flex: 1, minWidth: 0 }}
+          placeholder="4-digit PIN"
+          inputMode="numeric"
+          type="password"
+          value={pin}
+          maxLength={4}
+          onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+        />
+        <input
+          className="crew-input"
+          style={{ flex: 1, minWidth: 0 }}
+          placeholder="Confirm PIN"
+          inputMode="numeric"
+          type="password"
+          value={pin2}
+          maxLength={4}
+          onChange={(e) => setPin2(e.target.value.replace(/\D/g, ""))}
+        />
+      </div>
+      <button
+        className="crew-btn primary"
+        style={{ marginTop: 8 }}
+        disabled={busy}
+        onClick={submit}
+      >
+        {busy ? "Joining…" : "Join"}
+      </button>
+      <p className="crew-hint muted" style={{ marginTop: 6 }}>
+        You can chat right away. The booth finishes your account (and an admin
+        approves it) the next time it's on.
+      </p>
+      {err && <p className="crew-join-err">{err}</p>}
+    </div>
+  );
+}
+
+export function CrewOffline({ onCached }: { onCached: () => void }) {
+  const [edge, setEdge] = useState<EdgePlan | null>(null);
+  const [tried, setTried] = useState(false);
+  const [chart, setChart] = useState<{
+    songId: string;
+    arrangementId: string;
+    title: string;
+    itemKey: string;
+  } | null>(null);
+  // Bumped after an edge join so EdgeChat re-reads the stored name.
+  const [, bump] = useState(0);
+  // Next Slide, the game for while the booth is off.
+  const [game, setGame] = useState(false);
+
+  const [signedIn, setSignedIn] = useState(0);
+  useEffect(() => {
+    const t = getWebToken();
+    if (!t) {
+      setTried(true);
+      return;
+    }
+    let alive = true;
+    const load = () =>
+      edgeFetch(`/plan?token=${encodeURIComponent(t)}`)
+        .then((r) => (r.ok ? r.json() : Promise.reject()))
+        .then((j: EdgePlan) => {
+          if (!alive) return;
+          // The booth is on, just not reachable from here (this phone left
+          // the building): carry on at the crew address, which relays to it.
+          const crew = crewUrl();
+          if (shouldMoveToCrew(location.hostname, crew, !!j.boothOnline)) return moveToCrew(crew);
+          setEdge(j);
+          if (j.source === "booth" && Array.isArray(j.checklists)) adoptCloudChecklists(j.checklists);
+        })
+        .catch(() => {})
+        .finally(() => alive && setTried(true));
+    load();
+    // Keep the copy (and whether the booth is back) current while this is open.
+    const iv = setInterval(load, 30_000);
+    return () => {
+      alive = false;
+      clearInterval(iv);
+    };
+  }, [signedIn]);
+
+  const items = edge?.items ?? [];
+  const nextTime = edge?.serviceTimes
+    .filter((t) => t.ts && t.ts > Date.now() - 2 * 3600_000)
+    .sort((a, b) => (a.ts ?? 0) - (b.ts ?? 0))[0];
+
+  // Per-person call time + position, same matcher the online app uses. The
+  // edge team rows lack the fields arrivalForIn ignores — defaulted below.
+  const crewName = localStorage.getItem("prodeck.crewName") ?? "";
+  const crewRole = localStorage.getItem("prodeck.crewRole") ?? "";
+  const team: TeamMember[] = (edge?.team ?? []).map((m) => ({
+    id: m.name,
+    name: m.name,
+    position: m.position,
+    team: "",
+    status: m.status,
+    photo: "",
+    timeIds: m.timeIds ?? [],
+  }));
+  const timesById: Record<string, number> = {};
+  for (const t of edge?.serviceTimes ?? []) if (t.ts) timesById[t.id] = t.ts;
+  const serviceStart =
+    edge?.serviceTimes.filter((t) => t.type === "service" && t.ts).sort((a, b) => (a.ts ?? 0) - (b.ts ?? 0))[0]?.ts ?? nextTime?.ts ?? 0;
+  const arrival = arrivalForIn(team, timesById, crewName, crewRole, serviceStart || 0);
+  const manualTs = manualArrival(
+    edge?.extras?.checkinTimes ?? {},
+    arrival.position || crewRole,
+    serviceStart || 0,
+  );
+  const callTs = manualTs ?? arrival.ts;
+
+  // Position guide, loose key match like checklists ("camera" covers "Camera 1").
+  const myPos = (arrival.position || crewRole).trim().toLowerCase();
+  let guide = "";
+  if (myPos) {
+    for (const [k, v] of Object.entries(edge?.extras?.positionGuides ?? {})) {
+      const key = k.trim().toLowerCase();
+      if (key && (key === myPos || myPos.startsWith(key) || key.startsWith(myPos))) {
+        guide = v;
+        break;
+      }
+    }
+  }
+
+  const joined = !!localStorage.getItem(CREW_SESSION_KEY);
+  const fmtDay = (ts: number) =>
+    new Date(ts).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" });
+
+  if (chart) {
+    return (
+      <ChartSheet
+        songId={chart.songId}
+        arrangementId={chart.arrangementId}
+        title={chart.title}
+        itemKey={chart.itemKey}
+        onClose={() => setChart(null)}
+      />
+    );
+  }
+
+  const fmtTime = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const onTeam = team.filter((m) => !isDeclined(m.status));
+  const fromBooth = edge?.source === "booth";
+
+  return (
+    <div className="crew-off">
+      {/* Plainly what this is: the booth is off, and where this copy came from. */}
+      <header className="crew-off-status" role="status">
+        <img className="crew-off-mark" src={markWhite} alt="" aria-hidden />
+        <div className="crew-off-status-text">
+          <div className="crew-off-status-title">
+            <span className="pulse-dot" style={{ background: "var(--warn)" }} /> The booth is off
+          </div>
+          <div className="crew-off-status-sub">
+            {fromBooth
+              ? cloudCopyLine(edge?.sentMs ?? 0).replace(/^The booth is off\. /, "")
+              : edge
+                ? "This week, live from Planning Center."
+                : "Waiting for it to come back."}
+          </div>
+        </div>
+      </header>
+
+      {tried && !getWebToken() && <CloudSignIn onIn={() => setSignedIn((n) => n + 1)} />}
+
+      {/* Your Sunday first: it's what a volunteer opens this for. */}
+      {edge && (arrival.scheduled || guide) && (
+        <section className="crew-off-card accent">
+          <div className="crew-off-kicker">Your Sunday</div>
+          {arrival.scheduled && (
+            <div className="crew-off-call">
+              <span className="crew-off-call-time">{callTs ? fmtTime(callTs) : "Scheduled"}</span>
+              <span className="crew-off-call-meta">
+                {callTs ? `Call time, ${new Date(callTs).toLocaleDateString([], { weekday: "long" })}` : "No call time set"}
+                {arrival.position ? ` · ${arrival.position}` : ""}
+              </span>
+            </div>
+          )}
+          {guide && <p className="crew-off-guide">{guide}</p>}
+        </section>
+      )}
+
+      <div className="crew-off-actions">
+        <button className="crew-btn primary" onClick={onCached}>
+          Checklist
+        </button>
+        <button className="crew-btn quiet" onClick={() => setGame(true)}>
+          Play Next Slide
+        </button>
+      </div>
+
+      {edge && (
+        <section className="crew-off-card">
+          <div className="crew-off-head">
+            <span className="crew-off-kicker">This week</span>
+            <span className="crew-off-date">{edge.plan.date}</span>
+          </div>
+          {nextTime?.ts && (
+            <div className="crew-off-when">
+              {nextTime.name || nextTime.type || "Service"}, {fmtDay(nextTime.ts)}
+            </div>
+          )}
+          <ol className="crew-off-plan">
+            {items.map((s) => {
+              if (s.type === "header") {
+                return (
+                  <li key={s.id} className="crew-off-section">
+                    {s.title}
+                  </li>
+                );
+              }
+              if (s.type === "song") {
+                const chartable = !!(s.songId && s.arrangementId);
+                return (
+                  <li key={s.id}>
+                    <button
+                      className="crew-off-song"
+                      disabled={!chartable}
+                      onClick={() =>
+                        chartable &&
+                        setChart({ songId: s.songId!, arrangementId: s.arrangementId!, title: s.title, itemKey: s.key })
+                      }
+                    >
+                      <span className="crew-off-song-main">
+                        <span className="crew-off-song-title">{s.title}</span>
+                        <span className="crew-off-song-sub">
+                          {[s.leader, chartable ? "Chart" : ""].filter(Boolean).join(" · ")}
+                        </span>
+                      </span>
+                      {s.key && <span className="crew-off-key">{s.key}</span>}
+                    </button>
+                  </li>
+                );
+              }
+              return (
+                <li key={s.id} className="crew-off-item">
+                  <span className="crew-off-item-title">{s.title}</span>
+                  {s.length > 0 && <span className="crew-off-item-len">{Math.round(s.length / 60)} min</span>}
+                </li>
+              );
+            })}
+          </ol>
+          {onTeam.length > 0 && (
+            <details className="crew-off-team">
+              <summary>Who's on this week ({onTeam.length})</summary>
+              {onTeam.map((m) => (
+                <div key={m.id + m.position} className="crew-off-item">
+                  <span className="crew-off-item-title">{m.name}</span>
+                  <span className="crew-off-item-len">{m.position}</span>
+                </div>
+              ))}
+            </details>
+          )}
+          <p className="crew-off-foot">
+            {fromBooth ? "As the booth last sent it." : "Tap a song for its chart. Pages and check in come back with the booth."}
+          </p>
+        </section>
+      )}
+      {!joined && edge && (
+        <EdgeJoin
+          roster={productionRoster((edge.team ?? []).map((m) => ({ ...m, team: "" }))).map((m) => ({
+            name: m.name,
+            position: m.position,
+          }))}
+          onJoined={() => bump((n) => n + 1)}
+        />
+      )}
+      <EdgeChat />
+      {tried && !edge && getWebToken() && (
+        <p className="crew-hint muted">The week's plan wasn't reachable either. Check your connection.</p>
+      )}
+      {game && <NextSlide onClose={() => setGame(false)} />}
+    </div>
+  );
+}

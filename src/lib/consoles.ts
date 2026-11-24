@@ -129,13 +129,13 @@ export function isNrpnConsole(model: string | null | undefined): boolean {
  */
 export function deskHealthText(model: string | null | undefined, state: string, error?: string | null): string {
   const label = consoleLabel(model);
-  if (state === "ok") return "Connected and mirroring.";
-  if (state === "idle") return "Mirror is off (Settings → Connections → Sound Console).";
-  let text = `Can't reach the ${label}. Check it's powered on and its Network port is plugged into the switch; the address lives in Settings → Connections → Sound Console.`;
+  if (state === "ok") return "Conectada y sincronizada.";
+  if (state === "idle") return "La sincronización está desactivada (Configuración → Conexiones → Consola de sonido).";
+  let text = `No se puede conectar con ${label}. Comprobá que esté encendida y que su puerto Network esté conectado al switch. La dirección está en Configuración → Conexiones → Consola de sonido.`;
   if (consoleNeedsMidi(model)) {
-    text += " If Companion or Allen & Heath MIDI Control is also connected to the desk, close it and try again: some Allen & Heath desks take only one MIDI connection.";
+    text += " Si Companion o Allen & Heath MIDI Control también está conectado a la consola, cerralo y reintentá: algunas consolas Allen & Heath aceptan una sola conexión MIDI.";
   }
-  if (error) text += ` Last attempt: ${error}.`;
+  if (error) text += ` Último intento: ${error}.`;
   return text;
 }
 

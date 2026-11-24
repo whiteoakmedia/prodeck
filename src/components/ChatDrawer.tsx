@@ -39,12 +39,12 @@ export function ChatDrawer() {
         <aside className="chat-drawer">
           <header className="chat-drawer-head">
             <div className="chat-drawer-title">
-              <h3>Messages</h3>
+              <h3>Mensajes</h3>
               <span className="muted small chat-drawer-name">
-                Sending as <strong>{chat.name || "…"}</strong>
+                Enviando como <strong>{chat.name || "…"}</strong>
                 {IS_WEB && chat.auth === "in" && (
-                  <button className="btn small ghost" onClick={chat.signOut} title="Sign out">
-                    Sign out
+                  <button className="btn small ghost" onClick={chat.signOut} title="Salir">
+                    Salir
                   </button>
                 )}
               </span>
@@ -58,15 +58,15 @@ export function ChatDrawer() {
                 className="btn small ghost"
                 title={
                   chat.sound
-                    ? "New messages play a chime. Click to silence it."
-                    : "New messages are silent. Click to hear a chime."
+                    ? "Los mensajes nuevos suenan. Tocá para silenciarlos."
+                    : "Los mensajes nuevos están en silencio. Tocá para activar el sonido."
                 }
                 onClick={() => chat.setSound(!chat.sound)}
               >
-                {chat.sound ? "🔔 Sound on" : "🔕 Muted"}
+                {chat.sound ? "🔔 Sonido activado" : "🔕 Silenciado"}
               </button>
             )}
-            <button className="btn small ghost chat-drawer-close" aria-label="Close messages" onClick={() => chat.setOpen(false)}>
+            <button className="btn small ghost chat-drawer-close" aria-label="Cerrar mensajes" onClick={() => chat.setOpen(false)}>
               ×
             </button>
           </header>

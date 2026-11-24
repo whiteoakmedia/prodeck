@@ -82,39 +82,39 @@ export function CrewChat() {
 
   const placeholder =
     target === "team"
-      ? `Message ${channel?.label ?? "Sunday Team"}`
+      ? `Mensaje para ${channel?.label ?? "el equipo"}`
       : target === "stage"
-        ? "Send to Stage"
-        : "Send to Confidence";
+        ? "Mensaje a escenario"
+        : "Aviso en Pantalla Retorno";
 
   if (!channel) return <CrewChannels myRole={myRole} onOpen={openChannel} />;
 
   return (
     <div className="crew-thread">
       <header className="crew-thread-head">
-        <button className="crew-back" onClick={() => setChannel(null)} aria-label="Back">
+        <button className="crew-back" onClick={() => setChannel(null)} aria-label="Volver">
           ‹
         </button>
         <h1 className="crew-title">{channel.label}</h1>
-        {isAdmin && IS_WEB && <span className="crew-chip-admin mono">Admin</span>}
+        {isAdmin && IS_WEB && <span className="crew-chip-admin mono">Administrador</span>}
       </header>
 
       <div className="crew-msgs" ref={listRef}>
         {shown.length === 0 && (
-          <p className="crew-hint muted">No messages yet. Say something.</p>
+          <p className="crew-hint muted">Todavía no hay mensajes. Escribí el primero.</p>
         )}
         {shown.map((m) => (
           <div key={m.id}>
             {m.id === newAtId && (
               <div className="crew-new">
-                <span className="mono">New</span>
+                <span className="mono">Nuevo</span>
               </div>
             )}
             {m.target !== "team" ? (
               // Broadcasts are records, not conversation: centred, no bubble.
               <div className="crew-bcast edge-mid">
                 <span className="mono crew-bcast-label">
-                  → {m.target} · {hhmm(m.ts)}
+                  → {m.target === "stage" ? "Escenario" : m.target === "confidence" ? "Pantalla Retorno" : m.target === "screen" ? "Pantalla" : m.target} · {hhmm(m.ts)}
                 </span>
                 <span className="crew-bcast-body">{m.text}</span>
               </div>
@@ -149,11 +149,11 @@ export function CrewChat() {
           .map((p) => (
             <button key={p.id} className="crew-sent-page" onClick={() => setTracking(p)}>
               <span className="mono">
-                Page → {p.recipients.length} · {hhmm(p.sent_ms)}
+                Aviso → {p.recipients.length} · {hhmm(p.sent_ms)}
               </span>
               <span className="body">{p.body}</span>
               <span className="mono-data" style={{ color: "var(--warn)" }}>
-                {p.receipts.length}/{p.recipients.length} read
+                {p.receipts.length}/{p.recipients.length} confirmaron
               </span>
             </button>
           ))}
@@ -169,7 +169,7 @@ export function CrewChat() {
                 className={`crew-seg-btn ${target === t ? "on" : ""}`}
                 onClick={() => setTarget(t)}
               >
-                {t === "team" ? "Team" : t === "stage" ? "Stage" : "Confidence"}
+                {t === "team" ? "Equipo" : t === "stage" ? "Escenario" : "Pantalla Retorno"}
               </button>
             ))}
           </div>
@@ -184,18 +184,18 @@ export function CrewChat() {
               if (e.key === "Enter") send();
             }}
           />
-          <button className="crew-send" onClick={send} aria-label="Send">
+          <button className="crew-send" onClick={send} aria-label="Enviar">
             ↑
           </button>
           {can("page") && (
             <button className="crew-page-btn" onClick={() => setComposing(true)}>
-              Page
+              Enviar aviso
             </button>
           )}
         </div>
         {can("stage") && target === "confidence" && (
           <button className="crew-clear" onClick={chat.clearConfidence}>
-            Clear confidence banner
+            Quitar aviso de Pantalla Retorno
           </button>
         )}
       </div>

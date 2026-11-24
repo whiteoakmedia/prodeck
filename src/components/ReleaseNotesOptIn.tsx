@@ -17,7 +17,7 @@ export function ReleaseNotesOptIn({ compact = false }: { compact?: boolean }) {
   if (IS_WEB) return null;
   if (choice === "declined") return null;
   if (choice === "subscribed") {
-    return msg ? <p className="hint">✓ {msg}</p> : compact ? <p className="hint">✓ Release notes come to your inbox.</p> : null;
+    return msg ? <p className="hint">✓ {msg}</p> : compact ? <p className="hint">✓ Las novedades llegan a tu correo.</p> : null;
   }
 
   const decide = (c: OptInChoice) => {
@@ -27,10 +27,10 @@ export function ReleaseNotesOptIn({ compact = false }: { compact?: boolean }) {
 
   return (
     <div className="release-optin">
-      {!compact && <strong>Get release notes by email</strong>}
+      {!compact && <strong>Recibir novedades por correo</strong>}
       <span className="muted small">
-        {compact ? "Get release notes by email: " : ""}About once a month, only when there's something worth telling you. Your
-        address goes to White Oak Media for these emails and nothing else; ask to be removed any time.
+        {compact ? "Recibir novedades por correo: " : ""}Aproximadamente una vez al mes, cuando haya novedades para contarte.
+        Tu dirección se comparte con White Oak Media solo para estos correos; podés pedir la baja en cualquier momento.
       </span>
       <form
         className="release-optin-row"
@@ -55,13 +55,13 @@ export function ReleaseNotesOptIn({ compact = false }: { compact?: boolean }) {
           placeholder="you@yourchurch.org"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          aria-label="Email for release notes"
+          aria-label="Correo para recibir novedades"
         />
         <button className="btn small primary" type="submit" disabled={busy || !email.trim()}>
-          {busy ? "Sending…" : "Send me updates"}
+          {busy ? "Enviando…" : "Enviar novedades"}
         </button>
         <button className="btn small ghost" type="button" onClick={() => decide("declined")}>
-          No thanks
+          No, gracias
         </button>
       </form>
       {err && <span className="release-optin-err">{err}</span>}

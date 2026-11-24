@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import ts from "typescript";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import navigation from "./fixtures/localization/navigationBaseline.json";
+import shell from "./fixtures/localization/shellCopy.json";
 import connections from "./fixtures/localization/connectionsBaseline.json";
 import {
   NeedsConnection, NeedsPro, NeedsPco, NeedsDesk, NeedsAudio, NeedsObs,
@@ -21,6 +22,15 @@ vi.mock("../lib/tauri", () => ({ get KIOSK_DASH() { return boundary.kiosk; } }))
 // Ordinary comments and non-JSX trivia are absent; JSDoc nodes, JSX whitespace
 // and every unreviewed literal/expression remain exact. No baseline regeneration
 // mode is provided. English JSDoc examples are frozen with the original source.
+// T3a: retain the original 15 slots/hash as provenance; add only 36 reviewed
+// leaves. The expanded hash was calculated from historical 3f426257 and checked
+// against e4522b6 BEFORE production edits, never from the Spanish candidate.
+const appBaseline = {
+  ...navigation, sha256: shell.sha256,
+  slots: [...navigation.slots, ...shell.slots.map(([path, pair]) => ({
+    path: String(path), original: shell.pairs[Number(pair)][0], spanish: shell.pairs[Number(pair)][1],
+  }))],
+};
 type Baseline = typeof navigation;
 function inspect(text: string, baseline: Baseline) {
   const source = ts.createSourceFile(baseline.file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
@@ -41,10 +51,10 @@ function inspect(text: string, baseline: Baseline) {
   if (seen.size !== slots.size || hash !== baseline.sha256) throw new Error(`Protected structure changed: ${baseline.file}`);
   return seen;
 }
-const sources = new Map([navigation, connections].map((b) => [b.file, readFileSync(b.file, "utf8")]));
+const sources = new Map([appBaseline, connections].map((b) => [b.file, readFileSync(b.file, "utf8")]));
 
 describe("bounded navigation and connection source contracts", () => {
-  for (const baseline of [navigation, connections]) {
+  for (const baseline of [appBaseline, connections]) {
     it(`preserves the frozen executable structure of ${baseline.file}`, () => {
       expect(inspect(sources.get(baseline.file)!, baseline).size).toBe(baseline.slots.length);
     });
@@ -80,14 +90,50 @@ describe("bounded navigation and connection source contracts", () => {
   it.each(mutations)("rejects unapproved structure in %j: %s → %s", (baseline, before, after) => {
     const source = sources.get(baseline.file)!;
     expect(source).toContain(before);
-    expect(() => inspect(source.replace(before, after), baseline)).toThrow();
+    expect(() => inspect(source.replace(before, after), baseline.file === navigation.file ? appBaseline : baseline)).toThrow();
+  });
+  it.each([
+    ['setWebToken(pw)', 'setWebToken(pw.trim())'],
+    ['!== "unauthorized"', '!== "sin autorización"'],
+    ['cloudPasswordOk(pw)', 'cloudPasswordOk("changed")'],
+    ['u.install()', 'u.dismiss()'],
+    ['u.check()', 'u.install()'],
+    ['u.dismiss()', 'u.check()'],
+    ['${u.progress}%', '${u.version}%'],
+    ['${pendingCrew[0]}', '${pendingCrew[1]}'],
+    ['pendingCrew.join(", ")', 'pendingCrew.join("; ")'],
+    ['{a.message}', '{a.id}'],
+    ['{u.error ||', '{"overridden" ||'],
+    ['{msg}</span>', '{"changed"}</span>'],
+    ['dismiss(a.id)', 'dismiss("changed")'],
+    ['isSettingsDirty()', 'false'],
+    ['"prodeck-web-unauthorized"', '"translated-event"'],
+    ['"noopener"', '"opener"'],
+  ])("rejects shell contract mutation %s", (before, after) => {
+    const source = sources.get(navigation.file)!;
+    expect(source).toContain(before);
+    expect(() => inspect(source.replace(before, after), appBaseline)).toThrow();
+  });
+  it("rejects whitespace and executable substitutions in every expanded leaf", () => {
+    const source = sources.get(navigation.file)!;
+    for (const slot of appBaseline.slots.slice(15)) {
+      // Locate by structural path, not a global replacement of equal words.
+      const parsed = ts.createSourceFile(navigation.file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+      const node = slot.path.split(".").reduce((n, i) => n.getChildren(parsed)[Number(i)], parsed as ts.Node);
+      const raw = ts.isJsxText(node) ? node.text : node.getText(parsed);
+      const start = ts.isJsxText(node) ? node.pos : node.getStart(parsed);
+      for (const replacement of [raw.replace(/(?=[A-Za-zÁÉÍÓÚ¿])/, " "), raw.replace(/(?=[A-Za-zÁÉÍÓÚ¿])/, "\u00a0"), '{String("changed")}']) {
+        const mutated = source.slice(0, start) + replacement + source.slice(node.end);
+        expect(() => inspect(mutated, appBaseline), slot.path).toThrow();
+      }
+    }
   });
   it("rejects arbitrary JSX expressions and unreviewed wording in copy slots", () => {
     const source = sources.get(navigation.file)!;
     const slot = navigation.slots.find((s) => s.original === "Messages")!;
     for (const replacement of ['{String("Mensajes")}', "Otros mensajes", " Mensajes "]) {
       const actual = source.includes(`<span>${slot.spanish}</span>`) ? slot.spanish : slot.original;
-      expect(() => inspect(source.replace(`<span>${actual}</span>`, `<span>${replacement}</span>`), navigation)).toThrow();
+      expect(() => inspect(source.replace(`<span>${actual}</span>`, `<span>${replacement}</span>`), appBaseline)).toThrow();
     }
   });
 });

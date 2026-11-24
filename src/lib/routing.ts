@@ -1,3 +1,5 @@
+import { spanishBuiltinRule, spanishDefaultSteps } from "./routingSpanish";
+
 // Routing — the building's signal map as data, and the walk that answers
 // "why is there no sound" from it. Spec: design/ROUTING.md.
 //
@@ -709,7 +711,8 @@ export function twinsOf(map: RoutingMap, n: RNode): RNode[] {
 
 const fmtDb = (v: number) => (v <= FADER_DOWN_DB ? "−∞" : `${v > 0 ? "+" : "−"}${Math.abs(Math.round(v))} dB`);
 
-export function walk(map: RoutingMap, targetId: string, live: LiveView): WalkResult | null {
+export function walk(map: RoutingMap, targetId: string, live: LiveView, language: "en" | "es" = "en"): WalkResult | null {
+  const tr = (en: string, es: string) => language === "es" ? es : en;
   const target = node(map, targetId);
   if (!target) return null;
   const path = traceUpstream(map, targetId);
@@ -719,8 +722,11 @@ export function walk(map: RoutingMap, targetId: string, live: LiveView): WalkRes
   const desk = live.desk?.connected ? live.desk : null;
   let deskUnknownSaid = false;
 
-  const ruleText = (when: Rule["when"]) =>
-    (map.rules.find((r) => r.when === when) ?? builtinRules().find((r) => r.when === when))?.text;
+  const ruleText = (when: Rule["when"]) => {
+    const originals = builtinRules();
+    const rule = map.rules.find((r) => r.when === when) ?? originals.find((r) => r.when === when);
+    return rule && (language === "es" ? spanishBuiltinRule(rule, originals) : rule.text);
+  };
 
   // Which nodes still need walking to, in path order (source first).
   const toWalk: RNode[] = [];
@@ -730,8 +736,8 @@ export function walk(map: RoutingMap, targetId: string, live: LiveView): WalkRes
   for (const nid of [...path].reverse()) {
     const n = node(map, nid)!;
     if (n.dead) {
-      checks.push({ state: "bad", text: `${n.label} is marked dead on the map — it looks normal and goes nowhere.`, nodeId: n.id });
-      steps.push({ n: 0, text: `Move the cable off ${n.label} to a live socket and tell the booth.`, nodeId: n.id });
+      checks.push({ state: "bad", text: tr(`${n.label} is marked dead on the map — it looks normal and goes nowhere.`, `${n.label} figura fuera de servicio en el mapa: parece normal, pero no conecta.`), nodeId: n.id });
+      steps.push({ n: 0, text: tr(`Move the cable off ${n.label} to a live socket and tell the booth.`, `Pasá el cable de ${n.label} a un conector funcional y avisá a Control.`), nodeId: n.id });
       continue;
     }
     let seen = false;
@@ -743,7 +749,7 @@ export function walk(map: RoutingMap, targetId: string, live: LiveView): WalkRes
         seen = true;
         const num = n.ref?.index ?? n.label;
         const name = (desk.names[key] ?? "").trim();
-        const who = name ? ` (“${name}” on the desk)` : "";
+        const who = name ? tr(` (“${name}” on the desk)`, ` (“${name}” en la consola)`) : "";
         const fader = desk.faders[key];
         // A remembered mute (from before the desk reconnected) is exactly the
         // thing that showed "muted" on ProDeck while the desk was open. Say
@@ -752,26 +758,26 @@ export function walk(map: RoutingMap, targetId: string, live: LiveView): WalkRes
         if (remembered && desk.mutes[key] === true) {
           checks.push({
             state: "unknown",
-            text: `ProDeck's last record says channel ${num} is muted${who}, but the desk hasn't confirmed that since it reconnected — look at the mute button on ${num} first.`,
+            text: tr(`ProDeck's last record says channel ${num} is muted${who}, but the desk hasn't confirmed that since it reconnected — look at the mute button on ${num} first.`, `El último registro de ProDeck indica que el canal ${num} está muteado${who}, pero la consola no lo confirmó desde que se reconectó. Revisá primero el botón de mute del canal ${num}.`),
             nodeId: n.id,
           });
         } else if (desk.mutes[key] === true) {
-          checks.push({ state: "bad", text: `Channel ${num} is muted on the desk${who}.`, fix: `Unmute channel ${num}.`, nodeId: n.id });
+          checks.push({ state: "bad", text: tr(`Channel ${num} is muted on the desk${who}.`, `El canal ${num} está muteado en la consola${who}.`), fix: tr(`Unmute channel ${num}.`, `Desmuteá el canal ${num}.`), nodeId: n.id });
         } else if (typeof fader === "number" && fader <= FADER_DOWN_DB) {
-          checks.push({ state: "bad", text: `Channel ${num} is open but its fader is all the way down${who}.`, fix: `Bring channel ${num}'s fader up.`, nodeId: n.id });
+          checks.push({ state: "bad", text: tr(`Channel ${num} is open but its fader is all the way down${who}.`, `El canal ${num} está abierto, pero su fader está completamente abajo${who}.`), fix: tr(`Bring channel ${num}'s fader up.`, `Subí el fader del canal ${num}.`), nodeId: n.id });
         } else {
-          const f = typeof fader === "number" ? `, fader at ${fmtDb(fader)}` : "";
-          const asSeen = remembered ? " (as last seen — the desk hasn't confirmed it since reconnecting)" : "";
-          checks.push({ state: "ok", text: `Channel ${num} is open${f}${who}${asSeen}.`, nodeId: n.id });
+          const f = typeof fader === "number" ? tr(`, fader at ${fmtDb(fader)}`, `, fader en ${fmtDb(fader)}`) : "";
+          const asSeen = remembered ? tr(" (as last seen — the desk hasn't confirmed it since reconnecting)", " (último estado registrado: la consola no lo confirmó desde que se reconectó)") : "";
+          checks.push({ state: "ok", text: tr(`Channel ${num} is open${f}${who}${asSeen}.`, `El canal ${num} está abierto${f}${who}${asSeen}.`), nodeId: n.id });
         }
         if (n.kind === "channel") {
           for (const t of twinsOf(map, n)) {
             const tk = deskKeyFor(t);
             const tn = t.ref?.index ?? t.label;
             if (tk && desk.mutes[tk] === true) {
-              checks.push({ state: "ok", text: `Its twin, ${tn}, is muted — normal if it is the duplicate.`, nodeId: t.id });
+              checks.push({ state: "ok", text: tr(`Its twin, ${tn}, is muted — normal if it is the duplicate.`, `Su canal gemelo, ${tn}, está muteado; es normal si se trata del duplicado.`), nodeId: t.id });
             } else if (tk) {
-              checks.push({ state: "ok", text: `Its twin, ${tn}, is open too — they share one socket and one gain.`, nodeId: t.id });
+              checks.push({ state: "ok", text: tr(`Its twin, ${tn}, is open too — they share one socket and one gain.`, `Su canal gemelo, ${tn}, también está abierto; comparten un conector y una ganancia.`), nodeId: t.id });
             }
           }
         }
@@ -779,7 +785,7 @@ export function walk(map: RoutingMap, targetId: string, live: LiveView): WalkRes
         // A desk is configured and unreachable. No desk at all says nothing:
         // the church simply has nothing for ProDeck to look at here.
         deskUnknownSaid = true;
-        checks.push({ state: "unknown", text: "ProDeck can't see the desk right now, so mute and fader are yours to check." });
+        checks.push({ state: "unknown", text: tr("ProDeck can't see the desk right now, so mute and fader are yours to check.", "ProDeck no puede ver la consola ahora. Revisá el mute y el fader.") });
       }
     }
 
@@ -790,15 +796,15 @@ export function walk(map: RoutingMap, targetId: string, live: LiveView): WalkRes
       const p = cap?.peaks[n.bind.capture - 1];
       if (fresh && typeof p === "number") {
         seen = true;
-        if (peakDb(p) > SIGNAL_FLOOR_DB) checks.push({ state: "ok", text: `Signal is reaching the booth on input ${n.bind.capture}.`, nodeId: n.id });
-        else checks.push({ state: "bad", text: `Nothing is reaching the booth on input ${n.bind.capture} — the fault is upstream of it.`, nodeId: n.id });
+        if (peakDb(p) > SIGNAL_FLOOR_DB) checks.push({ state: "ok", text: tr(`Signal is reaching the booth on input ${n.bind.capture}.`, `Llega señal a Control por la entrada ${n.bind.capture}.`), nodeId: n.id });
+        else checks.push({ state: "bad", text: tr(`Nothing is reaching the booth on input ${n.bind.capture} — the fault is upstream of it.`, `No llega señal a Control por la entrada ${n.bind.capture}. El problema está antes de esa entrada.`), nodeId: n.id });
       }
     }
 
     // A door the desk is talking through is at least a door the desk can see.
     if (n.kind === "door" && desk && (n.transport === "slink" || n.transport === "dante" || n.transport === "me")) {
       const e = edgesOutOf(map, n.id).find((x) => pathSet.has(x.to));
-      checks.push({ state: "ok", text: `Desk connected · ${n.label}${e?.at ? ` in ${e.at}` : ""} patched.`, nodeId: n.id });
+      checks.push({ state: "ok", text: tr(`Desk connected · ${n.label}${e?.at ? ` in ${e.at}` : ""} patched.`, `Consola conectada · ${n.label}${e?.at ? ` entrada ${e.at}` : ""} conectado.`), nodeId: n.id });
       // A door the desk is talking through drops out of the walk: the pack,
       // the socket and the cable are where a person can do something. A
       // dropped Dante subscription is real but rare, and the door's own steps
@@ -810,8 +816,8 @@ export function walk(map: RoutingMap, targetId: string, live: LiveView): WalkRes
     for (const e of edgesInto(map, nid)) {
       if (e.watch && live.subsystems) {
         const s = live.subsystems[e.watch === "stage" ? "cam" : e.watch];
-        if (s === "ok") checks.push({ state: "ok", text: `${node(map, e.from)?.label ?? e.from} → ${n.label} is live.`, nodeId: n.id });
-        else if (s === "bad" || s === "warn") checks.push({ state: "bad", text: `${node(map, e.from)?.label ?? e.from} → ${n.label} is down as far as ProDeck can see.`, nodeId: n.id });
+        if (s === "ok") checks.push({ state: "ok", text: tr(`${node(map, e.from)?.label ?? e.from} → ${n.label} is live.`, `${node(map, e.from)?.label ?? e.from} → ${n.label} está activo.`), nodeId: n.id });
+        else if (s === "bad" || s === "warn") checks.push({ state: "bad", text: tr(`${node(map, e.from)?.label ?? e.from} → ${n.label} is down as far as ProDeck can see.`, `Según lo que puede verificar ProDeck, ${node(map, e.from)?.label ?? e.from} → ${n.label} no está funcionando.`), nodeId: n.id });
         if (s === "ok") seen = true;
       }
     }
@@ -836,27 +842,27 @@ export function walk(map: RoutingMap, targetId: string, live: LiveView): WalkRes
       if (!feedingSaid) {
         feedingSaid = true;
         const nums = feeding.map((c) => c.ref?.index ?? c.label).join(", ");
-        steps.push({ n: 0, text: `On the desk: are channels ${nums} unmuted, faders up, and still sending to this output?`, nodeId: n.id });
+        steps.push({ n: 0, text: tr(`On the desk: are channels ${nums} unmuted, faders up, and still sending to this output?`, `En la consola: ¿los canales ${nums} están desmuteados, con los faders arriba y enviando a esta salida?`), nodeId: n.id });
       }
       continue;
     }
-    const own = stepsFor(map, n);
+    const own = language === "es" && !n.steps?.length ? spanishDefaultSteps(n) : stepsFor(map, n);
     own.forEach((text) => steps.push({ n: 0, text, nodeId: n.id }));
     for (const e of edgesOutOf(map, n.id).filter((x) => pathSet.has(x.to))) {
       (e.steps ?? []).forEach((text) => steps.push({ n: 0, text, nodeId: n.id }));
     }
     if (n.kind === "source" && twins.length) {
       const rt = ruleText("shared-socket");
-      const tn = twins.map((t) => t.ref?.index ?? t.label).join(" and ");
+      const tn = twins.map((t) => t.ref?.index ?? t.label).join(tr(" and ", " y "));
       steps.push({
         n: 0,
-        text: `Gain is set once for this socket and shared by channels ${target.ref?.index} and ${tn} — check it on the input, not the channel.`,
+        text: tr(`Gain is set once for this socket and shared by channels ${target.ref?.index} and ${tn} — check it on the input, not the channel.`, `La ganancia se configura una vez para este conector y la comparten los canales ${target.ref?.index} y ${tn}. Revisala en la entrada, no en el canal.`),
         rule: rt,
         nodeId: n.id,
       });
     }
     if (n.kind === "source" && stereo) {
-      steps.push({ n: 0, text: "Only one side missing? Odd socket is left, even is right — it is that side's cable.", rule: ruleText("stereo-pair"), nodeId: n.id });
+      steps.push({ n: 0, text: tr("Only one side missing? Odd socket is left, even is right — it is that side's cable.", "¿Falta un solo lado? El conector impar es el izquierdo y el par es el derecho. Revisá el cable de ese lado."), rule: ruleText("stereo-pair"), nodeId: n.id });
     }
   }
   steps.forEach((s, i) => (s.n = i + 1));
@@ -867,14 +873,14 @@ export function walk(map: RoutingMap, targetId: string, live: LiveView): WalkRes
 
   const src = path.map((id) => node(map, id)!).find((n) => n.kind === "source");
   const subtitle = [
-    target.kind === "channel" ? `channel ${target.ref?.index ?? ""}`.trim() : target.kind,
+    target.kind === "channel" ? tr(`channel ${target.ref?.index ?? ""}`, `canal ${target.ref?.index ?? ""}`).trim() : target.kind,
     src ? src.label : null,
   ]
     .filter(Boolean)
     .join(" · ");
 
   const liveName = target.kind === "channel" && desk ? (desk.names[deskKeyFor(target) ?? ""] ?? "").trim() : "";
-  const title = target.label || liveName || `Channel ${target.ref?.index ?? ""}`;
+  const title = target.label || liveName || tr(`Channel ${target.ref?.index ?? ""}`, `Canal ${target.ref?.index ?? ""}`);
 
   return {
     target,

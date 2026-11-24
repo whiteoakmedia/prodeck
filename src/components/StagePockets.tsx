@@ -28,7 +28,7 @@ export function StagePockets({
   const desk = live.desk?.connected ? live.desk : null;
 
   if (views.length === 0 && !editing) {
-    return <p className="sp-empty">No stage pockets on the map yet. On the booth, press Edit → Stage to add them: a name and a socket range each.</p>;
+    return <p className="sp-empty">Todavía no hay paneles de conectores del escenario en el mapa. Desde Control, elegí Editar → Escenario para agregarlos con su nombre y rango de conectores.</p>;
   }
 
   return (
@@ -42,7 +42,7 @@ export function StagePockets({
               <>
                 <h3 className="sp-title">{panel.label}</h3>
                 <span className="sp-range mono">
-                  {panel.port} {panel.from}–{panel.to} · {liveCount} of {sockets.length} live
+                  {panel.port} {panel.from}–{panel.to} · {liveCount} de {sockets.length} en uso
                 </span>
               </>
             )}
@@ -90,18 +90,18 @@ function SocketTile({
       onKeyDown={clickable ? (e) => e.key === "Enter" && onWalk!(first!.channelId) : undefined}
       title={
         s.dead
-          ? "Marked dead — looks normal, goes nowhere"
+          ? "Marcado como fuera de servicio: parece normal, pero no conecta"
           : s.free
-            ? "Nothing on the map uses this socket. Free at the desk, or a tie line nobody wrote down."
+            ? "Nada en el mapa usa este conector. Puede estar libre en la consola o ser una línea directa que no se registró."
             : !first
-              ? "On the map as a source, but not patched to a door or channel yet."
-              : `Socket ${s.n} → ${first.doorLabel} ${first.at} → channel ${first.channelIndex}${s.inserts.length ? ` · insert via ${s.inserts.join(", ")}` : ""}`
+              ? "Figura como fuente en el mapa, pero todavía no está conectado a un puerto o canal."
+              : `Conector ${s.n} → ${first.doorLabel} ${first.at} → canal ${first.channelIndex}${s.inserts.length ? ` · inserción mediante ${s.inserts.join(", ")}` : ""}`
       }
     >
       <div className="sp-num mono">{s.n}</div>
-      {s.dead && <div className="sp-state">dead</div>}
-      {!s.dead && s.free && <div className="sp-state">free</div>}
-      {!s.dead && !s.free && !first && <div className="sp-state">unpatched</div>}
+      {s.dead && <div className="sp-state">fuera de servicio</div>}
+      {!s.dead && s.free && <div className="sp-state">libre</div>}
+      {!s.dead && !s.free && !first && <div className="sp-state">sin conectar</div>}
       {first && !s.dead && (
         <>
           <div className="sp-door mono">
@@ -112,14 +112,14 @@ function SocketTile({
             {first.stereoSide && <span className="sp-side mono">{first.stereoSide}</span>}
           </div>
           {deskName && first.channelLabel && deskName !== first.channelLabel && <div className="sp-desk mono">“{deskName}”</div>}
-          {s.lands.length > 1 && <div className="sp-twin mono">+{s.lands.slice(1).map((l) => l.channelIndex).join(", ")} shares gain</div>}
+          {s.lands.length > 1 && <div className="sp-twin mono">+{s.lands.slice(1).map((l) => l.channelIndex).join(", ")} comparte ganancia</div>}
           {s.inserts.length > 0 && <div className="sp-insert mono">→ {s.inserts.join(", ")}</div>}
-          {muted && <div className="sp-live bad">muted</div>}
+          {muted && <div className="sp-live bad">muteado</div>}
         </>
       )}
       {editing && onDead && (
-        <button className="sp-deadbtn" onClick={(e) => (e.stopPropagation(), onDead(port, s.n, !s.dead))} title={s.dead ? "Mark live again" : "Mark dead"}>
-          {s.dead ? "undo" : "dead"}
+        <button className="sp-deadbtn" onClick={(e) => (e.stopPropagation(), onDead(port, s.n, !s.dead))} title={s.dead ? "Marcar como funcional" : "Marcar fuera de servicio"}>
+          {s.dead ? "deshacer" : "fuera de servicio"}
         </button>
       )}
     </div>
@@ -130,13 +130,13 @@ function PanelEditor({ panel, panels, onPanels }: { panel: Panel; panels: Panel[
   const upd = (patch: Partial<Panel>) => onPanels(panels.map((p) => (p.id === panel.id ? { ...p, ...patch } : p)));
   return (
     <div className="sp-edit">
-      <input className="input sp-edit-label" value={panel.label} onChange={(e) => upd({ label: e.target.value })} placeholder="Pocket name" />
-      <input className="input sp-edit-port" value={panel.port} onChange={(e) => upd({ port: e.target.value })} title="Numbering space of the sockets, e.g. stage" />
+      <input className="input sp-edit-label" value={panel.label} onChange={(e) => upd({ label: e.target.value })} placeholder="Nombre del panel" />
+      <input className="input sp-edit-port" value={panel.port} onChange={(e) => upd({ port: e.target.value })} title="Grupo de numeración de los conectores, por ejemplo escenario" />
       <input className="input sp-edit-n" type="number" value={panel.from} onChange={(e) => upd({ from: parseInt(e.target.value || "1", 10) })} />
       <span className="muted">–</span>
       <input className="input sp-edit-n" type="number" value={panel.to} onChange={(e) => upd({ to: parseInt(e.target.value || "1", 10) })} />
-      <input className="input sp-edit-note" value={panel.note ?? ""} onChange={(e) => upd({ note: e.target.value || undefined })} placeholder="Where it is, what's odd about it" />
-      <button className="rt-icon" title="Remove pocket" onClick={() => onPanels(panels.filter((p) => p.id !== panel.id))}>
+      <input className="input sp-edit-note" value={panel.note ?? ""} onChange={(e) => upd({ note: e.target.value || undefined })} placeholder="Dónde está y qué particularidades tiene" />
+      <button className="rt-icon" title="Quitar panel" onClick={() => onPanels(panels.filter((p) => p.id !== panel.id))}>
         ×
       </button>
     </div>
@@ -150,10 +150,10 @@ function AddPanel({ panels, onPanels, defaultPort }: { panels: Panel[]; onPanels
   const ok = label.trim() && /^\d+$/.test(from) && /^\d+$/.test(to) && parseInt(to, 10) >= parseInt(from, 10);
   return (
     <div className="sp-add">
-      <input className="input sp-edit-label" placeholder="New pocket — e.g. Stage right front" value={label} onChange={(e) => setLabel(e.target.value)} />
-      <input className="input sp-edit-n" placeholder="from" value={from} onChange={(e) => setFrom(e.target.value)} />
+      <input className="input sp-edit-label" placeholder="Nuevo panel, por ejemplo escenario adelante a la derecha" value={label} onChange={(e) => setLabel(e.target.value)} />
+      <input className="input sp-edit-n" placeholder="desde" value={from} onChange={(e) => setFrom(e.target.value)} />
       <span className="muted">–</span>
-      <input className="input sp-edit-n" placeholder="to" value={to} onChange={(e) => setTo(e.target.value)} />
+      <input className="input sp-edit-n" placeholder="hasta" value={to} onChange={(e) => setTo(e.target.value)} />
       <button
         className="btn small ghost"
         disabled={!ok}
@@ -164,7 +164,7 @@ function AddPanel({ panels, onPanels, defaultPort }: { panels: Panel[]; onPanels
           setTo("");
         }}
       >
-        Add pocket
+        Agregar panel
       </button>
     </div>
   );

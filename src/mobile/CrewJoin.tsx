@@ -80,7 +80,7 @@ export function CrewJoin() {
           if (!/is taken/i.test(String(e))) throw e;
           setSignIn(true);
           setPin("");
-          setErr(`Someone here already uses the name ${name.trim()}. If that's you, type your PIN to sign in. If not, tap I'm new and add your last initial.`);
+          setErr(`Ya existe una cuenta con el nombre ${name.trim()}. Si es tuya, ingresá tu PIN. Si no, tocá Soy nuevo y agregá la inicial de tu apellido.`);
           return;
         }
         if (invite) localStorage.removeItem(INVITE_KEY); // claimed
@@ -99,7 +99,7 @@ export function CrewJoin() {
       // at the booth. Without this the device is stranded: it stays in unlock
       // mode forever, asking for the PIN of an account that doesn't exist.
       if (mode === "signin" && /no such name|register first/i.test(msg)) {
-        setErr(`No account called ${name.trim()} at this booth. Check the spelling, or join instead.`);
+        setErr(`No hay una cuenta llamada ${name.trim()} en Control. Revisá cómo escribiste tu nombre o solicitá el ingreso.`);
         setPin("");
         return;
       }
@@ -107,7 +107,7 @@ export function CrewJoin() {
         chat.forgetDevice();
         setName("");
         setPin("");
-        setErr("That account no longer exists at the booth. Join again below.");
+        setErr("Esa cuenta ya no existe en Control. Solicitá el ingreso nuevamente abajo.");
         return;
       }
       setErr(msg);
@@ -161,19 +161,19 @@ export function CrewJoin() {
           <div className="crew-wait-head">
             <span className="pulse-dot" style={{ background: "var(--warn)" }} />
             <span className="mono" style={{ color: "var(--warn)" }}>
-              Waiting for booth
+              Esperando a Control
             </span>
           </div>
-          <p className="crew-wait-title">You're all set. Waiting for the booth</p>
+          <p className="crew-wait-title">Listo. Esperando la aprobación de Control</p>
           <p className="crew-wait-body">
-            {pendingAt ? `Requested ${pendingAt}. ` : ""}
+            {pendingAt ? `Solicitud enviada a las ${pendingAt}. ` : ""}
             {canPoll
-              ? "This screen checks every few seconds and signs you in the moment you're approved. Keep it open."
-              : "Enter your PIN below to check whether you've been approved."}
+              ? "Esta pantalla comprueba la aprobación cada pocos segundos y te permite ingresar apenas te aprueben. Dejala abierta."
+              : "Ingresá tu PIN abajo para comprobar si te aprobaron."}
           </p>
         </div>
         <p className="crew-join-help">
-          At the booth it's one tap: <strong>Settings → Crew Members → Approve</strong>.
+          Desde Control se puede aprobar en <strong>Configuración → Integrantes del equipo → Aprobar</strong>.
         </p>
         {!canPoll && (
           <>
@@ -188,7 +188,7 @@ export function CrewJoin() {
               disabled={busy || pin.length !== 4}
               onClick={() => submit(pin)}
             >
-              {busy ? "Checking…" : "Check now"}
+              {busy ? "Comprobando…" : "Comprobar ahora"}
             </button>
           </>
         )}
@@ -201,20 +201,20 @@ export function CrewJoin() {
     <div className="crew-join">
       <h1 className="crew-join-title">
         {mode === "unlock"
-          ? `Welcome back, ${chat.name}`
+          ? `Te damos la bienvenida, ${chat.name}`
           : mode === "signin"
-            ? "Sign in"
+            ? "Ingresar"
             : inviteReady
-            ? `Almost there, ${name.split(" ")[0]}!`
-            : "Join the crew"}
+            ? `Ya falta poco, ${name.split(" ")[0]}`
+            : "Sumate al equipo"}
       </h1>
 
       {mode !== "unlock" && !invite && (
-        <div className="crew-seg crew-join-seg" role="tablist" aria-label="New or returning">
+        <div className="crew-seg crew-join-seg" role="tablist" aria-label="Cuenta nueva o existente">
           {(
             [
-              ["register", "I'm new"],
-              ["signin", "I have an account"],
+              ["register", "Soy nuevo"],
+              ["signin", "Ya tengo cuenta"],
             ] as const
           ).map(([m, label]) => (
             <button
@@ -236,12 +236,12 @@ export function CrewJoin() {
 
       {mode === "register" && inviteReady && (
         <p className="crew-join-help">
-          You're invited{role ? ` as ${role}` : ""} and already approved. Just
-          pick a 4-digit PIN below and you're in.
+          Tenés una invitación{role ? ` como ${role}` : ""} y tu acceso ya está aprobado.
+          Elegí un PIN de 4 dígitos abajo para ingresar.
         </p>
       )}
       {mode === "register" && invite && !inviteReady && (
-        <p className="crew-join-help">Checking your invite…</p>
+        <p className="crew-join-help">Comprobando tu invitación…</p>
       )}
 
       {mode !== "unlock" && !invite && (
@@ -249,7 +249,7 @@ export function CrewJoin() {
           {roster.length > 0 && (
             <>
               <p className="crew-join-help">
-                {mode === "signin" ? "Tap your name, or type it below" : "Tap your name on this week's plan"}
+                {mode === "signin" ? "Tocá tu nombre o escribilo abajo" : "Tocá tu nombre en el plan de esta semana"}
               </p>
               <div className="crew-roster">
                 {roster.map((m) => {
@@ -264,17 +264,17 @@ export function CrewJoin() {
                       }}
                     >
                       <span className="crew-recip-name">{m.name}</span>
-                      <span className="mono-data crew-recip-seen">{m.position || "No position"}</span>
+                      <span className="mono-data crew-recip-seen">{m.position || "Sin puesto"}</span>
                     </button>
                   );
                 })}
               </div>
-              {mode === "register" && <p className="crew-join-help">or type it</p>}
+              {mode === "register" && <p className="crew-join-help">o escribilo</p>}
             </>
           )}
           <input
             className="crew-input"
-            placeholder="Your name"
+            placeholder="Tu nombre"
             value={name}
             autoCapitalize="words"
             onChange={(e) => {
@@ -284,7 +284,7 @@ export function CrewJoin() {
           />
           {role && mode === "register" && (
             <p className="crew-join-help">
-              Role: <strong>{role}</strong>
+              Rol: <strong>{role}</strong>
             </p>
           )}
         </>
@@ -293,8 +293,8 @@ export function CrewJoin() {
       <PinDots pin={pin} />
       <p className="crew-join-help">
         {mode === "unlock" || mode === "signin"
-          ? "Enter your 4-digit PIN"
-          : "Pick a 4 digit PIN. You'll use it to unlock on this phone"}
+          ? "Ingresá tu PIN de 4 dígitos"
+          : "Elegí un PIN de 4 dígitos. Lo vas a usar para ingresar desde este celular"}
       </p>
 
       <Keypad
@@ -303,7 +303,7 @@ export function CrewJoin() {
         extra={
           mode === "unlock" ? (
             <button className="crew-key ghost" onClick={() => setForgot((v) => !v)}>
-              Forgot
+              Olvidé mi PIN
             </button>
           ) : null
         }
@@ -312,7 +312,7 @@ export function CrewJoin() {
       {forgot && (
         <>
           <p className="crew-join-help">
-            Ask the booth to reset you under <strong>Settings → Crew</strong>, then join again.
+            Pedí en Control que restablezcan tu acceso en <strong>Configuración → Equipo</strong> y solicitá el ingreso nuevamente.
           </p>
           <button
             className="crew-link"
@@ -324,7 +324,7 @@ export function CrewJoin() {
               setForgot(false);
             }}
           >
-            Use a different name
+            Usar otro nombre
           </button>
         </>
       )}
@@ -335,14 +335,14 @@ export function CrewJoin() {
           disabled={busy || pin.length !== 4 || !name.trim()}
           onClick={() => submit(pin)}
         >
-          {busy ? "Sending…" : "Confirm PIN"}
+          {busy ? "Enviando…" : "Confirmar PIN"}
         </button>
       )}
       {/* Sign in goes by itself on the 4th digit once there's a name. Typed
           the other way round (PIN first), this is the way to finish. */}
       {mode === "signin" && pin.length === 4 && name.trim() && !busy && (
         <button className="crew-btn primary" onClick={() => submit(pin)}>
-          Sign in
+          Ingresar
         </button>
       )}
 
@@ -383,7 +383,7 @@ function Keypad({
       <button className="crew-key" onClick={() => onPress("0")}>
         0
       </button>
-      <button className="crew-key ghost" onClick={onBack} aria-label="Delete">
+      <button className="crew-key ghost" onClick={onBack} aria-label="Borrar">
         ⌫
       </button>
     </div>

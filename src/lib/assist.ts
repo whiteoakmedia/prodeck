@@ -238,6 +238,7 @@ export function buildSystem(ctx: AssistCtx): string {
   const knowledge = ctx.knowledge.map((k) => `### ${k.name}\n${k.text}`).join("\n\n");
   return [
     doctrine.trim(),
+    "Respond in Spanish using clear language for Latin America. Keep names, identifiers, technical terms and quoted user data unchanged; preserve exact citation syntax and identifiers so links continue to work.",
     "## This building — the routing map digest\n\n" + digest(ctx),
     knowledge ? "## This building — the knowledge files\n\n" + knowledge : "## This building — knowledge files\n\n(None written yet. Rely on the map digest and tools.)",
     "## Right now\n\n" + live,
@@ -261,7 +262,7 @@ export async function ask(ctx: AssistCtx, history: Msg[], question: string, comp
     const uses = content.filter((b) => b.type === "tool_use");
     if (uses.length === 0 || res?.stop_reason !== "tool_use") {
       const text = content.filter((b) => b.type === "text").map((b) => String(b.text ?? "")).join("\n").trim();
-      return { text: text || "I couldn't put an answer together. Try asking about the person, channel or place by name.", cites: cites(ctx, text), toolCalls };
+      return { text: text || "No pude preparar una respuesta. Intentá preguntar por el nombre de la persona, el canal o el lugar.", cites: cites(ctx, text), toolCalls };
     }
     messages.push({ role: "assistant", content });
     const results = uses.map((u) => {
@@ -276,7 +277,7 @@ export async function ask(ctx: AssistCtx, history: Msg[], question: string, comp
     });
     messages.push({ role: "user", content: results });
   }
-  return { text: "I ran out of steps looking that up. Ask again with the channel number or the person's name.", cites: [], toolCalls };
+  return { text: "No pude terminar la consulta. Volvé a preguntar con el número de canal o el nombre de la persona.", cites: [], toolCalls };
 }
 
 /** Bracketed citations → node ids: [ch 39], [stage 41], [Waves LV1], [pocket Stage right front]. */

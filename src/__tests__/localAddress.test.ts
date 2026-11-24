@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { isPrivateIPv4, nameProblem, suggestName } from "../../local-edge/src/names";
 import { secureBase } from "../lib/lanUrl";
-import { localPhaseLabel } from "../lib/localHttps";
+import { localPhaseLabel, localNameProblem } from "../lib/localHttps";
 
 // The same rules run in the Settings card and in the Worker that hands out
 // names (local-edge/), so a name the card accepts is one the Worker accepts.
@@ -47,9 +47,22 @@ describe("which secure address links use", () => {
   });
 
   it("labels the card's state", () => {
-    expect(localPhaseLabel("serving").text).toBe("on");
-    expect(localPhaseLabel("certifying").text).toBe("setting up");
+    expect(localPhaseLabel("serving").text).toBe("activo");
+    expect(localPhaseLabel("certifying").text).toBe("configurando");
     expect(localPhaseLabel("error").tone).toBe("bad");
-    expect(localPhaseLabel("off").text).toBe("off");
+    expect(localPhaseLabel("off").text).toBe("desactivado");
+  });
+});
+
+
+describe("mensajes de dirección local", () => {
+  it("traduce las validaciones sin cambiar las reglas compartidas", () => {
+    expect(localNameProblem("ab")).toBe("Usá al menos 3 letras o números.");
+    expect(localNameProblem("x".repeat(33))).toBe("Usá como máximo 32 caracteres.");
+    expect(localNameProblem("St Johns")).toBe("Usá solo letras minúsculas, números y guiones.");
+    expect(localNameProblem("-grace")).toBe("El nombre no puede empezar ni terminar con un guion.");
+    expect(localNameProblem("grace--church")).toBe("No uses dos guiones seguidos.");
+    expect(localNameProblem("www")).toBe("Ese nombre está reservado. Probá con el nombre de tu iglesia.");
+    expect(localNameProblem("iglesia")).toBe("");
   });
 });

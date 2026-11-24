@@ -126,16 +126,16 @@ export function CrewChecklist() {
 
   return (
     <div className="crew-page">
-      <h1 className="crew-title">Checklist</h1>
+      <h1 className="crew-title">Lista de tareas</h1>
       <p className="crew-hint muted" style={{ marginTop: -4 }}>
         {mine.length > 0
-          ? `Mine ${myDone} of ${mine.length} · team ${totals.done} of ${totals.total}`
-          : `Team checklist · ${totals.done} of ${totals.total} done`}
+          ? `Mis tareas: ${myDone} de ${mine.length} · equipo: ${totals.done} de ${totals.total}`
+          : `Lista del equipo · ${totals.done} de ${totals.total} completadas`}
       </p>
       {queued > 0 && (
         <button className="crew-queued" onClick={() => flush().then(() => setQueued(queueSize()))}>
           <span className="pulse-dot" style={{ background: "var(--warn)" }} />
-          {queued} change{queued === 1 ? "" : "s"} waiting to reach the booth · tap to retry
+          {queued} {queued === 1 ? "cambio pendiente" : "cambios pendientes"} de envío a Control · tocá para reintentar
         </button>
       )}
 
@@ -143,12 +143,12 @@ export function CrewChecklist() {
       <div className={`crew-card ${checked ? "sunk" : "accent"}`}>
         {checked ? (
           <span className="crew-checkin-done">
-            <span className="crew-check on green">✓</span> Checked in {clock(checked)}
+            <span className="crew-check on green">✓</span> Asistencia registrada a las {clock(checked)}
           </span>
         ) : (
           <div className="crew-checkin-inner">
             <div>
-              <div className="crew-buzz-title">I'm here</div>
+              <div className="crew-buzz-title">Estoy presente</div>
               <div className="crew-buzz-sub">
                 {(() => {
                   // MY call time from the PCO schedule; service start only as
@@ -158,15 +158,15 @@ export function CrewChecklist() {
                     myRole,
                   );
                   const t = m.ts ?? start;
-                  if (!t) return "tells the booth";
+                  if (!t) return "avisa a Control";
                   return m.ts
-                    ? `Expected ${dayClock(t)} · tells the booth`
-                    : `Expected ${dayClock(t)} (service start, since you're not on this week's plan) · tells the booth`;
+                    ? `Hora prevista: ${dayClock(t)} · avisa a Control`
+                    : `Hora prevista: ${dayClock(t)} (inicio del evento, porque no estás en el plan de esta semana) · avisa a Control`;
                 })()}
               </div>
             </div>
             <button className="crew-checkin-btn" disabled={busy} onClick={checkIn}>
-              {busy ? "…" : "Check in"}
+              {busy ? "…" : "Registrar asistencia"}
             </button>
             {err && <div className="crew-buzz-sub err">{err}</div>}
           </div>
@@ -177,7 +177,7 @@ export function CrewChecklist() {
       {mine.length > 0 && (
         <div className="crew-card accent-line edge">
           <div className="crew-row-head">
-            <span className="crew-buzz-title">My checklist</span>
+            <span className="crew-buzz-title">Mis tareas</span>
             <span className="mono-data crew-count-of">
               {myDone}/{mine.length}
             </span>
@@ -205,10 +205,10 @@ export function CrewChecklist() {
       {visible.length === 0 && (
         <p className="crew-hint muted">
           {cl.checklists.length === 0
-            ? "No checklists set up at the booth yet."
+            ? "Todavía no hay listas de tareas configuradas en Control."
             : myRole
-              ? `Nothing for "${myRole}" this week.`
-              : "You're not on this week's plan in Planning Center, so there's no position checklist for you."}
+              ? `No hay tareas para "${myRole}" esta semana.`
+              : "No estás en el plan de esta semana en Planning Center, por eso no tenés una lista de tareas para tu puesto."}
         </p>
       )}
 
@@ -218,7 +218,7 @@ export function CrewChecklist() {
 
       {hiddenCount > 0 && !isAdmin && (
         <p className="crew-hint muted" style={{ textAlign: "center" }}>
-          {hiddenCount} other-position checklist{hiddenCount === 1 ? "" : "s"} hidden
+          {hiddenCount} {hiddenCount === 1 ? "lista de otro puesto oculta" : "listas de otros puestos ocultas"}
         </p>
       )}
     </div>
@@ -272,7 +272,7 @@ function ChecklistCard({ list, myId }: { list: Checklist; myId: string }) {
             {p.done}/{p.total}
           </span>
         </div>
-        <div className="mono-data crew-buzz-sub">assigned to the team individually</div>
+        <div className="mono-data crew-buzz-sub">asignadas individualmente al equipo</div>
       </div>
     );
   }
@@ -285,7 +285,7 @@ function ChecklistCard({ list, myId }: { list: Checklist; myId: string }) {
         className="crew-list-toggle"
         onClick={toggle}
         aria-expanded={open}
-        aria-label={`${open ? "Collapse" : "Expand"} ${list.name}`}
+        aria-label={`${open ? "Contraer" : "Expandir"} ${list.name}`}
       >
         <div className="crew-row-head">
           <span className={`crew-caret ${open ? "open" : ""}`}>▸</span>
@@ -295,10 +295,10 @@ function ChecklistCard({ list, myId }: { list: Checklist; myId: string }) {
           </span>
         </div>
         <div className="mono-data crew-buzz-sub">
-          {due ? `due ${dayClock(due)}` : cl.recurrenceSummary(list)}
-          {overdue ? " · overdue" : ""}
-          {others > 0 ? ` · ${others} assigned` : ""}
-          {!open ? ` · ${p.total - p.done} left` : ""}
+          {due ? `vence ${dayClock(due)}` : cl.recurrenceSummary(list)}
+          {overdue ? " · vencida" : ""}
+          {others > 0 ? ` · ${others} asignadas` : ""}
+          {!open ? ` · ${p.total - p.done} pendientes` : ""}
         </div>
       </button>
 

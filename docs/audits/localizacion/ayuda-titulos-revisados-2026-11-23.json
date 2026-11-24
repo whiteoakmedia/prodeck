@@ -1,0 +1,478 @@
+{
+  "fuente": "src/help/topics.ts",
+  "criterio": "Revisión de los 59 títulos; nombre del producto conservado. Los cuerpos y alias no están revisados.",
+  "titulos": [
+    {
+      "id": "what-is-prodeck",
+      "linea": 67,
+      "titulo": "What ProDeck is, in one page",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "first-run",
+      "linea": 88,
+      "titulo": "The first-run setup, and how to run it again",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "mac-permissions",
+      "linea": 100,
+      "titulo": "macOS asked for permission — what to allow",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "setup-page",
+      "linea": 117,
+      "titulo": "The Setup page: is everything connected?",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "demo-mode",
+      "linea": 132,
+      "titulo": "Demo mode — see it working before connecting anything",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "crew-overview",
+      "linea": 144,
+      "titulo": "How the crew system works",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "crew-permissions",
+      "linea": 168,
+      "titulo": "Permissions: letting one person page, control, or manage",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "crew-joining",
+      "linea": 197,
+      "titulo": "Getting a volunteer onto their phone",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "crew-approve",
+      "linea": 222,
+      "titulo": "Approving, editing and removing crew",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "crew-roles",
+      "linea": 244,
+      "titulo": "Roles: what they do and how to set yours",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "crew-signout",
+      "linea": 268,
+      "titulo": "Signing out, forgetting a device, and getting back in",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "pages",
+      "linea": 290,
+      "titulo": "Pages: paging one person, and confirming",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "taplink-overview",
+      "linea": 315,
+      "titulo": "What TapLink is",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "taplink-deploy",
+      "linea": 336,
+      "titulo": "Deploying your own TapLink edge",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "taplink-discs",
+      "linea": 362,
+      "titulo": "Writing the NFC discs",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "taplink-keywords",
+      "linea": 375,
+      "titulo": "Keywords: tagging slides so the discs follow the service",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "taplink-override",
+      "linea": 397,
+      "titulo": "Overriding the discs by hand",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "pp-macros",
+      "linea": 410,
+      "titulo": "ProPresenter macros on a dashboard",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "pp-view-only",
+      "linea": 422,
+      "titulo": "View only: watch ProPresenter without changing it",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "pp-connect",
+      "linea": 436,
+      "titulo": "Connecting ProPresenter",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "stage-message",
+      "linea": 455,
+      "titulo": "Stage messages and child alerts",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "child-call",
+      "linea": 467,
+      "titulo": "Child calls on the main screens",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "analytics-services",
+      "linea": 481,
+      "titulo": "Service analytics: services, practice and taps",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "pco-connect",
+      "linea": 496,
+      "titulo": "Connecting Planning Center",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "pco-register-app",
+      "linea": 523,
+      "titulo": "Registering a Planning Center application",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "pco-live",
+      "linea": 552,
+      "titulo": "Planning Center LIVE: Take control, Next and Previous",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "stage-call",
+      "linea": 565,
+      "titulo": "Keys to the Stage: calling the worship team back",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "gateway-passwords",
+      "linea": 591,
+      "titulo": "Browser access: the two passwords",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "phones-install",
+      "linea": 612,
+      "titulo": "Adding ProDeck to a phone's home screen",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "kiosk",
+      "linea": 628,
+      "titulo": "Kiosk screens: an office TV or a switcher monitor",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "tv-screens",
+      "linea": 645,
+      "titulo": "TV screens: a Fire TV Stick in the green room",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "public-url",
+      "linea": 660,
+      "titulo": "Reaching the booth from outside the building",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "dashboards-widgets",
+      "linea": 673,
+      "titulo": "Dashboards and widgets",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "console",
+      "linea": 687,
+      "titulo": "Connecting a sound console",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "ndi",
+      "linea": 709,
+      "titulo": "NDI cameras and the Stage Feed widget",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "atem",
+      "linea": 724,
+      "titulo": "ATEM switcher: Program, Preview, Cut and Auto",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "atem-tally",
+      "linea": 748,
+      "titulo": "Camera tally on a phone or iPad",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "secure-local",
+      "linea": 772,
+      "titulo": "A secure address for phones, with nothing to set up",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "crew-address",
+      "linea": 793,
+      "titulo": "Reaching ProDeck away from church, and while the booth is off",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "comms",
+      "linea": 810,
+      "titulo": "Comms: talking to the crew from phones",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "obs",
+      "linea": 833,
+      "titulo": "OBS Studio: are we live?",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "setup-recording-automix",
+      "linea": 845,
+      "titulo": "Setting up recording and Automix",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "soundcheck-playback",
+      "linea": 858,
+      "titulo": "Mixing a recorded service on the console (Virtual SoundCheck)",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "audio-spl",
+      "linea": 886,
+      "titulo": "SPL meter and calibration",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "updates",
+      "linea": 898,
+      "titulo": "Updating ProDeck",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "backup",
+      "linea": 909,
+      "titulo": "Backup and restore",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "keep-running",
+      "linea": 922,
+      "titulo": "Keeping ProDeck running unattended",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "blank-tile",
+      "linea": 935,
+      "titulo": "A widget is blank on a phone or kiosk but fine on the booth",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "stream-monitor",
+      "linea": 948,
+      "titulo": "Watching your Resi stream in ProDeck",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "walk-in-music",
+      "linea": 964,
+      "titulo": "Walk-in music",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "church-online",
+      "linea": 981,
+      "titulo": "Church Online Platform",
+      "estado": "nombre_producto_conservado",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "report-problem",
+      "linea": 1003,
+      "titulo": "Reporting a bug or asking for a feature",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "routing-map",
+      "linea": 1024,
+      "titulo": "Building your routing map",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "routing-graph",
+      "linea": 1049,
+      "titulo": "Drawing the map",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "song-key-waves",
+      "linea": 1069,
+      "titulo": "Song key → Waves: what was sent, and sending one by hand",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "auto-follow",
+      "linea": 1089,
+      "titulo": "Auto-Follow: slides that change themselves as the song is sung",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "ask-prodeck",
+      "linea": 1111,
+      "titulo": "Ask ProDeck when something is wrong",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "routing-walk",
+      "linea": 1129,
+      "titulo": "When something has no sound",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    },
+    {
+      "id": "security-posture",
+      "linea": 1149,
+      "titulo": "What ProDeck protects, and what it doesn't",
+      "estado": "pendiente_ingles",
+      "cuerpo": "sin_revisar",
+      "alias": "sin_revisar"
+    }
+  ]
+}

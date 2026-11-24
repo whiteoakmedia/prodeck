@@ -34,7 +34,7 @@ export const looksLikeEmail = (s: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]{
 /** Post the address. Resolves to the message to show, or throws with one to show. */
 export async function subscribe(email: string, fetchImpl: typeof fetch = fetch): Promise<string> {
   const addr = email.trim();
-  if (!looksLikeEmail(addr)) throw new Error("That doesn't look like an email address.");
+  if (!looksLikeEmail(addr)) throw new Error("Ingresá una dirección de correo válida.");
   let res: Response;
   try {
     res = await fetchImpl(SIGNUP_URL, {
@@ -43,9 +43,9 @@ export async function subscribe(email: string, fetchImpl: typeof fetch = fetch):
       body: JSON.stringify({ email: addr, source: "prodeck-app" }),
     });
   } catch {
-    throw new Error("Couldn't reach the signup just now. Check the internet connection and try again.");
+    throw new Error("No se pudo conectar para suscribirte. Revisá tu conexión a internet e intentá de nuevo.");
   }
   const j = (await res.json().catch(() => ({}))) as { ok?: boolean; message?: string; error?: string };
-  if (!res.ok || !j.ok) throw new Error(j.error || "The signup didn't go through. Try again in a minute.");
-  return j.message || "You're on the list.";
+  if (!res.ok || !j.ok) throw new Error(j.error || "No se pudo completar la suscripción. Intentá de nuevo en un minuto.");
+  return j.message || "Ya estás en la lista.";
 }

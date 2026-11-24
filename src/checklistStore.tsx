@@ -89,7 +89,7 @@ export function listVisibleFor(
   }
 }
 
-export const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+export const DAY_NAMES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 const HOUR = 3600_000;
 const MAX_OVERDUE = 6 * HOUR; // longest a missed occurrence stays flagged
 
@@ -470,7 +470,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     dueAt,
     recurrenceSummary: (c) =>
       c.schedule && c.schedule.length > 0
-        ? "Weekly · " +
+        ? "Semanal · " +
           [...c.schedule]
             .sort((a, b) => a.day - b.day || a.time.localeCompare(b.time))
             .map((s) => `${DAY_NAMES[s.day]} ${s.time}`)

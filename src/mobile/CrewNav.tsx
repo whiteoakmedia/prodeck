@@ -47,9 +47,9 @@ const ICONS: Record<CrewTab, ReactElement> = {
 const LABELS: Record<CrewTab, string> = {
   home: "Home",
   chat: "Chat",
-  checklist: "Checklist",
-  dashboards: "Dashboards",
-  more: "More",
+  checklist: "Lista de tareas",
+  dashboards: "Paneles de control",
+  more: "Más",
 };
 
 export function CrewNav({

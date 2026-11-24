@@ -120,19 +120,19 @@ export function talkers(members: IntercomMember[], me: string): { name: string; 
  */
 export function talkLabel(o: { openMic: boolean; talking: boolean; line: string; short?: string }): string {
   if (o.openMic) {
-    if (o.short) return o.talking ? "Mute" : "Unmute";
-    return o.talking ? `Live on ${o.line}. Tap to mute` : `Muted. Tap to talk on ${o.line}`;
+    if (o.short) return o.talking ? "Mutear" : "Desmutear";
+    return o.talking ? `Al aire en ${o.line}. Tocá para mutear` : `Muteado. Tocá para hablar en ${o.line}`;
   }
   if (o.short) return o.short;
-  return o.talking ? `Talking on ${o.line}` : `Hold to talk on ${o.line}`;
+  return o.talking ? `Hablando en ${o.line}` : `Mantené presionado para hablar en ${o.line}`;
 }
 
 /** Why comms can't start on this device, or "" if it can. */
 export function cannotJoin(env: { isWeb: boolean; boothScreen: boolean; secure: boolean; hasMic: boolean; signedIn: boolean }): string {
-  if (!env.isWeb || env.boothScreen) return "Comms runs on phones and tablets, never on the booth computer.";
-  if (!env.signedIn) return "Sign in first: comms uses your crew name.";
+  if (!env.isWeb || env.boothScreen) return "Las comunicaciones funcionan en celulares y tablets, no en la computadora de Control.";
+  if (!env.signedIn) return "Ingresá primero: comunicaciones usa tu nombre de equipo.";
   if (!env.secure || !env.hasMic)
-    return "Comms needs the microphone, and phones only allow that on the secure (https) address. Open ProDeck from that address to use comms.";
+    return "Las comunicaciones necesitan el micrófono y los celulares solo lo permiten en una dirección segura (https). Abrí ProDeck desde esa dirección para usarlas.";
   return "";
 }
 

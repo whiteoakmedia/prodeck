@@ -60,15 +60,15 @@ export class ErrorBoundary extends Component<Props, State> {
     return (
       <div className="crash">
         <div className="crash-card">
-          <h1>ProDeck hit an error.</h1>
+          <h1>ProDeck encontró un error.</h1>
           <p className="crash-lead">
-            The screen stopped drawing, but nothing was lost — your settings and
-            layouts are on disk. Reloading usually fixes it.
+            La pantalla dejó de mostrarse, pero no se perdió nada. Tu configuración y
+            tus diseños están guardados en el disco. Recargar suele resolverlo.
           </p>
           <pre className="crash-msg">{error.message}</pre>
           <div className="crash-actions">
             <button className="btn primary" onClick={() => location.reload()}>
-              Reload ProDeck
+              Recargar ProDeck
             </button>
             {demo && (
               <button
@@ -82,7 +82,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   location.reload();
                 }}
               >
-                Turn off demo mode &amp; reload
+                Desactivar el modo demo y recargar
               </button>
             )}
             <button
@@ -94,15 +94,15 @@ export class ErrorBoundary extends Component<Props, State> {
                   .catch(() => {});
               }}
             >
-              {this.state.copied ? "Copied ✓" : "Copy error details"}
+              {this.state.copied ? "Copiado ✓" : "Copiar detalles del error"}
             </button>
             <button className="btn ghost" onClick={() => this.setState({ telling: true })}>
-              Tell White Oak what happened
+              Contarle a White Oak qué pasó
             </button>
           </div>
           <p className="crash-foot">
-            If it keeps happening, tell White Oak Media what you were doing when it broke.
-            The error details go along with it, and they contain no passwords.
+            Si vuelve a pasar, cuéntale a White Oak Media qué estabas haciendo cuando falló.
+            Se incluyen los detalles del error, que no contienen contraseñas.
           </p>
           {this.state.telling && (
             <FeedbackDialog
@@ -116,7 +116,7 @@ export class ErrorBoundary extends Component<Props, State> {
             />
           )}
           <details className="crash-more">
-            <summary>Technical details</summary>
+            <summary>Detalles técnicos</summary>
             <pre>{this.details()}</pre>
           </details>
         </div>

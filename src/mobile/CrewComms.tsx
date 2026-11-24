@@ -102,7 +102,7 @@ export function TallyComms() {
     return (
       <>
         <NowTalking className="tally-talking" />
-        <TalkButton className="tally-talk" label="Talk" />
+        <TalkButton className="tally-talk" label="Hablar" />
       </>
     );
   }
@@ -273,7 +273,7 @@ export function CommsChip({ onOpen, hidden }: { onOpen: () => void; hidden?: boo
         <span className="pulse-dot" style={{ background: t.length ? "var(--warn)" : "var(--success)" }} />
         {t.length ? `${t[0].name} on ${t[0].line}` : `Comms · ${c.talkOn}`}
       </button>
-      <TalkButton className="chip" label="Talk" />
+      <TalkButton className="chip" label="Hablar" />
     </div>
   );
 }

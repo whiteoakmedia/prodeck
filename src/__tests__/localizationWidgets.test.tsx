@@ -80,7 +80,11 @@ describe("es-419 widget catalog and picker", () => {
   it("searches displayed Spanish label, blurb and group without crossing group identity", async () => {
     await mount(); await click("header button");
     expect(host.querySelector<HTMLInputElement>(".wpick-search")?.placeholder).toBe("Buscar widgets, como diapositivas, micrófonos o cuenta regresiva");
-    await search("  AHORA Y SIGUIENTE  "); expect(names()).toEqual(["Ahora y siguiente", "Ahora / Siguiente"]);
+    await search("  EN CURSO Y PRÓXIMO  "); expect(names()).toEqual(["En curso y próximo", "En curso / Próximo"]);
+    await search("en curso / próximo"); expect(names()).toEqual(["En curso / Próximo"]);
+    await search("aviso en pantalla retorno"); expect(names()).toEqual(["Aviso en Pantalla Retorno"]);
+    await search("lista de tareas"); expect(names()).toContain("Lista de tareas");
+    await search("consola de sonido"); expect(names()).toContain("Consola de sonido (Avantis)");
     await search("espectro"); expect(names()).toEqual(["SPL + RTA"]);
     await search("centro de control");
     expect(names()).toEqual(WIDGETS.filter((w) => w.group === "Mission Control").map((w) => w.label));

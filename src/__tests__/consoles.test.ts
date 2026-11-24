@@ -114,16 +114,16 @@ describe("Qu-5/6/7", () => {
   });
 
   it("names the desk actually picked when it can't be reached", () => {
-    expect(deskHealthText("qu", "bad")).toContain("Can't reach the Qu.");
-    expect(deskHealthText("sq", "bad")).toContain("Can't reach the SQ.");
-    expect(deskHealthText(undefined, "bad")).toContain("Can't reach the Avantis.");
+    expect(deskHealthText("qu", "bad")).toContain("No se puede conectar con Qu.");
+    expect(deskHealthText("sq", "bad")).toContain("No se puede conectar con SQ.");
+    expect(deskHealthText(undefined, "bad")).toContain("No se puede conectar con Avantis.");
     expect(deskHealthText("qu", "bad")).toContain("Companion");
     // X32 and Yamaha have no MIDI connection to share.
     expect(deskHealthText("x32", "bad")).not.toContain("Companion");
     expect(deskHealthText("qu", "bad", "Qu at 10.2.10.200:51325: Connection refused")).toContain(
-      "Last attempt: Qu at 10.2.10.200:51325: Connection refused.",
+      "Último intento: Qu at 10.2.10.200:51325: Connection refused.",
     );
-    expect(deskHealthText("qu", "ok")).toBe("Connected and mirroring.");
+    expect(deskHealthText("qu", "ok")).toBe("Conectada y sincronizada.");
   });
 
   it("follows the no dashes rule", () => {

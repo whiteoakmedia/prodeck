@@ -3,10 +3,10 @@ import { joinFormProblem, joinPollMs } from "../lib/posterJoin";
 
 describe("poster join", () => {
   it("needs a name and a 4 digit PIN", () => {
-    expect(joinFormProblem(" ", "1234")).toMatch(/name/);
-    expect(joinFormProblem("D", "1234")).toMatch(/name/);
-    expect(joinFormProblem("Devon", "123")).toMatch(/PIN/);
-    expect(joinFormProblem("Devon", "12a4")).toMatch(/PIN/);
+    expect(joinFormProblem(" ", "1234")).toBe("Ingresá tu nombre.");
+    expect(joinFormProblem("D", "1234")).toBe("Ingresá tu nombre.");
+    expect(joinFormProblem("Devon", "123")).toBe("Elegí un PIN de 4 dígitos. Lo vas a usar para ingresar.");
+    expect(joinFormProblem("Devon", "12a4")).toBe("Elegí un PIN de 4 dígitos. Lo vas a usar para ingresar.");
     expect(joinFormProblem("Devon  Smith", "0420")).toBe("");
   });
   it("asks quickly at first, then eases off", () => {

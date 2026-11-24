@@ -1,0 +1,360 @@
+{
+  "fuente": "src/help/topics.ts",
+  "metodo": "Se revisó el comienzo de cada cuerpo. Todos contienen prosa inglesa propia de ProDeck; se contabilizan como pendientes por estar incompletos, sin afirmar que cada frase esté en inglés.",
+  "cuerpos": [
+    {
+      "id": "what-is-prodeck",
+      "linea": 69,
+      "fragmento_inicial": "ProDeck is the production booth in one place. It sits on the booth computer and connects to the things a service runs on, then puts what they know onto dashboards that anyone on th",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "first-run",
+      "linea": 90,
+      "fragmento_inicial": "The first time ProDeck opens it walks you through connecting each tool, one step at a time, and actually connects them — it doesn't just tell you where to click later. Every step i",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "mac-permissions",
+      "linea": 102,
+      "fragmento_inicial": "ProDeck runs on macOS 10.15 and newer and is tested on the current release, macOS 27. The first time it needs something, macOS asks — **allow each one**: - **Local network** — ProP",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "setup-page",
+      "linea": 119,
+      "fragmento_inicial": "**Setup** in the sidebar shows one row per thing ProDeck talks to, with a live state: - **Connected** — working now. - **Not set up** — you haven't configured it. That's fine; only",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "demo-mode",
+      "linea": 134,
+      "fragmento_inicial": "Demo mode fills every dashboard with a pretend Sunday — a plan, a team with check-ins, a live slide, sound levels, a mirrored console — so you can see what ProDeck does before wiri",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "crew-overview",
+      "linea": 152,
+      "fragmento_inicial": "Two separate things decide what a phone can do, and it helps to keep them apart. **1. The gateway password — what a phone may DO.** There are two: the **admin** password (full cont",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "crew-permissions",
+      "linea": 178,
+      "fragmento_inicial": "Every phone signed in with the crew password is a **viewer**: dashboards, the plan, chat, check-in, confirming pages, cameras. The admin password unlocks everything. In between, yo",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "crew-joining",
+      "linea": 207,
+      "fragmento_inicial": "There are two ways in. Both end with the volunteer adding ProDeck to their home screen so pages reach them with the app closed. **The poster (shared link).** **Settings → Crew Memb",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "crew-approve",
+      "linea": 231,
+      "fragmento_inicial": "**Settings → Crew Members** lists everyone. A **pending** badge on the Settings nav means someone is waiting. - **Approve** — makes the account live. Until then their phone shows a",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "crew-roles",
+      "linea": 253,
+      "fragmento_inicial": "A role is what a person is doing this Sunday — \"Camera 1\", \"Audio A2\", \"Lyrics\", \"Stage\". Roles drive three things: - **The leader board** sorts by exception: \"Camera 1 — not here ",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "crew-signout",
+      "linea": 277,
+      "fragmento_inicial": "On the phone, **More** has two different exits: - **Lock (PIN again)** — keeps the account on this phone, asks for the PIN next time. Use this on a shared device. - **Sign out comp",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "pages",
+      "linea": 299,
+      "fragmento_inicial": "A page is the emergency channel: it takes over the recipient's phone with a siren and heavy vibration until they tap **Got it**. Send one from the chat panel (**Page** on the booth",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "taplink-overview",
+      "linea": 324,
+      "fragmento_inicial": "TapLink is NFC discs in your lobby that all open **one** link — and that link's destination follows the service. When the giving slide goes live in ProPresenter, every disc in the ",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "taplink-deploy",
+      "linea": 345,
+      "fragmento_inicial": "**Settings → TapLink** walks you through this with the exact commands to copy. In outline: 1. Get the ProDeck source (**ProDeck on GitHub** in Help & support) and open the **taplin",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "taplink-discs",
+      "linea": 364,
+      "fragmento_inicial": "Every disc gets the same URL: your edge URL followed by **/now** — for example **https://go.yourchurch.org/now**. **Settings → TapLink** shows yours ready to copy. Write it with an",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "taplink-keywords",
+      "linea": 384,
+      "fragmento_inicial": "In **Settings → TapLink → Keywords & links** you map short words to URLs: `give` → your giving page, `connect` → your connect card, `prayer` → the prayer form, and a **default** fo",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "taplink-override",
+      "linea": 399,
+      "fragmento_inicial": "The **TapLink** dashboard widget has a button per keyword. Pressing one pins the discs to that link regardless of what's on screen; **Resume** hands control back to the slides. Onl",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "pp-macros",
+      "linea": 412,
+      "fragmento_inicial": "Add the **ProPresenter Macros** tile to a dashboard. It shows every macro in ProPresenter as a button, in the colour you gave it in Pro, so it matches what the operator sees there.",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "pp-view-only",
+      "linea": 424,
+      "fragmento_inicial": "For a second computer, or a church that runs slides from ProPresenter itself: **Settings → ProPresenter → View only**. ProDeck then still shows everything live (the current slide, ",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "pp-connect",
+      "linea": 444,
+      "fragmento_inicial": "In ProPresenter: **Settings → Network → Enable Network**. Note the port (usually 1025 for the API — the port Bonjour advertises is often the stage display's, and ProDeck knows to t",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "stage-message",
+      "linea": 457,
+      "fragmento_inicial": "The **Stage Message (Alerts)** widget puts a line of text on ProPresenter's stage displays and takes it off again — from any dashboard, including a phone with the admin password. T",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "child-call",
+      "linea": 469,
+      "fragmento_inicial": "The **Child Call (Pro Messages)** tile shows one of ProPresenter's own messages on the audience screens, with the blanks filled in, so nobody has to interrupt the person running sl",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "analytics-services",
+      "linea": 483,
+      "fragmento_inicial": "ProDeck times every plan item and records sound levels for each service, using the service times in Planning Center. **Which service it is, by the clock.** Each service has its own",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "pco-connect",
+      "linea": 507,
+      "fragmento_inicial": "Go to the **Planning Center** page and press **Connect**. Your browser opens Planning Center's own sign-in page; approve ProDeck there and the page fills in behind you. Pick this w",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "pco-register-app",
+      "linea": 533,
+      "fragmento_inicial": "Signing in needs a Planning Center **application** to sign in through. Most churches never touch this — ProDeck comes with one. You only do this if ProDeck asks for a Client ID, or",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "pco-live",
+      "linea": 554,
+      "fragmento_inicial": "Planning Center only moves LIVE for whoever holds the **controller**. An untouched plan has nobody holding it, which is why Next did nothing on its own. ProDeck takes control for y",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "stage-call",
+      "linea": 574,
+      "fragmento_inicial": "The **Keys to the Stage** widget is for a screen where the worship team waits — a green room, the office, wherever breakfast is. It counts down to the **end of the service** and, *",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "gateway-passwords",
+      "linea": 599,
+      "fragmento_inicial": "**Settings → Browser Access** turns on the web gateway: the same ProDeck, served to phones and kiosks on your Wi-Fi at **http://‹booth-name›.local:8088**. - **Admin password** — fu",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "phones-install",
+      "linea": 614,
+      "fragmento_inicial": "Open the join link in the phone's browser, then: - **iPhone (Safari):** Share → **Add to Home Screen** → Add. Then open ProDeck from the icon, not Safari: the icon's copy arrives a",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "kiosk",
+      "linea": 630,
+      "fragmento_inicial": "A kiosk is a browser showing one dashboard, full screen, with nothing to click. **Settings → Kiosk screens**: pick the dashboard, copy the link (or scan the QR), and follow the ste",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "tv-screens",
+      "linea": 647,
+      "fragmento_inicial": "A Fire TV Stick or Android TV box runs **ProDeck Display**, which shows one dashboard full screen. **Settings → TV screens** has the install steps; the TV shows a code, you match i",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "public-url",
+      "linea": 662,
+      "fragmento_inicial": "By default phones only reach the booth on the church Wi-Fi. **Settings → Browser Access → Public URL** is where you put your own domain if you set up a Cloudflare Tunnel to the boo",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "dashboards-widgets",
+      "linea": 675,
+      "fragmento_inicial": "A dashboard is a grid of widgets. Press the **pencil** to edit, then **Add Widget**; drag to move, drag the corner to resize, × to remove. Edits save automatically. New widgets are",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "console",
+      "linea": 689,
+      "fragmento_inicial": "**Settings → Sound Console**: pick the model, type the console's IP, and watch it connect. - **Allen & Heath Avantis / dLive / SQ** — MIDI over TCP. Avantis and dLive use port 5132",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "ndi",
+      "linea": 711,
+      "fragmento_inicial": "**Settings → Stage feed (NDI)** lists every NDI source ProDeck can see on your network — which also proves NDI itself is working. The source is chosen **inside the Stage Feed widge",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "atem",
+      "linea": 726,
+      "fragmento_inicial": "ProDeck connects to Blackmagic ATEM switchers over your network. In **Settings → ATEM Switcher**, tick **Connect to an ATEM switcher** and type its address, which ATEM Setup shows ",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "atem-tally",
+      "linea": 750,
+      "fragmento_inicial": "Any phone or iPad can be a tally light, using the switcher's own tally, so keys and transitions count. Make the link in **Settings → Camera tally** (it needs Browser Access with a ",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "secure-local",
+      "linea": 774,
+      "fragmento_inicial": "Phones only allow comms, a camera station's microphone and page notifications on a secure (https) address. A booth that only lives on the church network has a plain one, so none of",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "crew-address",
+      "linea": 795,
+      "fragmento_inicial": "Every booth has a **crew address**, **https://yourname-crew.prodeck.live**. It's on unless you turn it off in **Settings → Crew & screens → Crew address**, and there's nothing to s",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "comms",
+      "linea": 812,
+      "fragmento_inicial": "Comms turns crew phones and iPads into a hold to talk intercom. It's **off until you turn it on** in **Settings → Crew & screens → Comms**; leave it off if your team already has an",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "obs",
+      "linea": 835,
+      "fragmento_inicial": "In OBS: **Tools → WebSocket Server Settings**, enable it, note the port (4455) and set a password. In ProDeck: **Settings → OBS Studio**, enter the port and password. The **OBS** w",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "setup-recording-automix",
+      "linea": 847,
+      "fragmento_inicial": "Both have a step by step setup. Open it from **Setup** (the cards near the bottom), the **Set up** button on the Recording page or the Automix tile, or **Run setup** on their cards",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "soundcheck-playback",
+      "linea": 860,
+      "fragmento_inicial": "On the **Recording** page, press **Soundcheck** next to a recorded service. ProDeck plays it back out of Dante Virtual Soundcard, each track on its own Dante output, and writes the",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "audio-spl",
+      "linea": 888,
+      "fragmento_inicial": "**Settings → Audio & Captions** picks the input (a room mic, or a Dante channel). The **SPL + RTA** widget then shows level and spectrum. Calibration is on the widget itself: press",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "updates",
+      "linea": 900,
+      "fragmento_inicial": "ProDeck checks a few seconds after launch and shows a banner with the release notes and **Install & Restart**. **Later** remembers that version and won't nag; a newer one still get",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "backup",
+      "linea": 911,
+      "fragmento_inicial": "**Settings → Backup & restore → Back up now** writes one file holding your settings, dashboards, crew accounts, checklists, schedules, reports and position files. **Restore from a ",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "keep-running",
+      "linea": 924,
+      "fragmento_inicial": "**Settings → Reliability** has two switches for a booth computer: a **watchdog** that starts ProDeck at login and relaunches it within seconds of a crash (Mac; on Windows it can st",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "blank-tile",
+      "linea": 937,
+      "fragmento_inicial": "Almost always one of two things: - **The booth is running an older ProDeck** than the one with the fix. Kiosks and phones are served by the booth, so they can't be newer than it. C",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "stream-monitor",
+      "linea": 950,
+      "fragmento_inicial": "The **Stream Monitor (Resi)** tile shows your Resi stream exactly as people at home see it, so you can check you're really live and it looks right. **Set up.** In Resi Studio, open",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "walk-in-music",
+      "linea": 966,
+      "fragmento_inicial": "ProDeck can control the music playing on the booth computer, in the **Spotify** app or Apple's **Music** app, from any dashboard or crew phone. There's no Spotify account to connec",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "church-online",
+      "linea": 983,
+      "fragmento_inicial": "ProDeck shows your Church Online Platform service on any dashboard: add the **Church Online** tile. **Step 1: the service.** **Settings → Church Online**, type your Church Online a",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "report-problem",
+      "linea": 1005,
+      "fragmento_inicial": "Press **Report a bug** or **Request a feature** at the bottom of the sidebar (also on the Help page and in **Settings → Help & support**). Fill in what happened, how much it matter",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "routing-map",
+      "linea": 1026,
+      "fragmento_inicial": "**Routing** is every console channel, traced back to the thing that makes the sound: the stage socket, the wireless pack, the playback laptop. It is written for the volunteer who h",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "routing-graph",
+      "linea": 1051,
+      "fragmento_inicial": "**Routing → Map** draws the same map as boxes and lines: sources on the left, then the doors they come in through, console channels, buses, outputs and finally what the outputs dri",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "song-key-waves",
+      "linea": 1071,
+      "fragmento_inicial": "When a song goes live, ProDeck sends its key (from Planning Center, or your in-app override) to the Waves rig as a scene number — C is scene 1 … B is scene 12, and **Tune off** is ",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "auto-follow",
+      "linea": 1091,
+      "fragmento_inicial": "**Auto‑Follow** in the sidebar (under ProPresenter). Choose the Sunday playlist and press **Start auto‑follow**. From then on ProDeck listens to the singing, works out which song i",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "ask-prodeck",
+      "linea": 1113,
+      "fragmento_inicial": "**Ask ProDeck** is a box at the top of **No sound?** (phone: Home → No sound?; booth: Routing → No sound?). Type what is wrong in your own words — \"Ruth's mic is crackling\", \"nothi",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "routing-walk",
+      "linea": 1131,
+      "fragmento_inicial": "On a phone, **Home → No sound?** On the booth, **Routing → No sound?**. Pick the person (this week's team, from their mic assignment), the channel, or the place with no sound. ProD",
+      "estado": "pendiente_contiene_ingles"
+    },
+    {
+      "id": "security-posture",
+      "linea": 1151,
+      "fragmento_inicial": "Honest summary, so you can decide what to expose: - **Two shared passwords** decide what a phone may do. Anyone with the crew password is crew. Choose long ones; rotate the crew pa",
+      "estado": "pendiente_contiene_ingles"
+    }
+  ]
+}

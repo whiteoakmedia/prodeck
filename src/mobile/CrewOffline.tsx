@@ -79,9 +79,9 @@ function CloudSignIn({ onIn }: { onIn: () => void }) {
     setErr("");
     try {
       const r = await edgeFetch(`/plan?token=${encodeURIComponent(pw.trim())}`);
-      if (r.status === 401) throw new Error("That password didn't work.");
-      if (r.status === 429) throw new Error("Too many tries. Wait a few minutes.");
-      if (!r.ok && r.status !== 404) throw new Error("The crew address didn't answer.");
+      if (r.status === 401) throw new Error("Esa contraseña no funcionó.");
+      if (r.status === 429) throw new Error("Demasiados intentos. Esperá unos minutos.");
+      if (!r.ok && r.status !== 404) throw new Error("La dirección del equipo no respondió.");
       setWebToken(pw.trim());
       onIn();
     } catch (e) {
@@ -94,22 +94,22 @@ function CloudSignIn({ onIn }: { onIn: () => void }) {
     <div className="crew-card edge crew-offline-plan">
       <div className="crew-row-head">
         <span className="mono" style={{ color: "var(--accent-hi)" }}>
-          Sign in
+          Ingresar
         </span>
       </div>
       <p className="crew-hint muted" style={{ margin: "4px 0 8px" }}>
-        Enter the crew password to see the week while the booth is off.
+        Ingresá la contraseña del equipo para ver la semana mientras Control está apagado.
       </p>
       <input
         className="crew-input"
         type="password"
-        placeholder="Crew password"
+        placeholder="Contraseña del equipo"
         value={pw}
         onChange={(e) => setPw(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && go()}
       />
       <button className="crew-btn primary" style={{ marginTop: 8 }} disabled={busy} onClick={go}>
-        {busy ? "Checking" : "Sign in"}
+        {busy ? "Comprobando" : "Ingresar"}
       </button>
       {err && <p className="crew-join-err">{err}</p>}
     </div>
@@ -200,14 +200,14 @@ function EdgeChat() {
     <div className="crew-card edge crew-offline-plan">
       <div className="crew-row-head">
         <span className="mono" style={{ color: "var(--accent-hi)" }}>
-          Team chat
+          Chat del equipo
         </span>
-        <span className="mono-data crew-count-of">via cloud</span>
+        <span className="mono-data crew-count-of">mediante la nube</span>
       </div>
       {msgs.length === 0 && (
         <p className="crew-hint muted" style={{ margin: "4px 0" }}>
-          Nothing yet. Messages sent here reach the whole team and land in the
-          booth feed when it's back.
+          Todavía no hay mensajes. Los que envíes acá llegan a todo el equipo y aparecen
+          en Control cuando vuelva a conectarse.
         </p>
       )}
       {msgs.map((m) => (
@@ -226,19 +226,19 @@ function EdgeChat() {
           <input
             className="crew-input"
             style={{ flex: 1, minWidth: 0 }}
-            placeholder="Message the team…"
+            placeholder="Mensaje para el equipo…"
             value={text}
             maxLength={500}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && send()}
           />
           <button className="crew-btn primary" style={{ width: "auto" }} disabled={busy} onClick={send}>
-            Send
+            Enviar
           </button>
         </div>
       ) : (
         <p className="crew-hint muted" style={{ marginTop: 8 }}>
-          Set up your crew profile (when the booth is back) to send messages.
+          Configurá tu perfil de equipo cuando vuelva Control para poder enviar mensajes.
         </p>
       )}
       {err && <p className="crew-join-err">{err}</p>}
@@ -268,9 +268,9 @@ function EdgeJoin({
   const submit = async () => {
     const n = name.trim();
     setErr("");
-    if (n.length < 2) return setErr("Enter your name (tap it above if it's listed).");
-    if (!/^\d{4}$/.test(pin)) return setErr("PIN must be exactly 4 digits.");
-    if (pin !== pin2) return setErr("PINs don't match.");
+    if (n.length < 2) return setErr("Ingresá tu nombre o tocalo arriba si aparece en la lista.");
+    if (!/^\d{4}$/.test(pin)) return setErr("El PIN debe tener exactamente 4 dígitos.");
+    if (pin !== pin2) return setErr("Los PIN no coinciden.");
     setBusy(true);
     try {
       const r = await edgeFetch(`/register`, {
@@ -294,14 +294,14 @@ function EdgeJoin({
     <div className="crew-card edge crew-offline-plan">
       <div className="crew-row-head">
         <span className="mono" style={{ color: "var(--accent-hi)" }}>
-          Join the crew
+          Sumate al equipo
         </span>
-        <span className="mono-data crew-count-of">works booth-off</span>
+        <span className="mono-data crew-count-of">funciona con Control apagado</span>
       </div>
       {roster.length > 0 && (
         <>
           <p className="crew-hint muted" style={{ margin: "4px 0" }}>
-            Tap your name on this week's plan
+            Tocá tu nombre en el plan de esta semana
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, margin: "4px 0 8px" }}>
             {roster.slice(0, 24).map((m) => (
@@ -319,13 +319,13 @@ function EdgeJoin({
             ))}
           </div>
           <p className="crew-hint muted" style={{ margin: "0 0 4px" }}>
-            or type it
+            o escribilo
           </p>
         </>
       )}
       <input
         className="crew-input"
-        placeholder="Your name"
+        placeholder="Tu nombre"
         value={name}
         maxLength={32}
         onChange={(e) => {
@@ -337,7 +337,7 @@ function EdgeJoin({
         <input
           className="crew-input"
           style={{ flex: 1, minWidth: 0 }}
-          placeholder="4-digit PIN"
+          placeholder="PIN de 4 dígitos"
           inputMode="numeric"
           type="password"
           value={pin}
@@ -347,7 +347,7 @@ function EdgeJoin({
         <input
           className="crew-input"
           style={{ flex: 1, minWidth: 0 }}
-          placeholder="Confirm PIN"
+          placeholder="Confirmar PIN"
           inputMode="numeric"
           type="password"
           value={pin2}
@@ -361,11 +361,11 @@ function EdgeJoin({
         disabled={busy}
         onClick={submit}
       >
-        {busy ? "Joining…" : "Join"}
+        {busy ? "Ingresando…" : "Solicitar ingreso"}
       </button>
       <p className="crew-hint muted" style={{ marginTop: 6 }}>
-        You can chat right away. The booth finishes your account (and an admin
-        approves it) the next time it's on.
+        Podés chatear de inmediato. La próxima vez que se encienda Control se completa tu cuenta
+        y un administrador la aprueba.
       </p>
       {err && <p className="crew-join-err">{err}</p>}
     </div>
@@ -487,14 +487,14 @@ export function CrewOffline({ onCached }: { onCached: () => void }) {
         <img className="crew-off-mark" src={markWhite} alt="" aria-hidden />
         <div className="crew-off-status-text">
           <div className="crew-off-status-title">
-            <span className="pulse-dot" style={{ background: "var(--warn)" }} /> The booth is off
+            <span className="pulse-dot" style={{ background: "var(--warn)" }} /> Control está apagado
           </div>
           <div className="crew-off-status-sub">
             {fromBooth
-              ? cloudCopyLine(edge?.sentMs ?? 0).replace(/^The booth is off\. /, "")
+              ? cloudCopyLine(edge?.sentMs ?? 0).replace(/^Control está apagado\. /, "")
               : edge
-                ? "This week, live from Planning Center."
-                : "Waiting for it to come back."}
+                ? "Esta semana, directamente desde Planning Center."
+                : "Esperando que vuelva a conectarse."}
           </div>
         </div>
       </header>
@@ -504,12 +504,12 @@ export function CrewOffline({ onCached }: { onCached: () => void }) {
       {/* Your Sunday first: it's what a volunteer opens this for. */}
       {edge && (arrival.scheduled || guide) && (
         <section className="crew-off-card accent">
-          <div className="crew-off-kicker">Your Sunday</div>
+          <div className="crew-off-kicker">Tu semana</div>
           {arrival.scheduled && (
             <div className="crew-off-call">
-              <span className="crew-off-call-time">{callTs ? fmtTime(callTs) : "Scheduled"}</span>
+              <span className="crew-off-call-time">{callTs ? fmtTime(callTs) : "Programado"}</span>
               <span className="crew-off-call-meta">
-                {callTs ? `Call time, ${new Date(callTs).toLocaleDateString([], { weekday: "long" })}` : "No call time set"}
+                {callTs ? `Horario de convocatoria, ${new Date(callTs).toLocaleDateString([], { weekday: "long" })}` : "Sin horario de convocatoria"}
                 {arrival.position ? ` · ${arrival.position}` : ""}
               </span>
             </div>
@@ -520,22 +520,22 @@ export function CrewOffline({ onCached }: { onCached: () => void }) {
 
       <div className="crew-off-actions">
         <button className="crew-btn primary" onClick={onCached}>
-          Checklist
+          Lista de tareas
         </button>
         <button className="crew-btn quiet" onClick={() => setGame(true)}>
-          Play Next Slide
+          Jugar a Next Slide
         </button>
       </div>
 
       {edge && (
         <section className="crew-off-card">
           <div className="crew-off-head">
-            <span className="crew-off-kicker">This week</span>
+            <span className="crew-off-kicker">Esta semana</span>
             <span className="crew-off-date">{edge.plan.date}</span>
           </div>
           {nextTime?.ts && (
             <div className="crew-off-when">
-              {nextTime.name || nextTime.type || "Service"}, {fmtDay(nextTime.ts)}
+              {nextTime.name || nextTime.type || "Evento"}, {fmtDay(nextTime.ts)}
             </div>
           )}
           <ol className="crew-off-plan">
@@ -562,7 +562,7 @@ export function CrewOffline({ onCached }: { onCached: () => void }) {
                       <span className="crew-off-song-main">
                         <span className="crew-off-song-title">{s.title}</span>
                         <span className="crew-off-song-sub">
-                          {[s.leader, chartable ? "Chart" : ""].filter(Boolean).join(" · ")}
+                          {[s.leader, chartable ? "Partitura" : ""].filter(Boolean).join(" · ")}
                         </span>
                       </span>
                       {s.key && <span className="crew-off-key">{s.key}</span>}
@@ -580,7 +580,7 @@ export function CrewOffline({ onCached }: { onCached: () => void }) {
           </ol>
           {onTeam.length > 0 && (
             <details className="crew-off-team">
-              <summary>Who's on this week ({onTeam.length})</summary>
+              <summary>Equipo de esta semana ({onTeam.length})</summary>
               {onTeam.map((m) => (
                 <div key={m.id + m.position} className="crew-off-item">
                   <span className="crew-off-item-title">{m.name}</span>
@@ -590,7 +590,7 @@ export function CrewOffline({ onCached }: { onCached: () => void }) {
             </details>
           )}
           <p className="crew-off-foot">
-            {fromBooth ? "As the booth last sent it." : "Tap a song for its chart. Pages and check in come back with the booth."}
+            {fromBooth ? "Como lo envió Control por última vez." : "Tocá una canción para ver su partitura. Los avisos y el registro de asistencia vuelven cuando se conecte Control."}
           </p>
         </section>
       )}
@@ -605,7 +605,7 @@ export function CrewOffline({ onCached }: { onCached: () => void }) {
       )}
       <EdgeChat />
       {tried && !edge && getWebToken() && (
-        <p className="crew-hint muted">The week's plan wasn't reachable either. Check your connection.</p>
+        <p className="crew-hint muted">Tampoco se pudo acceder al plan de la semana. Revisá tu conexión.</p>
       )}
       {game && <NextSlide onClose={() => setGame(false)} />}
     </div>

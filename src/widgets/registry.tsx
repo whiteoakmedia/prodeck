@@ -4451,12 +4451,12 @@ export const WIDGETS: WidgetDef[] = [
   { type: "timer", label: "Temporizador", group: "ProPresenter", w: 4, h: 3, component: TimerWidget },
   { type: "tap_link", label: "TapLink (NFC)", group: "ProPresenter", w: 4, h: 3, component: TapLinkWidget },
   { type: "lobby_tv", label: "TV del vestíbulo (Anuncios)", group: "ProPresenter", w: 4, h: 3, component: LobbyTvWidget },
-  { type: "stage_message", label: "Mensaje al escenario (Alertas)", group: "ProPresenter", w: 4, h: 4, component: StageMessageWidget },
+  { type: "stage_message", label: "Mensaje a escenario (Alertas)", group: "ProPresenter", w: 4, h: 4, component: StageMessageWidget },
   { type: "child_call", label: "Aviso a familias (Mensajes de ProPresenter)", group: "ProPresenter", w: 4, h: 4, component: ChildCallWidget },
   { type: "confidence", label: glossary.confidenceBanner, group: "ProPresenter", w: 6, h: 3, component: ConfidenceWidget },
   // Planning Center
   { type: "show_flow", label: glossary.showFlow, group: "Planning Center", w: 4, h: 6, component: ShowFlowWidget },
-  { type: "plan_item", label: "Ahora / Siguiente", group: "Planning Center", w: 4, h: 3, component: PlanItemWidget },
+  { type: "plan_item", label: "En curso / Próximo", group: "Planning Center", w: 4, h: 3, component: PlanItemWidget },
   { type: "people", label: glossary.team, group: "Planning Center", w: 3, h: 5, component: PeopleWidget },
   { type: "song_leaders", label: "Líderes de canciones", group: "Planning Center", w: 4, h: 4, component: SongLeadersWidget },
   { type: "mic_assignment", label: "Asignación de micrófonos", group: "Planning Center", w: 4, h: 5, component: MicAssignmentWidget },
@@ -4464,7 +4464,7 @@ export const WIDGETS: WidgetDef[] = [
   // Audio
   { type: "audio_meter", label: "SPL + RTA", group: "Audio", w: 5, h: 5, component: AudioMeterWidget },
   { type: "listen", label: "Escuchar audio en otras salas", group: "Audio", w: 3, h: 3, component: ListenWidget },
-  { type: "avantis", label: "Consola de audio (Avantis)", group: "Audio", w: 6, h: 4, component: AvantisWidget },
+  { type: "avantis", label: "Consola de sonido (Avantis)", group: "Audio", w: 6, h: 4, component: AvantisWidget },
   { type: "key_change", label: "Tonalidad de la canción → Waves", group: "Audio", w: 6, h: 2, component: KeyChangeWidget },
   { type: "automix", label: "Automix", group: "Audio", w: 4, h: 6, component: AutomixWidget },
   { type: "recorder", label: "Grabadora multipista", group: "Audio", w: 4, h: 4, component: RecorderWidget },
@@ -4483,7 +4483,7 @@ export const WIDGETS: WidgetDef[] = [
   { type: "crew_qr", label: "QR para unirse al equipo", group: "General", w: 3, h: 3, component: CrewQrWidget },
   // General
   { type: "clock", label: "Reloj", group: "General", w: 4, h: 2, component: ClockWidget },
-  { type: "checklist", label: "Checklist", group: "General", w: 4, h: 5, component: ChecklistWidget },
+  { type: "checklist", label: "Lista de tareas", group: "General", w: 4, h: 5, component: ChecklistWidget },
 ];
 
 export const WIDGET_MAP: Record<string, WidgetDef> = Object.fromEntries(

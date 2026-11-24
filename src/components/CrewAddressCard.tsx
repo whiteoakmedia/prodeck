@@ -1,17 +1,17 @@
 import { useEffect, useState } from "react";
 import { crewCloudRename, crewCloudRetry, crewCloudStatus, on, type CrewCloudStatus, type Settings } from "../lib/tauri";
-import { nameProblem } from "../../local-edge/src/names";
+import { localNameProblem } from "../lib/localHttps";
 
 // Settings, Crew & screens: the crew address (<name>-crew.prodeck.live,
 // src-tauri/src/crewcloud.rs). On for every booth unless switched off here.
 // The switch is part of the page's form (Save applies it), like Comms.
 
 function ago(ms: number): string {
-  if (!ms) return "not yet";
+  if (!ms) return "todavía no";
   const s = Math.max(0, Math.round((Date.now() - ms) / 1000));
-  if (s < 90) return "just now";
+  if (s < 90) return "hace un momento";
   const m = Math.round(s / 60);
-  if (m < 90) return `${m} minutes ago`;
+  if (m < 90) return `hace ${m} minutos`;
   return new Date(ms).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" });
 }
 
@@ -49,36 +49,36 @@ export function CrewAddressCard({ form, set }: { form: Settings; set: (on: boole
   const url = st?.url || form.crew_url || "";
   const waiting = enabled && st?.phase === "waiting";
   const chip = !enabled
-    ? { cls: "", text: "off" }
+    ? { cls: "", text: "desactivado" }
     : waiting
-      ? { cls: "", text: "not open yet" }
+      ? { cls: "", text: "todavía no disponible" }
       : st?.linked
-      ? { cls: "online", text: "linked" }
+      ? { cls: "online", text: "conectado" }
       : st?.phase === "error"
-        ? { cls: "warn", text: "trouble" }
-        : { cls: "", text: "starting" };
-  const problem = rename !== null ? nameProblem(rename) : "";
+        ? { cls: "warn", text: "problema" }
+        : { cls: "", text: "iniciando" };
+  const problem = rename !== null ? localNameProblem(rename) : "";
 
   return (
     <section className="card">
       <div className="card-head">
-        <h3 id="set-crewaddr">Crew address</h3>
+        <h3 id="set-crewaddr">Dirección del equipo</h3>
         <span className={`chip ${chip.cls}`}>{chip.text}</span>
       </div>
       <label className="field check">
         <input type="checkbox" checked={enabled} onChange={(e) => set(e.target.checked)} />
-        <span>Let the crew reach ProDeck from anywhere, and see the week while this computer is off</span>
+        <span>Permitir que el equipo acceda a ProDeck desde cualquier lugar y vea la semana con esta computadora apagada</span>
       </label>
       <p className="muted small">
-        Phones open your crew address from home or on cellular and get the live booth while ProDeck is open. With this
-        computer off, they still see the last plan, checklists and team chat it sent, and anything they tick or send
-        waits for the booth. Nothing to set up: no port forwarding, no domain. Comms and camera feeds stay on the church
-        Wi-Fi. Press Save to apply.
+        El equipo puede abrir esta dirección desde su casa o con datos móviles y acceder a Control en vivo mientras ProDeck está abierto.
+        Con la computadora apagada, puede ver el último plan, las listas de tareas y el chat enviados; los cambios y mensajes
+        quedan pendientes hasta que Control vuelva a conectarse. No hace falta configurar puertos ni un dominio. Las comunicaciones
+        y señales de cámara permanecen en el Wi-Fi de la iglesia. Presioná Guardar para aplicar los cambios.
       </p>
       {waiting && (
         <p className="hint">
-          White Oak Media hasn't opened crew addresses yet. Until it does, this computer sends nothing for it and
-          claims no name; it checks once an hour.
+          White Oak Media todavía no habilitó las direcciones del equipo. Hasta entonces, esta computadora no envía información
+          ni reserva un nombre; comprueba la disponibilidad una vez por hora.
         </p>
       )}
       {enabled && !waiting && (
@@ -88,25 +88,25 @@ export function CrewAddressCard({ form, set }: { form: Settings; set: (on: boole
               <code className="kiosk-url">{url}</code>
             </p>
           ) : (
-            <p className="muted small">Setting up your address. Phones get it once it can be looked up everywhere, usually within a few minutes.</p>
+            <p className="muted small">Preparando la dirección. Los celulares podrán usarla cuando esté disponible, normalmente en unos minutos.</p>
           )}
           <p className="muted small">
-            {st?.linked ? "Linked: phones away from church reach the live booth." : "Not linked right now."} Last copy
-            sent {ago(st?.last_sync_ms ?? 0)}. Crew links and the poster keep using this computer's own address; a phone
-            moves to the crew address by itself when it can't reach the booth.
+            {st?.linked ? "Conectado: los celulares fuera de la iglesia acceden a Control en vivo." : "Sin conexión por ahora."} Última copia
+            enviada {ago(st?.last_sync_ms ?? 0)}. Los enlaces del equipo y el afiche siguen usando la dirección de esta computadora;
+            el celular cambia automáticamente a la dirección del equipo cuando no puede acceder a Control.
           </p>
           {st?.error && (
             <div className="hint">
               <p style={{ margin: 0 }}>{st.error}</p>
               <button className="btn small" disabled={busy} style={{ marginTop: 6 }} onClick={() => void run(crewCloudRetry)}>
-                {busy ? "Trying" : "Try again"}
+                {busy ? "Reintentando" : "Reintentar"}
               </button>
             </div>
           )}
           {!form.local_name &&
             (rename === null ? (
               <button className="btn ghost small" disabled={busy} onClick={() => setRename(st?.name || form.crew_name || "")}>
-                Change the name
+                Cambiar el nombre
               </button>
             ) : (
               <div style={{ marginTop: 6 }}>
@@ -124,27 +124,27 @@ export function CrewAddressCard({ form, set }: { form: Settings; set: (on: boole
                 {problem && <p className="small local-name-bad">{problem}</p>}
                 <div className="kiosk-actions">
                   <button className="btn small primary" disabled={busy || !!problem} onClick={() => void run(() => crewCloudRename(rename))}>
-                    {busy ? "Saving" : "Use this name"}
+                    {busy ? "Guardando" : "Usar este nombre"}
                   </button>
                   <button className="btn small ghost" disabled={busy} onClick={() => setRename(null)}>
-                    Cancel
+                    Cancelar
                   </button>
                 </div>
-                <p className="muted small">Phones learn the new address the next time they reach the booth.</p>
+                <p className="muted small">Los celulares recibirán la nueva dirección la próxima vez que accedan a Control.</p>
               </div>
             ))}
           {form.local_name && (
-            <p className="muted small">Uses the same name as your secure local address.</p>
+            <p className="muted small">Usa el mismo nombre que la dirección local segura.</p>
           )}
           <details className="small muted" style={{ marginTop: 8 }}>
-            <summary>What leaves the building</summary>
+            <summary>Qué información sale del edificio</summary>
             <p>
-              A copy of this week's plan as ProDeck shows it (songs, keys, leaders, times, who's on and their positions,
-              call times and position guides), your checklists, crew names and roles, and team chat.
-              It's kept by White Oak Media on Cloudflare for your crew to read. Passwords never leave as they are: only a
-              scrambled form that can check one but not reveal it. Planning Center sign in details stay on this computer.
-              While linked, what phones ask the booth passes through on its way, and isn't kept. Turn this off and the
-              copy is deleted.
+              Una copia del plan de esta semana tal como aparece en ProDeck (canciones, tonalidades, líderes, horarios, integrantes,
+              puestos, horarios de convocatoria y guías), las listas de tareas, los nombres y roles del equipo y el chat.
+              White Oak Media guarda esta información en Cloudflare para que el equipo pueda consultarla. Las contraseñas no salen
+              en su forma original: solo se envía una representación que permite verificarlas sin revelarlas. Los datos de acceso
+              a Planning Center permanecen en esta computadora. Mientras está conectado, las solicitudes de los celulares a Control
+              pasan por el servicio sin guardarse. Al desactivar esta opción, se elimina la copia.
             </p>
           </details>
         </>

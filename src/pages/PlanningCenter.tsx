@@ -66,14 +66,14 @@ export function PlanningCenter() {
             Clearing the token is what gets them there. */}
         <button
           className="btn ghost small"
-          title="Forget the saved Planning Center credentials and connect again"
+          title="Olvidar las credenciales guardadas de Planning Center y conectar de nuevo"
           onClick={async () => {
-            if (await askConfirm("Disconnect Planning Center? You can sign in again straight away — plans and mic assignments are kept.")) {
+            if (await askConfirm("¿Desconectar Planning Center? Podés ingresar de nuevo de inmediato. Se conservan los planes y las asignaciones de micrófonos.")) {
               await pco.saveCredentials("", "");
             }
           }}
         >
-          Disconnect
+          Desconectar
         </button>
         <div className="pco-controls">
           <select
@@ -81,7 +81,7 @@ export function PlanningCenter() {
             value={pco.selectedServiceTypeId ?? ""}
             onChange={(e) => pco.selectServiceType(e.target.value)}
           >
-            <option value="">Service type…</option>
+            <option value="">Tipo de evento…</option>
             {pco.serviceTypes.map((st) => (
               <option key={st.id} value={st.id}>
                 {st.name}
@@ -103,7 +103,7 @@ export function PlanningCenter() {
           </select>
           {pco.syncing ? (
             <button className="btn small danger" onClick={() => pco.stopSync()}>
-              <span className="rec-dot" /> Stop Sync
+              <span className="rec-dot" /> Detener sincronización
             </button>
           ) : (
             <button
@@ -111,18 +111,18 @@ export function PlanningCenter() {
               onClick={() => pco.startSync()}
               disabled={!pco.selectedPlanId}
             >
-              Sync
+              Sincronizar
             </button>
           )}
           <button className="btn small ghost" onClick={() => pco.refresh()}>
-            <Icon name="search" size={14} /> Refresh
+            <Icon name="search" size={14} /> Actualizar
           </button>
           <button
             className="btn small"
-            title="Guided setup: service, ProPresenter setlist, mics, desk names"
+            title="Configuración guiada: evento, Setlist de ProPresenter, micrófonos y nombres de consola"
             onClick={() => setWizard(true)}
           >
-            ✨ Service setup
+            ✨ Configurar evento
           </button>
         </div>
       </header>
@@ -134,14 +134,14 @@ export function PlanningCenter() {
       {!pco.selectedPlanId ? (
         <div className="dash-empty">
           <Icon name="slides" size={32} />
-          <h2>Select a plan</h2>
-          <p className="muted">Choose a service type and plan to load the rundown.</p>
+          <h2>Seleccioná un plan</h2>
+          <p className="muted">Elegí un tipo de evento y un plan para cargar el Crono.</p>
         </div>
       ) : (
         <div className="pco-layout">
           <section className="card pco-flow">
             <div className="card-head">
-              <h3>Show Flow</h3>
+              <h3>Orden del evento</h3>
               <span className="count">{fmtLen(total)} total</span>
               {pco.liveItemId && (
                 <span className="live-badge">
@@ -162,10 +162,10 @@ export function PlanningCenter() {
                     disabled={pco.liveBusy}
                     onClick={() => pco.liveAction("toggle_control")}
                   >
-                    Take control of PCO Live
+                    Tomar control de PCO Live
                   </button>
                   <span className="hint pco-transport-hint">
-                    Next / Previous only work while this booth holds control.
+                    Próximo y anterior funcionan solo mientras este Control tenga el mando.
                   </span>
                 </>
               ) : (
@@ -173,49 +173,49 @@ export function PlanningCenter() {
                   <button
                     className="btn"
                     disabled={pco.liveBusy}
-                    title="Previous item"
+                    title="Elemento anterior"
                     onClick={() => pco.liveAction("go_to_previous_item")}
                   >
-                    <Icon name="prev" size={14} /> Prev
+                    <Icon name="prev" size={14} /> Anterior
                   </button>
                   <button
                     className="btn primary pco-next"
                     disabled={pco.liveBusy}
-                    title="Advance PCO Live to the next item"
+                    title="Avanzar PCO Live al próximo elemento"
                     onClick={() => pco.liveAction("go_to_next_item")}
                   >
-                    Next <Icon name="next" size={16} />
+                    Próximo <Icon name="next" size={16} />
                   </button>
                 </>
               )}
               <div className="pco-transport-toggles">
                 <button
                   className={`btn small ${pco.autoAdvance ? "primary" : "ghost"}`}
-                  title="When the live item changes, its linked ProPresenter presentation fires automatically (slide actions included)"
+                  title="Cuando cambia el elemento en curso, se activa automáticamente la presentación vinculada de ProPresenter, incluidas las acciones de diapositiva"
                   onClick={() => pco.setAutoAdvance(!pco.autoAdvance)}
                 >
-                  {pco.autoAdvance ? "✓ " : ""}Auto-fire slides
+                  {pco.autoAdvance ? "✓ " : ""}Activar diapositivas automáticamente
                 </button>
                 <button
                   className={`btn small ${pco.followPro ? "primary" : "ghost"}`}
-                  title="When ProPresenter changes presentations, PCO Live advances to the matching item by name"
+                  title="Cuando cambia la presentación de ProPresenter, PCO Live avanza al elemento con el mismo nombre"
                   onClick={() => pco.setFollowPro(!pco.followPro)}
                 >
-                  {pco.followPro ? "✓ " : ""}Follow ProPresenter
+                  {pco.followPro ? "✓ " : ""}Seguir ProPresenter
                 </button>
                 <button
                   className={`btn small ${pco.autoScene ? "primary" : "ghost"}`}
-                  title="When a song goes live (ProPresenter first, else PCO LIVE), recall its leader's Avantis scene (set up under Setup → Leader scenes). Independent of Automix."
+                  title="Cuando comienza una canción, se carga la escena Avantis de su líder. Se usa ProPresenter primero o PCO Live si no está disponible. Se configura en Configuración, en escenas de líderes, y funciona independientemente de Automix."
                   onClick={() => pco.setAutoScene(!pco.autoScene)}
                 >
-                  {pco.autoScene ? "✓ " : ""}Desk scenes
+                  {pco.autoScene ? "✓ " : ""}Escenas de consola
                 </button>
               </div>
             </div>
             <AutoSceneLine />
 
             {pco.items.length === 0 ? (
-              <p className="muted">No items.</p>
+              <p className="muted">No hay elementos.</p>
             ) : (
               <div className="showflow">
                 {pco.items.map((it) => {
@@ -243,19 +243,19 @@ export function PlanningCenter() {
                           <span className="sf-linked">
                             <button
                               className="sf-link-name"
-                              title="Trigger this presentation now (fires its slide actions too)"
+                              title="Activar esta presentación ahora, incluidas las acciones de sus diapositivas"
                               onClick={() => pco.triggerPresentation(linked.uuid, true)}
                             >
                               ▶ {linked.name}
                             </button>
                             {linked.auto && (
-                              <span className="sf-auto" title="Matched to this item by name">
+                              <span className="sf-auto" title="Vinculado a este elemento por nombre">
                                 auto
                               </span>
                             )}
                             <button
                               className="sf-unlink"
-                              title="Pick a different presentation"
+                              title="Elegir otra presentación"
                               onClick={openPicker}
                             >
                               ⋯
@@ -264,8 +264,8 @@ export function PlanningCenter() {
                               className="sf-unlink"
                               title={
                                 linked.auto
-                                  ? "Stop matching this item by name"
-                                  : "Remove this slide link"
+                                  ? "Dejar de vincular este elemento por nombre"
+                                  : "Quitar este vínculo de diapositiva"
                               }
                               onClick={() =>
                                 linked.auto ? pco.suppressLink(it.title) : pco.setLink(it.title, null)
@@ -276,7 +276,7 @@ export function PlanningCenter() {
                           </span>
                         ) : (
                           <button className="sf-link" onClick={openPicker}>
-                            Link slide…
+                            Vincular diapositiva…
                           </button>
                         )}
                         {live && <span className="sf-live">LIVE</span>}
@@ -287,14 +287,14 @@ export function PlanningCenter() {
                           <input
                             className="input"
                             autoFocus
-                            placeholder="Search ProPresenter presentations…"
+                            placeholder="Buscar presentaciones de ProPresenter…"
                             value={linkQuery}
                             onChange={(e) => setLinkQuery(e.target.value)}
                           />
                           <div className="sf-picker-results">
                             {pco.library.length === 0 ? (
                               <span className="muted small">
-                                Connect ProPresenter to load presentations.
+                                Conectá ProPresenter para cargar las presentaciones.
                               </span>
                             ) : (
                               pco.library
@@ -331,19 +331,19 @@ export function PlanningCenter() {
                 className={`pco-side-tab ${tab === "people" ? "active" : ""}`}
                 onClick={() => setTab("people")}
               >
-                People
+                Equipo
               </button>
               <button
                 className={`pco-side-tab ${tab === "mics" ? "active" : ""}`}
                 onClick={() => setTab("mics")}
               >
-                Mics
+                Micrófonos
               </button>
               <button
                 className={`pco-side-tab ${tab === "setup" ? "active" : ""}`}
                 onClick={() => setTab("setup")}
               >
-                Setup
+                Configuración
               </button>
             </div>
             {tab === "people" && <PeoplePanel />}
@@ -423,7 +423,7 @@ function PeoplePanel() {
     );
   }
 
-  if (pco.team.length === 0) return <p className="muted">No one scheduled.</p>;
+  if (pco.team.length === 0) return <p className="muted">No hay personas programadas.</p>;
 
   const now = Date.now();
   return (
@@ -436,8 +436,8 @@ function PeoplePanel() {
             <div className="team-name">
               <span>{teamName}</span>
               <span className="team-counts">
-                {inCount > 0 && <span className="tc-ok">{inCount} in</span>}
-                {outCount > 0 && <span className="tc-no">{outCount} out</span>}
+                {inCount > 0 && <span className="tc-ok">{inCount} confirmados</span>}
+                {outCount > 0 && <span className="tc-no">{outCount} rechazados</span>}
               </span>
             </div>
             {members.map((m) => {
@@ -457,11 +457,11 @@ function PeoplePanel() {
                         className={`t-arrival ${arrivedAt ? "here" : late ? "late" : ""}`}
                       >
                         {arrivedAt
-                          ? `here ${hhmm(arrivedAt)} ✓`
+                          ? `llegó ${hhmm(arrivedAt)} ✓`
                           : expected != null
                             ? late
-                              ? `expected ${hhmm(expected)} — not here`
-                              : `expected ${hhmm(expected)}`
+                              ? `esperado ${hhmm(expected)}. Aún no llegó`
+                              : `esperado ${hhmm(expected)}`
                             : ""}
                       </span>
                     )}
@@ -474,8 +474,8 @@ function PeoplePanel() {
         );
       })}
       <p className="hint">
-        "Here" means they checked in on their phone. Call times are set under{" "}
-        <strong>Setup</strong>.
+        "Llegó" indica que registró su asistencia desde el celular. Los horarios se configuran en{" "}
+        <strong>Configuración</strong>.
       </p>
     </>
   );
@@ -530,14 +530,14 @@ function MicsPanel() {
       {conflicts.length > 0 && (
         <div className="banner">
           {conflicts
-            .map(([mic, n]) => `Mic ${mic} is assigned to ${n} people`)
+            .map(([mic, n]) => `El micrófono ${mic} está asignado a ${n} personas`)
             .join(" · ")}
         </div>
       )}
       {roster.length === 0 ? (
         <p className="muted">
-          No one is on a mic yet. Open <strong>Set up mic positions</strong>{" "}
-          below and check the positions that wear one.
+          Todavía no hay personas asignadas a un micrófono. Abrí <strong>Configurar posiciones de micrófonos</strong>{" "}
+          y seleccioná las posiciones que usan uno.
         </p>
       ) : (
         <div className="mic-grid">
@@ -562,24 +562,24 @@ function MicsPanel() {
         </div>
       )}
       {roster.length > 0 && (
-        <p className="hint">Dimmed number = filled in from the position's default.</p>
+        <p className="hint">El número atenuado proviene del valor predeterminado de la posición.</p>
       )}
 
       <button
         className="btn small ghost pco-mic-setup"
         onClick={() => setEditPositions((v) => !v)}
       >
-        {editPositions ? "▾" : "▸"} Set up mic positions…
+        {editPositions ? "▾" : "▸"} Configurar posiciones de micrófonos…
       </button>
       {editPositions && (
         <>
           <p className="muted small">
-            Check a position to put it on mics; give it a default mic number and
-            every week's assignment starts there (e.g.{" "}
+            Seleccioná una posición que use micrófono y asignale un número predeterminado.
+            Ese número se usará como punto de partida cada semana (por ejemplo,{" "}
             <strong>Worship Leader → 6</strong>).
           </p>
           <label className="mic-count-field">
-            Number of mics
+            Cantidad de micrófonos
             <input
               className="input"
               type="number"
@@ -593,7 +593,7 @@ function MicsPanel() {
             />
           </label>
           {positions.length === 0 ? (
-            <p className="muted">Positions appear here once a plan is loaded.</p>
+            <p className="muted">Las posiciones aparecen aquí cuando se carga un plan.</p>
           ) : (
             <div className="mic-list">
               {positions.map((pos) => {
@@ -658,7 +658,7 @@ function MicDeskMapEditor({ desk }: { desk: AvantisSnapshot }) {
     const summary = plan.map((p) => `Mic ${p.mic} → ${p.label}`).join(" · ");
     if (
       !(await askConfirm(
-        `Rename ${total} channels on the Avantis for this week?\n${summary}`,
+        `¿Cambiar los nombres de ${total} canales en Avantis para esta semana?\n${summary}`,
       ))
     )
       return;
@@ -678,32 +678,32 @@ function MicDeskMapEditor({ desk }: { desk: AvantisSnapshot }) {
   return (
     <>
       <div className="card-head" style={{ marginTop: 14, marginBottom: 0 }}>
-        <h3>Desk channels</h3>
+        <h3>Canales de consola</h3>
         <button
           className="btn small primary"
           disabled={pushing || weeklyNames().length === 0 || !deskControlSupported(desk.model)}
-          title={deskControlSupported(desk.model) ? "Rename each mic's desk channels (primary + mirror) to this week's vocalist" : "ProDeck can only watch a Yamaha desk for now, so it can't rename channels on it."}
+          title={deskControlSupported(desk.model) ? "Cambiar los nombres de los canales de consola de cada micrófono (principal y espejo) por el vocalista de esta semana" : "Por ahora ProDeck solo puede monitorear una consola Yamaha y no puede cambiar los nombres de sus canales."}
           onClick={pushNames}
         >
-          {pushing ? "Renaming…" : "Push names to desk"}
+          {pushing ? "Cambiando nombres…" : "Enviar nombres a la consola"}
         </button>
       </div>
       <p className="muted small">
-        Which Avantis channels each mic lands on — the primary drives the
-        muted-mic alerts; the mirror is the second, differently-processed
-        channel. <strong>Push names</strong> stamps this week's vocalists onto
-        both.
+        Elegí los canales Avantis de cada micrófono. El principal activa las alertas
+        de micrófono muteado; el espejo es un segundo canal procesado de otra
+        manera. <strong>Enviar nombres a la consola</strong> aplica los nombres
+        de los vocalistas de esta semana a ambos.
       </p>
       {micsInUse.map((mic) => (
         <div key={mic} className="field-row" style={{ alignItems: "center", padding: "3px 0" }}>
           <span style={{ width: 52, fontWeight: 600 }}>Mic {mic}</span>
           <select
             className="input"
-            title="Primary channel (alerts + rename)"
+            title="Canal principal (alertas y cambio de nombre)"
             value={pco.micDeskMap[mic] ?? ""}
             onChange={(e) => pco.setMicDeskChannel(mic, e.target.value || null)}
           >
-            <option value="">primary…</option>
+            <option value="">principal…</option>
             {deskInputs.map((d) => (
               <option key={d.id} value={d.id}>
                 In {d.idx}
@@ -713,11 +713,11 @@ function MicDeskMapEditor({ desk }: { desk: AvantisSnapshot }) {
           </select>
           <select
             className="input"
-            title="Mirror channel (rename only)"
+            title="Canal espejo (solo cambio de nombre)"
             value={pco.micDeskMap2[mic] ?? ""}
             onChange={(e) => pco.setMicDeskChannel2(mic, e.target.value || null)}
           >
-            <option value="">mirror…</option>
+            <option value="">espejo…</option>
             {deskInputs.map((d) => (
               <option key={d.id} value={d.id}>
                 In {d.idx}
@@ -762,14 +762,14 @@ function SetupPanel() {
       <ProSetlistSwap />
 
       <div className="card-head" style={{ marginBottom: 0 }}>
-        <h3>Call times</h3>
+        <h3>Horarios de llegada</h3>
         {rows.length > 0 && <span className="count">{rows.length}</span>}
       </div>
       <p className="muted small">
-        When each position should arrive, shown on their phones and on the
-        People tab. Positions without a time here fall back to their Planning
-        Center schedule, then the service start. "Camera" covers "Camera 1" and
-        "Camera 2".
+        La hora de llegada de cada posición se muestra en los celulares y en la
+        pestaña Equipo. Si no se define una hora, se usa primero el horario de
+        Planning Center y, si no existe, el inicio del evento. "Camera" incluye
+        "Camera 1" y "Camera 2".
       </p>
       {rows.map(([r, t]) => (
         <div key={r} className="field-row" style={{ alignItems: "center", padding: "4px 0" }}>
@@ -783,7 +783,7 @@ function SetupPanel() {
           />
           <button
             className="btn small ghost"
-            title="Remove this call time"
+            title="Quitar este horario de llegada"
             onClick={() => pco.setCheckinTime(r, null)}
           >
             ×
@@ -794,7 +794,7 @@ function SetupPanel() {
         <input
           className="input"
           list="checkin-positions"
-          placeholder="Position (e.g. Camera)"
+          placeholder="Posición (por ejemplo, Cámara)"
           value={role}
           onChange={(e) => setRole(e.target.value)}
         />
@@ -819,7 +819,7 @@ function SetupPanel() {
             setTime("");
           }}
         >
-          Add
+          Agregar
         </button>
       </div>
 
@@ -827,19 +827,18 @@ function SetupPanel() {
       <FileFiltersEditor />
 
       <div className="card-head" style={{ marginTop: 18, marginBottom: 0 }}>
-        <h3>Lead scenes by mic</h3>
+        <h3>Escenas de voz principal por micrófono</h3>
         {Object.keys(pco.micSceneMap).length > 0 && (
           <span className="count">{Object.keys(pco.micSceneMap).length}</span>
         )}
       </div>
       <p className="muted small">
-        Which Avantis scene puts each MIC in the lead-vocal bus (your "Lead:
-        Mic N" scenes). With <strong>Desk scenes</strong> on (transport bar),
-        the booth resolves each song's leader to this week's mic assignment
-        and recalls that mic's scene automatically — set this up once; the
-        weekly vocalist rotation rides on the mic assignments. Save each
-        softkey's routing as a scene with recall-safes so it only touches the
-        vocal bus.
+        Elegí qué escena de Avantis coloca cada micrófono en el bus de voz principal
+        (tus escenas "Lead: Mic N"). Con <strong>Escenas de consola</strong> activado,
+        Control identifica el micrófono asignado al líder de cada canción y carga
+        su escena automáticamente. Configuralo una vez: la rotación semanal sigue
+        las asignaciones de micrófonos. Guardá el ruteo de cada softkey como escena
+        con recall-safes para que solo afecte al bus de voz.
       </p>
       {Object.entries(pco.micSceneMap)
         .sort((a, b) => parseInt(a[0]) - parseInt(b[0]))
@@ -857,7 +856,7 @@ function SetupPanel() {
             />
             <button
               className="btn small ghost"
-              title="Remove this mic's lead scene"
+              title="Quitar la escena de voz principal de este micrófono"
               onClick={() => pco.setMicScene(mic, null)}
             >
               ×
@@ -870,7 +869,7 @@ function SetupPanel() {
           list="lead-mic-nums"
           type="number"
           min={1}
-          placeholder="Mic #"
+          placeholder="N.º de micrófono"
           style={{ width: 100 }}
           value={micNum}
           onChange={(e) => setMicNum(e.target.value)}
@@ -885,7 +884,7 @@ function SetupPanel() {
           type="number"
           min={1}
           max={500}
-          placeholder="Scene"
+          placeholder="Escena"
           style={{ width: 100 }}
           value={scene}
           onChange={(e) => setScene(e.target.value)}
@@ -899,7 +898,7 @@ function SetupPanel() {
             setScene("");
           }}
         >
-          Add
+          Agregar
         </button>
       </div>
     </>
@@ -969,14 +968,14 @@ function PositionGuidesEditor() {
   return (
     <>
       <div className="card-head" style={{ marginTop: 18, marginBottom: 0 }}>
-        <h3>Position guides</h3>
+        <h3>Guías de posiciones</h3>
         {Object.keys(pco.positionGuides).length > 0 && (
           <span className="count">{Object.keys(pco.positionGuides).length}</span>
         )}
       </div>
       <p className="muted small">
-        Job description &amp; expectations per position, shown on the phone of
-        whoever is scheduled to it each week. "Camera" covers "Camera 1" and
+        Descripción y responsabilidades de cada posición, visibles en el celular
+        de la persona programada cada semana. "Camera" incluye "Camera 1" y
         "Camera 2".
       </p>
       {fileErr && <p className="err small">{fileErr}</p>}
@@ -987,7 +986,7 @@ function PositionGuidesEditor() {
           <div key={pos}>
             <div className="field-row" style={{ alignItems: "center", padding: "3px 0" }}>
               <span style={{ flex: 1, fontWeight: 600 }}>{pos}</span>
-              <span className="muted small">{has ? `${pco.positionGuides[pos].length} chars` : "no guide"}</span>
+              <span className="muted small">{has ? `${pco.positionGuides[pos].length} caracteres` : "sin guía"}</span>
               <button
                 className="btn small ghost"
                 onClick={() => {
@@ -998,7 +997,7 @@ function PositionGuidesEditor() {
                   }
                 }}
               >
-                {open ? "Close" : has ? "Edit" : "Write…"}
+                {open ? "Cerrar" : has ? "Editar" : "Escribir…"}
               </button>
             </div>
             {/* Files sit with the position, not inside the guide editor: they
@@ -1015,7 +1014,7 @@ function PositionGuidesEditor() {
                     <span className="muted small">{prettySize(f.size)}</span>
                     <button
                       className="btn small ghost"
-                      title="Remove this file"
+                      title="Quitar este archivo"
                       onClick={() => {
                         posfileRemove(f.id)
                           .then(() => posfileList().then(setFiles))
@@ -1027,7 +1026,7 @@ function PositionGuidesEditor() {
                   </span>
                 ))}
               <label className="btn small ghost pos-file-add">
-                {busyPos === pos ? "Uploading…" : "+ Attach file"}
+                {busyPos === pos ? "Subiendo…" : "+ Adjuntar archivo"}
                 <input
                   type="file"
                   hidden
@@ -1039,26 +1038,26 @@ function PositionGuidesEditor() {
             {open && (
               <>
                 <p className="muted small">
-                  Formatting: <code>#</code> heading · <code>-</code> bullet ·{" "}
-                  <code>1.</code> numbered · <code>**bold**</code> · <code>*italic*</code> ·{" "}
-                  <code>---</code> divider. Plain text works fine on its own.
+                  Formato: <code>#</code> título · <code>-</code> viñeta · {" "}
+                  <code>1.</code> lista numerada · <code>**negrita**</code> · <code>*cursiva*</code> · {" "}
+                  <code>---</code> separador. También podés escribir texto sin formato.
                 </p>
                 <div className="guide-split">
                   <textarea
                     className="input"
                     rows={14}
-                    placeholder={`What does ${pos} do? Arrival expectations, responsibilities, who to ask for help…`}
+                    placeholder={`¿Qué hace ${pos}? Hora de llegada, responsabilidades y a quién pedir ayuda…`}
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                   />
                   {/* Live preview, styled exactly like the phone renders it —
                       the whole point of formatting is seeing what they'll see. */}
                   <div className="guide-preview">
-                    <span className="mono muted small">Preview</span>
+                    <span className="mono muted small">Vista previa</span>
                     {draft.trim() ? (
                       <Markdown text={draft} />
                     ) : (
-                      <p className="muted small">Nothing yet.</p>
+                      <p className="muted small">Todavía no hay contenido.</p>
                     )}
                   </div>
                 </div>
@@ -1070,7 +1069,7 @@ function PositionGuidesEditor() {
                       setEditing(null);
                     }}
                   >
-                    Save guide
+                    Guardar guía
                   </button>
                   {has && (
                     <button
@@ -1080,7 +1079,7 @@ function PositionGuidesEditor() {
                         setEditing(null);
                       }}
                     >
-                      Delete
+                      Eliminar
                     </button>
                   )}
                 </div>
@@ -1092,7 +1091,7 @@ function PositionGuidesEditor() {
       <div className="field-row" style={{ marginTop: 8 }}>
         <input
           className="input"
-          placeholder="Add a position not on this week's plan…"
+          placeholder="Agregar una posición que no figure en el plan de esta semana…"
           value={newPos}
           onChange={(e) => setNewPos(e.target.value)}
         />
@@ -1106,7 +1105,7 @@ function PositionGuidesEditor() {
             setNewPos("");
           }}
         >
-          Add
+          Agregar
         </button>
       </div>
     </>
@@ -1131,16 +1130,17 @@ function FileFiltersEditor() {
   return (
     <>
       <div className="card-head" style={{ marginTop: 18, marginBottom: 0 }}>
-        <h3>Files by position</h3>
+        <h3>Archivos por posición</h3>
         {Object.keys(pco.fileFilters).length > 0 && (
           <span className="count">{Object.keys(pco.fileFilters).length}</span>
         )}
       </div>
       <p className="muted small">
-        Which song files show on each band position's phone (matched against
-        the filename — e.g. Bass: <code>chord, bass, master</code>). Built-in
-        defaults cover Vocals, Bass, Keys, Drums, and Guitars; add a row to
-        override one. Everyone can still expand "all files" per song.
+        Elegí qué archivos de canciones aparecen en el celular de cada posición de la
+        banda, según su nombre de archivo (por ejemplo, Bass: <code>chord, bass, master</code>).
+        Hay valores predeterminados para Vocals, Bass, Keys, Drums y Guitars;
+        agregá una fila para reemplazar uno. Cada persona puede seguir abriendo
+        todos los archivos de cada canción.
       </p>
       {Object.entries(pco.fileFilters)
         .sort((a, b) => a[0].localeCompare(b[0]))
@@ -1162,7 +1162,7 @@ function FileFiltersEditor() {
             />
             <button
               className="btn small ghost"
-              title="Remove override (fall back to the built-in default)"
+              title="Quitar esta excepción y volver al valor predeterminado"
               onClick={() => pco.setFileFilter(p, null)}
             >
               ×
@@ -1173,7 +1173,7 @@ function FileFiltersEditor() {
         <input
           className="input"
           list="filefilter-positions"
-          placeholder="Position (e.g. Bass)"
+          placeholder="Posición (por ejemplo, Bass)"
           style={{ maxWidth: 180 }}
           value={pos}
           onChange={(e) => setPos(e.target.value)}
@@ -1185,7 +1185,7 @@ function FileFiltersEditor() {
         </datalist>
         <input
           className="input"
-          placeholder="keywords, comma separated (chord, bass, master)"
+          placeholder="Palabras clave separadas por comas (chord, bass, master)"
           value={words}
           onChange={(e) => setWords(e.target.value)}
         />
@@ -1204,7 +1204,7 @@ function FileFiltersEditor() {
             setWords("");
           }}
         >
-          Add
+          Agregar
         </button>
       </div>
     </>
@@ -1217,7 +1217,7 @@ function AutoSceneLine() {
   if (!st) return null;
   return (
     <p className={`small ${st.ok ? "muted" : ""}`} style={{ margin: "4px 0 8px", color: st.ok ? undefined : "var(--warn)" }}>
-      Desk scene · {st.song}: {st.text} · {new Date(st.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+      Escena de consola · {st.song}: {st.text} · {new Date(st.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
     </p>
   );
 }

@@ -1,0 +1,185 @@
+{
+  "alcance": "Etiquetas y descripciones de secciones de Configuración y permisos. IDs y rutas técnicas excluidos.",
+  "resumen": {
+    "pendiente_ingles": 21,
+    "compatible_espanol": 1
+  },
+  "entradas": [
+    {
+      "archivo": "src/lib/settingsSections.ts",
+      "linea": 18,
+      "id": "connections",
+      "campo": "label",
+      "texto": "Connections",
+      "estado": "pendiente_ingles"
+    },
+    {
+      "archivo": "src/lib/settingsSections.ts",
+      "linea": 19,
+      "id": "connections",
+      "campo": "blurb",
+      "texto": "ProPresenter, your sound console, OBS and camera feeds.",
+      "estado": "pendiente_ingles"
+    },
+    {
+      "archivo": "src/lib/settingsSections.ts",
+      "linea": 24,
+      "id": "sound",
+      "campo": "label",
+      "texto": "Sound",
+      "estado": "pendiente_ingles"
+    },
+    {
+      "archivo": "src/lib/settingsSections.ts",
+      "linea": 25,
+      "id": "sound",
+      "campo": "blurb",
+      "texto": "What ProDeck listens to, recording, song keys and walk-in music.",
+      "estado": "pendiente_ingles"
+    },
+    {
+      "archivo": "src/lib/settingsSections.ts",
+      "linea": 30,
+      "id": "automation",
+      "campo": "label",
+      "texto": "Automation",
+      "estado": "pendiente_ingles"
+    },
+    {
+      "archivo": "src/lib/settingsSections.ts",
+      "linea": 31,
+      "id": "automation",
+      "campo": "blurb",
+      "texto": "Things ProDeck can do for you: follow the lyrics, mix the band, ride the speech mics, react to buttons.",
+      "estado": "pendiente_ingles"
+    },
+    {
+      "archivo": "src/lib/settingsSections.ts",
+      "linea": 36,
+      "id": "online",
+      "campo": "label",
+      "texto": "Online",
+      "estado": "pendiente_ingles"
+    },
+    {
+      "archivo": "src/lib/settingsSections.ts",
+      "linea": 37,
+      "id": "online",
+      "campo": "blurb",
+      "texto": "Church Online, live viewer counts and TapLink giving discs.",
+      "estado": "pendiente_ingles"
+    },
+    {
+      "archivo": "src/lib/settingsSections.ts",
+      "linea": 42,
+      "id": "crew",
+      "campo": "label",
+      "texto": "Crew & screens",
+      "estado": "pendiente_ingles"
+    },
+    {
+      "archivo": "src/lib/settingsSections.ts",
+      "linea": 43,
+      "id": "crew",
+      "campo": "blurb",
+      "texto": "Crew accounts, scheduled pages, phones, kiosks, tally and comms.",
+      "estado": "pendiente_ingles"
+    },
+    {
+      "archivo": "src/lib/settingsSections.ts",
+      "linea": 48,
+      "id": "app",
+      "campo": "label",
+      "texto": "App & help",
+      "estado": "pendiente_ingles"
+    },
+    {
+      "archivo": "src/lib/settingsSections.ts",
+      "linea": 49,
+      "id": "app",
+      "campo": "blurb",
+      "texto": "Updates, help, the troubleshooter, backups and how ProDeck looks.",
+      "estado": "pendiente_ingles"
+    },
+    {
+      "archivo": "src/lib/tauri.ts",
+      "linea": 1550,
+      "id": "page",
+      "campo": "label",
+      "texto": "Page",
+      "estado": "pendiente_ingles"
+    },
+    {
+      "archivo": "src/lib/tauri.ts",
+      "linea": 1550,
+      "id": "page",
+      "campo": "blurb",
+      "texto": "Send pages and re-buzz them",
+      "estado": "pendiente_ingles"
+    },
+    {
+      "archivo": "src/lib/tauri.ts",
+      "linea": 1551,
+      "id": "stage",
+      "campo": "label",
+      "texto": "Stage",
+      "estado": "pendiente_ingles"
+    },
+    {
+      "archivo": "src/lib/tauri.ts",
+      "linea": 1551,
+      "id": "stage",
+      "campo": "blurb",
+      "texto": "Put text on the stage displays and confidence screens",
+      "estado": "pendiente_ingles"
+    },
+    {
+      "archivo": "src/lib/tauri.ts",
+      "linea": 1552,
+      "id": "control",
+      "campo": "label",
+      "texto": "Control",
+      "estado": "compatible_espanol"
+    },
+    {
+      "archivo": "src/lib/tauri.ts",
+      "linea": 1552,
+      "id": "control",
+      "campo": "blurb",
+      "texto": "Drive ProPresenter, the console, OBS scenes and Planning Center LIVE",
+      "estado": "pendiente_ingles"
+    },
+    {
+      "archivo": "src/lib/tauri.ts",
+      "linea": 1553,
+      "id": "tap",
+      "campo": "label",
+      "texto": "Tap discs",
+      "estado": "pendiente_ingles"
+    },
+    {
+      "archivo": "src/lib/tauri.ts",
+      "linea": 1553,
+      "id": "tap",
+      "campo": "blurb",
+      "texto": "Override where the lobby NFC discs point",
+      "estado": "pendiente_ingles"
+    },
+    {
+      "archivo": "src/lib/tauri.ts",
+      "linea": 1554,
+      "id": "manage",
+      "campo": "label",
+      "texto": "Manage crew",
+      "estado": "pendiente_ingles"
+    },
+    {
+      "archivo": "src/lib/tauri.ts",
+      "linea": 1554,
+      "id": "manage",
+      "campo": "blurb",
+      "texto": "Approve, edit and remove crew; invites; open joining",
+      "estado": "pendiente_ingles"
+    }
+  ]
+}

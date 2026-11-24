@@ -1,0 +1,258 @@
+{
+  "alcance": "Líneas con texto visible revisadas en actividades Android TV y notas de actualización; no es un inventario exhaustivo de frases ni del producto.",
+  "lineas_pendientes": 36,
+  "lineas": [
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/MainActivity.kt",
+      "linea": 102,
+      "codigo": "text = \"Looking for ProDeck on the network…\"",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/SetupActivity.kt",
+      "linea": 68,
+      "codigo": "root.addView(title(\"Connect this TV to ProDeck\"))",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/SetupActivity.kt",
+      "linea": 69,
+      "codigo": "root.addView(body(\"Looking for ProDeck on this network. Choose it below, or type the address shown in ProDeck under Settings, Browser Access.\"))",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/SetupActivity.kt",
+      "linea": 72,
+      "codigo": "val manual = button(\"Type the address instead\") { showManual() }",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/SetupActivity.kt",
+      "linea": 75,
+      "codigo": "root.addView(button(\"Keep the current dashboard\") { openDashboard() })",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/SetupActivity.kt",
+      "linea": 85,
+      "codigo": "list.addView(body(\"Searching…\").apply { setTextColor(Color.parseColor(\"#6F7E93\")) })",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/SetupActivity.kt",
+      "linea": 139,
+      "codigo": "root.addView(title(\"Type ProDeck's address\"))",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/SetupActivity.kt",
+      "linea": 140,
+      "codigo": "root.addView(body(\"It's in ProDeck on the booth computer, under Settings, Browser Access. For example 172.16.80.12:8088\"))",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/SetupActivity.kt",
+      "linea": 152,
+      "codigo": "root.addView(button(\"Connect\") {",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/SetupActivity.kt",
+      "linea": 166,
+      "codigo": "root.addView(title(\"On the booth computer\"))",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/SetupActivity.kt",
+      "linea": 167,
+      "codigo": "root.addView(body(\"Open ProDeck, go to Settings, TV screens. This code appears there: check it matches, choose what this TV should show, and press Send to TV.\"))",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/SetupActivity.kt",
+      "linea": 176,
+      "codigo": "val status = body(\"Waiting for the booth…\").apply { setTextColor(Color.parseColor(\"#6F7E93\")) }",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/SetupActivity.kt",
+      "linea": 178,
+      "codigo": "root.addView(button(\"Use a different ProDeck\") { showFinder() }.also { it.requestFocus() })",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/SetupActivity.kt",
+      "linea": 184,
+      "codigo": "main.post { if (polling) status.text = \"Can't reach ProDeck at ${base.removePrefix(\"http://\")}. Check Browser Access is on, and that this TV is on the same network.\" }",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/SetupActivity.kt",
+      "linea": 188,
+      "codigo": "main.post { if (polling) status.text = \"That ProDeck is too old for TV screens. Update ProDeck on the booth computer (Settings, Software Update), then try again.\" }",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/SetupActivity.kt",
+      "linea": 192,
+      "codigo": "main.post { if (polling) status.text = \"ProDeck didn't accept this TV (${hello.optString(\"error\")}). Try again in a minute.\" }",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/ScreenChooserActivity.kt",
+      "linea": 50,
+      "codigo": "root.addView(title(\"Choose a screen\"))",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/ScreenChooserActivity.kt",
+      "linea": 51,
+      "codigo": "val status = body(\"Asking ProDeck for its dashboards…\")",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/ScreenChooserActivity.kt",
+      "linea": 64,
+      "codigo": "status.text = \"Can't reach ProDeck right now. Check the booth computer is on, then try again.\"",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/ScreenChooserActivity.kt",
+      "linea": 66,
+      "codigo": "status.text = if (dashes.length() == 0) \"There are no dashboards on the booth yet.\" else \"Showing now is marked with a dot.\"",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/ScreenChooserActivity.kt",
+      "linea": 77,
+      "codigo": "root.addView(button((if (showing == \"tally\") \"●  \" else \"\") + \"Camera tally board\") { open(base, \"/?tally=all&token=${enc(token)}\", safe) })",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/ScreenChooserActivity.kt",
+      "linea": 79,
+      "codigo": "root.addView(button(if (safe) \"Edge margin: on (for TVs that crop the picture)\" else \"Edge margin: off\") {",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/ScreenChooserActivity.kt",
+      "linea": 84,
+      "codigo": "root.addView(button(\"Connect to a different ProDeck\") { repair() })",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/ScreenChooserActivity.kt",
+      "linea": 85,
+      "codigo": "root.addView(button(\"Back to the screen\") { finish() })",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/ScreenChooserActivity.kt",
+      "linea": 96,
+      "codigo": "root.addView(body(\"ProDeck Display version $mine. ${if (latest > 0) \"Up to date.\" else \"\"}\".trim()))",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/ScreenChooserActivity.kt",
+      "linea": 99,
+      "codigo": "val status = body(Checkin.note.ifBlank { \"Version $latest is ready. Updating keeps this TV's pairing and screen. Afterwards, open ProDeck Display again.\" })",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/ScreenChooserActivity.kt",
+      "linea": 100,
+      "codigo": "root.addView(button(\"Update ProDeck Display\") {",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/ScreenChooserActivity.kt",
+      "linea": 101,
+      "codigo": "status.text = \"Downloading the update…\"",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/ScreenChooserActivity.kt",
+      "linea": 104,
+      "codigo": "main.post { status.text = Checkin.note.ifBlank { \"Follow the prompt on screen.\" } }",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/Updater.kt",
+      "linea": 51,
+      "codigo": "Checkin.note = \"Allow it once on the TV: on a Fire TV, Settings, My Fire TV, Developer options, Install unknown apps, ProDeck Display\"",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/Updater.kt",
+      "linea": 55,
+      "codigo": "Checkin.note = \"Downloading the update…\"",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/Updater.kt",
+      "linea": 64,
+      "codigo": "Checkin.note = if (info == null) \"The download wasn't a complete app. It tries again next time.\" else \"The booth's release has no newer ProDeck Display.\"",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/Updater.kt",
+      "linea": 68,
+      "codigo": "Checkin.note = \"Waiting for someone to press Update on the TV, then open ProDeck Display again\"",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/Updater.kt",
+      "linea": 71,
+      "codigo": "Checkin.note = \"Update failed: ${e.message ?: e.javaClass.simpleName}. It tries again when asked.\"",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/Updater.kt",
+      "linea": 128,
+      "codigo": "Checkin.note = \"The TV wouldn't show the Install prompt. Open ProDeck Display and choose Update.\"",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    },
+    {
+      "archivo": "tv/android/app/src/main/java/com/prodeck/display/Updater.kt",
+      "linea": 132,
+      "codigo": "else -> Checkin.note = \"Not installed: ${intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: \"cancelled on the TV\"}\"",
+      "estado": "pendiente_ingles",
+      "nota": "Una línea puede contener varias variantes; nombres, claves y datos técnicos no se traducen."
+    }
+  ]
+}
