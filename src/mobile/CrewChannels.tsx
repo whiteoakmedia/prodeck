@@ -25,7 +25,7 @@ export interface Channel {
 export function channelsFrom(roles: string[], myRole: string): Channel[] {
   const norm = (r: string) => r.trim().toLowerCase();
   return [
-    { id: "team", label: "Sunday Team", mine: true },
+    { id: "team", label: "Equipo", mine: true },
     ...roles.map((r) => ({
       id: `role:${r}`,
       label: r,
@@ -92,7 +92,7 @@ export function CrewChannels({
         <span className="crew-chan-mid">
           <span className="crew-chan-name">{c.label}</span>
           <span className="crew-chan-last">
-            {last ? `${last.from}: ${last.text}` : "No messages yet"}
+            {last ? `${last.from}: ${last.text}` : "Todavía no hay mensajes"}
           </span>
         </span>
         <span className="crew-chan-end">
@@ -109,14 +109,14 @@ export function CrewChannels({
     <div className="crew-thread">
       <h1 className="crew-title">Chat</h1>
       <div className="crew-chan-list">
-        <span className="mono crew-sheet-label">Team</span>
+        <span className="mono crew-sheet-label">Equipo</span>
         {mine
           .filter((c) => c.id === "team")
           .map(row)}
 
         {mine.some((c) => c.id !== "team") && (
           <>
-            <span className="mono crew-sheet-label">My roles</span>
+            <span className="mono crew-sheet-label">Mis roles</span>
             {mine
               .filter((c) => c.id !== "team")
               .map(row)}
@@ -125,20 +125,20 @@ export function CrewChannels({
 
         {others.length > 0 && (
           <>
-            <span className="mono crew-sheet-label">Other roles</span>
+            <span className="mono crew-sheet-label">Otros roles</span>
             {others.map(row)}
           </>
         )}
 
         {channels.length === 1 && (
           <p className="crew-hint muted">
-            Role channels appear as crew are given roles at the booth, or when
-            they pick their name off the plan when joining.
+            Los canales por rol aparecen cuando se asignan roles desde Control o cuando
+            alguien elige su nombre del plan al ingresar.
           </p>
         )}
 
         <p className="crew-hint muted">
-          Channels aren't private: every crew device can read all of them.
+          Los canales no son privados: todos los dispositivos del equipo pueden leerlos.
         </p>
       </div>
     </div>

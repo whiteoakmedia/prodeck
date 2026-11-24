@@ -14,10 +14,10 @@ import { requestOnboarding } from "../lib/onboarding";
  */
 
 const LABEL: Record<string, string> = {
-  ok: "Connected",
-  idle: "Not set up",
-  warn: "Attention",
-  bad: "Problem",
+  ok: "Conectado",
+  idle: "Sin configurar",
+  warn: "Atención",
+  bad: "Problema",
 };
 
 export function Setup({ onNavigate }: { onNavigate: (p: string) => void }) {
@@ -37,19 +37,18 @@ export function Setup({ onNavigate }: { onNavigate: (p: string) => void }) {
   return (
     <div className="page setup-page">
       <header className="page-head">
-        <h1>Setup</h1>
+        <h1>Configuración</h1>
         <span className="page-sub">
-          {greens}/{rows.length} connected
+          {greens}/{rows.length} conexiones activas
         </span>
       </header>
 
       {!IS_WEB && (
         <div className="call setup-intro">
           <p>
-            ProDeck is the hub — it only shows what your other tools tell it. Each
-            row below is one connection: green means it's working, anything else
-            says exactly what to do. Nothing here is required; set up what you use
-            and ignore the rest.
+            ProDeck reúne la información que recibe de tus otras herramientas. Cada
+            fila representa una conexión: el verde indica que funciona y los demás
+            estados explican qué hacer. Configurá lo que uses; el resto es opcional.
           </p>
         </div>
       )}
@@ -72,7 +71,7 @@ export function Setup({ onNavigate }: { onNavigate: (p: string) => void }) {
               </div>
               {info.page && s.state !== "ok" && (
                 <button className="btn small" onClick={() => onNavigate(info.page!)}>
-                  {s.state === "idle" ? "Set up" : "Fix"}
+                  {s.state === "idle" ? "Configurar" : "Resolver"}
                 </button>
               )}
             </div>
@@ -81,58 +80,58 @@ export function Setup({ onNavigate }: { onNavigate: (p: string) => void }) {
       </div>
 
       <div className="setup-more">
-        <h3>Add the rest</h3>
+        <h3>Configurá lo demás</h3>
         <div className="setup-cards">
           <button className="setup-card" onClick={() => onNavigate("settings")}>
             <Icon name="settings" size={18} />
-            <span className="setup-card-t">Browser access &amp; crew</span>
+            <span className="setup-card-t">Acceso desde el navegador y equipo</span>
             <span className="setup-card-d">
-              Dashboards on phones and kiosks, crew approvals, passwords.
+              Paneles de control en celulares y pantallas públicas, aprobación de integrantes y contraseñas.
             </span>
           </button>
           <button className="setup-card" onClick={() => onNavigate("settings")}>
             <Icon name="mic" size={18} />
-            <span className="setup-card-t">Audio, console &amp; MIDI</span>
+            <span className="setup-card-t">Audio, consola de sonido y MIDI</span>
             <span className="setup-card-d">
-              SPL metering, the Allen &amp; Heath console mirror, song-key send — each its own card.
+              Medición de SPL, conexión con la consola Allen &amp; Heath y envío de tonalidad. Cada opción tiene su propia sección.
             </span>
           </button>
           <button className="setup-card" onClick={() => onNavigate("report")}>
             <Icon name="report" size={18} />
-            <span className="setup-card-t">Live viewers &amp; reports</span>
+            <span className="setup-card-t">Audiencia en vivo e informes</span>
             <span className="setup-card-d">
-              GA4 watch-page count and per-service timing / SPL reports.
+              Cantidad de espectadores de GA4 e informes de tiempos y SPL por evento.
             </span>
           </button>
           <button className="setup-card" onClick={() => requestWizard("recording")}>
             <Icon name="mic" size={18} />
-            <span className="setup-card-t">Multitrack recording</span>
+            <span className="setup-card-t">Grabación multipista</span>
             <span className="setup-card-d">
-              Record every channel to its own track: pick the source, check levels, name tracks, choose a drive.
+              Grabá cada canal en una pista: elegí la fuente, revisá los niveles, nombrá las pistas y seleccioná una unidad.
             </span>
           </button>
           <button className="setup-card" onClick={() => requestWizard("automix")}>
             <Icon name="settings" size={18} />
             <span className="setup-card-t">Automix</span>
             <span className="setup-card-d">
-              Let ProDeck ride your faders through each song: your console, which fader is which, and song timing.
+              Dejá que ProDeck ajuste los faders durante cada canción: configurá la consola, los faders y los tiempos.
             </span>
           </button>
           <button className="setup-card" onClick={rerun}>
             <Icon name="checklist" size={18} />
-            <span className="setup-card-t">Re-run the walkthrough</span>
+            <span className="setup-card-t">Volver a Primeros pasos</span>
             <span className="setup-card-d">
-              The guided first-run tour: what ProDeck does, what it connects, and each connection step by step.
+              La guía inicial: qué hace ProDeck, con qué se conecta y cómo configurar cada conexión.
             </span>
           </button>
         </div>
       </div>
 
       <p className="setup-foot muted small">
-        The full phased guide — tap discs, kiosks, your own domain, booth-off
-        resilience — is <code>docs/ADOPTERS_GUIDE.html</code> in the ProDeck
-        download.{" "}
-        {!connected && "Start by connecting ProPresenter above."}
+        La guía completa por etapas incluye discos de acceso, pantallas públicas,
+        dominio propio y funcionamiento sin Control. Está en <code>docs/ADOPTERS_GUIDE.html</code>
+        dentro de la descarga de ProDeck.{" "}
+        {!connected && "Empezá conectando ProPresenter arriba."}
       </p>
     </div>
   );

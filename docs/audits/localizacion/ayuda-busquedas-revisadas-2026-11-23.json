@@ -1,0 +1,810 @@
+{
+  "fuente": "src/help/topics.ts",
+  "criterio": "Se revisaron las listas: no contienen frases de búsqueda en español; nombres de marca y términos técnicos se conservan y pueden seguir como alias en inglés.",
+  "temas": [
+    {
+      "id": "what-is-prodeck",
+      "linea": 68,
+      "alias": [
+        "what does prodeck do",
+        "overview",
+        "what is this app for",
+        "features"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "first-run",
+      "linea": 89,
+      "alias": [
+        "setup wizard",
+        "onboarding",
+        "how do I start over",
+        "re-run setup",
+        "I skipped a step"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "mac-permissions",
+      "linea": 101,
+      "alias": [
+        "local network",
+        "allow access",
+        "microphone permission",
+        "removable volume",
+        "desktop folder",
+        "ProPresenter offline after update",
+        "no route to host",
+        "macOS 27",
+        "tahoe",
+        "sequoia"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "setup-page",
+      "linea": 118,
+      "alias": [
+        "status page",
+        "why is something red",
+        "what does attention mean",
+        "connection status"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "demo-mode",
+      "linea": 133,
+      "alias": [
+        "try it without hardware",
+        "sample data",
+        "how do I see what it does",
+        "explore"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "crew-overview",
+      "linea": 145,
+      "alias": [
+        "how do volunteers sign in",
+        "what is a crew member",
+        "how does the phone app work",
+        "explain crew accounts",
+        "member vs admin"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "crew-permissions",
+      "linea": 169,
+      "alias": [
+        "give someone permission to page",
+        "who can send pages",
+        "let a volunteer control propresenter",
+        "needs the page permission",
+        "needs admin access on my phone",
+        "grants",
+        "per person permissions"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "crew-joining",
+      "linea": 198,
+      "alias": [
+        "how do people join",
+        "join link",
+        "the poster QR code",
+        "invite someone",
+        "joining is closed",
+        "why does the join link not work",
+        "open joining"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "crew-approve",
+      "linea": 223,
+      "alias": [
+        "pending approval",
+        "someone is waiting",
+        "how do I approve a volunteer",
+        "remove a crew member",
+        "change someone's name",
+        "link to planning center person"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "crew-roles",
+      "linea": 245,
+      "alias": [
+        "what is a role",
+        "camera 1 audio a2",
+        "role channels",
+        "how do roles work",
+        "set up positions",
+        "leader board"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "crew-signout",
+      "linea": 269,
+      "alias": [
+        "locked out",
+        "PIN again",
+        "sign out completely",
+        "name is taken",
+        "too many attempts",
+        "I can't log back in"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "pages",
+      "linea": 291,
+      "alias": [
+        "page someone",
+        "how do pages work",
+        "phone won't stop buzzing",
+        "got it button",
+        "page not arriving",
+        "re-buzz"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "taplink-overview",
+      "linea": 316,
+      "alias": [
+        "nfc discs",
+        "tap disks",
+        "what is taplink",
+        "giving link that changes",
+        "overflow tap",
+        "lobby discs"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "taplink-deploy",
+      "linea": 337,
+      "alias": [
+        "edge url",
+        "api token",
+        "cloudflare worker",
+        "wrangler",
+        "how do I set up taplink",
+        "where do I get the token"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "taplink-discs",
+      "linea": 363,
+      "alias": [
+        "what url goes on the disc",
+        "nfc writer app",
+        "ntag213",
+        "how do I program the tags"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "taplink-keywords",
+      "linea": 376,
+      "alias": [
+        "tap: give",
+        "slide notes keyword",
+        "how do I make the discs point at giving",
+        "keywords and links",
+        "ttl",
+        "default link"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "taplink-override",
+      "linea": 398,
+      "alias": [
+        "force giving",
+        "manual override",
+        "discs are pointing at the wrong thing",
+        "resume following"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "pp-macros",
+      "linea": 411,
+      "alias": [
+        "macros",
+        "propresenter macros",
+        "pro macros",
+        "run a macro",
+        "macro buttons"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "pp-view-only",
+      "linea": 423,
+      "alias": [
+        "view only",
+        "read only propresenter",
+        "monitor only",
+        "don't control propresenter",
+        "second computer",
+        "disable slide control"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "pp-connect",
+      "linea": 437,
+      "alias": [
+        "propresenter won't connect",
+        "enable network",
+        "find propresenter",
+        "port 1025",
+        "connected but nothing updates"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "stage-message",
+      "linea": 456,
+      "alias": [
+        "put a message on stage",
+        "child alert",
+        "parent needed",
+        "stage display text",
+        "clear the stage message"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "child-call",
+      "linea": 468,
+      "alias": [
+        "child call",
+        "parent pager",
+        "nursery number",
+        "pro message",
+        "propresenter messages",
+        "show a message on screen"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "analytics-services",
+      "linea": 482,
+      "alias": [
+        "analytics",
+        "service report",
+        "reset analytics",
+        "rehearsal tracking",
+        "practice",
+        "tap counts",
+        "duplicate taps",
+        "per service"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "pco-connect",
+      "linea": 497,
+      "alias": [
+        "pco 401",
+        "planning center rejected credentials",
+        "connect planning center",
+        "sign in to planning center",
+        "application id and secret",
+        "personal access token",
+        "nothing loads after entering pco credentials",
+        "disconnect planning center"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "pco-register-app",
+      "linea": 524,
+      "alias": [
+        "client id",
+        "redirect uri",
+        "oauth application",
+        "public application",
+        "invalid_client",
+        "planning center developers page",
+        "no planning center application configured"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "pco-live",
+      "linea": 553,
+      "alias": [
+        "take control",
+        "next does nothing",
+        "someone else is controlling",
+        "auto advance",
+        "follow propresenter"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "stage-call",
+      "linea": 566,
+      "alias": [
+        "keys to the stage",
+        "sermon countdown",
+        "call the worship team",
+        "closing set keys",
+        "green room widget",
+        "when are we on"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "gateway-passwords",
+      "linea": 592,
+      "alias": [
+        "web access password",
+        "admin password vs crew password",
+        "which password do I give volunteers",
+        "phones can't reach the booth",
+        "port 8088"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "phones-install",
+      "linea": 613,
+      "alias": [
+        "install on iphone",
+        "add to home screen",
+        "notifications on the phone",
+        "app keeps signing me out"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "kiosk",
+      "linea": 629,
+      "alias": [
+        "kiosk mode",
+        "office tv",
+        "chromeless dashboard",
+        "?kiosk=",
+        "mac mini setup",
+        "camera not showing on kiosk"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "tv-screens",
+      "linea": 646,
+      "alias": [
+        "fire tv",
+        "firestick",
+        "android tv",
+        "green room tv",
+        "message the green room",
+        "update the tv app",
+        "prodeck display"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "public-url",
+      "linea": 661,
+      "alias": [
+        "public url",
+        "cloudflare tunnel",
+        "use from home",
+        "prodeck.live",
+        "booth off fallback"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "dashboards-widgets",
+      "linea": 674,
+      "alias": [
+        "add a widget",
+        "adding widgets doesn't work",
+        "edit layout",
+        "new dashboard",
+        "starter templates",
+        "widget is blank"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "console",
+      "linea": 688,
+      "alias": [
+        "avantis",
+        "dlive",
+        "sq5",
+        "x32",
+        "m32",
+        "yamaha",
+        "ql5",
+        "ql1",
+        "cl5",
+        "cl3",
+        "cl1",
+        "tf5",
+        "tf3",
+        "tf1",
+        "rcp",
+        "port 49280",
+        "digico",
+        "presonus",
+        "soundcraft",
+        "my console isn't listed",
+        "console shows disconnected",
+        "midi over tcp",
+        "osc port 10023"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "ndi",
+      "linea": 710,
+      "alias": [
+        "ndi not showing",
+        "stage feed",
+        "camera on dashboard",
+        "ndi runtime",
+        "no sources found"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "atem",
+      "linea": 725,
+      "alias": [
+        "atem",
+        "blackmagic",
+        "video switcher",
+        "switcher",
+        "vision mixer",
+        "cut",
+        "auto transition",
+        "tally",
+        "program preview"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "atem-tally",
+      "linea": 749,
+      "alias": [
+        "tally",
+        "tally light",
+        "camera tally",
+        "on air light",
+        "which camera is live",
+        "ipad tally",
+        "camera operator"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "secure-local",
+      "linea": 773,
+      "alias": [
+        "https",
+        "secure address",
+        "local.prodeck.live",
+        "certificate",
+        "microphone blocked",
+        "notifications don't work",
+        "no domain",
+        "ssl"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "crew-address",
+      "linea": 794,
+      "alias": [
+        "crew address",
+        "crew.prodeck.live",
+        "-crew.prodeck.live",
+        "from home",
+        "outside the building",
+        "cellular",
+        "booth is off",
+        "remote access",
+        "away",
+        "offline plan"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "comms",
+      "linea": 811,
+      "alias": [
+        "comms",
+        "intercom",
+        "headset",
+        "talk to the crew",
+        "push to talk",
+        "party line",
+        "clearcom",
+        "radio"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "obs",
+      "linea": 834,
+      "alias": [
+        "obs websocket",
+        "streaming status",
+        "recording status",
+        "dropped frames",
+        "skipped frames"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "setup-recording-automix",
+      "linea": 846,
+      "alias": [
+        "multitrack",
+        "record every channel",
+        "usb audio",
+        "console usb",
+        "automix setup",
+        "which fader",
+        "setup wizard",
+        "stems"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "soundcheck-playback",
+      "linea": 859,
+      "alias": [
+        "virtual soundcheck",
+        "virtual sound check",
+        "vsc",
+        "mix the multitrack",
+        "playback",
+        "practice mixing",
+        "patch sheet"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "audio-spl",
+      "linea": 887,
+      "alias": [
+        "how loud is it",
+        "db meter",
+        "calibrate spl",
+        "match a real spl meter",
+        "rta"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "updates",
+      "linea": 899,
+      "alias": [
+        "update available banner",
+        "install and restart",
+        "update failed",
+        "check for updates",
+        "download it again"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "backup",
+      "linea": 910,
+      "alias": [
+        "move to a new mac",
+        "backup file",
+        "restore from backup",
+        "what's in the backup"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "keep-running",
+      "linea": 923,
+      "alias": [
+        "watchdog",
+        "start at login",
+        "relaunch after crash",
+        "sleep guard",
+        "mac went to sleep"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "blank-tile",
+      "linea": 936,
+      "alias": [
+        "works on the booth but not my phone",
+        "blank widget on kiosk",
+        "tile empty on phone",
+        "needs admin access"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "stream-monitor",
+      "linea": 949,
+      "alias": [
+        "resi",
+        "stream monitor",
+        "livestream preview",
+        "watch the stream",
+        "is the stream live",
+        "confidence monitor",
+        "web player"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "walk-in-music",
+      "linea": 965,
+      "alias": [
+        "spotify",
+        "apple music",
+        "music app",
+        "pre-service music",
+        "walk in music",
+        "fade out music",
+        "house music",
+        "background music"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "church-online",
+      "linea": 982,
+      "alias": [
+        "chop",
+        "church online",
+        "online service",
+        "online church",
+        "prayer requests online",
+        "salvation responses",
+        "online chat",
+        "online attendance",
+        "webhooks"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "report-problem",
+      "linea": 1004,
+      "alias": [
+        "found a bug",
+        "how do I report",
+        "diagnostics",
+        "send logs",
+        "contact",
+        "feature request",
+        "suggestion",
+        "idea",
+        "feedback",
+        "crash reports",
+        "sentry",
+        "usage count",
+        "analytics",
+        "telemetry",
+        "privacy"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "routing-map",
+      "linea": 1025,
+      "alias": [
+        "routing",
+        "patch list",
+        "which channel is which socket",
+        "signal map",
+        "where does channel 39 come from",
+        "paste patch list",
+        "stage pockets",
+        "stage panel",
+        "which socket do i plug into",
+        "floor box"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "routing-graph",
+      "linea": 1050,
+      "alias": [
+        "node view",
+        "routing map picture",
+        "boxes and lines",
+        "signal flow diagram",
+        "connect socket to channel by dragging",
+        "only dante",
+        "only slink"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "song-key-waves",
+      "linea": 1070,
+      "alias": [
+        "waves key",
+        "key change",
+        "tune off",
+        "send key to waves",
+        "wrong key on the vocals",
+        "auto-tune key",
+        "song key to rig"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "auto-follow",
+      "linea": 1090,
+      "alias": [
+        "auto follow",
+        "lyric follow",
+        "follow lyrics",
+        "slides by themselves",
+        "whisper",
+        "slides late",
+        "slides early",
+        "follow the singing"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "ask-prodeck",
+      "linea": 1112,
+      "alias": [
+        "ask prodeck",
+        "troubleshooter chat",
+        "ai help",
+        "anthropic api key",
+        "claude",
+        "ask a question about the sound",
+        "knowledge folder"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "routing-walk",
+      "linea": 1130,
+      "alias": [
+        "no sound",
+        "dead mic",
+        "mic not working",
+        "no signal from a vocal",
+        "troubleshooter",
+        "where do i look when a channel is dead"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    },
+    {
+      "id": "security-posture",
+      "linea": 1150,
+      "alias": [
+        "is this secure",
+        "who can see what",
+        "passwords in the clear",
+        "security model"
+      ],
+      "estado": "sin_frases_de_busqueda_en_espanol"
+    }
+  ]
+}

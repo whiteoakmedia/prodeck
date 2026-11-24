@@ -36,8 +36,8 @@ describe("release notes opt-in", () => {
     const bad = vi.fn(async () => new Response(JSON.stringify({ ok: false, error: "Too many signups from here." }), { status: 429 }));
     await expect(subscribe("a@b.org", bad as unknown as typeof fetch)).rejects.toThrow("Too many signups from here.");
     const offline = vi.fn(async () => { throw new TypeError("fetch failed"); });
-    await expect(subscribe("a@b.org", offline as unknown as typeof fetch)).rejects.toThrow(/internet connection/);
-    await expect(subscribe("nope")).rejects.toThrow(/email address/);
+    await expect(subscribe("a@b.org", offline as unknown as typeof fetch)).rejects.toThrow(/conexión a internet/);
+    await expect(subscribe("nope")).rejects.toThrow(/dirección de correo válida/);
   });
 
   it("checks addresses", () => {

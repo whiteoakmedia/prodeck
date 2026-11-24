@@ -20,13 +20,13 @@ export function GiftCredit() {
       }}
       title="whiteoakmedia.io"
     >
-      <span className="gift-line">A gift to every church from</span>
+      <span className="gift-line">Un regalo para cada iglesia de</span>
       <img className="gift-logo gift-logo-light" src={lightInk} alt="White Oak Media" />
       <img className="gift-logo gift-logo-dark" src={darkInk} alt="" aria-hidden="true" />
     </a>
     {showTips() && (
       <button className="link-btn gift-tip" onClick={() => openExternal(tipUrl())}>
-        Support ProDeck
+        Apoyar a ProDeck
       </button>
     )}
     </>

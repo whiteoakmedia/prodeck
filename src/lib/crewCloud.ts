@@ -123,18 +123,18 @@ export function cloudPlanSnapshot(input: {
  * "The booth is off. Showing the last plan it sent at 9:14 PM".
  */
 export function cloudCopyLine(sentMs: number, now: number = Date.now()): string {
-  if (!sentMs) return "The booth is off, and it hasn't sent a plan yet.";
+  if (!sentMs) return "Control está apagado y todavía no envió un plan.";
   const sent = new Date(sentMs);
   const time = sent.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   const today = new Date(now);
   const sameDay = sent.toDateString() === today.toDateString();
   const yesterday = new Date(now - 86_400_000).toDateString() === sent.toDateString();
   const when = sameDay
-    ? `at ${time}`
+    ? `a las ${time}`
     : yesterday
-      ? `yesterday at ${time}`
-      : `on ${sent.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })} at ${time}`;
-  return `The booth is off. Showing the last plan it sent ${when}.`;
+      ? `ayer a las ${time}`
+      : `el ${sent.toLocaleDateString("es-419", { weekday: "long", month: "short", day: "numeric" })} a las ${time}`;
+  return `Control está apagado. Mostrando el último plan enviado ${when}.`;
 }
 
 // ---------------------------------------------------------------- moving over

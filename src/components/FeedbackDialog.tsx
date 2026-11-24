@@ -22,34 +22,34 @@ declare const __APP_VERSION__: string;
 
 const URGENCY: Record<Kind, { id: string; label: string }[]> = {
   bug: [
-    { id: "service", label: "It stopped a service, or could" },
-    { id: "workaround", label: "I can work around it" },
-    { id: "minor", label: "Small thing" },
+    { id: "service", label: "Detuvo un evento o podría hacerlo" },
+    { id: "workaround", label: "Puedo resolverlo de otra manera" },
+    { id: "minor", label: "Es un detalle menor" },
   ],
   feature: [
-    { id: "need", label: "We really need this" },
-    { id: "nice", label: "Nice to have" },
+    { id: "need", label: "Realmente lo necesitamos" },
+    { id: "nice", label: "Sería útil" },
   ],
 };
 
 const COPY: Record<Kind, { heading: string; title: string; titleHint: string; details: string; detailsHint: string; expected: string; expectedHint: string }> = {
   bug: {
-    heading: "Report a bug",
-    title: "In a few words, what went wrong?",
-    titleHint: "Lyrics stopped following on the second song",
-    details: "What happened, and what were you doing just before?",
-    detailsHint: "Steps help most: which page, what you pressed, what you saw.",
-    expected: "What did you expect instead? (optional)",
+    heading: "Reportar un error",
+    title: "En pocas palabras, ¿qué salió mal?",
+    titleHint: "La letra dejó de avanzar en la segunda canción",
+    details: "¿Qué pasó y qué estabas haciendo justo antes?",
+    detailsHint: "Lo más útil son los pasos: en qué página estabas, qué presionaste y qué viste.",
+    expected: "¿Qué esperabas que pasara? (opcional)",
     expectedHint: "",
   },
   feature: {
-    heading: "Request a feature",
-    title: "What would you like ProDeck to do?",
-    titleHint: "Show the next song's key on the stage display",
-    details: "Tell me about it",
-    detailsHint: "What's the problem it solves on a Sunday? How do you handle it today?",
-    expected: "Anything else that would help? (optional)",
-    expectedHint: "Other apps that do it well, your setup, screenshots of how you picture it.",
+    heading: "Proponer una función",
+    title: "¿Qué te gustaría que hiciera ProDeck?",
+    titleHint: "Mostrar la tonalidad de la siguiente canción en la pantalla del escenario",
+    details: "Cuéntame más",
+    detailsHint: "¿Qué problema resuelve durante un evento? ¿Cómo lo resuelves hoy?",
+    expected: "¿Algo más que pueda ayudar? (opcional)",
+    expectedHint: "Otras aplicaciones que lo hagan bien, tu configuración o capturas de cómo lo imaginas.",
   },
 };
 
@@ -175,20 +175,20 @@ export function FeedbackDialog({
             ))}
           </div>
           <button className="btn small ghost" onClick={onClose} disabled={busy}>
-            Close
+            Cerrar
           </button>
         </div>
 
         {sentId !== null ? (
           <div className="fb-body fb-done">
-            <h3>{kind === "bug" ? "Thanks, that's on its way." : "Thanks for the idea."}</h3>
+            <h3>{kind === "bug" ? "Gracias, tu reporte está en camino." : "Gracias por la idea."}</h3>
             <p>
-              It went straight to Zach at White Oak Media, who reads every one.
-              {contact.email ? ` If he has a question he'll write to ${contact.email}.` : " You didn't leave an email, so he can't reply, but it still counts."}
+              Se envió directamente a Zach de White Oak Media, quien lee todos los mensajes.
+              {contact.email ? ` Si tiene alguna pregunta, te escribirá a ${contact.email}.` : " No dejaste un correo, así que no podrá responderte, pero tu mensaje cuenta."}
             </p>
-            {sentId && <p className="muted small">Reference {sentId}</p>}
+            {sentId && <p className="muted small">Referencia {sentId}</p>}
             <div className="fb-actions">
-              <button className="btn primary" onClick={onClose}>Done</button>
+              <button className="btn primary" onClick={onClose}>Listo</button>
             </div>
           </div>
         ) : (
@@ -231,7 +231,7 @@ export function FeedbackDialog({
             </label>
 
             <fieldset className="fb-urgency">
-              <legend>How much does it matter?</legend>
+              <legend>¿Qué tan importante es?</legend>
               {URGENCY[kind].map((u) => (
                 <label key={u.id} className={`fb-chip ${urgencyNow === u.id ? "on" : ""}`}>
                   <input type="radio" name="fb-urgency" id={`fb-urgency-${u.id}`} checked={urgencyNow === u.id} onChange={() => setUrgency(u.id)} />
@@ -242,13 +242,13 @@ export function FeedbackDialog({
 
             <div className="fb-attach">
               <button className="btn small" type="button" onClick={() => fileRef.current?.click()}>
-                {picture ? "Change picture" : "Attach a screenshot"}
+                {picture ? "Cambiar imagen" : "Adjuntar una captura de pantalla"}
               </button>
               <input ref={fileRef} id="fb-picture" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden onChange={(e) => onPicture(e.target.files?.[0])} />
               {picture && (
                 <span className="muted small">
                   {picture.name}{" "}
-                  <button className="link-btn" type="button" onClick={() => setPicture(null)}>Remove</button>
+                  <button className="link-btn" type="button" onClick={() => setPicture(null)}>Quitar</button>
                 </span>
               )}
               {pictureErr && <span className="error small">{pictureErr}</span>}
@@ -256,15 +256,15 @@ export function FeedbackDialog({
 
             <div className="fb-contact">
               <label className="field">
-                <span>Your name</span>
+                <span>Tu nombre</span>
                 <input id="fb-name" className="input" maxLength={LIMITS.short} value={contact.name} onChange={(e) => setContact({ ...contact, name: e.target.value })} />
               </label>
               <label className="field">
-                <span>Church</span>
+                <span>Iglesia</span>
                 <input id="fb-church" className="input" maxLength={LIMITS.short} value={contact.church} onChange={(e) => setContact({ ...contact, church: e.target.value })} />
               </label>
               <label className="field">
-                <span>Email, if you'd like a reply</span>
+                <span>Correo electrónico, si quieres una respuesta</span>
                 <input id="fb-email" className="input" type="email" maxLength={LIMITS.short} value={contact.email} onChange={(e) => setContact({ ...contact, email: e.target.value })} />
               </label>
             </div>
@@ -272,26 +272,26 @@ export function FeedbackDialog({
             <label className="field check">
               <input type="checkbox" id="fb-diag" checked={withDiag} onChange={(e) => setWithDiag(e.target.checked)} />
               <span>
-                Include diagnostics: ProDeck's version, this computer's system, which connections are up, settings with every password and key removed, and the last few minutes of the log.{" "}
+                Incluir diagnóstico: la versión de ProDeck, el sistema de esta computadora, las conexiones activas, la configuración sin contraseñas ni claves y los últimos minutos del registro.{" "}
                 <button
                   className="link-btn"
                   type="button"
-                  onClick={async () => setShowDiag(showDiag === null ? (await diagnostics()) || "Diagnostics aren't available from this screen." : null)}
+                  onClick={async () => setShowDiag(showDiag === null ? (await diagnostics()) || "El diagnóstico no está disponible en esta pantalla." : null)}
                 >
-                  {showDiag === null ? "See exactly what's sent" : "Hide"}
+                  {showDiag === null ? "Ver exactamente qué se envía" : "Ocultar"}
                 </button>
               </span>
             </label>
             {showDiag !== null && <pre className="fb-diag">{showDiag}</pre>}
 
             <p className="muted small">
-              This goes privately to White Oak Media, not to a public page. Your name and email are saved on this computer for next time.
+              Esto se envía de forma privada a White Oak Media, no a una página pública. Tu nombre y correo se guardan en esta computadora para la próxima vez.
             </p>
             {err && <p className="error small">{err}</p>}
             <div className="fb-actions">
-              <button className="btn ghost" onClick={onClose} disabled={busy}>Cancel</button>
+              <button className="btn ghost" onClick={onClose} disabled={busy}>Cancelar</button>
               <button className="btn primary" onClick={send} disabled={busy || !title.trim() || !details.trim()}>
-                {busy ? "Sending…" : kind === "bug" ? "Send report" : "Send idea"}
+                {busy ? "Enviando…" : kind === "bug" ? "Enviar reporte" : "Enviar idea"}
               </button>
             </div>
           </div>

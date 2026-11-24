@@ -1,0 +1,146 @@
+{
+  "archivo": "src/pages/Setup.tsx",
+  "alcance": "Texto estático JSX y siete valores visibles del mapa o condicionales en Setup.tsx. Excluye HealthStrip, consola, datos externos y errores dinámicos.",
+  "traducidos": 24,
+  "excluidos": 2,
+  "pendientes_identificados_en_este_alcance": 0,
+  "entradas": [
+    {
+      "numero": 1,
+      "texto": "Configuración",
+      "estado": "traducido"
+    },
+    {
+      "numero": 2,
+      "texto": "conexiones activas",
+      "estado": "traducido"
+    },
+    {
+      "numero": 3,
+      "texto": "ProDeck reúne la información que recibe de tus otras herramientas. Cada fila representa una conexión: el verde indica que funciona y los demás estados explican qué hacer. Configurá lo que uses; el resto es opcional.",
+      "estado": "traducido"
+    },
+    {
+      "numero": 4,
+      "texto": "Configurá lo demás",
+      "estado": "traducido"
+    },
+    {
+      "numero": 5,
+      "texto": "Acceso desde el navegador y equipo",
+      "estado": "traducido"
+    },
+    {
+      "numero": 6,
+      "texto": "Paneles de control en celulares y pantallas públicas, aprobación de integrantes y contraseñas.",
+      "estado": "traducido"
+    },
+    {
+      "numero": 7,
+      "texto": "Audio, consola de sonido y MIDI",
+      "estado": "traducido"
+    },
+    {
+      "numero": 8,
+      "texto": "Medición de SPL, conexión con la consola Allen &amp; Heath y envío de tonalidad. Cada opción tiene su propia sección.",
+      "estado": "traducido"
+    },
+    {
+      "numero": 9,
+      "texto": "Audiencia en vivo e informes",
+      "estado": "traducido"
+    },
+    {
+      "numero": 10,
+      "texto": "Cantidad de espectadores de GA4 e informes de tiempos y SPL por evento.",
+      "estado": "traducido"
+    },
+    {
+      "numero": 11,
+      "texto": "Grabación multipista",
+      "estado": "traducido"
+    },
+    {
+      "numero": 12,
+      "texto": "Grabá cada canal en una pista: elegí la fuente, revisá los niveles, nombrá las pistas y seleccioná una unidad.",
+      "estado": "traducido"
+    },
+    {
+      "numero": 13,
+      "texto": "Automix",
+      "estado": "conservar_o_excluir"
+    },
+    {
+      "numero": 14,
+      "texto": "Dejá que ProDeck ajuste los faders durante cada canción: configurá la consola, los faders y los tiempos.",
+      "estado": "traducido"
+    },
+    {
+      "numero": 15,
+      "texto": "Volver a Primeros pasos",
+      "estado": "traducido"
+    },
+    {
+      "numero": 16,
+      "texto": "La guía inicial: qué hace ProDeck, con qué se conecta y cómo configurar cada conexión.",
+      "estado": "traducido"
+    },
+    {
+      "numero": 17,
+      "texto": "La guía completa por etapas incluye discos de acceso, pantallas públicas, dominio propio y funcionamiento sin Control. Está en",
+      "estado": "traducido"
+    },
+    {
+      "numero": 18,
+      "texto": "docs/ADOPTERS_GUIDE.html",
+      "estado": "conservar_o_excluir"
+    },
+    {
+      "numero": 19,
+      "texto": "dentro de la descarga de ProDeck.",
+      "estado": "traducido"
+    },
+    {
+      "original": "Connected",
+      "texto": "Conectado",
+      "estado": "traducido",
+      "tipo": "literal_condicional_o_mapa"
+    },
+    {
+      "original": "Not set up",
+      "texto": "Sin configurar",
+      "estado": "traducido",
+      "tipo": "literal_condicional_o_mapa"
+    },
+    {
+      "original": "Attention",
+      "texto": "Atención",
+      "estado": "traducido",
+      "tipo": "literal_condicional_o_mapa"
+    },
+    {
+      "original": "Problem",
+      "texto": "Problema",
+      "estado": "traducido",
+      "tipo": "literal_condicional_o_mapa"
+    },
+    {
+      "original": "Set up",
+      "texto": "Configurar",
+      "estado": "traducido",
+      "tipo": "literal_condicional_o_mapa"
+    },
+    {
+      "original": "Fix",
+      "texto": "Resolver",
+      "estado": "traducido",
+      "tipo": "literal_condicional_o_mapa"
+    },
+    {
+      "original": "Start by connecting ProPresenter above.",
+      "texto": "Empezá conectando ProPresenter arriba.",
+      "estado": "traducido",
+      "tipo": "literal_condicional_o_mapa"
+    }
+  ]
+}

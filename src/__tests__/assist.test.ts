@@ -71,6 +71,8 @@ describe("the prompt", () => {
   it("carries the doctrine, the map digest, the knowledge and the live state", () => {
     const sys = buildSystem(ctx());
     expect(sys).toMatch(/How to troubleshoot a live sound system/);
+    expect(sys).toContain("Respond in Spanish");
+    expect(sys).toContain("preserve exact citation syntax");
     expect(sys).toMatch(/39 vox 3 ← I\/O Port 1 43 ← ULXD4Q-5-8 07 \(shares preamp with 53\)/);
     expect(sys).toMatch(/Stage left back: stage 1–10/);
     expect(sys).toMatch(/### SYSTEM.md\nScene 19 Waves Off is safe/);
@@ -134,7 +136,7 @@ describe("the loop", () => {
   it("gives up cleanly after the round limit", async () => {
     const complete = async () => ({ stop_reason: "tool_use", content: [{ type: "tool_use", id: "x", name: "status", input: {} }] });
     const r = await ask(ctx(), [], "hmm", complete);
-    expect(r.text).toMatch(/ran out of steps/);
+    expect(r.text).toMatch(/No pude terminar la consulta/);
   });
   it("says plainly when Claude declines, instead of an empty answer", async () => {
     const r = await ask(ctx(), [], "hmm", async () => ({ stop_reason: "refusal", content: [] }));

@@ -1558,12 +1558,12 @@ export const chatClearScreens = (which: string) => invoke<void>("chat_clear_scre
 // the gateway (member tokens get team-chat-only, no control surfaces).
 /** The grantable capabilities, in display order. Mirrors identity::PERMS. */
 export const PERMS = [
-  { id: "page", label: "Page", blurb: "Send pages and re-buzz them" },
-  { id: "stage", label: "Stage", blurb: "Put text on the stage displays and confidence screens" },
-  { id: "control", label: "Control", blurb: "Drive ProPresenter, the console, OBS scenes and Planning Center LIVE" },
-  { id: "tap", label: "Tap discs", blurb: "Override where the lobby NFC discs point" },
-  { id: "manage", label: "Manage crew", blurb: "Approve, edit and remove crew; invites; open joining" },
-  { id: "director", label: "Director", blurb: "The Director tab on their phone: pages, run of show, screens and video. Includes Page, Stage and Control" },
+  { id: "page", label: "Avisos", blurb: "Enviar avisos y volver a notificarlos" },
+  { id: "stage", label: "Escenario", blurb: "Mostrar texto en las pantallas de escenario y Pantalla Retorno" },
+  { id: "control", label: "Control", blurb: "Controlar ProPresenter, la consola de sonido, escenas de OBS y Planning Center LIVE" },
+  { id: "tap", label: "Discos TapLink", blurb: "Cambiar el destino de los discos NFC del vestíbulo" },
+  { id: "manage", label: "Administrar equipo", blurb: "Aprobar, editar y quitar integrantes; gestionar invitaciones y acceso" },
+  { id: "director", label: "Director", blurb: "Pestaña Director en el celular: avisos, cronograma, pantallas y video. Incluye Avisos, Escenario y Control" },
 ] as const;
 export type Perm = (typeof PERMS)[number]["id"];
 

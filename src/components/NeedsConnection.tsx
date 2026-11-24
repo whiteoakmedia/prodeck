@@ -40,13 +40,13 @@ export function NeedsConnection({
   onAction,
   offline = false,
 }: NeedsConnectionProps) {
-  const text = hint ?? (offline ? `${what} is offline — reconnecting…` : `Connect ${what} to see this`);
+  const text = hint ?? (offline ? `${what} sin conexión. Reconectando…` : `Conecta ${what} para ver este contenido`);
   // Kiosks are unattended screens with no inputs — a button nobody can press
   // is just clutter. Offline states have nothing to set up.
   const label =
     action === null || KIOSK_DASH !== null || (offline && action === undefined)
       ? null
-      : action ?? (page === "settings" && !anchor ? "Open Settings" : `Set up ${what}`);
+      : action ?? (page === "settings" && !anchor ? "Abrir Configuración" : `Configurar ${what}`);
   return (
     <div className={`widget-empty needs-conn ${offline ? "offline" : ""}`}>
       <div className="needs-conn-inner">
@@ -78,7 +78,7 @@ export function NeedsPro(p: Preset) {
   return (
     <NeedsConnection
       what="ProPresenter"
-      hint="Connect ProPresenter to see live slides and timers"
+      hint="Conecta ProPresenter para ver diapositivas y temporizadores en vivo"
       page="settings"
       anchor="set-pp"
       icon="slides"
@@ -92,7 +92,7 @@ export function NeedsPco(p: Preset) {
   return (
     <NeedsConnection
       what="Planning Center"
-      hint="Connect Planning Center to see this week's plan and team"
+      hint="Conecta Planning Center para ver el plan y el equipo de esta semana"
       page="planning"
       icon="calendar"
       {...p}
@@ -103,12 +103,12 @@ export function NeedsPco(p: Preset) {
 export function NeedsDesk(p: Preset) {
   return (
     <NeedsConnection
-      what="your console"
-      hint="Connect your Allen & Heath console to see mutes and faders"
+      what="tu consola de audio"
+      hint="Conecta tu consola de audio Allen & Heath para ver los silenciamientos y faders"
       page="settings"
       anchor="set-avantis"
       icon="mic"
-      action="Set up the console"
+      action="Configurar la consola de audio"
       {...p}
     />
   );
@@ -117,12 +117,12 @@ export function NeedsDesk(p: Preset) {
 export function NeedsAudio(p: Preset) {
   return (
     <NeedsConnection
-      what="audio monitoring"
-      hint="Start audio monitoring to see SPL and the RTA"
+      what="el monitoreo de audio"
+      hint="Inicia el monitoreo de audio para ver el SPL y el RTA"
       page="settings"
       anchor="set-audio"
       icon="mic"
-      action="Set up audio"
+      action="Configurar audio"
       {...p}
     />
   );
@@ -132,7 +132,7 @@ export function NeedsObs(p: Preset) {
   return (
     <NeedsConnection
       what="OBS"
-      hint="Connect OBS Studio to see the scene, and whether you're live"
+      hint="Conecta OBS Studio para ver la escena y saber si estás en vivo"
       page="settings"
       anchor="set-obs"
       icon="slides"
@@ -144,12 +144,12 @@ export function NeedsObs(p: Preset) {
 export function NeedsAtem(p: Preset) {
   return (
     <NeedsConnection
-      what="your ATEM switcher"
-      hint="Connect your Blackmagic ATEM to see Program and Preview and switch from here"
+      what="tu mezclador ATEM"
+      hint="Conecta tu Blackmagic ATEM para ver Program y Preview y cambiar desde aquí"
       page="settings"
       anchor="set-atem"
       icon="slides"
-      action="Set up the switcher"
+      action="Configurar el mezclador"
       {...p}
     />
   );
@@ -159,7 +159,7 @@ export function NeedsGa4(p: Preset) {
   return (
     <NeedsConnection
       what="Google Analytics"
-      hint="Connect Google Analytics to see live viewers"
+      hint="Conecta Google Analytics para ver los espectadores en vivo"
       page="settings"
       anchor="set-ga4"
       icon="report"
@@ -172,7 +172,7 @@ export function NeedsTap(p: Preset) {
   return (
     <NeedsConnection
       what="TapLink"
-      hint="Turn on TapLink to see where the NFC discs point"
+      hint="Activa TapLink para ver a dónde apuntan los discos NFC"
       page="settings"
       anchor="set-taplink"
       icon="link"
@@ -184,12 +184,12 @@ export function NeedsTap(p: Preset) {
 export function NeedsWeb(p: Preset) {
   return (
     <NeedsConnection
-      what="browser access"
-      hint="Turn on browser access so phones and screens can connect"
+      what="el acceso desde el navegador"
+      hint="Activa el acceso desde el navegador para conectar teléfonos y pantallas"
       page="settings"
       anchor="set-web"
       icon="link"
-      action="Set up browser access"
+      action="Configurar el acceso desde el navegador"
       {...p}
     />
   );
@@ -200,8 +200,8 @@ export function NeedsWeb(p: Preset) {
 export function NeedsNdi(p: Preset) {
   return (
     <NeedsConnection
-      what="a stage camera"
-      hint="Pick an NDI source to see the stage feed — Edit this dashboard to choose one"
+      what="una cámara del escenario"
+      hint="Elige una fuente NDI para ver la señal del escenario. Edita este panel para elegir una"
       page="dashboard"
       icon="grid"
       action={null}

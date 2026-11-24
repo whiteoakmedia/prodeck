@@ -46,28 +46,28 @@ export function CrewOnboard({ onDone }: { onDone: () => void }) {
 
   const steps = ios
     ? [
-        `Tap the Share button (the square with an arrow, ${ipad ? "at the top right" : "at the bottom of Safari"})`,
-        "Scroll down, choose “Add to Home Screen”, then tap Add",
-        "Open ProDeck from your Home Screen. You'll sign in there, once",
+        `Tocá Compartir (el cuadrado con una flecha, ${ipad ? "arriba a la derecha" : "abajo en Safari"})`,
+        "Deslizá hacia abajo, elegí “Agregar a inicio” y tocá Agregar",
+        "Abrí ProDeck desde la pantalla de inicio. Vas a ingresar allí una sola vez",
       ]
     : [
         // Only promise an Install button when the browser actually gave us
         // one (beforeinstallprompt) — otherwise point at the menu.
-        prompt ? "Tap Install below" : "Open the Chrome menu (⋮), then Add to Home screen",
-        "Open ProDeck from your home screen",
-        "Sign in, then turn on notifications when ProDeck asks",
+        prompt ? "Tocá Instalar abajo" : "Abrí el menú de Chrome (⋮) y elegí Agregar a pantalla principal",
+        "Abrí ProDeck desde la pantalla de inicio",
+        "Ingresá y activá las notificaciones cuando ProDeck lo solicite",
       ];
 
   if (ios && added) {
     return (
       <div className="crew-onboard">
         <img className="crew-mark" src={markColor} alt="" aria-hidden />
-        <h1 className="crew-onboard-title">Now open ProDeck from your Home Screen</h1>
+        <h1 className="crew-onboard-title">Ahora abrí ProDeck desde la pantalla de inicio</h1>
         <p className="crew-onboard-sub">
-          Find the ProDeck icon and tap it. You can close Safari: you'll sign in and get pages in that copy.
+          Buscá el ícono de ProDeck y tocalo. Podés cerrar Safari: vas a ingresar y recibir avisos desde esa aplicación.
         </p>
         <button className="crew-link" onClick={dismiss}>
-          I don't see it, keep going in Safari
+          No lo encuentro, continuar en Safari
         </button>
       </div>
     );
@@ -77,12 +77,12 @@ export function CrewOnboard({ onDone }: { onDone: () => void }) {
     <div className="crew-onboard">
       <img className="crew-mark" src={markColor} alt="" aria-hidden />
       <h1 className="crew-onboard-title">
-        {ios ? "Add ProDeck to your Home Screen" : "Install ProDeck on this phone"}
+        {ios ? "Agregá ProDeck a la pantalla de inicio" : "Instalá ProDeck en este celular"}
       </h1>
       <p className="crew-onboard-sub">
         {ios
-          ? "Three taps, once. Safari can't send you pages until ProDeck lives on your Home Screen."
-          : "Installing lets ProDeck reach you when the app is closed."}
+          ? "Solo tenés que hacerlo una vez. Safari no puede enviar avisos hasta que agregues ProDeck a la pantalla de inicio."
+          : "Al instalar ProDeck, podés recibir avisos aunque la aplicación esté cerrada."}
       </p>
 
       <ol className="crew-steps">
@@ -98,8 +98,8 @@ export function CrewOnboard({ onDone }: { onDone: () => void }) {
         <span className="crew-dot" style={{ background: "var(--warn)" }} />
         <span>
           {ios
-            ? "Notifications are how pages reach you when your phone is in your pocket. Without them ProDeck is silent."
-            : "If pages seem to arrive late, allow ProDeck to run in the background in your battery settings."}
+            ? "Las notificaciones permiten recibir avisos cuando guardás el celular. Sin ellas, ProDeck no te avisa."
+            : "Si los avisos llegan tarde, permití que ProDeck funcione en segundo plano desde la configuración de batería."}
         </span>
       </div>
 
@@ -113,18 +113,18 @@ export function CrewOnboard({ onDone }: { onDone: () => void }) {
             setPrompt(null);
           }}
         >
-          Install
+          Instalar
         </button>
       )}
       {/* Exactly one way past this screen (plus Install when Android offers
           it) — two stacked skip actions read as a trick question. */}
       {!ios && prompt ? (
         <button className="crew-link" onClick={dismiss}>
-          Skip for now
+          Omitir por ahora
         </button>
       ) : (
         <button className="crew-btn primary" onClick={ios ? () => setAdded(true) : dismiss}>
-          {ios ? "I've added it" : "Continue in the browser"}
+          {ios ? "Ya lo agregué" : "Continuar en el navegador"}
         </button>
       )}
     </div>

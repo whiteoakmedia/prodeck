@@ -1,0 +1,21 @@
+{
+  "file": "src/App.tsx",
+  "sha256": "703ffe6d1e4359c53c0c8037feee31f26478a3476f21291b08a9ecbfe7cb9137",
+  "slots": [
+    {"path":"0.77.0.1.0.4.1.0.1.2.2","original":"\"Dashboard\"","spanish":"\"Panel\""},
+    {"path":"0.77.0.1.0.4.1.2.1.2.2","original":"\"Setup\"","spanish":"\"Configuración inicial\""},
+    {"path":"0.77.0.1.0.4.1.6.1.2.2","original":"\"Auto-Follow\"","spanish":"\"Seguimiento automático\""},
+    {"path":"0.77.0.1.0.4.1.10.1.2.2","original":"\"Checklists\"","spanish":"\"Checklist\""},
+    {"path":"0.77.0.1.0.4.1.12.1.2.2","original":"\"Routing\"","spanish":"\"Ruteo\""},
+    {"path":"0.77.0.1.0.4.1.14.1.2.2","original":"\"Recording\"","spanish":"\"Grabación\""},
+    {"path":"0.77.0.1.0.4.1.16.1.2.2","original":"\"Analytics\"","spanish":"\"Estadísticas\""},
+    {"path":"0.77.0.1.0.4.1.18.1.2.2","original":"\"Help\"","spanish":"\"Ayuda\""},
+    {"path":"0.77.0.1.0.4.1.20.1.2.2","original":"\"Settings\"","spanish":"\"Configuración\""},
+    {"path":"0.78.5.1.25.1.1.1.11.1.1.1.5.1.2.1.0.2.0.1.2","original":"\"Back to the page before (⌘[)\"","spanish":"\"Volver a la página anterior (⌘[)\""},
+    {"path":"0.78.5.1.25.1.1.1.11.1.1.1.5.1.2.1.0.2.0.2.2","original":"\"Back\"","spanish":"\"Atrás\""},
+    {"path":"0.78.5.1.25.1.1.1.11.1.1.1.7.0.2.0.1.2","original":"\"Hide sidebar\"","spanish":"\"Ocultar barra lateral\""},
+    {"path":"0.78.5.1.25.1.1.1.11.1.3.1.3.1.3.1.0","original":"Messages","spanish":"Mensajes"},
+    {"path":"0.78.5.1.25.1.1.1.11.1.5.1.7.1.2.1.1.0","original":"\n              Crew view: comms and tally light\n            ","spanish":"\n              Vista del equipo: comunicación y luz Tally\n            "},
+    {"path":"0.78.5.1.25.1.1.1.19.1.1.1.2.1.0.2.0.1.2","original":"\"Show sidebar\"","spanish":"\"Mostrar barra lateral\""}
+  ]
+}

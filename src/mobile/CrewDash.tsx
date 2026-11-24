@@ -36,7 +36,7 @@ const splPct = (spl: number) => Math.max(0, Math.min(100, ((spl - 40) / 60) * 10
 // show "quiet" rather than a floor number — "−100 dB" on a phone reads as broken.
 const QUIET_DBFS = -85;
 
-export function CrewDash({ title = "Dashboards", onBack }: { title?: string; onBack?: () => void } = {}) {
+export function CrewDash({ title = "Paneles de control", onBack }: { title?: string; onBack?: () => void } = {}) {
   const [dashes, setDashes] = useState<Dashboard[]>([]);
   const [pick, setPick] = useState(() => {
     try {
@@ -68,7 +68,7 @@ export function CrewDash({ title = "Dashboards", onBack }: { title?: string; onB
     <div className="crew-page">
       {onBack ? (
         <header className="crew-thread-head">
-          <button className="crew-back" onClick={onBack} aria-label="Back">
+          <button className="crew-back" onClick={onBack} aria-label="Volver">
             ‹
           </button>
           <h1 className="crew-title">{title}</h1>
@@ -77,8 +77,8 @@ export function CrewDash({ title = "Dashboards", onBack }: { title?: string; onB
         <h1 className="crew-title">{title}</h1>
       )}
       {dashes.length > 0 && (
-        <div className="dash-pick" role="tablist" aria-label="Dashboard">
-          {[{ id: "service", name: "Service" }, ...dashes].map((d) => (
+        <div className="dash-pick" role="tablist" aria-label="Panel de control">
+          {[{ id: "service", name: "Evento" }, ...dashes].map((d) => (
             <button
               key={d.id}
               role="tab"
@@ -121,7 +121,7 @@ function BoothDash({ dash }: { dash: Dashboard }) {
     <div className="dash-stack">
       {left > 0 && (
         <p className="crew-hint">
-          {left === 1 ? "One part of this dashboard is" : `${left} parts of this dashboard are`} only on the booth screen.
+          {left === 1 ? "Una parte de este panel solo aparece" : `${left} partes de este panel solo aparecen`} en la pantalla de Control.
         </p>
       )}
       {widgets.map((w) => (
@@ -168,12 +168,12 @@ function ServiceDash() {
       {/* Sound level */}
       <div className="crew-card edge">
         <div className="crew-row-head">
-          <span className="mono" style={{ color: "var(--dim)" }}>Sound level</span>
+          <span className="mono" style={{ color: "var(--dim)" }}>Nivel de sonido</span>
           <span
             className="mono-data crew-count-of"
             style={{ color: audioRunning ? "var(--success)" : "var(--dim)" }}
           >
-            {!audioRunning ? "not measuring" : quiet ? "quiet" : "measuring"}
+            {!audioRunning ? "sin medir" : quiet ? "sin señal" : "midiendo"}
           </span>
         </div>
         <div className="crew-spl">
@@ -183,7 +183,7 @@ function ServiceDash() {
               <small> dB SPL</small>
             </>
           ) : (
-            <small>No reading</small>
+            <small>Sin medición</small>
           )}
         </div>
         <div className="crew-progress">
@@ -194,17 +194,17 @@ function ServiceDash() {
         </div>
         <div className="crew-hint muted">
           {audioRunning && !quiet
-            ? `peak ${Math.round(splPeak)} dB SPL`
+            ? `pico ${Math.round(splPeak)} dB SPL`
             : audioRunning
-              ? "Room is quiet. The meter wakes with the console."
-              : "The booth isn't measuring right now."}
+              ? "No se detecta señal. El medidor se activa con la consola."
+              : "Control no está midiendo en este momento."}
         </div>
       </div>
 
       {/* Overflow Listen — the existing widget, unchanged. It uses a plain
           <audio> element so iOS routes it through the media channel. */}
       <div className="crew-card edge">
-        <span className="mono" style={{ color: "var(--dim)" }}>Overflow listen</span>
+        <span className="mono" style={{ color: "var(--dim)" }}>Escuchar audio</span>
         <div style={{ marginTop: 8 }}>
           <ListenWidget />
         </div>
@@ -213,14 +213,14 @@ function ServiceDash() {
       {/* Order of service, straight from Planning Center */}
       <div className="crew-card edge">
         <div className="crew-row-head">
-          <span className="mono" style={{ color: "var(--dim)" }}>Order of service</span>
+          <span className="mono" style={{ color: "var(--dim)" }}>Crono</span>
           {pco.items.length > 0 && (
-            <span className="mono-data crew-count-of">{pco.items.length} items</span>
+            <span className="mono-data crew-count-of">{pco.items.length} elementos</span>
           )}
         </div>
 
         {pco.items.length === 0 ? (
-          <p className="crew-hint muted">No plan loaded at the booth.</p>
+          <p className="crew-hint muted">No hay un plan cargado en Control.</p>
         ) : (
           <div className="crew-order">
             {pco.items.map((it, i) =>
@@ -244,9 +244,9 @@ function ServiceDash() {
                       <span className="crew-order-sub mono-data">
                         {[
                           it.leader,
-                          it.key ? `key ${it.key}` : "",
+                          it.key ? `tonalidad ${it.key}` : "",
                           it.leader && pco.micForLeader(it.leader)
-                            ? `mic ${pco.micForLeader(it.leader)}`
+                            ? `micrófono ${pco.micForLeader(it.leader)}`
                             : "",
                         ]
                           .filter(Boolean)
@@ -254,7 +254,7 @@ function ServiceDash() {
                       </span>
                     )}
                   </span>
-                  {it.id === pco.liveItemId && <span className="crew-order-now mono">Now</span>}
+                  {it.id === pco.liveItemId && <span className="crew-order-now mono">En curso</span>}
                   <span className="mono-data crew-order-len">{fmtLen(it.length)}</span>
                 </div>
               ),
@@ -264,7 +264,7 @@ function ServiceDash() {
       </div>
 
       <p className="crew-hint muted">
-        Camera feeds stay on the booth network. They aren't sent outside the building.
+        Las señales de cámara permanecen en la red de Control. No se envían fuera del edificio.
       </p>
     </>
   );

@@ -72,13 +72,13 @@ describe("crew address", () => {
   it("says plainly that it's the copy, and when it was sent", () => {
     const now = new Date(2026, 10, 8, 22, 0).getTime();
     expect(cloudCopyLine(new Date(2026, 10, 8, 21, 14).getTime(), now)).toBe(
-      "The booth is off. Showing the last plan it sent at 9:14 PM.",
+      "Control está apagado. Mostrando el último plan enviado a las 9:14 PM.",
     );
     expect(cloudCopyLine(new Date(2026, 10, 7, 21, 14).getTime(), now)).toBe(
-      "The booth is off. Showing the last plan it sent yesterday at 9:14 PM.",
+      "Control está apagado. Mostrando el último plan enviado ayer a las 9:14 PM.",
     );
-    expect(cloudCopyLine(new Date(2026, 10, 1, 9, 5).getTime(), now)).toMatch(/sent on Sunday, Nov 1 at 9:05 AM\.$/);
-    expect(cloudCopyLine(0, now)).toBe("The booth is off, and it hasn't sent a plan yet.");
+    expect(cloudCopyLine(new Date(2026, 10, 1, 9, 5).getTime(), now)).toMatch(/enviado el .+ a las 9:05 AM\.$/);
+    expect(cloudCopyLine(0, now)).toBe("Control está apagado y todavía no envió un plan.");
   });
 
   it("builds the week as phones read it, without Planning Center ids or notes", () => {

@@ -15,15 +15,15 @@ describe("the notifications step on Home", () => {
   it("sends an iPhone in Safari to the Home Screen first", () => {
     const s = notifyStep("needs-install", base)!;
     expect(s.action).toBe("install");
-    expect(s.body).toMatch(/Add to Home Screen/);
+    expect(s.body).toMatch(/Agregar a inicio/);
   });
 
   it("explains how to unblock, per platform, without a dead button", () => {
     const ios = notifyStep("denied", base)!;
     expect(ios.action).toBe("none");
     expect(ios.button).toBeUndefined();
-    expect(ios.body).toMatch(/iPhone's Settings/);
-    expect(notifyStep("denied", { ...base, ios: false })!.body).toMatch(/phone's Settings/);
+    expect(ios.body).toMatch(/Configuración del iPhone/);
+    expect(notifyStep("denied", { ...base, ios: false })!.body).toMatch(/configuración del celular/);
   });
 
   it("offers the secure address when the booth has one", () => {
@@ -81,7 +81,7 @@ describe("the notifications step inside the ProDeck Crew app", () => {
     const s = notifyStep("denied", { ...base, app: true })!;
     expect(s.body).toMatch(/ProDeck Crew/);
     expect(s.action).toBe("enable");
-    expect(s.button).toBe("Check again");
+    expect(s.button).toBe("Comprobar de nuevo");
   });
 
   it("doesn't ask again once the volunteer turned pages off themselves", () => {

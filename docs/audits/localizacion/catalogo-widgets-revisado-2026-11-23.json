@@ -1,0 +1,557 @@
+{
+  "alcance": "39 nombres y 39 descripciones del selector de widgets; no incluye el contenido de los widgets, vistas previas ni valores guardados. Clasificación manual de coherencia con las decisiones del usuario.",
+  "resumen": {
+    "traducido": 68,
+    "pendiente_decision_glosario": 6,
+    "excluido_o_conservado": 3,
+    "revisar_contexto": 1
+  },
+  "elementos": [
+    {
+      "tipo": "labels",
+      "widget_id": "health_strip",
+      "texto_actual": "Estado del sistema",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "run_order",
+      "texto_actual": "glossary.runOrderNowNext",
+      "estado": "traducido",
+      "nota": "La etiqueta es una referencia al glosario"
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "service_timeline",
+      "texto_actual": "glossary.runOfShowTiming",
+      "estado": "traducido",
+      "nota": "La etiqueta es una referencia al glosario"
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "service_clock",
+      "texto_actual": "Cuenta regresiva del evento",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "service_tracking",
+      "texto_actual": "Seguimiento del evento",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "slide_preview",
+      "texto_actual": "Vista previa de diapositiva",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "slide_grid",
+      "texto_actual": "Cuadrícula de diapositivas",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "timer",
+      "texto_actual": "Temporizador",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "tap_link",
+      "texto_actual": "TapLink (NFC)",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "lobby_tv",
+      "texto_actual": "TV del vestíbulo (Anuncios)",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "stage_message",
+      "texto_actual": "Mensaje al escenario (Alertas)",
+      "estado": "pendiente_decision_glosario",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "child_call",
+      "texto_actual": "Aviso a familias (Mensajes de ProPresenter)",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "confidence",
+      "texto_actual": "glossary.confidenceBanner",
+      "estado": "traducido",
+      "nota": "La etiqueta es una referencia al glosario"
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "show_flow",
+      "texto_actual": "glossary.showFlow",
+      "estado": "traducido",
+      "nota": "La etiqueta es una referencia al glosario"
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "plan_item",
+      "texto_actual": "En curso / Próximo",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "people",
+      "texto_actual": "glossary.team",
+      "estado": "traducido",
+      "nota": "La etiqueta es una referencia al glosario"
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "song_leaders",
+      "texto_actual": "Líderes de canciones",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "mic_assignment",
+      "texto_actual": "Asignación de micrófonos",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "stage_call",
+      "texto_actual": "Tonalidades para el escenario",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "audio_meter",
+      "texto_actual": "SPL + RTA",
+      "estado": "excluido_o_conservado",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "listen",
+      "texto_actual": "Escuchar audio en otras salas",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "avantis",
+      "texto_actual": "Consola de audio (Avantis)",
+      "estado": "pendiente_decision_glosario",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "key_change",
+      "texto_actual": "Tonalidad de la canción → Waves",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "automix",
+      "texto_actual": "Automix",
+      "estado": "excluido_o_conservado",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "recorder",
+      "texto_actual": "Grabadora multipista",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "readiness",
+      "texto_actual": "Preparación para el domingo",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "obs",
+      "texto_actual": "OBS en vivo y escena",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "atem",
+      "texto_actual": "Mezclador de video ATEM",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "atem-macros",
+      "texto_actual": "Macros de ATEM",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "pro_macros",
+      "texto_actual": "Macros de ProPresenter",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "video_input",
+      "texto_actual": "Video del escenario (NDI)",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "church_online",
+      "texto_actual": "Church Online",
+      "estado": "excluido_o_conservado",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "stream_monitor",
+      "texto_actual": "Monitor de transmisión (Resi)",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "walk_in_music",
+      "texto_actual": "Música de entrada",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "live_viewers",
+      "texto_actual": "Espectadores en línea",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "switcher_cues",
+      "texto_actual": "Indicaciones de cámara (Siguiente)",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "crew_qr",
+      "texto_actual": "QR para unirse al equipo",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "clock",
+      "texto_actual": "Reloj",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "labels",
+      "widget_id": "checklist",
+      "texto_actual": "Checklist",
+      "estado": "pendiente_decision_glosario",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "health_strip",
+      "texto_actual": "Estado de Pro, Planning Center, audio y consola por color.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "run_order",
+      "texto_actual": "Lo que está en curso y lo que sigue, desde Planning Center.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "service_timeline",
+      "texto_actual": "Todo el evento en una barra, con el avance y el ritmo actual.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "service_clock",
+      "texto_actual": "Cuenta regresiva hasta el próximo evento.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "service_tracking",
+      "texto_actual": "Tiempo planeado de cada elemento comparado con su duración real.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "slide_preview",
+      "texto_actual": "La diapositiva que está en pantalla ahora.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "slide_grid",
+      "texto_actual": "Diapositivas de la lista. Toca una para mostrarla.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "timer",
+      "texto_actual": "Temporizador de ProPresenter con inicio, parada y reinicio.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "tap_link",
+      "texto_actual": "Lo que abre ahora el enlace NFC para donaciones.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "lobby_tv",
+      "texto_actual": "Lo que muestran las TV del vestíbulo.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "stage_message",
+      "texto_actual": "Muestra una línea de texto en las pantallas del escenario.",
+      "estado": "revisar_contexto",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "child_call",
+      "texto_actual": "Muestra el código de un niño con un mensaje de ProPresenter.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "confidence",
+      "texto_actual": "Texto grande para que lo lean la banda y el pastor.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "show_flow",
+      "texto_actual": "Orden del evento con el elemento en curso marcado.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "plan_item",
+      "texto_actual": "En curso y próximo en letras grandes.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "people",
+      "texto_actual": "Quiénes participan y si ya llegaron.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "song_leaders",
+      "texto_actual": "Cada canción con su tonalidad y su líder.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "mic_assignment",
+      "texto_actual": "Qué micrófono usa cada persona.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "stage_call",
+      "texto_actual": "Quién sigue en el escenario y cuánto falta.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "audio_meter",
+      "texto_actual": "Nivel de sonido de la sala y su espectro en vivo.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "listen",
+      "texto_actual": "Escucha el audio del evento en esta pantalla.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "avantis",
+      "texto_actual": "Silencios y faders de la consola de audio.",
+      "estado": "pendiente_decision_glosario",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "key_change",
+      "texto_actual": "Envía la tonalidad de la canción a Waves.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "automix",
+      "texto_actual": "Automix ajusta la mezcla. Mira lo que está haciendo.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "recorder",
+      "texto_actual": "Inicia y supervisa la grabación multipista.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "readiness",
+      "texto_actual": "Checklist de lo que debe estar listo para el domingo.",
+      "estado": "pendiente_decision_glosario",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "obs",
+      "texto_actual": "Escenas de OBS con la que está en vivo marcada.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "atem",
+      "texto_actual": "Program y Preview con Cut y Auto.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "atem-macros",
+      "texto_actual": "Ejecuta macros de ATEM con un toque.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "pro_macros",
+      "texto_actual": "Ejecuta macros de ProPresenter con un toque.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "video_input",
+      "texto_actual": "Video de la cámara del escenario por NDI.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "church_online",
+      "texto_actual": "Espectadores, peticiones de oración y salvaciones de Church Online.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "stream_monitor",
+      "texto_actual": "Supervisa la transmisión en vivo y su estado.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "walk_in_music",
+      "texto_actual": "Reproduce música de entrada que se desvanece antes de cada evento.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "live_viewers",
+      "texto_actual": "Cuántas personas están mirando en línea.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "switcher_cues",
+      "texto_actual": "Qué cámara sigue en cada momento.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "crew_qr",
+      "texto_actual": "Código que los voluntarios escanean para unirse al equipo.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "clock",
+      "texto_actual": "La hora en grande.",
+      "estado": "traducido",
+      "nota": ""
+    },
+    {
+      "tipo": "blurbs",
+      "widget_id": "checklist",
+      "texto_actual": "Una de tus Checklist para marcar tareas completadas.",
+      "estado": "pendiente_decision_glosario",
+      "nota": ""
+    }
+  ]
+}

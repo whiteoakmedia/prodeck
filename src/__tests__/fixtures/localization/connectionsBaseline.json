@@ -1,0 +1,30 @@
+{
+  "file": "src/components/NeedsConnection.tsx",
+  "sha256": "0fc0b594b004599225b6961d8bbf9abc619c016e11ec38403ae6bcc44fd4bab4",
+  "slots": [
+    {"path":"0.4.6.1.0.0.1.0.2.2.1.2.1.0.1","original":"} is offline — reconnecting…`","spanish":"} sin conexión. Reconectando…`"},
+    {"path":"0.4.6.1.0.0.1.0.2.2.1.4.0","original":"`Connect ${","spanish":"`Conecta ${"},
+    {"path":"0.4.6.1.0.0.1.0.2.2.1.4.1.0.1","original":"} to see this`","spanish":"} para ver este contenido`"},
+    {"path":"0.4.6.1.1.0.1.0.2.4.2.1.2","original":"\"Open Settings\"","spanish":"\"Abrir Configuración\""},
+    {"path":"0.4.6.1.1.0.1.0.2.4.2.1.4.0","original":"`Set up ${","spanish":"`Configurar ${"},
+    {"path":"0.6.6.1.0.1.1.2.0.1.2","original":"\"Connect ProPresenter to see live slides and timers\"","spanish":"\"Conecta ProPresenter para ver diapositivas y temporizadores en vivo\""},
+    {"path":"0.7.6.1.0.1.1.2.0.1.2","original":"\"Connect Planning Center to see this week's plan and team\"","spanish":"\"Conecta Planning Center para ver el plan y el equipo de esta semana\""},
+    {"path":"0.8.6.1.0.1.1.2.0.0.2","original":"\"your console\"","spanish":"\"tu consola de audio\""},
+    {"path":"0.8.6.1.0.1.1.2.0.1.2","original":"\"Connect your Allen & Heath console to see mutes and faders\"","spanish":"\"Conecta tu consola de audio Allen & Heath para ver los silenciamientos y faders\""},
+    {"path":"0.8.6.1.0.1.1.2.0.5.2","original":"\"Set up the console\"","spanish":"\"Configurar la consola de audio\""},
+    {"path":"0.9.6.1.0.1.1.2.0.0.2","original":"\"audio monitoring\"","spanish":"\"el monitoreo de audio\""},
+    {"path":"0.9.6.1.0.1.1.2.0.1.2","original":"\"Start audio monitoring to see SPL and the RTA\"","spanish":"\"Inicia el monitoreo de audio para ver el SPL y el RTA\""},
+    {"path":"0.9.6.1.0.1.1.2.0.5.2","original":"\"Set up audio\"","spanish":"\"Configurar audio\""},
+    {"path":"0.10.6.1.0.1.1.2.0.1.2","original":"\"Connect OBS Studio to see the scene, and whether you're live\"","spanish":"\"Conecta OBS Studio para ver la escena y saber si estás en vivo\""},
+    {"path":"0.11.6.1.0.1.1.2.0.0.2","original":"\"your ATEM switcher\"","spanish":"\"tu mezclador ATEM\""},
+    {"path":"0.11.6.1.0.1.1.2.0.1.2","original":"\"Connect your Blackmagic ATEM to see Program and Preview and switch from here\"","spanish":"\"Conecta tu Blackmagic ATEM para ver Program y Preview y cambiar desde aquí\""},
+    {"path":"0.11.6.1.0.1.1.2.0.5.2","original":"\"Set up the switcher\"","spanish":"\"Configurar el mezclador\""},
+    {"path":"0.12.6.1.0.1.1.2.0.1.2","original":"\"Connect Google Analytics to see live viewers\"","spanish":"\"Conecta Google Analytics para ver los espectadores en vivo\""},
+    {"path":"0.13.6.1.0.1.1.2.0.1.2","original":"\"Turn on TapLink to see where the NFC discs point\"","spanish":"\"Activa TapLink para ver a dónde apuntan los discos NFC\""},
+    {"path":"0.14.6.1.0.1.1.2.0.0.2","original":"\"browser access\"","spanish":"\"el acceso desde el navegador\""},
+    {"path":"0.14.6.1.0.1.1.2.0.1.2","original":"\"Turn on browser access so phones and screens can connect\"","spanish":"\"Activa el acceso desde el navegador para conectar teléfonos y pantallas\""},
+    {"path":"0.14.6.1.0.1.1.2.0.5.2","original":"\"Set up browser access\"","spanish":"\"Configurar el acceso desde el navegador\""},
+    {"path":"0.15.6.1.0.1.1.2.0.0.2","original":"\"a stage camera\"","spanish":"\"una cámara del escenario\""},
+    {"path":"0.15.6.1.0.1.1.2.0.1.2","original":"\"Pick an NDI source to see the stage feed — Edit this dashboard to choose one\"","spanish":"\"Elige una fuente NDI para ver la señal del escenario. Edita este panel para elegir una\""}
+  ]
+}

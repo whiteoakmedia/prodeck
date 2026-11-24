@@ -116,9 +116,9 @@ export function AskPanel({ map, live, onPick, compact }: { map: RoutingMap; live
   return (
     <section className={`ask ${compact ? "compact" : ""}`}>
       <div className="ask-head">
-        <span className="ask-title">Ask ProDeck</span>
+        <span className="ask-title">Consultá a ProDeck</span>
         <span className="ask-sub">
-          Describe what's wrong in your own words. It answers only from this building's map and notes.
+          Describí el problema con tus palabras. ProDeck responde usando únicamente el mapa y las notas de este lugar.
         </span>
       </div>
       {turns.length > 0 && (
@@ -139,7 +139,7 @@ export function AskPanel({ map, live, onPick, compact }: { map: RoutingMap; live
           ))}
           {busy && (
             <div className="ask-turn assistant">
-              <div className="ask-bubble ask-thinking">Looking at the map…</div>
+              <div className="ask-bubble ask-thinking">Revisando el mapa…</div>
             </div>
           )}
           <div ref={endRef} />
@@ -158,12 +158,12 @@ export function AskPanel({ map, live, onPick, compact }: { map: RoutingMap; live
           className="ask-input"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder={turns.length ? "Say what happened next…" : "e.g. Ruth's mic is crackling · nothing from the keys · stream is quiet"}
+          placeholder={turns.length ? "Contá qué pasó después…" : "Ej.: el micrófono de Ruth hace ruido · no se escuchan los teclados · la transmisión suena baja"}
           disabled={busy}
           autoComplete="off"
         />
         <button className="ask-send" type="submit" disabled={busy || !q.trim()}>
-          Ask
+          Consultar
         </button>
       </form>
       {turns.length > 0 && (
@@ -175,7 +175,7 @@ export function AskPanel({ map, live, onPick, compact }: { map: RoutingMap; live
             setTurns(() => []);
           }}
         >
-          Start over
+          Empezar de nuevo
         </button>
       )}
     </section>

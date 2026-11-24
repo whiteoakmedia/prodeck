@@ -51,11 +51,11 @@ export function CrewLeader({ onBack }: { onBack?: () => void }) {
         pco.team.find((m) => m.name.toLowerCase() === who.toLowerCase())?.position ?? "";
       const inv = await inviteCreate(who, role);
       const url = `${PUBLIC_URL}/?invite=${inv.token}`;
-      const text = `Join the ProDeck crew, ${who.split(" ")[0]}! Tap, add to your Home Screen, pick a PIN. You're already approved: ${url}`;
+      const text = `Sumate al equipo de ProDeck, ${who.split(" ")[0]}. Abrí el enlace, agregá ProDeck a la pantalla de inicio y elegí un PIN. Tu acceso ya está aprobado: ${url}`;
       if (navigator.share) await navigator.share({ text });
       else {
         await navigator.clipboard?.writeText(url);
-        setInviteMsg("Link copied. Text it to them.");
+        setInviteMsg("Enlace copiado. Podés enviárselo.");
       }
       setInviteWho("");
     } catch (e) {
@@ -106,33 +106,33 @@ export function CrewLeader({ onBack }: { onBack?: () => void }) {
     <div className="crew-page">
       <div className="crew-row-head">
         {onBack && (
-          <button className="crew-back" onClick={onBack} aria-label="Back">
+          <button className="crew-back" onClick={onBack} aria-label="Volver">
             ‹
           </button>
         )}
         <h1 className="crew-title" style={{ margin: 0 }}>
-          Leader board
+          Panel del equipo
         </h1>
       </div>
       <p className="crew-hint muted" style={{ marginTop: -4 }}>
-        {scheduled.length} scheduled · {needAttention.length} need attention
+        {scheduled.length} programados · {needAttention.length} necesitan atención
       </p>
 
       <div className="crew-tiles crew-tiles-3">
         <div className="crew-card edge">
-          <span className="mono" style={{ color: "var(--dim)" }}>On site</span>
+          <span className="mono" style={{ color: "var(--dim)" }}>Presentes</span>
           <div className="crew-tile-big">
             {onSite.length}/{scheduled.length || crew.length}
           </div>
         </div>
         <div className="crew-card edge">
-          <span className="mono" style={{ color: "var(--dim)" }}>Service</span>
+          <span className="mono" style={{ color: "var(--dim)" }}>Evento</span>
           <div className="crew-tile-big mono-data" style={{ fontSize: 19 }}>
             {start ? clock(start) : "—"}
           </div>
         </div>
         <div className="crew-card edge">
-          <span className="mono" style={{ color: "var(--dim)" }}>Issues</span>
+          <span className="mono" style={{ color: "var(--dim)" }}>Pendientes</span>
           <div
             className="crew-tile-big"
             style={{ color: needAttention.length ? "var(--warn)" : "var(--success)" }}
@@ -144,13 +144,13 @@ export function CrewLeader({ onBack }: { onBack?: () => void }) {
 
       {crew.length === 0 && (
         <p className="crew-hint muted">
-          No approved crew yet. Approve people under Settings, Crew Members, and give each one a role.
+          Todavía no hay integrantes aprobados. Aprobá a cada persona en Configuración, Integrantes del equipo, y asignale un rol.
         </p>
       )}
 
       {needAttention.length > 0 && (
         <>
-          <span className="mono crew-sheet-label">Needs attention</span>
+          <span className="mono crew-sheet-label">Necesitan atención</span>
           {needAttention.map((u) => (
             <div key={u.id} className="crew-card danger">
               <div className="crew-row-head">
@@ -158,12 +158,12 @@ export function CrewLeader({ onBack }: { onBack?: () => void }) {
                 <span className="crew-buzz-title">{u.name}</span>
               </div>
               <div className="crew-buzz-sub">
-                {u.role || "no role set"} · expected {expected(u) ? clock(expected(u)) : "—"},
-                not arrived
+                {u.role || "sin rol asignado"} · horario previsto {expected(u) ? clock(expected(u)) : "—"},
+                todavía no llegó
               </div>
               <div className="field-row" style={{ marginTop: 10, marginBottom: 0 }}>
                 <button className="crew-nudge" onClick={() => setNudge(u)}>
-                  Nudge
+                  Enviar aviso
                 </button>
               </div>
             </div>
@@ -173,14 +173,14 @@ export function CrewLeader({ onBack }: { onBack?: () => void }) {
 
       {waiting.length > 0 && (
         <>
-          <span className="mono crew-sheet-label">Not in yet</span>
+          <span className="mono crew-sheet-label">Todavía no llegaron</span>
           {waiting.map((u) => (
             <div key={u.id} className="crew-leader-row">
               <span className="crew-dot" style={{ background: "var(--dim)" }} />
               <span className="crew-recip-name">{u.name}</span>
               <span className="mono-data crew-recip-seen">
                 {u.role ? `${u.role} · ` : ""}
-                {expected(u) ? `due ${clock(expected(u))}` : "no time"}
+                {expected(u) ? `previsto ${clock(expected(u))}` : "sin horario"}
               </span>
             </div>
           ))}
@@ -189,13 +189,13 @@ export function CrewLeader({ onBack }: { onBack?: () => void }) {
 
       {onSite.length > 0 && (
         <>
-          <span className="mono crew-sheet-label">On track</span>
+          <span className="mono crew-sheet-label">Presentes</span>
           {onSite.map((u) => (
             <div key={u.id} className="crew-leader-row">
               <span className="crew-dot" style={{ background: "var(--success)" }} />
               <span className="crew-recip-name">{u.name}</span>
               <span className="mono-data crew-recip-seen">
-                {u.role ? `${u.role} · ` : ""}in {clock(arrivals[u.id])}
+                {u.role ? `${u.role} · ` : ""}llegó {clock(arrivals[u.id])}
               </span>
             </div>
           ))}
@@ -206,7 +206,7 @@ export function CrewLeader({ onBack }: { onBack?: () => void }) {
           never "expected" and never counted as an issue. */}
       {offPlan.length > 0 && (
         <>
-          <span className="mono crew-sheet-label">Not scheduled this week</span>
+          <span className="mono crew-sheet-label">Sin programar esta semana</span>
           {offPlan.map((u) => (
             <div key={u.id} className="crew-leader-row">
               <span className="crew-dot" style={{ background: "var(--dim)" }} />
@@ -219,12 +219,12 @@ export function CrewLeader({ onBack }: { onBack?: () => void }) {
 
       {canManage && (
         <>
-      <span className="mono crew-sheet-label">Invite someone</span>
+      <span className="mono crew-sheet-label">Invitar a alguien</span>
       <div className="field-row" style={{ alignItems: "center" }}>
         <input
           className="crew-input"
           list="leader-invite-roster"
-          placeholder="Name from the plan (or type)"
+          placeholder="Nombre del plan o escrito a mano"
           value={inviteWho}
           onChange={(e) => setInviteWho(e.target.value)}
           style={{ flex: 1 }}
@@ -237,13 +237,13 @@ export function CrewLeader({ onBack }: { onBack?: () => void }) {
             ))}
         </datalist>
         <button className="crew-nudge" disabled={!inviteWho.trim()} onClick={sendInvite}>
-          Share link
+          Compartir enlace
         </button>
       </div>
       {inviteMsg && <p className="crew-hint muted">{inviteMsg}</p>}
       <p className="crew-hint muted">
-        Pre-approved one-time link: they tap it, install, pick a PIN, no
-        password, no waiting.
+        Enlace de un solo uso con acceso aprobado: la persona lo abre, instala la aplicación y elige un PIN.
+        No necesita contraseña ni esperar aprobación.
       </p>
         </>
       )}
@@ -253,7 +253,7 @@ export function CrewLeader({ onBack }: { onBack?: () => void }) {
           onClose={() => setNudge(null)}
           preset={{
             recipientId: nudge.id,
-            body: `${nudge.name}, checking in: are you on your way?`,
+            body: `${nudge.name}, ¿ya estás en camino?`,
           }}
         />
       )}

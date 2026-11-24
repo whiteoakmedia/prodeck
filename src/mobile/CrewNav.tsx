@@ -54,10 +54,10 @@ const ICONS: Record<CrewTab, ReactElement> = {
 const LABELS: Record<CrewTab, string> = {
   home: "Home",
   chat: "Chat",
-  checklist: "Checklist",
-  dashboards: "Dashboards",
+  checklist: "Lista de tareas",
+  dashboards: "Paneles de control",
   director: "Director",
-  more: "More",
+  more: "Más",
 };
 
 /** The five tabs. Director takes Dashboards' place for whoever has it

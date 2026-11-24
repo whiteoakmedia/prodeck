@@ -55,7 +55,7 @@ export function useWalkPeople(map: RoutingMap | null): WalkPerson[] {
 export function liveName(n: RNode, live: LiveView): string {
   const k = deskKeyFor(n);
   const nm = k && live.desk?.connected ? (live.desk.names[k] ?? "").trim() : "";
-  return n.label || nm || (n.kind === "channel" ? `Channel ${n.ref?.index ?? ""}` : n.id);
+  return n.label || nm || (n.kind === "channel" ? `Canal ${n.ref?.index ?? ""}` : n.id);
 }
 
 /* ------------------------------------------------------------ picker */
@@ -91,20 +91,20 @@ export function WalkPicker({
       <div className="rw-seg" role="tablist">
         {people.length > 0 && (
           <button className={mode === "people" ? "on" : ""} onClick={() => setMode("people")}>
-            People
+            Personas
           </button>
         )}
         <button className={mode === "channels" ? "on" : ""} onClick={() => setMode("channels")}>
-          Channels
+          Canales
         </button>
         {places.length > 0 && (
           <button className={mode === "places" ? "on" : ""} onClick={() => setMode("places")}>
-            Places
+            Lugares
           </button>
         )}
         {hasStage && (
           <button className={mode === "stage" ? "on" : ""} onClick={() => setMode("stage")}>
-            Stage
+            Escenario
           </button>
         )}
       </div>
@@ -112,7 +112,7 @@ export function WalkPicker({
       <input
         id="rw-search"
         className="rw-search"
-        placeholder="Channel number, name, or what's on the desk…"
+        placeholder="Número de canal, nombre o texto en la consola…"
         value={q}
         onChange={(e) => setQ(e.target.value)}
         autoComplete="off"
@@ -120,11 +120,11 @@ export function WalkPicker({
 
       {hits && (
         <ul className="rw-list">
-          {hits.length === 0 && <li className="rw-empty">Nothing on the map matches “{q}”.</li>}
+          {hits.length === 0 && <li className="rw-empty">No hay coincidencias en el mapa para “{q}”.</li>}
           {hits.map((n) => (
             <li key={n.id}>
               <button className="rw-row" onClick={() => onPick(n.id)}>
-                <span className="rw-num mono">{n.kind === "channel" ? n.ref?.index : n.kind === "source" ? "src" : "out"}</span>
+                <span className="rw-num mono">{n.kind === "channel" ? n.ref?.index : n.kind === "source" ? "ent" : "sal"}</span>
                 <span className="rw-row-main">{liveName(n, live)}</span>
                 <span className="rw-go">→</span>
               </button>
@@ -141,14 +141,14 @@ export function WalkPicker({
                 className="rw-row"
                 disabled={p.nodes.length === 0}
                 onClick={() => p.nodes[0] && onPick(p.nodes[0].id)}
-                title={p.nodes.length === 0 ? "This mic isn't mapped to a desk channel yet (Planning Center → Mics)" : undefined}
+                title={p.nodes.length === 0 ? "Este micrófono todavía no está asignado a un canal de la consola (Planning Center → Micrófonos)" : undefined}
               >
                 <span className="rw-num mono">{p.nodes[0]?.ref?.index ?? "—"}</span>
                 <span className="rw-row-main">
                   {p.name}
                   <span className="rw-sub">
-                    {p.position} · mic {p.mic}
-                    {p.nodes.length === 0 ? " · not mapped to a channel" : ""}
+                    {p.position} · micrófono {p.mic}
+                    {p.nodes.length === 0 ? " · sin asignar a un canal" : ""}
                   </span>
                 </span>
                 <span className="rw-go">→</span>
@@ -160,7 +160,7 @@ export function WalkPicker({
 
       {!hits && mode === "channels" && (
         <ul className="rw-list">
-          {channels.length === 0 && <li className="rw-empty">No channels on the map yet.</li>}
+          {channels.length === 0 && <li className="rw-empty">Todavía no hay canales en el mapa.</li>}
           {channels.map((n) => {
             const k = deskKeyFor(n);
             const muted = k && live.desk?.connected ? live.desk.mutes[k] === true : false;
@@ -171,10 +171,10 @@ export function WalkPicker({
                   <span className="rw-row-main">
                     {liveName(n, live)}
                     {n.label && k && live.desk?.connected && (live.desk.names[k] ?? "").trim() && (live.desk.names[k] ?? "").trim() !== n.label && (
-                      <span className="rw-sub">“{(live.desk.names[k] ?? "").trim()}” on the desk</span>
+                      <span className="rw-sub">“{(live.desk.names[k] ?? "").trim()}” en la consola</span>
                     )}
                   </span>
-                  {muted && <span className="rw-chip bad">muted</span>}
+                  {muted && <span className="rw-chip bad">muteado</span>}
                   <span className="rw-go">→</span>
                 </button>
               </li>
@@ -190,7 +190,7 @@ export function WalkPicker({
           {places.map((n) => (
             <li key={n.id}>
               <button className="rw-row" onClick={() => onPick(n.id)}>
-                <span className="rw-num mono">out</span>
+                <span className="rw-num mono">sal</span>
                 <span className="rw-row-main">{n.label}</span>
                 <span className="rw-go">→</span>
               </button>
@@ -218,16 +218,16 @@ export function WalkView({
   /** Jump to another node (a twin, a source) without leaving the walk. */
   onPick?: (nodeId: string) => void;
 }) {
-  const w = useMemo(() => walk(map, targetId, live), [map, targetId, live]);
+  const w = useMemo(() => walk(map, targetId, live, "es"), [map, targetId, live]);
   if (!w) {
     return (
       <div className="rw">
         {onBack && (
           <button className="rw-back" onClick={onBack}>
-            ‹ Back
+            ‹ Volver
           </button>
         )}
-        <p className="rw-empty">That isn't on the map any more.</p>
+        <p className="rw-empty">Eso ya no está en el mapa.</p>
       </div>
     );
   }
@@ -240,7 +240,7 @@ export function WalkView({
     <div className="rw">
       <header className="rw-head">
         {onBack && (
-          <button className="rw-back" onClick={onBack} aria-label="Back">
+          <button className="rw-back" onClick={onBack} aria-label="Volver">
             ‹
           </button>
         )}
@@ -252,7 +252,7 @@ export function WalkView({
 
       {w.watch.map((k) => (
         <section key={k.id} className={`rw-watch ${k.severity}`}>
-          <div className="rw-watch-label mono">{k.severity === "fix" ? "Known issue" : "Deliberate — know about it"}</div>
+          <div className="rw-watch-label mono">{k.severity === "fix" ? "Problema conocido" : "Cambio intencional: tenelo en cuenta"}</div>
           <div className="rw-watch-symptom">{k.symptom}</div>
           <p>{k.detail}</p>
         </section>
@@ -274,7 +274,7 @@ export function WalkView({
 
       {ok.length > 0 && (
         <section className="rw-block">
-          <div className="rw-label mono">Already checked for you</div>
+          <div className="rw-label mono">Ya revisado por ProDeck</div>
           {ok.map((c, i) => (
             <div key={i} className="rw-check ok">
               <span className="rw-mark">✓</span>
@@ -294,7 +294,7 @@ export function WalkView({
       {w.steps.length > 0 && (
         <section className="rw-block">
           <div className="rw-label mono">
-            {w.target.kind === "channel" ? "Between the source and the desk, in order" : "What to look at, in order"}
+            {w.target.kind === "channel" ? "Entre la fuente y la consola, en orden" : "Qué revisar, en orden"}
           </div>
           <ol className="rw-steps">
             {w.steps.map((s) => (
@@ -311,12 +311,12 @@ export function WalkView({
       )}
 
       {w.steps.length === 0 && bad.length === 0 && (
-        <p className="rw-allgood">Everything on this path that ProDeck can see looks right. If there is still no sound, it is at the source itself.</p>
+        <p className="rw-allgood">Todo lo que ProDeck puede revisar en esta ruta parece estar bien. Si todavía no hay sonido, revisá la fuente.</p>
       )}
 
       <footer className="rw-foot">
         <span className={`rw-age ${stale ? "stale" : ""}`}>Map {ageText(w.verifiedAt, live.now)}</span>
-        {w.blind && <span className="rw-blind">ProDeck can't see anything on this path live — it is all walking.</span>}
+        {w.blind && <span className="rw-blind">ProDeck no puede revisar esta ruta en vivo: hay que comprobarla en persona.</span>}
         {onPick && w.target.kind === "channel" && (
           <span className="rw-jump">
             {w.path
@@ -324,7 +324,7 @@ export function WalkView({
               .filter((n): n is RNode => !!n && n.kind === "source")
               .map((n) => (
                 <button key={n.id} className="rw-link" onClick={() => onPick(n.id)}>
-                  Everything on {n.label} →
+                  Todo lo conectado a {n.label} →
                 </button>
               ))}
           </span>

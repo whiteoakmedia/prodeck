@@ -156,7 +156,7 @@ export function CrewHome({
   }, [checked, serviceKey, start]);
   // Human at any distance: "T-24 min to service" on Sunday morning,
   // "2d 7h to service" midweek — a bare T-3606 helps nobody.
-  const cd = start ? fmtCountdown(start) : { big: "No time", caption: "set for service" };
+  const cd = start ? fmtCountdown(start) : { big: "Sin horario", caption: "del evento" };
   // When ProPresenter is running a countdown (the pre-service timer on the
   // screens), the phones show THAT — it's the number the room is watching.
   const ppTimer = useLiveTimers().find((t) => t.state === "running");
@@ -278,12 +278,12 @@ export function CrewHome({
     <div className="crew-page">
       <header className="home-head">
         <div>
-          <h1 className="crew-title">Sunday</h1>
+          <h1 className="crew-title">Inicio</h1>
           {/* Who the app thinks you are: the quiet confirmation that sign in
               and role assignment actually took. */}
           {myName && (
             <p className="home-hi">
-              Hi {myName.split(" ")[0]}
+              Hola {myName.split(" ")[0]}
               {myRole ? ` · ${myRole}` : ""}
             </p>
           )}
@@ -291,9 +291,9 @@ export function CrewHome({
         {/* One quiet line of status where four cards' worth used to be.
             Pro is only shown once heard from: a phone that hasn't had a
             status frame yet must not be told "Pro offline". */}
-        <div className="home-status mono" aria-label="Status">
+        <div className="home-status mono" aria-label="Estado">
           <span className="crew-dot" style={{ background: boothUp ? "var(--success)" : "var(--danger)" }} />
-          {boothUp ? "Booth" : "Offline"}
+          {boothUp ? "Control" : "Sin conexión"}
           {connected && <span className="home-status-sep">Pro</span>}
           {audioRunning && audioDb > -85 && (
             <span className="home-status-sep">{Math.round(audioDb + splCalibration)} dB</span>
@@ -313,10 +313,10 @@ export function CrewHome({
         <div className="crew-count-rule" />
         <div className="crew-count-right">
           <div className="crew-count-when">
-            {start ? `Service starts ${dateClock(start)}` : "No service time set"}
+            {start ? `El evento comienza ${dateClock(start)}` : "Sin horario para el evento"}
           </div>
           <div className="crew-hint muted">
-            {pco.items.length ? `${pco.items.length} items in the plan` : "No plan loaded"}
+            {pco.items.length ? `${pco.items.length} elementos en el plan` : "No hay un plan cargado"}
           </div>
         </div>
       </div>
@@ -327,28 +327,28 @@ export function CrewHome({
       <div className="crew-checkin edge">
         {checked ? (
           <span className="crew-checkin-done">
-            <span className="crew-check on green">✓</span> Checked in {clock(checked)}
+            <span className="crew-check on green">✓</span> Asistencia registrada a las {clock(checked)}
           </span>
         ) : (
           <>
             <div>
               <div className="crew-buzz-title">
-                {myArrival.scheduled ? "Not checked in" : "Not on this week's plan"}
+                {myArrival.scheduled ? "Asistencia sin registrar" : "No estás en el plan de esta semana"}
               </div>
               {myArrival.scheduled && expectedTs > 0 && (
                 <div className="mono-data crew-buzz-sub">
-                  expected {dayClock(expectedTs)}
-                  {myArrival.ts == null ? " · service start" : ""}
+                  hora prevista {dayClock(expectedTs)}
+                  {myArrival.ts == null ? " · inicio del evento" : ""}
                 </div>
               )}
               {!myArrival.scheduled && (
                 <div className="mono-data crew-buzz-sub">
-                  filling in? check in anyway
+                  ¿Estás reemplazando a alguien? Registrá tu asistencia igual
                 </div>
               )}
             </div>
             <button className="crew-checkin-btn" disabled={busy} onClick={checkIn}>
-              {busy ? "…" : "I'm here"}
+              {busy ? "…" : "Registrar asistencia"}
             </button>
           </>
         )}
@@ -377,7 +377,7 @@ export function CrewHome({
             )}
             {myFiles.length > 0 && (
               <div className="crew-guide-files">
-                <span className="mono crew-sheet-label">Files</span>
+                <span className="mono crew-sheet-label">Archivos</span>
                 {myFiles.map((f) => (
                   // Opened in a new tab rather than inlined: a PDF or an image
                   // wants the OS viewer's zoom, and the sheet stays put behind.
@@ -402,7 +402,7 @@ export function CrewHome({
             <button
               className="crew-back"
               onClick={() => setViewing(null)}
-              aria-label="Back to position"
+              aria-label="Volver al puesto"
             >
               ‹
             </button>
@@ -415,7 +415,7 @@ export function CrewHome({
               target="_blank"
               rel="noreferrer"
             >
-              Open
+              Abrir
             </a>
           </header>
           <div className="crew-viewer-body">
@@ -429,8 +429,8 @@ export function CrewHome({
               />
             ) : (
               <p className="crew-hint muted crew-viewer-note">
-                This file type can't be shown inside the app. Tap Open to view it; you'll
-                come back with your phone's Back gesture.
+                Este tipo de archivo no se puede mostrar dentro de la aplicación. Tocá Abrir para verlo;
+                podés volver con el gesto de retroceso de tu celular.
               </p>
             )}
           </div>
@@ -443,32 +443,32 @@ export function CrewHome({
         <div className="crew-card crew-duty">
           <div className="crew-row-head">
             <span className="mono" style={{ color: "var(--accent-hi)" }}>
-              My next duty
+              Mi próxima tarea
             </span>
             <span className="mono-data crew-count-of">
               {dutyMins != null && dutyMins >= 0 && dutyMins <= 120
-                ? `in ${dutyMins} min`
+                ? `en ${dutyMins} min`
                 : dutyMins != null && dutyMins < 0 && dutyMins >= -120
-                  ? `${Math.abs(dutyMins)} min over`
-                  : `${dutyPool.length} to go`}
+                  ? `${Math.abs(dutyMins)} min de atraso`
+                  : `${dutyPool.length} pendientes`}
             </span>
           </div>
           <div className="crew-duty-title home-duty-title">{duty.item.text}</div>
           <div className="crew-buzz-sub">
             {duty.list.name}
-            {dutyDue ? ` · due ${dayClock(dutyDue)}` : ""}
-            {dutyPool.length > 1 ? ` · then ${dutyPool.length - 1} more` : " · last one"}
+            {dutyDue ? ` · vence ${dayClock(dutyDue)}` : ""}
+            {dutyPool.length > 1 ? ` · después ${dutyPool.length - 1} más` : " · última tarea"}
           </div>
           <div className="field-row" style={{ marginTop: 12, marginBottom: 0 }}>
             <button
               className="crew-checkin-btn"
               onClick={() => cl.toggleItem(duty.list.id, duty.item.id)}
             >
-              ✓ Done
+              ✓ Completada
             </button>
             {onGoChecklist && (
               <button className="btn ghost" onClick={onGoChecklist}>
-                All steps
+                Todas las tareas
               </button>
             )}
           </div>
@@ -479,14 +479,14 @@ export function CrewHome({
           to the full thing. These were five separate cards. */}
       <div className="home-tiles">
         {songCount > 0 && !isBand && (
-          <HomeTile icon={<IconMusic />} title="Setlist" value={`${songCount} song${songCount === 1 ? "" : "s"}`} onClick={() => setSetlistOpen(true)} />
+          <HomeTile icon={<IconMusic />} title="Setlist" value={`${songCount} ${songCount === 1 ? "canción" : "canciones"}`} onClick={() => setSetlistOpen(true)} />
         )}
         {totals.total > 0 && (
           <HomeTile
             icon={<IconChecklist />}
-            title="Checklist"
+            title="Lista de tareas"
             value={`${totals.done}/${totals.total}`}
-            warn={overdue > 0 ? `${overdue} overdue` : undefined}
+            warn={overdue > 0 ? `${overdue} ${overdue === 1 ? "vencida" : "vencidas"}` : undefined}
             progress={pct}
             onClick={onGoChecklist}
           />
@@ -494,16 +494,16 @@ export function CrewHome({
         <HomeTile
           icon={<IconChat />}
           title="Chat"
-          value={chat.unread ? `${chat.unread} unread` : "All read"}
+          value={chat.unread ? `${chat.unread} sin leer` : "Todo leído"}
           accent={chat.unread > 0}
           onClick={onGoChat}
         />
-        {onGoWalk && <HomeTile icon={<IconNoSound />} title="No sound?" value="Find the fault" onClick={onGoWalk} />}
+        {onGoWalk && <HomeTile icon={<IconNoSound />} title="¿Sin sonido?" value="Buscar el problema" onClick={onGoWalk} />}
         {(guideText || myFiles.length > 0) && (
-          <HomeTile icon={<IconGuide />} title="My role" value={myArrival.position || "Guide"} onClick={() => setGuideOpen(true)} />
+          <HomeTile icon={<IconGuide />} title="Mi rol" value={myArrival.position || "Guía"} onClick={() => setGuideOpen(true)} />
         )}
         {isAdmin && (
-          <HomeTile icon={<IconTap />} title="TapLink" value={tap ? (tap.state ?? "default") : "Not reachable"} dot={tap ? "var(--success)" : "var(--dim)"} />
+          <HomeTile icon={<IconTap />} title="TapLink" value={tap ? (tap.state ?? "default") : "Sin conexión"} dot={tap ? "var(--success)" : "var(--dim)"} />
         )}
       </div>
     </div>

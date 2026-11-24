@@ -100,12 +100,12 @@ export function PosterJoin() {
         <img className="login-lockup" src={lockupStacked} alt="ProDeck by White Oak Media" />
         {ticket ? (
           <>
-            <h2 style={{ margin: "4px 0 0" }}>Thanks, {ticket.name.split(" ")[0]}</h2>
+            <h2 style={{ margin: "4px 0 0" }}>Gracias, {ticket.name.split(" ")[0]}</h2>
             <p className="muted">
-              Ask whoever is at the production computer to approve you. They'll see your name under
-              Crew Members. Keep this page open and you'll be let in as soon as they do.
+              Pedile a quien esté en Control que apruebe tu solicitud. Verá tu nombre en
+              Integrantes del equipo. Dejá esta página abierta para ingresar apenas te aprueben.
             </p>
-            <p className="muted small">Waiting for the booth…</p>
+            <p className="muted small">Esperando la aprobación de Control…</p>
             <button
               className="btn ghost"
               onClick={() => {
@@ -113,21 +113,21 @@ export function PosterJoin() {
                 setTicket(null);
               }}
             >
-              Start over
+              Empezar de nuevo
             </button>
           </>
         ) : (
           <form onSubmit={submit} style={{ display: "contents" }}>
-            <h2 style={{ margin: "4px 0 0" }}>Join the crew</h2>
+            <h2 style={{ margin: "4px 0 0" }}>Sumate al equipo</h2>
             {gone ? (
-              <p className="muted">The booth didn't approve that request. Check with whoever is at the production computer, then try again.</p>
+              <p className="muted">No se aprobó la solicitud. Consultá con quien esté en Control y volvé a intentarlo.</p>
             ) : (
-              <p className="muted">Your name and a PIN you'll remember. The booth approves you, then you're in.</p>
+              <p className="muted">Ingresá tu nombre y un PIN que recuerdes. Podrás entrar cuando aprueben tu solicitud desde Control.</p>
             )}
             <input
               id="join-name"
               className="input"
-              placeholder="Your name"
+              placeholder="Tu nombre"
               autoComplete="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -136,7 +136,7 @@ export function PosterJoin() {
             <input
               id="join-pin"
               className="input"
-              placeholder="4 digit PIN"
+              placeholder="PIN de 4 dígitos"
               inputMode="numeric"
               autoComplete="off"
               value={pin}
@@ -144,7 +144,7 @@ export function PosterJoin() {
             />
             {err && <p className="error">{err}</p>}
             <button className="btn primary" type="submit" disabled={busy}>
-              {busy ? "Sending…" : "Ask to join"}
+              {busy ? "Enviando…" : "Solicitar ingreso"}
             </button>
           </form>
         )}

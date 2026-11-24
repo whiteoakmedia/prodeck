@@ -17,23 +17,23 @@ export function CrewWalk({ onBack }: { onBack: () => void }) {
       {!target && (
         <>
           <div className="crew-row-head">
-            <button className="crew-back" onClick={onBack} aria-label="Back">
+            <button className="crew-back" onClick={onBack} aria-label="Volver">
               ‹
             </button>
             <h1 className="crew-title" style={{ margin: 0 }}>
-              No sound?
+              ¿Sin sonido?
             </h1>
           </div>
           <p className="crew-hint">
-            Pick the person, channel or place. ProDeck checks what it can see from the booth first, then tells you where to walk.
+            Elegí la persona, el canal o el lugar. ProDeck revisa primero lo que puede ver desde Control y después te indica dónde ir.
           </p>
         </>
       )}
-      {loadErr && <div className="crew-caution">The booth's routing map couldn't be read: {loadErr}</div>}
-      {!map && !loadErr && <div className="crew-hint">Loading the map…</div>}
+      {loadErr && <div className="crew-caution">No se pudo leer el mapa de ruteo de Control: {loadErr}</div>}
+      {!map && !loadErr && <div className="crew-hint">Cargando el mapa…</div>}
       {map?.example && !target && (
         <div className="crew-caution">
-          This is the example map that ships with ProDeck, not this building's. Someone at the booth needs to fill in Routing first.
+          Este es el mapa de ejemplo de ProDeck. Alguien en Control debe configurar primero el ruteo de este lugar.
         </div>
       )}
       {map && !target && <WalkPicker map={map} live={live} onPick={setTarget} compact />}

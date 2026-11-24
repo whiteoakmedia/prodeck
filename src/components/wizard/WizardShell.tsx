@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from "react";
+import { uiText } from "../../lib/uiText";
 
 // The frame both setup wizards share: steps down the left, the step on the
 // right, Back and Next at the bottom. Each wizard owns its own steps and what
@@ -48,17 +49,17 @@ export function WizardShell(props: {
             ))}
           </ol>
           <button className="btn ghost small wz-close" onClick={onClose}>
-            Close
+            {uiText.close}
           </button>
         </aside>
         <main className="wz-main">
           <div className="wz-eyebrow">
-            Step {at + 1} of {steps.length}
+            {uiText.step(at + 1, steps.length)}
           </div>
           <div className="wz-body">{children}</div>
           <div className="wz-actions">
             <button className="btn ghost" disabled={at === 0 || busy} onClick={() => onGo(at - 1)}>
-              Back
+              {uiText.back}
             </button>
             <div className="wz-actions-r">{actions}</div>
           </div>

@@ -38,21 +38,21 @@ function JoinPanel() {
     return (
       <div className="w-chat-join">
         <p>
-          <strong>{chat.name}</strong> — waiting for booth approval.
+          <strong>{chat.name}</strong> — esperando la aprobación de Control.
         </p>
         <p className="muted small">
-          Ask at the booth (or an admin phone) to approve you under Settings →
-          Crew, then tap below.
+          Pedí que te aprueben desde Control o desde el celular de un administrador, en Configuración →
+          Equipo. Después, tocá el botón de abajo.
         </p>
         <button className="btn primary" disabled={busy || !pin} onClick={() => go("login")}>
-          I'm approved — sign in
+          Ya me aprobaron: ingresar
         </button>
         <input
           className="input"
           type="password"
           inputMode="numeric"
           maxLength={4}
-          placeholder="Your 4-digit PIN"
+          placeholder="Tu PIN de 4 dígitos"
           value={pin}
           onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
         />
@@ -64,11 +64,11 @@ function JoinPanel() {
   return (
     <div className="w-chat-join">
       <p>
-        <strong>Join the crew</strong> — pick a name and a 4-digit PIN.
+        <strong>Sumate al equipo</strong>: elegí un nombre y un PIN de 4 dígitos.
       </p>
       <input
         className="input"
-        placeholder="Your name"
+        placeholder="Tu nombre"
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
@@ -77,7 +77,7 @@ function JoinPanel() {
         type="password"
         inputMode="numeric"
         maxLength={4}
-        placeholder="4-digit PIN"
+        placeholder="PIN de 4 dígitos"
         value={pin}
         onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
       />
@@ -87,14 +87,14 @@ function JoinPanel() {
           disabled={busy || !name.trim() || pin.length !== 4}
           onClick={() => go("register")}
         >
-          Join
+          Solicitar ingreso
         </button>
         <button
           className="btn ghost"
           disabled={busy || !name.trim() || pin.length !== 4}
           onClick={() => go("login")}
         >
-          Sign in
+          Ingresar
         </button>
       </div>
       {err && <p className="error small">{err}</p>}
@@ -158,11 +158,11 @@ export function ChatPanel() {
       <div className="w-chat-list" ref={listRef}>
         {chat.msgs.length === 0 && (
           <div className="chat-empty">
-            <strong>No messages yet</strong>
+            <strong>Todavía no hay mensajes</strong>
             <span className="muted small">
               {isMember
-                ? "Messages to the whole crew show up here."
-                : "Messages reach the crew on their phones. Use To for the stage displays or a TV screen, and Page when someone has to answer."}
+                ? "Los mensajes para todo el equipo aparecen acá."
+                : "Los mensajes llegan a los celulares del equipo. Elegí el destino para enviarlos al escenario o a una pantalla, y usá Enviar aviso cuando necesites una respuesta."}
             </span>
           </div>
         )}
@@ -170,7 +170,7 @@ export function ChatPanel() {
           <div key={m.id} className={`w-chat-msg t-${m.target}${m.from === chat.name ? " mine" : ""}`}>
             <div className="w-chat-meta">
               <span className="w-chat-from">{m.from}</span>
-              {m.target !== "team" && <span className="chip w-chat-target">{m.target}</span>}
+              {m.target !== "team" && <span className="chip w-chat-target">{m.target === "stage" ? "Escenario" : m.target === "confidence" ? "Pantalla Retorno" : m.target === "screen" ? "Pantalla" : m.target}</span>}
               <span className="w-chat-time">
                 {new Date(m.ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
               </span>
@@ -183,11 +183,11 @@ export function ChatPanel() {
         pages.slice(-2).map((p) => (
           <button key={p.id} className="chat-sent-page" onClick={() => setTracking(p)}>
             <span className="mono">
-              Page → {p.recipients.length} · {new Date(p.sent_ms).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+              Aviso → {p.recipients.length} · {new Date(p.sent_ms).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
             </span>
             <span className="chat-sent-body">{p.body}</span>
             <span className="mono-data chat-sent-count">
-              {p.receipts.length}/{p.recipients.length} read
+              {p.receipts.length}/{p.recipients.length} leídos
             </span>
           </button>
         ))}
@@ -196,7 +196,7 @@ export function ChatPanel() {
         {!isMember && (
           <div className="w-chat-compose-top">
           <label className="w-chat-to">
-          <span className="muted small">To</span>
+          <span className="muted small">Para</span>
           <select
             className="input w-chat-dest"
             value={target === "screen" ? screenChannel(screen) : target}
@@ -208,16 +208,16 @@ export function ChatPanel() {
                 setTarget("screen");
               } else setTarget(v as ChatMsg["target"]);
             }}
-            title="Destination"
+            title="Destino"
           >
-            <option value="team">Team</option>
-            <option value="stage">Stage</option>
-            <option value="confidence">Confidence</option>
-            <optgroup label="Kiosks and TV screens">
-              <option value="screen:all">All screens</option>
+            <option value="team">Equipo</option>
+            <option value="stage">Escenario</option>
+            <option value="confidence">Pantalla Retorno</option>
+            <optgroup label="Pantallas públicas y televisores">
+              <option value="screen:all">Todas las pantallas</option>
               {dashNames.map((n) => (
                 <option key={n} value={screenChannel(n)}>
-                  {n} screen
+                  Pantalla {n}
                 </option>
               ))}
             </optgroup>
@@ -225,10 +225,10 @@ export function ChatPanel() {
           </label>
           <button
             className="btn small chat-page-btn"
-            title="Send a page. It buzzes the chosen crew until each one confirms."
+            title="Enviar un aviso. Se notifica a los integrantes elegidos hasta que cada uno confirme."
             onClick={() => setComposing(true)}
           >
-            Page someone
+            Enviar aviso
           </button>
           </div>
         )}
@@ -238,12 +238,12 @@ export function ChatPanel() {
           value={text}
           placeholder={
             target === "team"
-              ? "Message the crew…"
+              ? "Mensaje para el equipo…"
               : target === "stage"
-                ? "Text for the stage displays…"
+                ? "Mensaje a escenario…"
                 : target === "screen"
-                  ? `Message for ${screen ? `the ${screen} screen` : "every screen"}…`
-                  : "Banner for confidence screens…"
+                  ? `Mensaje para ${screen ? `la pantalla ${screen}` : "todas las pantallas"}…`
+                  : "Aviso en Pantalla Retorno…"
           }
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
@@ -251,24 +251,24 @@ export function ChatPanel() {
           }}
         />
         <button className="btn primary" onClick={send} disabled={!text.trim()}>
-          Send
+          Enviar
         </button>
         {!isMember && target === "screen" && (
           <button
             className="btn small ghost"
-            title="Take the message off the screen"
+            title="Quitar el mensaje de la pantalla"
             onClick={() => chatClearScreens(screen ?? "all").catch(() => {})}
           >
-            Clear
+            Quitar
           </button>
         )}
         {!isMember && target === "confidence" && (
           <button
             className="btn small ghost"
-            title="Clear the confidence banner"
+            title="Quitar el aviso de Pantalla Retorno"
             onClick={chat.clearConfidence}
           >
-            Clear
+            Quitar
           </button>
         )}
         </div>

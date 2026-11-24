@@ -102,7 +102,7 @@ export function CrewPageTakeover() {
     return (
       <div className="tally-page-strip" role="alert">
         <div className="tally-page-text">
-          <span className="mono">Page from {incoming.from.split(/\s+/)[0] || "the booth"}</span>
+          <span className="mono">Aviso de {incoming.from.split(/\s+/)[0] || "Control"}</span>
           <strong>{incoming.body}</strong>
           {error && <span className="tally-page-err">{error}</span>}
         </div>
@@ -112,7 +112,7 @@ export function CrewPageTakeover() {
           disabled={acking}
           onClick={() => (fatal ? dismiss(incoming.id) : ack(incoming.id).catch(() => {}))}
         >
-          {acking ? "Sending…" : fatal ? "Dismiss" : "Got it"}
+          {acking ? "Enviando…" : fatal ? "Cerrar" : "Entendido"}
         </button>
       </div>
     );
@@ -122,7 +122,7 @@ export function CrewPageTakeover() {
       <div className="crew-takeover-head">
         <span className="pulse-dot" style={{ background: "var(--warn)" }} />
         <span className="mono" style={{ color: "var(--warn)" }}>
-          Page · {hhmm(incoming.sent_ms)}
+          Aviso · {hhmm(incoming.sent_ms)}
         </span>
       </div>
       <p className="crew-takeover-body">{incoming.body}</p>
@@ -131,7 +131,7 @@ export function CrewPageTakeover() {
         <div>
           <div className="crew-takeover-name">{incoming.from}</div>
           <div className="crew-takeover-sub">
-            {incoming.buzz ? "Booth · buzzing until you confirm" : "Booth"}
+            {incoming.buzz ? "Control · notificación repetida hasta confirmar" : "Control"}
           </div>
         </div>
       </div>
@@ -141,22 +141,22 @@ export function CrewPageTakeover() {
         onClick={() => ack(incoming.id).catch(() => {})}
       >
         <span className="crew-confirm-tick">✓</span>
-        <span className="crew-confirm-label">{acking ? "Sending…" : "Got it"}</span>
+        <span className="crew-confirm-label">{acking ? "Enviando…" : "Entendido"}</span>
       </button>
       {error ? (
         <>
           <p className="crew-takeover-hint err">
             {error}
-            {fatal ? "" : " Try again."}
+            {fatal ? "" : " Intentá de nuevo."}
           </p>
           {fatal && (
             <button className="btn small ghost" onClick={() => dismiss(incoming.id)}>
-              Dismiss this page
+              Cerrar este aviso
             </button>
           )}
         </>
       ) : (
-        <p className="crew-takeover-hint">Tap anywhere in the green to confirm</p>
+        <p className="crew-takeover-hint">Tocá la zona verde para confirmar</p>
       )}
     </div>
   );
@@ -166,7 +166,7 @@ export function CrewPageTakeover() {
 // Composer. Presets exist because most pages are one of five phrases and
 // typing one-handed mid-service is the failure mode. The count on the send
 // button is the last chance to catch a mis-selected recipient set.
-const PRESETS = ["Standby", "Go to black", "Mic check", "Cam 2 hot"];
+const PRESETS = ["Preparados", "Pasar a negro", "Prueba de micrófono", "Cámara 2 al aire"];
 
 export function CrewPageComposer({
   onClose,
@@ -253,15 +253,15 @@ export function CrewPageComposer({
     <div className="crew-sheet">
       <header className="crew-sheet-head">
         <button className="crew-sheet-cancel" onClick={onClose}>
-          Cancel
+          Cancelar
         </button>
-        <span className="crew-sheet-title">Send a page</span>
+        <span className="crew-sheet-title">Enviar aviso</span>
         <span style={{ width: 54 }} />
       </header>
 
       <textarea
         className="crew-page-field"
-        placeholder="What do they need to do?"
+        placeholder="¿Qué necesitan hacer?"
         value={body}
         onChange={(e) => setBody(e.target.value)}
       />
@@ -274,7 +274,7 @@ export function CrewPageComposer({
         ))}
       </div>
 
-      <span className="mono crew-sheet-label">Recipients</span>
+      <span className="mono crew-sheet-label">Destinatarios</span>
       <div className="crew-seg">
         {(["person", "role", "everyone"] as const).map((t) => (
           <button
@@ -282,7 +282,7 @@ export function CrewPageComposer({
             className={`crew-seg-btn ${scope === t ? "on" : ""}`}
             onClick={() => setScope(t)}
           >
-            {t === "person" ? "Person" : t === "role" ? "Role" : includeAll ? "Everyone" : "This Sunday"}
+            {t === "person" ? "Persona" : t === "role" ? "Rol" : includeAll ? "Todos" : "Esta semana"}
           </button>
         ))}
       </div>
@@ -294,8 +294,8 @@ export function CrewPageComposer({
           onChange={(e) => setIncludeAll(e.target.checked)}
         />
         <span>
-          Include people not here or on this week&apos;s plan
-          {!includeAll && othersCount > 0 && ` (${othersCount} more)`}
+          Incluir a quienes no están presentes ni en el plan de esta semana
+          {!includeAll && othersCount > 0 && ` (${othersCount} más)`}
         </span>
       </label>
 
@@ -303,7 +303,7 @@ export function CrewPageComposer({
         <div className="crew-recips">
           {roles.length === 0 ? (
             <p className="crew-hint muted">
-              No roles set yet. Give people a role under Settings, Crew Members.
+              Todavía no hay roles. Asignalos en Configuración, Integrantes del equipo.
             </p>
           ) : (
             roles.map((r) => {
@@ -318,7 +318,7 @@ export function CrewPageComposer({
                   <span className={`crew-check ${on ? "on" : ""}`}>{on ? "✓" : ""}</span>
                   <span className="crew-recip-name">{r}</span>
                   <span className="mono-data crew-recip-seen">
-                    {n} {includeAll ? "with accounts" : "here or scheduled"}
+                    {n} {includeAll ? "con cuenta" : "presentes o programados"}
                   </span>
                 </button>
               );
@@ -331,7 +331,7 @@ export function CrewPageComposer({
         <div className="crew-recips">
           {universe.length === 0 && (
             <p className="crew-hint muted">
-              No approved crew yet. Approve someone under Settings, Crew Members.
+              Todavía no hay integrantes aprobados. Aprobá a alguien en Configuración, Integrantes del equipo.
             </p>
           )}
           {universe.map((u) => {
@@ -347,11 +347,11 @@ export function CrewPageComposer({
                 <span className={`crew-check ${on ? "on" : ""}`}>{on ? "✓" : ""}</span>
                 <span className="crew-recip-name">{(u as any).nickname || u.name}</span>
                 {u.notify === false ? (
-                  <span className="mono-data crew-recip-seen">notifications off</span>
+                  <span className="mono-data crew-recip-seen">notificaciones desactivadas</span>
                 ) : (
                   u.last_seen_ms > 0 && (
                     <span className="mono-data crew-recip-seen">
-                      seen {hhmm(u.last_seen_ms)}
+                      visto a las {hhmm(u.last_seen_ms)}
                     </span>
                   )
                 )}
@@ -363,8 +363,8 @@ export function CrewPageComposer({
 
       <div className="crew-buzz">
         <div>
-          <div className="crew-buzz-title">Buzz until read</div>
-          <div className="crew-buzz-sub">Re-fires to whoever hasn't confirmed</div>
+          <div className="crew-buzz-title">Notificar hasta confirmar</div>
+          <div className="crew-buzz-sub">Vuelve a notificar a quienes no confirmaron</div>
         </div>
         <button
           className={`crew-toggle ${buzz ? "on" : ""}`}
@@ -384,7 +384,7 @@ export function CrewPageComposer({
         disabled={busy || here === null || !body.trim() || count === 0}
         onClick={go}
       >
-        {busy ? "Sending…" : here === null ? "Loading who's here…" : `Send page to ${count}`}
+        {busy ? "Enviando…" : here === null ? "Cargando integrantes presentes…" : `Enviar aviso a ${count}`}
       </button>
     </div>
   );
@@ -416,9 +416,9 @@ export function CrewPageTracking({ page, onClose }: { page: CrewPage; onClose: (
     <div className="crew-sheet">
       <header className="crew-sheet-head">
         <span style={{ width: 54 }} />
-        <span className="crew-sheet-title">Page · {hhmm(page.sent_ms)}</span>
+        <span className="crew-sheet-title">Aviso · {hhmm(page.sent_ms)}</span>
         <button className="crew-sheet-cancel" onClick={onClose}>
-          Done
+          Listo
         </button>
       </header>
 
@@ -426,10 +426,10 @@ export function CrewPageTracking({ page, onClose }: { page: CrewPage; onClose: (
         <p className="crew-quote">{page.body}</p>
         <div className="crew-quote-meta">
           <span className="mono-data">
-            {read.length} of {page.recipients.length} read
+            {read.length} de {page.recipients.length} confirmaron
           </span>
           <span className="mono-data" style={{ color: "var(--dim)" }}>
-            {elapsed(secsSince(page.sent_ms))} elapsed
+            {elapsed(secsSince(page.sent_ms))} transcurridos
           </span>
         </div>
         <div className="crew-progress">
@@ -439,7 +439,7 @@ export function CrewPageTracking({ page, onClose }: { page: CrewPage; onClose: (
 
       {waiting.length > 0 && (
         <>
-          <span className="mono crew-sheet-label">Waiting</span>
+          <span className="mono crew-sheet-label">Pendientes</span>
           {waiting.map((r) => (
             <div key={r.id} className="crew-wait-row edge-warn">
               <span className="pulse-dot" style={{ background: "var(--warn)" }} />
@@ -447,7 +447,7 @@ export function CrewPageTracking({ page, onClose }: { page: CrewPage; onClose: (
                 {r.name}
                 {lastSeen(r.id) > 0 && (
                   <span className="mono-data crew-recip-seen">
-                    last seen {hhmm(lastSeen(r.id))}
+                    última conexión {hhmm(lastSeen(r.id))}
                   </span>
                 )}
               </div>
@@ -461,7 +461,7 @@ export function CrewPageTracking({ page, onClose }: { page: CrewPage; onClose: (
 
       {read.length > 0 && (
         <>
-          <span className="mono crew-sheet-label">Read</span>
+          <span className="mono crew-sheet-label">Confirmados</span>
           {read.map((r) => (
             <div key={r.user_id} className="crew-read-row">
               <span className="crew-check on green">✓</span>
@@ -481,11 +481,11 @@ export function CrewPageTracking({ page, onClose }: { page: CrewPage; onClose: (
           className="crew-rebuzz"
           onClick={() =>
             rebuzz(page.id)
-              .then((n) => setMsg(`Re-buzzed ${n}.`))
+              .then((n) => setMsg(`Se volvió a notificar a ${n}.`))
               .catch((e) => setMsg(String(e)))
           }
         >
-          Re-buzz {waiting.length}
+          Volver a notificar a {waiting.length}
         </button>
       )}
     </div>

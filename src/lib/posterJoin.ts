@@ -8,8 +8,8 @@ export const JOIN_TICKET_KEY = "prodeck.joinTicket";
 
 /** What's wrong with the form, or "" when it can be sent. */
 export function joinFormProblem(name: string, pin: string): string {
-  if (name.trim().replace(/\s+/g, " ").length < 2) return "Type your name.";
-  if (!/^\d{4}$/.test(pin)) return "Choose a 4 digit PIN. You'll use it to sign in.";
+  if (name.trim().replace(/\s+/g, " ").length < 2) return "Ingresá tu nombre.";
+  if (!/^\d{4}$/.test(pin)) return "Elegí un PIN de 4 dígitos. Lo vas a usar para ingresar.";
   return "";
 }
 

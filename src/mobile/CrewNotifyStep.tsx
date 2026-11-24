@@ -63,7 +63,7 @@ export function CrewNotifyStep({ onShowInstall }: { onShowInstall: () => void })
     try {
       const next = await enablePush();
       setStatus(next);
-      if (next === "off") setErr("Notifications weren't allowed. Tap the button again and choose Allow.");
+      if (next === "off") setErr("No se permitieron las notificaciones. Tocá el botón nuevamente y elegí Permitir.");
     } catch (e) {
       setErr(String((e as Error)?.message ?? e));
     } finally {
@@ -72,12 +72,12 @@ export function CrewNotifyStep({ onShowInstall }: { onShowInstall: () => void })
   };
 
   return (
-    <div className={`crew-card ${step.tip ? "" : "warn "}crew-notify-step`} role="region" aria-label="Page notifications">
+    <div className={`crew-card ${step.tip ? "" : "warn "}crew-notify-step`} role="region" aria-label="Notificaciones de avisos">
       <div className="crew-notify-title">{step.title}</div>
       <p className="crew-notify-body">{step.body}</p>
       {step.button && (
         <button className="crew-btn primary" disabled={busy} onClick={() => void act()}>
-          {busy ? "Asking…" : step.button}
+          {busy ? "Solicitando…" : step.button}
         </button>
       )}
       {err && <p className="crew-join-err">{err}</p>}
@@ -93,7 +93,7 @@ export function CrewNotifyStep({ onShowInstall }: { onShowInstall: () => void })
             setHapticsTipSeen(true);
           }}
         >
-          Got it
+          Entendido
         </button>
       ) : (
       <button
@@ -108,7 +108,7 @@ export function CrewNotifyStep({ onShowInstall }: { onShowInstall: () => void })
           setSnoozedUntil(until);
         }}
       >
-        Not now
+        Ahora no
       </button>
       )}
     </div>

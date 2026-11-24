@@ -1,0 +1,1032 @@
+{
+  "poblacion_candidatos": 2445,
+  "semilla": 271828,
+  "alcance": "literales y plantillas de al menos 20 caracteres; incluye código, ejemplos, textos ajenos y duplicación parcial de fragmentos JSX",
+  "advertencia": "No usar estos números como porcentaje total del producto: la clasificación es preliminar y hay casos por revisar en contexto.",
+  "resumen": {
+    "excluido_tecnico_o_ajeno": 45,
+    "pendiente_en_ingles": 51,
+    "traducido": 4
+  },
+  "muestra": [
+    {
+      "numero": 1,
+      "archivo": "src/components/StreamReport.tsx",
+      "linea": 146,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`an-total-v ${s.gap != null && (s.gap < -3 || s.gap > 2) ? \"over\" : \"under\"}`",
+      "contexto": "{`an-total-v ${s.gap != null && (s.gap < -3 || s.gap > 2) ? \"over\" : \"under\"}`}",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 2,
+      "archivo": "src/components/DashTopBar.tsx",
+      "linea": 340,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`pb-main ${liveTitle ? \"\" : \"idle\"}`",
+      "contexto": "{`pb-main ${liveTitle ? \"\" : \"idle\"}`}",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 3,
+      "archivo": "src/mobile/MobileShell.tsx",
+      "linea": 92,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`translateX(${Math.min(dx, 120) / 2}px)`",
+      "contexto": "m.style.transform = `translateX(${Math.min(dx, 120) / 2}px)`",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 4,
+      "archivo": "src/automix.tsx",
+      "linea": 257,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`${why} → ${key}${idx > 1 ? ` (pass ${idx})` : \"\"}: ${desc} — ${inS > 0.1 ? `lands in ${inS.toFixed(1)} s` : \"now\"}.`",
+      "contexto": "say(`${why} → ${key}${idx > 1 ? ` (pass ${idx})` : \"\"}: ${desc} — ${inS > 0.1 ? `lands in ${inS.toFixed(1)} s` : \"now\"}.`)",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 5,
+      "archivo": "src/mobile/MobileShell.tsx",
+      "linea": 515,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "Listening to booth audio",
+      "contexto": "state === \"playing\" ? \"Listening to booth audio\" : \"Connecting…\"",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 6,
+      "archivo": "src/pages/Settings.tsx",
+      "linea": 2749,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`${Math.floor(left / 60)}:${String(left % 60).padStart(2, \"0\")}`",
+      "contexto": "mmss = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, \"0\")}`",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 7,
+      "archivo": "src/pages/PlanningCenter.tsx",
+      "linea": 71,
+      "tipo": "literal",
+      "clasificacion": "posible_español",
+      "texto": "¿Desconectar Planning Center? Podés ingresar de nuevo de inmediato. Se conservan los planes y las asignaciones de micrófonos.",
+      "contexto": "askConfirm(\"¿Desconectar Planning Center? Podés ingresar de nuevo de inmediato. Se conservan los planes y las asignaciones de micrófonos.\")",
+      "revision": "traducido"
+    },
+    {
+      "numero": 8,
+      "archivo": "src/lib/nextSlide.ts",
+      "linea": 16,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "When peace like a river attendeth my way",
+      "contexto": "[\"When peace like a river attendeth my way\", \"When sorrows like sea billows roll\", \"Whatever my lot thou hast taught me to say\", \"It is well",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 9,
+      "archivo": "src/pages/Settings.tsx",
+      "linea": 1475,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "keysend_midi_channel",
+      "contexto": "set(\"keysend_midi_channel\", Math.min(16, Math.max(1, parseInt(e.target.value) || 1)))",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 10,
+      "archivo": "src/lib/tauri.ts",
+      "linea": 1554,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "Approve, edit and remove crew; invites; open joining",
+      "contexto": "blurb: \"Approve, edit and remove crew; invites; open joining\"",
+      "revision": "pendiente_en_ingles",
+      "justificacion": "Texto descriptivo de permisos que se presenta en la interfaz."
+    },
+    {
+      "numero": 11,
+      "archivo": "src/lib/checklistTemplates.ts",
+      "linea": 84,
+      "tipo": "literal",
+      "clasificacion": "posible_inglés",
+      "texto": "Sermon slides loaded and scripture checked against the translation being read",
+      "contexto": "text: \"Sermon slides loaded and scripture checked against the translation being read\"",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 12,
+      "archivo": "src/pages/Settings.tsx",
+      "linea": 1652,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`chip ${relay.mode !== \"off\" ? \"online\" : \"offline\"}`",
+      "contexto": "{`chip ${relay.mode !== \"off\" ? \"online\" : \"offline\"}`}",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 13,
+      "archivo": "src/lib/checklistTemplates.ts",
+      "linea": 113,
+      "tipo": "literal",
+      "clasificacion": "posible_inglés",
+      "texto": "Stop the recording; confirm the file is saved and plays back",
+      "contexto": "text: \"Stop the recording; confirm the file is saved and plays back\"",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 14,
+      "archivo": "src/pcoStore.tsx",
+      "linea": 1586,
+      "tipo": "literal",
+      "clasificacion": "posible_inglés",
+      "texto": "Planning Center Live didn't move, so Follow stopped. Check it's running for this plan, or press Next once.",
+      "contexto": "setLiveError(\"Planning Center Live didn't move, so Follow stopped. Check it's running for this plan, or press Next once.\")",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 15,
+      "archivo": "src/components/HealthStrip.tsx",
+      "linea": 20,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "Conectado y funcionando.",
+      "contexto": "ok: \"Conectado y funcionando.\"",
+      "revision": "traducido"
+    },
+    {
+      "numero": 16,
+      "archivo": "src/widgets/registry.tsx",
+      "linea": 1862,
+      "tipo": "plantilla",
+      "clasificacion": "posible_inglés",
+      "texto": "`${edge.destination} — click to copy`",
+      "contexto": "edge?.destination ? `${edge.destination} — click to copy` : \"\"",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 17,
+      "archivo": "src/routingStore.tsx",
+      "linea": 76,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "useRouting must be used within RoutingProvider",
+      "contexto": "new Error(\"useRouting must be used within RoutingProvider\")",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 18,
+      "archivo": "src/components/wizard/RecordingWizard.tsx",
+      "linea": 240,
+      "tipo": "literal",
+      "clasificacion": "posible_inglés",
+      "texto": "ProDeck listens to the device for a moment. Ask the band to play, then listen again to catch more channels.",
+      "contexto": "own ? \"These are live. Ask the band to play or talk into a few mics: each channel that hears something lights up and stays lit",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 19,
+      "archivo": "src/lib/whatsNew.ts",
+      "linea": 319,
+      "tipo": "literal",
+      "clasificacion": "posible_inglés",
+      "texto": "ProDeck mirrors a Qu's mutes, faders and scenes, just like an SQ or Avantis. The desk light names your console and says why when it can't reach it.",
+      "contexto": "what: \"ProDeck mirrors a Qu's mutes, faders and scenes, just like an SQ or Avantis. The desk light names your console and says why when it c",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 20,
+      "archivo": "src/mobile/CrewOnboard.tsx",
+      "linea": 56,
+      "tipo": "literal",
+      "clasificacion": "posible_inglés",
+      "texto": "Open the Chrome menu (⋮), then Add to Home screen",
+      "contexto": "prompt ? \"Tap Install below\" : \"Open the Chrome menu (⋮), then Add to Home screen\"",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 21,
+      "archivo": "src/help/topics.ts",
+      "linea": 531,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "no planning center application configured",
+      "contexto": "[ \"client id\", \"redirect uri\", \"oauth application\", \"public application\", \"invalid_client\", \"planning ce",
+      "revision": "excluido_tecnico_o_ajeno",
+      "justificacion": "Alias de búsqueda de ayuda; no es una etiqueta visible. Debe revisarse como funcionalidad de búsqueda por separado."
+    },
+    {
+      "numero": 22,
+      "archivo": "src/widgets/registry.tsx",
+      "linea": 4418,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`${Math.max(0, Math.min(100, ((db + 60) / 60) * 100))}%`",
+      "contexto": "[\"--h\" as string]: `${Math.max(0, Math.min(100, ((db + 60) / 60) * 100))}%`",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 23,
+      "archivo": "src/lib/demo.ts",
+      "linea": 393,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "FOH-Console 2 · Room group R",
+      "contexto": "[\"Room R\", \"FOH-Console 2 · Room group R\"]",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 24,
+      "archivo": "src/lib/follow.ts",
+      "linea": 516,
+      "tipo": "literal",
+      "clasificacion": "posible_inglés",
+      "texto": "Pro left the playlist",
+      "contexto": "this.release(\"Pro left the playlist\")",
+      "revision": "pendiente_en_ingles",
+      "justificacion": "Motivo asignado al estado de seguimiento, cuyo motivo se muestra en Captions."
+    },
+    {
+      "numero": 25,
+      "archivo": "src/help/topics.ts",
+      "linea": 591,
+      "tipo": "literal",
+      "clasificacion": "posible_inglés",
+      "texto": "Browser access: the two passwords",
+      "contexto": "title: \"Browser access: the two passwords\"",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 26,
+      "archivo": "src/pages/Routing.tsx",
+      "linea": 316,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`rt-age ${stale ? \"stale\" : \"\"}`",
+      "contexto": "{`rt-age ${stale ? \"stale\" : \"\"}`}",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 27,
+      "archivo": "src/pages/Settings.tsx",
+      "linea": 772,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "(49280, rarely needs a change)",
+      "contexto": "(form.avantis_model || \"avantis\") === \"yamaha\" ? \"(49280, rarely needs a change)\" : \"(51325)",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 28,
+      "archivo": "src/autopilot.tsx",
+      "linea": 119,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`${name} is still open — ${a.reason}.`",
+      "contexto": "say(`${name} is still open — ${a.reason}.`)",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 29,
+      "archivo": "src/pages/Settings.tsx",
+      "linea": 4280,
+      "tipo": "literal",
+      "clasificacion": "posible_inglés",
+      "texto": "(nothing logged yet this session)",
+      "contexto": "log.length ? log.join(\"\\n\") : \"(nothing logged yet this session)\"",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 30,
+      "archivo": "src/mobile/CrewOffline.tsx",
+      "linea": 513,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "` · ${arrival.position}`",
+      "contexto": "arrival.position ? ` · ${arrival.position}` : \"\"",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 31,
+      "archivo": "src/lib/autoScene.ts",
+      "linea": 60,
+      "tipo": "plantilla",
+      "clasificacion": "posible_inglés",
+      "texto": "`the desk didn't take scene ${scene}: ${String(e)}`",
+      "contexto": "text: `the desk didn't take scene ${scene}: ${String(e)}`",
+      "revision": "pendiente_en_ingles",
+      "justificacion": "Texto visible del estado de escena; se debe conservar el error original interpolado."
+    },
+    {
+      "numero": 32,
+      "archivo": "src/pages/Settings.tsx",
+      "linea": 1658,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "Client · connecting…",
+      "contexto": "relay.connected ? \"Client · connected\" : \"Client · connecting…\"",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 33,
+      "archivo": "src/pages/Settings.tsx",
+      "linea": 888,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "avantis_waves_on_scene",
+      "contexto": "set(\"avantis_waves_on_scene\", Math.max(0, parseInt(e.target.value || \"0\", 10)))",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 34,
+      "archivo": "src/help/topics.ts",
+      "linea": 1113,
+      "tipo": "literal",
+      "clasificacion": "posible_inglés",
+      "texto": "**Ask ProDeck** is a box at the top of **No sound?** (phone: Home → No sound?; booth: Routing → No sound?). Type what is wrong in your own words — \"Ruth's mic is crackling\", \"nothing from the keys\", \"the stream is quiet\" — and it answers the way an experienced tech would: one clarifying question if it needs one, what ProDeck already checked, then the next thing to walk to and look at.\n\nIt can only say what this building's **routing map**, **knowledge files** and **live state** say. Every fact it uses is tied to a thing on the map, shown as a link under the answer — tap it to open the walk. It never touches the desk.\n\nTo turn it on: **Settings → Troubleshooter**, paste an Anthropic API key (console.anthropic.com), pick a model, and choose whether crew phones may ask. The key stays on the booth; phones ask through it.\n\n- **Knowledge files.** A folder on the booth (Settings shows where) holding plain markdown about your building: machines and addresses, which scenes are safe to recall mid-service, what feeds what, known oddities. Everything in it is read on every question. Write what a new sound tech would need.\n- **The log.** Every question and answer is kept on the booth so whoever owns the room can see what was asked and fix the notes.\n- **The cap.** A monthly call limit, 500 by default, so a stuck phone can't run up a bill.\n\n> Its general sound knowledge is a written method that ships with ProDeck — signal-flow reasoning, symptoms and causes, wireless, Dante, scenes, rules during a service. It is told to reason from that text and this building's notes, not from memory.",
+      "contexto": "body: `**Ask ProDeck** is a box at the top of **No sound?** (phone: Home → No sound?; booth: Routing → No sound?). Type what is wrong in you",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 35,
+      "archivo": "src/components/ServiceWizard.tsx",
+      "linea": 75,
+      "tipo": "plantilla",
+      "clasificacion": "posible_inglés",
+      "texto": "`Wrote ${total} channel name(s) to the desk.`",
+      "contexto": "ok === total ? `Wrote ${total} channel name(s) to the desk.` : `Wrote ${ok} of ${total} channel name(s) — the desk refus",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 36,
+      "archivo": "src/lib/checklistTemplates.ts",
+      "linea": 83,
+      "tipo": "literal",
+      "clasificacion": "posible_inglés",
+      "texto": "Stage display layout shows lyrics plus clock; confidence monitor is not the audience feed",
+      "contexto": "text: \"Stage display layout shows lyrics plus clock; confidence monitor is not the audience feed\"",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 37,
+      "archivo": "src/widgets/registry.tsx",
+      "linea": 3904,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`childcall-${widget.id}-${i}`",
+      "contexto": "{`childcall-${widget.id}-${i}`}",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 38,
+      "archivo": "src/mobile/CrewOnboard.tsx",
+      "linea": 50,
+      "tipo": "literal",
+      "clasificacion": "posible_inglés",
+      "texto": "Scroll down, choose “Add to Home Screen”, then tap Add",
+      "contexto": "[ `Tap the Share button (the square with an arrow, ${ipad ? \"at the top right\" : \"at the bottom of Safari\"})`, \"Scroll down,",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 39,
+      "archivo": "src/lib/soundcheckSheet.ts",
+      "linea": 376,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "  Every other channel: off.",
+      "contexto": "[ \"SOUNDCHECK PATCH SHEET\", \"\", \"Dante Controller (save your Sunday preset first):\", ...[...new Map(sheet.rows.map((r) => [r",
+      "revision": "pendiente_en_ingles",
+      "justificacion": "Instrucción de Patch Set exportado o copiado."
+    },
+    {
+      "numero": 40,
+      "archivo": "src/widgets/registry.tsx",
+      "linea": 3576,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`ON AIR IN${p.time.name ? ` · ${p.time.name}` : \"\"}`",
+      "contexto": "label = `ON AIR IN${p.time.name ? ` · ${p.time.name}` : \"\"}`",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 41,
+      "archivo": "src/pages/Report.tsx",
+      "linea": 7,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "../components/PcoBits",
+      "contexto": "import { Avatar } from \"../components/PcoBits\";",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 42,
+      "archivo": "src/mobile/CrewMySet.tsx",
+      "linea": 80,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`crew-myset-song ${s.id === pco.liveItemId ? \"live\" : \"\"}`",
+      "contexto": "{`crew-myset-song ${s.id === pco.liveItemId ? \"live\" : \"\"}`}",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 43,
+      "archivo": "src/pages/Checklists.tsx",
+      "linea": 17,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "../lib/useDragReorder",
+      "contexto": "import { useDragReorder } from \"../lib/useDragReorder\";",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 44,
+      "archivo": "src/lib/whatsNew.ts",
+      "linea": 286,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "Every macro as a button.",
+      "contexto": "tagline: \"Every macro as a button.\"",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 45,
+      "archivo": "src/lib/checklistTemplates.ts",
+      "linea": 122,
+      "tipo": "literal",
+      "clasificacion": "posible_inglés",
+      "texto": "Stage and house lights to the lock-up preset",
+      "contexto": "text: \"Stage and house lights to the lock-up preset\"",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 46,
+      "archivo": "src/widgets/registry.tsx",
+      "linea": 4351,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`chip ${am.bpm ? \"online\" : \"\"}`",
+      "contexto": "{`chip ${am.bpm ? \"online\" : \"\"}`}",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 47,
+      "archivo": "src/widgets/registry.tsx",
+      "linea": 1125,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`${Math.max(4, (h.viewers / peak) * 100)}%`",
+      "contexto": "height: `${Math.max(4, (h.viewers / peak) * 100)}%`",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 48,
+      "archivo": "src/lib/demo.ts",
+      "linea": 398,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "FOH-Console 11 · OH L direct out",
+      "contexto": "[\"OH L\", \"FOH-Console 11 · OH L direct out\"]",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 49,
+      "archivo": "src/lib/streamReport.ts",
+      "linea": 143,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`${r1(-under)} dB over ${TARGET_LUFS} LUFS — YouTube turns it down, squashing nothing but costing punch.`",
+      "contexto": "text: `${r1(-under)} dB over ${TARGET_LUFS} LUFS — YouTube turns it down, squashing nothing but costing punch.`",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 50,
+      "archivo": "src/pages/Routing.tsx",
+      "linea": 348,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "` · ${pasted.skipped.length} line${pasted.skipped.length === 1 ? \"\" : \"s\"} skipped`",
+      "contexto": "pasted && pasted.skipped.length > 0 ? ` · ${pasted.skipped.length} line${pasted.skipped.length === 1 ? \"\" : \"s\"} skipped` : \"\"",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 51,
+      "archivo": "src/pages/Report.tsx",
+      "linea": 375,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`avg ${sum.avg > -100 ? Math.round(sum.avg) : \"—\"}dB`",
+      "contexto": "`Total: planned ${fmtClock(sum.planned)} · actual ${fmtClock(sum.actual)} · ` + `${fmtDeltaClock(sum.delta)} · peak ${sum.peak > -10",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 52,
+      "archivo": "src/pages/Report.tsx",
+      "linea": 393,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "` (${taps.keywords.map((k) => `${k.state} ${k.taps}`).join(\", \")})`",
+      "contexto": "taps.keywords.length ? ` (${taps.keywords.map((k) => `${k.state} ${k.taps}`).join(\", \")})` : \"\"",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 53,
+      "archivo": "src/widgets/previews.tsx",
+      "linea": 437,
+      "tipo": "literal",
+      "clasificacion": "posible_español",
+      "texto": "Nivel de sonido de la sala y su espectro en vivo.",
+      "contexto": "audio_meter: \"Nivel de sonido de la sala y su espectro en vivo.\"",
+      "revision": "traducido"
+    },
+    {
+      "numero": 54,
+      "archivo": "src/help/topics.ts",
+      "linea": 795,
+      "tipo": "literal",
+      "clasificacion": "posible_inglés",
+      "texto": "Every booth has a **crew address**, **https://yourname-crew.prodeck.live**. It's on unless you turn it off in **Settings → Crew & screens → Crew address**, and there's nothing to set up: no port forwarding, no domain, no tunnel.\n\n**With ProDeck open at the booth,** crew open the crew address from home or on cellular and get the live booth, the same as on the church Wi-Fi. The booth keeps one connection out to White Oak Media's service, and phones' requests come to it that way. Passwords and permissions are checked by the booth, as always. Comms, camera feeds and the overflow audio stay on the church Wi-Fi.\n\n**With the booth computer off,** the crew address shows the last copy the booth sent: this week's plan (songs, keys, leaders, times, who's on, call times and position guides), checklists and team chat. A line at the top says so plainly, with the time it was sent. Checklist ticks, chat messages and signups made then wait there and reach the booth when it's back.\n\nCrew links, the poster and QR codes don't change. A phone that can't reach the booth on its usual address reads the copy from the crew address by itself, and moves over to it when the booth is on but out of reach (the phone left the building), keeping its sign in. ProDeck Crew does the same.\n\nThe name is your secure local address's name if you claimed one, else one made from this computer's name (change it in the card). What the copy holds and who keeps it is in **Settings → About → Privacy**. Turning the crew address off deletes the copy.",
+      "contexto": "body: `Every booth has a **crew address**, **https://yourname-crew.prodeck.live**. It's on unless you turn it off in **Settings → Crew & scr",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 55,
+      "archivo": "src/lib/settingsSections.ts",
+      "linea": 49,
+      "tipo": "literal",
+      "clasificacion": "posible_inglés",
+      "texto": "Updates, help, the troubleshooter, backups and how ProDeck looks.",
+      "contexto": "blurb: \"Updates, help, the troubleshooter, backups and how ProDeck looks.\"",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 56,
+      "archivo": "src/lib/releaseNotes.ts",
+      "linea": 11,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "prodeck.releaseNotes",
+      "contexto": "KEY = \"prodeck.releaseNotes\"",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 57,
+      "archivo": "src/help/topics.ts",
+      "linea": 709,
+      "tipo": "literal",
+      "clasificacion": "posible_inglés",
+      "texto": "NDI cameras and the Stage Feed widget",
+      "contexto": "title: \"NDI cameras and the Stage Feed widget\"",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 58,
+      "archivo": "src/pcoStore.tsx",
+      "linea": 954,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`services/v2/service_types/${st}/plans/${plan}/items?per_page=100&include=item_notes`",
+      "contexto": "pcoGetAll(`services/v2/service_types/${st}/plans/${plan}/items?per_page=100&include=item_notes`)",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 59,
+      "archivo": "src/automix.tsx",
+      "linea": 659,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`${name} ${deskName.current[id]}`",
+      "contexto": "id.startsWith(\"input:\") && deskName.current[id] ? `${name} ${deskName.current[id]}` : name",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 60,
+      "archivo": "src/components/GiftCredit.tsx",
+      "linea": 2,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "../assets/wom/wom-logo-dark-ink.png",
+      "contexto": "import darkInk from \"../assets/wom/wom-logo-dark-ink.png\";",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 61,
+      "archivo": "src/widgets/registry.tsx",
+      "linea": 6,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "../lib/useDragReorder",
+      "contexto": "import { useDragReorder } from \"../lib/useDragReorder\";",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 62,
+      "archivo": "src/pages/Settings.tsx",
+      "linea": 427,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "Set an OSC host and/or a MIDI output first.",
+      "contexto": "sent.length ? `✓ Sent test key G — ${sent.join(\" · \")}` : \"Set an OSC host and/or a MIDI output first.\"",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 63,
+      "archivo": "src/mobile/CrewOffline.tsx",
+      "linea": 272,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "PIN must be exactly 4 digits.",
+      "contexto": "setErr(\"PIN must be exactly 4 digits.\")",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 64,
+      "archivo": "src/pages/Report.tsx",
+      "linea": 794,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`an-num ${d === null ? \"\" : d > 0 ? \"over\" : \"under\"}`",
+      "contexto": "{`an-num ${d === null ? \"\" : d > 0 ? \"over\" : \"under\"}`}",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 65,
+      "archivo": "src/automix.tsx",
+      "linea": 257,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`lands in ${inS.toFixed(1)} s`",
+      "contexto": "inS > 0.1 ? `lands in ${inS.toFixed(1)} s` : \"now\"",
+      "revision": "excluido_tecnico_o_ajeno",
+      "justificacion": "Fragmento anidado dentro de otra plantilla de la muestra; se evita contar dos veces."
+    },
+    {
+      "numero": 66,
+      "archivo": "src/updaterStore.tsx",
+      "linea": 153,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`../release-notes/${next}.md`",
+      "contexto": "files[`../release-notes/${next}.md`]",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 67,
+      "archivo": "src/pages/Report.tsx",
+      "linea": 162,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`an-num ${r.tracked ? deltaClass(d) : \"\"}`",
+      "contexto": "{`an-num ${r.tracked ? deltaClass(d) : \"\"}`}",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 68,
+      "archivo": "src/lib/chop.ts",
+      "linea": 205,
+      "tipo": "plantilla",
+      "clasificacion": "posible_inglés",
+      "texto": "`${who} responded to the salvation moment on Church Online.`",
+      "contexto": "return `${who} responded to the salvation moment on Church Online.`;",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 69,
+      "archivo": "src/pages/Captions.tsx",
+      "linea": 196,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`chip ${v.hearing === \"words\" ? \"online\" : \"\"}`",
+      "contexto": "{`chip ${v.hearing === \"words\" ? \"online\" : \"\"}`}",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 70,
+      "archivo": "src/lib/assist.ts",
+      "linea": 94,
+      "tipo": "literal",
+      "clasificacion": "posible_inglés",
+      "texto": "What ProDeck can see right now: desk connected, ProPresenter connected, meter running, who is on which mic this week, map age.",
+      "contexto": "description: \"What ProDeck can see right now: desk connected, ProPresenter connected, meter running, who is on which mic this week, map age.",
+      "revision": "excluido_tecnico_o_ajeno",
+      "justificacion": "Descripción interna de herramienta del asistente, no texto visible de interfaz."
+    },
+    {
+      "numero": 71,
+      "archivo": "src/help/topics.ts",
+      "linea": 423,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "read only propresenter",
+      "contexto": "[\"view only\", \"read only propresenter\", \"monitor only\", \"don't control propresenter\", \"second computer\", \"disable slide control\"]",
+      "revision": "excluido_tecnico_o_ajeno",
+      "justificacion": "Alias de búsqueda de ayuda; revisión funcional independiente."
+    },
+    {
+      "numero": 72,
+      "archivo": "src/widgets/registry.tsx",
+      "linea": 2104,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`Add to ${cur.name}…`",
+      "contexto": "{`Add to ${cur.name}…`}",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 73,
+      "archivo": "src/pages/Tally.tsx",
+      "linea": 322,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`meta[name=\"${name}\"]`",
+      "contexto": "document.querySelector<HTMLMetaElement>(`meta[name=\"${name}\"]`)",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 74,
+      "archivo": "src/lib/whatsNew.ts",
+      "linea": 261,
+      "tipo": "literal",
+      "clasificacion": "posible_inglés",
+      "texto": "A tidier phone app for everyone.",
+      "contexto": "tagline: \"A tidier phone app for everyone.\"",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 75,
+      "archivo": "src/help/topics.ts",
+      "linea": 67,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "What ProDeck is, in one page",
+      "contexto": "title: \"What ProDeck is, in one page\"",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 76,
+      "archivo": "src/help/topics.ts",
+      "linea": 1151,
+      "tipo": "literal",
+      "clasificacion": "posible_inglés",
+      "texto": "Honest summary, so you can decide what to expose:\n\n- **Two shared passwords** decide what a phone may do. Anyone with the crew password is crew. Choose long ones; rotate the crew password if a phone is lost (it signs everyone out — send the new join link).\n- **Crew PINs are four digits.** They identify people, they don't protect anything; the passwords do. Wrong PINs lock the name for five minutes.\n- **Joining needs you.** Outside a joining window you open, the poster only lets someone ask to join; nobody gets in until you approve them.\n- **The web gateway throttles password guessing** and refuses requests from other websites.\n- **Secrets never leave the booth in the clear**: phones receive settings with every password and key removed; the diagnostics bundle is scrubbed before it's copied.\n- **A kiosk bookmark holds the crew password** and can be read off that machine. Don't put the admin password in one.\n\n- **Grants are per person and revocable.** Giving someone Page or Control doesn't hand them the admin password, and revoking their approval removes every grant at once.\n\nSecurity problems: **SECURITY.md** in the repository explains how to report privately.",
+      "contexto": "body: `Honest summary, so you can decide what to expose: - **Two shared passwords** decide what a phone may do. Anyone with the crew passwo",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 77,
+      "archivo": "src/components/WhatsNew.tsx",
+      "linea": 181,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`wn-mini tone-${f.tone}`",
+      "contexto": "{`wn-mini tone-${f.tone}`}",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 78,
+      "archivo": "src/components/FeedbackDialog.tsx",
+      "linea": 39,
+      "tipo": "literal",
+      "clasificacion": "posible_español",
+      "texto": "La letra dejó de avanzar en la segunda canción",
+      "contexto": "titleHint: \"La letra dejó de avanzar en la segunda canción\"",
+      "revision": "traducido"
+    },
+    {
+      "numero": 79,
+      "archivo": "src/components/wizard/AutomixWizard.tsx",
+      "linea": 542,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`Lapel is ${deskInputs.find((i) => i.no === lapel)?.name}. `",
+      "contexto": "lapel && deskInputs.find((i) => i.no === lapel)?.name ? `Lapel is ${deskInputs.find((i) => i.no === lapel)?.name}. ` : \"\"",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 80,
+      "archivo": "src/lib/routing.ts",
+      "linea": 794,
+      "tipo": "plantilla",
+      "clasificacion": "posible_inglés",
+      "texto": "`Nothing is reaching the booth on input ${n.bind.capture} — the fault is upstream of it.`",
+      "contexto": "text: `Nothing is reaching the booth on input ${n.bind.capture} — the fault is upstream of it.`",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 81,
+      "archivo": "src/pages/Checklists.tsx",
+      "linea": 155,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "Add starter checklists",
+      "contexto": "addingStarters ? \"Adding…\" : \"Add starter checklists\"",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 82,
+      "archivo": "src/lib/checklistTemplates.ts",
+      "linea": 86,
+      "tipo": "literal",
+      "clasificacion": "posible_inglés",
+      "texto": "Clear to logo after the last cue — never leave the final slide up",
+      "contexto": "text: \"Clear to logo after the last cue — never leave the final slide up\"",
+      "revision": "pendiente_en_ingles",
+      "justificacion": "Texto predeterminado de lista de tareas provisto por la aplicación."
+    },
+    {
+      "numero": 83,
+      "archivo": "src/help/topics.ts",
+      "linea": 793,
+      "tipo": "literal",
+      "clasificacion": "posible_inglés",
+      "texto": "Reaching ProDeck away from church, and while the booth is off",
+      "contexto": "title: \"Reaching ProDeck away from church, and while the booth is off\"",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 84,
+      "archivo": "src/widgets/registry.tsx",
+      "linea": 2512,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`t-status ${m.status.toLowerCase()}`",
+      "contexto": "{`t-status ${m.status.toLowerCase()}`}",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 85,
+      "archivo": "src/widgets/registry.tsx",
+      "linea": 1527,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`w-timer-time ${selected.state}`",
+      "contexto": "{`w-timer-time ${selected.state}`}",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 86,
+      "archivo": "src/pages/Settings.tsx",
+      "linea": 4200,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "Diagnostics copied (secrets redacted). Paste them into an email or a GitHub issue.",
+      "contexto": "setMsg(\"Diagnostics copied (secrets redacted). Paste them into an email or a GitHub issue.\")",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 87,
+      "archivo": "src/components/DashTopBar.tsx",
+      "linea": 5,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "../lib/slideProgress",
+      "contexto": "import { slideProgress, slideProgressText } from \"../lib/slideProgress\";",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 88,
+      "archivo": "src/pages/Checklists.tsx",
+      "linea": 114,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`btn small ${editing ? \"primary\" : \"ghost\"} cl-edit-toggle`",
+      "contexto": "{`btn small ${editing ? \"primary\" : \"ghost\"} cl-edit-toggle`}",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 89,
+      "archivo": "src/mobile/ChartSheet.tsx",
+      "linea": 29,
+      "tipo": "plantilla",
+      "clasificacion": "posible_inglés",
+      "texto": "`Showing the chart in its original key (${chartKey}).`",
+      "contexto": "what = `Showing the chart in its original key (${chartKey}).`",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 90,
+      "archivo": "src/widgets/registry.tsx",
+      "linea": 935,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`stream-embed-${widget.id}`",
+      "contexto": "{`stream-embed-${widget.id}`}",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 91,
+      "archivo": "src/lib/listen.ts",
+      "linea": 68,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`/api/listen.mp3?token=${encodeURIComponent(getWebToken())}`",
+      "contexto": "a.src = `/api/listen.mp3?token=${encodeURIComponent(getWebToken())}`",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 92,
+      "archivo": "src/pages/Report.tsx",
+      "linea": 567,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "<div class=\"foot\">Generated by ProDeck</div>",
+      "contexto": "`<!doctype html><html><head><meta charset=\"utf-8\">` + `<title>Production Report — ${esc(label)}</title><style>${PRINT_CSS}</style></he",
+      "revision": "pendiente_en_ingles",
+      "justificacion": "Pie visible del informe generado."
+    },
+    {
+      "numero": 93,
+      "archivo": "src/lib/consoles.ts",
+      "linea": 81,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "Behringer X32 / Midas M32",
+      "contexto": "option: \"Behringer X32 / Midas M32\"",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 94,
+      "archivo": "src/help/topics.ts",
+      "linea": 812,
+      "tipo": "literal",
+      "clasificacion": "posible_inglés",
+      "texto": "Comms turns crew phones and iPads into a hold to talk intercom. It's **off until you turn it on** in **Settings → Crew & screens → Comms**; leave it off if your team already has an intercom, and it appears nowhere. On a phone: **More → Comms → Join comms**, allow the microphone, pick the line to talk on, and hold the big button while you speak. There are four lines: **All**, **Cameras**, **Stage** and **Booth**. Choose which ones you listen to; everyone hears All unless they turn it off. A chip at the top of every screen shows who's talking and has its own **Talk** button. For hands-free comms, turn on **Open mic**: you talk without holding anything until you turn it off, and the big button (and the chip's) becomes **Mute** and **Unmute**. Open mic always starts muted when you join, so a mic never opens by itself.\n\nPhones talk straight to each other over the church Wi-Fi, so the delay is a fraction of a second. ProDeck only connects them, and the booth computer never plays comms: it can't reach the house.\n\nWhat it needs:\n\n- **A secure address.** Phones only allow the microphone on https. Claim a **secure local address** in Settings (it takes a minute, nothing to set up), or use your own public address. On the plain local address, Join comms explains this instead of starting.\n- **Phones on the church Wi-Fi.** A phone on cellular still joins (the public address reaches the booth from anywhere), but it can't reach the other phones, so nobody hears it. A guest network that keeps devices apart does the same. Use the staff network. **On comms** says **can't reach** next to anyone this happens with.\n- **The app open, screen on.** A locked iPhone stops a web app's sound and microphone. Comms suits people at a post with the phone in view, like a camera operator using the phone as a tally. Use earbuds so the phone's speaker doesn't feed back into its mic.\n\n**Camera stations.** An iPad that lives on a camera doesn't need anyone's account. Make its code in **Settings → Camera tally**, scan it on the iPad, add it to the Home Screen, and tap the tally once to **Join comms**. It shows up on comms under the camera's name, with Talk or Mute in the corner and Open mic in the tap menu, and rejoins by itself (muted) whenever it reopens. Plug a headset into it, set Auto-Lock to Never, and use Guided Access to keep it on the tally.\n\nA device that was on comms rejoins by itself when it reopens. If the phone wants a tap before it hands over the microphone, it shows **Tap to rejoin comms**. **Leave comms** stops that until you join again.\n\nUp to 16 devices can be on comms at once.",
+      "contexto": "body: `Comms turns crew phones and iPads into a hold to talk intercom. It's **off until you turn it on** in **Settings → Crew & screens → Co",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 95,
+      "archivo": "src/automix.tsx",
+      "linea": 647,
+      "tipo": "literal",
+      "clasificacion": "revisar",
+      "texto": "Hold released — mixing again.",
+      "contexto": "h ? \"Hold — frozen where it is.\" : \"Hold released — mixing again.\"",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 96,
+      "archivo": "src/pages/Settings.tsx",
+      "linea": 3484,
+      "tipo": "plantilla",
+      "clasificacion": "posible_inglés",
+      "texto": "`Asked ${label} to update. Someone presses Update on the TV's remote, then opens ProDeck Display again.`",
+      "contexto": "n ? `Asked ${label} to update. Someone presses Update on the TV's remote, then opens ProDeck Display again.` : \"Nothing to update.\"",
+      "revision": "pendiente_en_ingles"
+    },
+    {
+      "numero": 97,
+      "archivo": "src/pages/Settings.tsx",
+      "linea": 1251,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`chip ${form.assist_api_key ? \"online\" : \"\"}`",
+      "contexto": "{`chip ${form.assist_api_key ? \"online\" : \"\"}`}",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 98,
+      "archivo": "src/pages/Settings.tsx",
+      "linea": 2565,
+      "tipo": "plantilla",
+      "clasificacion": "posible_inglés",
+      "texto": "` (this building: ${wan.join(\", \")})`",
+      "contexto": "wan.length > 0 ? ` (this building: ${wan.join(\", \")})` : \"\"",
+      "revision": "pendiente_en_ingles",
+      "justificacion": "Fragmento visible en Configuración; preserva los valores interpolados."
+    },
+    {
+      "numero": 99,
+      "archivo": "src/components/ChecklistSidebar.tsx",
+      "linea": 79,
+      "tipo": "plantilla",
+      "clasificacion": "revisar",
+      "texto": "`cl-caret ${isOpen ? \"open\" : \"\"}`",
+      "contexto": "{`cl-caret ${isOpen ? \"open\" : \"\"}`}",
+      "revision": "excluido_tecnico_o_ajeno"
+    },
+    {
+      "numero": 100,
+      "archivo": "src/lib/nextSlide.ts",
+      "linea": 12,
+      "tipo": "literal",
+      "clasificacion": "posible_inglés",
+      "texto": "That saved a wretch like me",
+      "contexto": "[\"Amazing grace how sweet the sound\", \"That saved a wretch like me\", \"I once was lost but now am found\", \"Was blind but now I see\"]",
+      "revision": "excluido_tecnico_o_ajeno"
+    }
+  ],
+  "calculo_revisado": {
+    "pendientes_confirmados": 51,
+    "traducidos_confirmados": 4,
+    "excluidos_terminos_tecnicos_y_contenido_ajeno": 45,
+    "pendientes_de_revision_de_contexto": 0,
+    "porcentaje_pendiente_sobre_clasificados": 92.7,
+    "advertencia": "Muestra de literales y plantillas, no inventario completo; alias de búsqueda se excluyen solo del cálculo de textos visibles y siguen siendo trabajo de localización."
+  }
+}

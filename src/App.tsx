@@ -123,17 +123,17 @@ type Page =
 // stage output — there are no NDI cameras. The Captions page came back in
 // Sep 2026 as "Auto-Follow" (lyrics → ProPresenter slides live there).
 const NAV: { id: Page; label: string; icon: string }[] = [
-  { id: "dashboard", label: "Dashboard", icon: "dashboard" },
-  { id: "setup", label: "Setup", icon: "checklist" },
+  { id: "dashboard", label: "Panel", icon: "dashboard" },
+  { id: "setup", label: "Configuración inicial", icon: "checklist" },
   { id: "propresenter", label: "ProPresenter", icon: "slides" },
-  { id: "captions", label: "Auto-Follow", icon: "captions" },
+  { id: "captions", label: "Seguimiento automático", icon: "captions" },
   { id: "planning", label: "Planning Center", icon: "calendar" },
-  { id: "checklists", label: "Checklists", icon: "checklist" },
-  { id: "routing", label: "Routing", icon: "grid" },
-  { id: "recording", label: "Recording", icon: "mic" },
-  { id: "report", label: "Analytics", icon: "report" },
-  { id: "help", label: "Help", icon: "help" },
-  { id: "settings", label: "Settings", icon: "settings" },
+  { id: "checklists", label: "Checklist", icon: "checklist" },
+  { id: "routing", label: "Ruteo", icon: "grid" },
+  { id: "recording", label: "Grabación", icon: "mic" },
+  { id: "report", label: "Estadísticas", icon: "report" },
+  { id: "help", label: "Ayuda", icon: "help" },
+  { id: "settings", label: "Configuración", icon: "settings" },
 ];
 
 function Shell() {
@@ -145,7 +145,7 @@ function Shell() {
     (IS_SHOTS && (SHOT_PAGE as Page)) || "dashboard",
     async (from, to) =>
       !(from === "settings" && to !== "settings" && isSettingsDirty()) ||
-      askConfirm("Leave Settings without saving your changes?", "Leave without saving"),
+      askConfirm("¿Salir de Configuración sin guardar los cambios?", "Salir sin guardar"),
   );
   const page = nav.value;
   const setPage = nav.go;
@@ -307,11 +307,11 @@ function Shell() {
           <span className="brand-mark" />
           <span className="brand-name">ProDeck</span>
           {nav.depth > 0 && (
-            <button className="nav-back" title="Back to the page before (⌘[)" aria-label="Back" onClick={() => goBack()}>
+            <button className="nav-back" title="Volver a la página anterior (⌘[)" aria-label="Atrás" onClick={() => goBack()}>
               ‹
             </button>
           )}
-          <button className="nav-collapse" title="Hide sidebar" onClick={toggleNav}>
+          <button className="nav-collapse" title="Ocultar barra lateral" onClick={toggleNav}>
             «
           </button>
         </div>
@@ -323,7 +323,7 @@ function Shell() {
               onClick={async () => {
                 // Leaving Settings with edits not saved: ask, don't drop them.
                 if (page === "settings" && n.id !== "settings" && isSettingsDirty() &&
-                  !(await askConfirm("Leave Settings without saving your changes?", "Leave without saving"))) return;
+                  !(await askConfirm("¿Salir de Configuración sin guardar los cambios?", "Salir sin guardar"))) return;
                 setPage(n.id);
               }}
             >
@@ -342,7 +342,7 @@ function Shell() {
             onClick={() => chat.setOpen(!chat.open)}
           >
             <Icon name="captions" />
-            <span>Messages</span>
+            <span>Mensajes</span>
             {chat.unread > 0 && <span className="nav-badge">{chat.unread}</span>}
           </button>
         </nav>
@@ -354,13 +354,13 @@ function Shell() {
               light, the phone tabs. Never offered on the booth computer. */}
           {IS_WEB && (
             <button className="btn ghost small crew-layout-switch" onClick={() => switchLayout("crew")}>
-              Crew view: comms and tally light
+              Vista del equipo: comunicación y luz Tally
             </button>
           )}
           <div className="fb-links">
-            <button className="link-btn" onClick={() => openFeedback({ kind: "bug" })}>Report a bug</button>
+            <button className="link-btn" onClick={() => openFeedback({ kind: "bug" })}>Reportar un error</button>
             <span aria-hidden="true">·</span>
-            <button className="link-btn" onClick={() => openFeedback({ kind: "feature" })}>Request a feature</button>
+            <button className="link-btn" onClick={() => openFeedback({ kind: "feature" })}>Proponer una función</button>
           </div>
           <GiftCredit />
         </div>
@@ -371,7 +371,7 @@ function Shell() {
 
       <main className="main">
         {navHidden && (
-          <button className="nav-show" title="Show sidebar" onClick={toggleNav}>
+          <button className="nav-show" title="Mostrar barra lateral" onClick={toggleNav}>
             »
           </button>
         )}
@@ -381,10 +381,10 @@ function Shell() {
         {pendingCrew.length > 0 && page !== "settings" && (
           <div className="banner">
             {pendingCrew.length === 1
-              ? `${pendingCrew[0]} is waiting to join the crew.`
-              : `${pendingCrew.length} people are waiting to join the crew: ${pendingCrew.join(", ")}.`}
+              ? `${pendingCrew[0]} está esperando unirse al equipo.`
+              : `${pendingCrew.length} personas están esperando unirse al equipo: ${pendingCrew.join(", ")}.`}
             <button className="btn small primary" onClick={() => setPage("settings")}>
-              Review &amp; approve
+              Revisar y aprobar
             </button>
           </div>
         )}
@@ -433,7 +433,7 @@ function AlertStack() {
     <div key={a.id} className={`alert-toast ${a.severity}`}>
       <span className="alert-dot" />
       <span className="alert-msg">{a.message}</span>
-      <button className="alert-x" title="Dismiss" onClick={() => dismiss(a.id)}>
+      <button className="alert-x" title="Cerrar" onClick={() => dismiss(a.id)}>
         ×
       </button>
     </div>
@@ -453,7 +453,7 @@ function ControlToast() {
   useEffect(() => {
     let t: ReturnType<typeof setTimeout> | undefined;
     const onErr = (e: Event) => {
-      setMsg(((e as CustomEvent).detail as string) || "Control action failed");
+      setMsg(((e as CustomEvent).detail as string) || "Falló la acción de control");
       if (t) clearTimeout(t);
       t = setTimeout(() => setMsg(null), 4000);
     };
@@ -467,7 +467,7 @@ function ControlToast() {
   return (
     <div className="control-toast" onClick={() => setMsg(null)}>
       <span className="alert-dot" />
-      <span>Couldn’t reach ProPresenter — {msg}</span>
+      <span>No se pudo conectar con ProPresenter. {msg}</span>
     </div>
   );
 }
@@ -480,11 +480,11 @@ function DemoBanner() {
     <div className="demo-banner" role="status">
       <span className="demo-dot" />
       <span>
-        <strong>Demo mode</strong> — everything on screen is sample data. Nothing is
-        saved and none of your equipment is connected.
+        <strong>Modo demo</strong>. Todo lo que aparece en pantalla son datos de ejemplo. No se
+        guarda nada y ninguno de tus equipos está conectado.
       </span>
       <button className="btn small primary" onClick={() => setDemo(false)}>
-        Exit demo
+        Salir de la demostración
       </button>
     </div>
   );
@@ -516,24 +516,24 @@ function UpdateBanner() {
         <div className="update-announce-head">
           <span className="dot online" />
           <div className="update-announce-title">
-            <strong>ProDeck v{u.newVersion} is ready to install</strong>
+            <strong>ProDeck v{u.newVersion} está listo para instalar</strong>
             <span className="muted small">
-              You're on v{u.version}. Installing takes a few seconds and restarts the app.
+              Tienes la versión v{u.version}. La instalación toma unos segundos y reinicia la aplicación.
             </span>
           </div>
           <div className="update-announce-actions">
             <button className="btn small primary" onClick={() => u.install()}>
-              Install &amp; Restart
+              Actualizar y reiniciar
             </button>
             <button className="btn small ghost" onClick={() => u.dismiss()}>
-              Later
+              Más tarde
             </button>
           </div>
         </div>
         {blocks.length > 0 && (
           <div className="update-announce-notes">
             <button className="update-announce-toggle" onClick={() => setShowNotes((v) => !v)}>
-              What's new {showNotes ? "▾" : "▸"}
+              Novedades {showNotes ? "▾" : "▸"}
             </button>
             {showNotes && (
               <div className="update-announce-body">
@@ -556,7 +556,7 @@ function UpdateBanner() {
   if (u.status === "downloading" || u.status === "ready") {
     return (
       <div className="update-banner">
-        <span>{u.status === "ready" ? "Restarting…" : `Downloading update… ${u.progress}%`}</span>
+        <span>{u.status === "ready" ? "Reiniciando…" : `Descargando actualización… ${u.progress}%`}</span>
         <div className="update-bar">
           <div className="update-fill" style={{ width: `${u.progress}%` }} />
         </div>
@@ -572,11 +572,11 @@ function UpdateBanner() {
       <div className="update-banner err">
         <span className="dot bad" />
         <span>
-          <strong>Update didn't install.</strong>{" "}
-          {u.error || "Something went wrong downloading or replacing the app."}
+          <strong>No se instaló la actualización.</strong>{" "}
+          {u.error || "Algo salió mal al descargar o reemplazar la aplicación."}
         </span>
         <button className="btn small" onClick={() => u.check()}>
-          Try again
+          Reintentar
         </button>
         <button
           className="btn small primary"
@@ -584,10 +584,10 @@ function UpdateBanner() {
             window.open("https://github.com/whiteoakmedia/prodeck/releases/latest", "_blank", "noopener")
           }
         >
-          Download it manually
+          Descargar manualmente
         </button>
         <button className="btn small ghost" onClick={() => u.dismiss()}>
-          Dismiss
+          Cerrar
         </button>
       </div>
     );
@@ -609,7 +609,7 @@ function WebGate({ children }: { children: ReactNode }) {
     const onUnauth = () => {
       if (IS_DEMO) return; // demo mode has no session to expire
       setAuthed(false);
-      setErr("Session expired — sign in again.");
+      setErr("Tu sesión expiró. Volvé a ingresar.");
     };
     window.addEventListener("prodeck-web-unauthorized", onUnauth);
     return () => window.removeEventListener("prodeck-web-unauthorized", onUnauth);
@@ -636,8 +636,8 @@ function WebGate({ children }: { children: ReactNode }) {
       const offline = String((e as Error)?.message ?? "") !== "unauthorized";
       const ok = offline ? await cloudPasswordOk(pw).catch(() => null) : false;
       if (ok) setAuthed(true);
-      else if (ok === null) setErr("Can't reach the booth right now.");
-      else setErr("Wrong password.");
+      else if (ok === null) setErr("No se puede conectar con la cabina en este momento.");
+      else setErr("Contraseña incorrecta.");
     } finally {
       setBusy(false);
     }
@@ -646,12 +646,12 @@ function WebGate({ children }: { children: ReactNode }) {
   return (
     <div className="web-login">
       <form className="web-login-card" onSubmit={submit}>
-        <img className="login-lockup" src={lockupStacked} alt="ProDeck by White Oak Media" />
+        <img className="login-lockup" src={lockupStacked} alt="ProDeck de White Oak Media" />
         {/* "view & control" oversold the member tier — most phones sign in
             with the crew password and get a viewer + chat + check-in. */}
         <p className="muted">
-          Enter the password set on the ProDeck computer. The member password
-          gets you in; the admin password also unlocks controls.
+          Ingresa la contraseña configurada en la computadora con ProDeck. La contraseña de miembro
+          te permite entrar; la de administrador también habilita los controles.
         </p>
         <input
           className="input"
@@ -659,10 +659,10 @@ function WebGate({ children }: { children: ReactNode }) {
           autoFocus
           value={pw}
           onChange={(e) => setPw(e.target.value)}
-          placeholder="Access password"
+          placeholder="Contraseña de acceso"
         />
         <button className="btn primary" disabled={busy || !pw}>
-          {busy ? "Connecting…" : "Connect"}
+          {busy ? "Conectando…" : "Conectar"}
         </button>
         {err && <p className="error">{err}</p>}
       </form>

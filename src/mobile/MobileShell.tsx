@@ -314,39 +314,39 @@ export function MobileShell() {
         {tab === "more" && (split || !moreDetail) && (
           <div className={split ? "crew-split" : "crew-split-off"}>
           <div className="crew-page crew-more">
-            <h1 className="crew-title">More</h1>
+            <h1 className="crew-title">Más</h1>
 
             <div className="more-profile">
               <span className="more-avatar" aria-hidden>
                 {initials(chat.name)}
               </span>
               <div className="more-profile-text">
-                <div className="more-profile-name">{chat.name || "This phone"}</div>
-                {IS_WEB && <div className="mono more-profile-tier">{isAdmin ? "Admin" : "Crew member"}</div>}
+                <div className="more-profile-name">{chat.name || "Este celular"}</div>
+                {IS_WEB && <div className="mono more-profile-tier">{isAdmin ? "Administrador" : "Integrante del equipo"}</div>}
               </div>
             </div>
 
-            <MoreGroup label="Tools">
-              {commsOn && <MoreRow icon={<IconComms />} title="Comms" sub="Talk to the crew" active={split && comms} onClick={() => open("comms")} />}
+            <MoreGroup label="Herramientas">
+              {commsOn && <MoreRow icon={<IconComms />} title="Comunicaciones" sub="Hablar con el equipo" active={split && comms} onClick={() => open("comms")} />}
               <TallyRow onStart={() => tallyOn(true)} />
-              <MoreRow icon={<IconNoSound />} title="No sound?" sub="Find the fault, step by step" active={split && walk} onClick={() => open("walk")} />
+              <MoreRow icon={<IconNoSound />} title="¿Sin sonido?" sub="Encontrá el problema paso a paso" active={split && walk} onClick={() => open("walk")} />
               {(isAdmin || can("manage")) && (
-                <MoreRow icon={<IconPeople />} title="Leader board" sub="Who's here, who needs help" active={split && leader} onClick={() => open("leader")} />
+                <MoreRow icon={<IconPeople />} title="Panel del equipo" sub="Quiénes están presentes y quiénes necesitan ayuda" active={split && leader} onClick={() => open("leader")} />
               )}
             </MoreGroup>
 
-            <MoreGroup label="Notifications">
+            <MoreGroup label="Notificaciones">
               <PushRow />
               <MoreRow
                 icon={<IconChime />}
-                title="Message sounds"
-                sub="While the app is open. Pages always ring."
+                title="Sonidos de mensajes"
+                sub="Mientras la aplicación está abierta. Los avisos siempre suenan."
                 trailing={
                   <button
                     className={`crew-toggle ${chat.sound ? "on" : ""}`}
                     role="switch"
                     aria-checked={chat.sound}
-                    aria-label="Message sounds"
+                    aria-label="Sonidos de mensajes"
                     onClick={() => chat.setSound(!chat.sound)}
                   >
                     <span className="crew-toggle-knob" />
@@ -355,20 +355,20 @@ export function MobileShell() {
               />
             </MoreGroup>
 
-            <MoreGroup label="Account">
-              {IN_CREW_APP && <MoreRow icon={<IconSwitch />} title="Switch church" onClick={() => (location.href = crewAppHome())} />}
+            <MoreGroup label="Cuenta">
+              {IN_CREW_APP && <MoreRow icon={<IconSwitch />} title="Cambiar de iglesia" onClick={() => (location.href = crewAppHome())} />}
               {IS_WEB && wideScreen() && (
-                <MoreRow icon={<IconScreen />} title="Full view" sub="Every page and dashboard" onClick={() => switchLayout("full")} />
+                <MoreRow icon={<IconScreen />} title="Vista completa" sub="Todas las páginas y paneles de control" onClick={() => switchLayout("full")} />
               )}
-              {chat.auth === "in" && <MoreRow icon={<IconLock />} title="Lock" sub="Ask for my PIN again" onClick={chat.signOut} />}
+              {chat.auth === "in" && <MoreRow icon={<IconLock />} title="Bloquear" sub="Pedir mi PIN nuevamente" onClick={chat.signOut} />}
               {IS_WEB && (
                 // Without this a phone is stuck on whichever tier it first
                 // signed in as: "Lock" only clears the crew session, so you'd
                 // get the PIN screen back and never the access-password screen.
                 <MoreRow
                   icon={<IconSignOut />}
-                  title="Sign out"
-                  sub="Forget this phone"
+                  title="Salir"
+                  sub="Desvincular este celular"
                   onClick={() => {
                     chat.forgetDevice();
                     clearWebToken();
@@ -391,14 +391,14 @@ export function MobileShell() {
             {IS_WEB && (
               <p className="more-foot">
                 {isAdmin
-                  ? "You can send pages from Chat."
-                  : "Members can chat, check in and confirm pages. Booth controls need an admin sign in."}
+                  ? "Podés enviar avisos desde Chat."
+                  : "Los integrantes pueden chatear, registrar asistencia y confirmar avisos. Para controlar ProDeck se necesita acceso de administrador."}
               </p>
             )}
           </div>
           {split && (
             <div className="crew-split-detail">
-              {moreDetail ?? <p className="crew-split-empty">Pick something on the left.</p>}
+              {moreDetail ?? <p className="crew-split-empty">Elegí una opción de la izquierda.</p>}
             </div>
           )}
           </div>
@@ -439,14 +439,14 @@ function DeleteAccount({ onDone }: { onDone: () => void }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   if (!sure) {
-    return <MoreRow icon={<IconTrash />} title="Delete my account" danger onClick={() => setSure(true)} />;
+    return <MoreRow icon={<IconTrash />} title="Eliminar mi cuenta" danger onClick={() => setSure(true)} />;
   }
   return (
     <div className="crew-card danger" style={{ marginTop: 10 }}>
       <p style={{ margin: 0 }}>
-        This removes your ProDeck crew account from the booth: your sign-in, PIN and notifications. Planning
-        Center isn't changed, so you stay on the schedule, and your name is still there to tap if you join again.
-        Chat messages you sent stay.
+        Esto elimina tu cuenta del equipo en Control, incluidos tu acceso, PIN y notificaciones. Planning
+        Center no cambia: seguís en el cronograma y tu nombre estará disponible si volvés a ingresar.
+        Los mensajes que enviaste permanecen en el chat.
       </p>
       {err && <p className="crew-join-err">{err}</p>}
       <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
@@ -465,10 +465,10 @@ function DeleteAccount({ onDone }: { onDone: () => void }) {
             }
           }}
         >
-          {busy ? "Deleting…" : "Delete my account"}
+          {busy ? "Eliminando…" : "Eliminar mi cuenta"}
         </button>
         <button className="btn ghost" disabled={busy} onClick={() => setSure(false)}>
-          Keep it
+          Conservarla
         </button>
       </div>
     </div>
@@ -488,7 +488,7 @@ function TallyRow({ onStart }: { onStart: () => void }) {
     };
   }, []);
   if (!show) return null;
-  return <MoreRow icon={<IconTally />} title="Tally light" sub="Use this phone at a camera" onClick={onStart} />;
+  return <MoreRow icon={<IconTally />} title="Luz Tally" sub="Usar este celular en una cámara" onClick={onStart} />;
 }
 
 function PushRow() {
@@ -501,21 +501,21 @@ function PushRow() {
   }, []);
 
   const copy: Record<PushStatus, string> = {
-    on: "Pages reach you even when it's closed",
-    off: "Off: pages only show while it's open",
+    on: "Los avisos llegan incluso con la aplicación cerrada",
+    off: "Desactivadas: los avisos solo aparecen con la aplicación abierta",
     denied:
-      "This browser is refusing notifications for ProDeck. That also happens if the permission pop-up was dismissed. Allow notifications for this site in your browser settings, then come back.",
+      "El navegador no permite las notificaciones de ProDeck. También puede pasar si cerraste el pedido de permiso. Permití las notificaciones para este sitio en la configuración del navegador y volvé acá.",
     insecure:
-      "Not available on this plain (http) address. Open ProDeck from the booth's secure address to turn them on.",
+      "No están disponibles en esta dirección sin seguridad (http). Abrí ProDeck desde la dirección segura de Control para activarlas.",
     "needs-install":
-      "Add ProDeck to your Home Screen first. iPhones send no notifications to a browser tab.",
-    unsupported: "This browser can't do push notifications.",
+      "Agregá primero ProDeck a la pantalla de inicio. El iPhone no envía notificaciones a una pestaña del navegador.",
+    unsupported: "Este navegador no admite notificaciones push.",
   };
   // The ProDeck Crew app: no browser, and the phone's own Settings.
   if (IN_CREW_APP) {
-    copy.on = "Pages will buzz this phone even when ProDeck Crew is closed.";
-    copy.denied = "Notifications are off for ProDeck Crew. Turn them on in the phone's Settings, under Notifications, then tap the switch.";
-    copy.unsupported = "Pages can't buzz this phone yet. Keep ProDeck Crew open during the service and pages still show.";
+    copy.on = "Los avisos pueden hacer vibrar este celular aunque ProDeck Crew esté cerrado.";
+    copy.denied = "Las notificaciones de ProDeck Crew están desactivadas. Activalas en la configuración del celular, en Notificaciones, y después tocá el interruptor.";
+    copy.unsupported = "Los avisos todavía no pueden hacer vibrar este celular. Mantené ProDeck Crew abierto durante el evento para verlos.";
   }
 
   const toggle =
@@ -524,7 +524,7 @@ function PushRow() {
         className={`crew-toggle ${state === "on" ? "on" : ""}`}
         role="switch"
         aria-checked={state === "on"}
-        aria-label="Page notifications"
+        aria-label="Notificaciones de avisos"
         disabled={busy}
         onClick={async () => {
           setBusy(true);
@@ -541,7 +541,7 @@ function PushRow() {
         <span className="crew-toggle-knob" />
       </button>
     ) : null;
-  return <MoreRow icon={<IconBell />} title="Page notifications" sub={err || copy[state]} trailing={toggle} />;
+  return <MoreRow icon={<IconBell />} title="Notificaciones de avisos" sub={err || copy[state]} trailing={toggle} />;
 }
 
 // Floating "still listening" chip — the stream survives tab changes now
@@ -554,8 +554,8 @@ function ListenChip() {
   return (
     <button className="crew-listen-chip" onClick={stopListen}>
       <span className="pulse-dot" style={{ background: "var(--success)" }} />
-      {state === "playing" ? "Listening to booth audio" : "Connecting…"}
-      <span className="crew-listen-stop">Stop</span>
+      {state === "playing" ? "Escuchando el audio de Control" : "Conectando…"}
+      <span className="crew-listen-stop">Detener</span>
     </button>
   );
 }

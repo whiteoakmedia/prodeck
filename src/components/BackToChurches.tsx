@@ -8,7 +8,7 @@ export function BackToChurches() {
   if (!IN_CREW_APP) return null;
   return (
     <button type="button" className="link-btn back-to-churches" onClick={() => (location.href = crewAppHome())}>
-      Not your church? Back to your churches
+      ¿No es tu iglesia? Volver a tus iglesias
     </button>
   );
 }
