@@ -308,3 +308,7 @@ baselines without changing keys, permissions or actions.
 the cloud copy timestamp line is covered by `crewCloud.test.ts`.
 `localization-intercomComms.test.ts` and `localization-crewCloudComms.test.ts`
 protect the reviewed messages without changing communication or date logic.
+
+The communication, mobile dashboard and team leadership translation slices are
+protected by `localizationCrewCommsRound.test.ts`, `localizationCrewDashRound.test.ts`
+and `localizationCrewLeaderRound.test.ts` against reviewed baselines.

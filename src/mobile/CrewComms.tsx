@@ -76,7 +76,7 @@ export function NowTalking({ className = "" }: { className?: string }) {
   // reads as comms being broken.
   return (
     <div className={`crew-now-talking ${className}`} aria-live="polite">
-      {t.map((x) => `${x.name} on ${x.line}${x.me || c.listen.includes(x.line) ? "" : " (not listening)"}`).join(", ")}
+      {t.map((x) => `${x.name} en ${x.line}${x.me || c.listen.includes(x.line) ? "" : " (sin escuchar)"}`).join(", ")}
     </div>
   );
 }
@@ -84,10 +84,10 @@ export function NowTalking({ className = "" }: { className?: string }) {
 /** What a connection is doing, in words, so "I can't hear" can be told apart from "never connected". */
 function linkWord(st: string | undefined, unreachable: boolean): string {
   if (st === "connected") return "";
-  if (unreachable) return " (can't reach: are you both on the church Wi-Fi, not cellular?)";
-  if (st === "failed") return " (can't connect, retrying)";
-  if (st === "disconnected") return " (dropped, reconnecting)";
-  return " (connecting)";
+  if (unreachable) return " (sin conexión: ¿ambos usan el Wi-Fi de la iglesia y no datos móviles?)";
+  if (st === "failed") return " (no conecta, reintentando)";
+  if (st === "disconnected") return " (conexión interrumpida, reconectando)";
+  return " (conectando)";
 }
 
 /**
@@ -114,7 +114,7 @@ export function TallyComms() {
         disabled={c.state === "joining"}
         onClick={() => void joinComms()}
       >
-        {c.state === "joining" ? "Joining comms…" : c.needsTap ? "Tap to rejoin comms" : "Join comms"}
+        {c.state === "joining" ? "Conectando comunicaciones…" : c.needsTap ? "Tocá para volver a comunicaciones" : "Conectar comunicaciones"}
       </button>
       {(c.err || joinBlocker()) && <span className="tally-comms-err">{c.err || joinBlocker()}</span>}
     </div>
@@ -128,10 +128,10 @@ export function TallyCommsMenu() {
   return (
     <>
       <button type="button" className="tally-info-btn" onClick={() => setOpenMic(!c.openMic)}>
-        {c.openMic ? "Open mic: on" : "Open mic: off"}
+        {c.openMic ? "Micrófono abierto: sí" : "Micrófono abierto: no"}
       </button>
       <button type="button" className="tally-info-btn" onClick={() => void leaveComms()}>
-        Leave comms
+        Salir de comunicaciones
       </button>
     </>
   );
@@ -145,22 +145,22 @@ export function CrewComms({ onBack }: { onBack: () => void }) {
   return (
     <div className="crew-page crew-comms">
       <div className="crew-row-head">
-        <button className="crew-back" onClick={onBack} aria-label="Back">
+        <button className="crew-back" onClick={onBack} aria-label="Volver">
           ‹
         </button>
         <h1 className="crew-title" style={{ margin: 0 }}>
-          Comms
+          Comunicaciones
         </h1>
       </div>
 
       {c.state !== "on" ? (
         <div className="crew-card edge">
           <p style={{ marginTop: 0 }}>
-            Talk to the crew on a line while you hold the button. Phones talk to each other over the
-            church Wi-Fi.
+            Hablá con el equipo en una línea mientras mantenés presionado el botón. Los celulares se comunican
+            entre sí por el Wi-Fi de la iglesia.
           </p>
           <p className="crew-hint">
-            Wear earbuds, and keep ProDeck open with the screen on: a locked phone can't hear or talk.
+            Usá auriculares y mantené ProDeck abierto con la pantalla encendida: un celular bloqueado no puede escuchar ni hablar.
           </p>
           {(c.err || blocker) && <p className="crew-comms-err">{c.err || blocker}</p>}
           <button
@@ -168,14 +168,14 @@ export function CrewComms({ onBack }: { onBack: () => void }) {
             disabled={!!blocker || c.state === "joining"}
             onClick={() => void joinComms()}
           >
-            {c.state === "joining" ? "Joining…" : "Join comms"}
+            {c.state === "joining" ? "Conectando…" : "Conectar comunicaciones"}
           </button>
         </div>
       ) : (
         <>
           <NowTalking />
           <div className="crew-card edge">
-            <div className="crew-comms-label mono">Talk on</div>
+            <div className="crew-comms-label mono">Hablar en</div>
             <div className="crew-comms-lines">
               {lines.map((l) => (
                 <button
@@ -192,16 +192,16 @@ export function CrewComms({ onBack }: { onBack: () => void }) {
             <TalkButton className="big" />
             <div className="crew-comms-listen" style={{ marginTop: 10 }}>
               <span>
-                Open mic
+                Micrófono abierto
                 <span className="crew-hint" style={{ display: "block" }}>
-                  Talk without holding, until you turn it off. Starts muted: tap the button to talk.
+                  Hablá sin mantener presionado hasta que lo desactives. Empieza muteado: tocá el botón para hablar.
                 </span>
               </span>
               <button
                 className={`crew-toggle ${c.openMic ? "on" : ""}`}
                 role="switch"
                 aria-checked={c.openMic}
-                aria-label="Open mic"
+                aria-label="Micrófono abierto"
                 onClick={() => setOpenMic(!c.openMic)}
               >
                 <span className="crew-toggle-knob" />
@@ -210,7 +210,7 @@ export function CrewComms({ onBack }: { onBack: () => void }) {
           </div>
 
           <div className="crew-card edge">
-            <div className="crew-comms-label mono">Listen to</div>
+            <div className="crew-comms-label mono">Escuchar</div>
             {lines.map((l) => {
               const on = c.listen.includes(l);
               return (
@@ -220,7 +220,7 @@ export function CrewComms({ onBack }: { onBack: () => void }) {
                     className={`crew-toggle ${on ? "on" : ""}`}
                     role="switch"
                     aria-checked={on}
-                    aria-label={`Listen to ${l}`}
+                    aria-label={`Escuchar ${l}`}
                     onClick={() => setListening(l, !on)}
                   >
                     <span className="crew-toggle-knob" />
@@ -231,9 +231,9 @@ export function CrewComms({ onBack }: { onBack: () => void }) {
           </div>
 
           <div className="crew-card edge">
-            <div className="crew-comms-label mono">On comms ({others.length + 1})</div>
+            <div className="crew-comms-label mono">En comunicaciones ({others.length + 1})</div>
             <div className="crew-comms-who">
-              <span>You</span>
+              <span>Vos</span>
               {others.map((m) => (
                 <span key={m.id} className={c.linked.includes(m.id) ? "" : "muted"}>
                   {m.name}
@@ -243,7 +243,7 @@ export function CrewComms({ onBack }: { onBack: () => void }) {
             </div>
             {c.err && <p className="crew-comms-err">{c.err}</p>}
             <button className="btn ghost" style={{ marginTop: 10 }} onClick={() => void leaveComms()}>
-              Leave comms
+              Salir de comunicaciones
             </button>
           </div>
         </>
@@ -260,7 +260,7 @@ export function CommsChip({ onOpen, hidden }: { onOpen: () => void; hidden?: boo
   if (c.state === "off" && c.needsTap) {
     return (
       <button type="button" className="crew-comms-chip crew-comms-rejoin" onClick={() => void joinComms()}>
-        Tap to rejoin comms
+        Tocá para volver a comunicaciones
       </button>
     );
   }
@@ -271,7 +271,7 @@ export function CommsChip({ onOpen, hidden }: { onOpen: () => void; hidden?: boo
     <div className="crew-comms-chip">
       <button type="button" className="crew-comms-chip-open" onClick={onOpen}>
         <span className="pulse-dot" style={{ background: t.length ? "var(--warn)" : "var(--success)" }} />
-        {t.length ? `${t[0].name} on ${t[0].line}` : `Comms · ${c.talkOn}`}
+        {t.length ? `${t[0].name} en ${t[0].line}` : `Comunicaciones · ${c.talkOn}`}
       </button>
       <TalkButton className="chip" label="Hablar" />
     </div>
