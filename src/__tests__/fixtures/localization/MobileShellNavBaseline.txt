@@ -3,8 +3,10 @@ import { useEffect, useState } from "react";
 import { usePerms } from "../lib/perms";
 import { CrewNav, type CrewTab } from "./CrewNav";
 import { canGoBack, goBack, isBackSwipe, useNavHistory } from "../lib/navHistory";
+import { useCrewSplit, useCrewWide } from "./useCrewWide";
 import { CrewWalk } from "./CrewWalk";
 import { CrewChat } from "./CrewChat";
+import { CrewDirector, type DirectorSub } from "./CrewDirector";
 import { CrewJoin } from "./CrewJoin";
 import {
   IconBell,
@@ -49,7 +51,8 @@ import { onTrack, seekTrack, skipTrack, stopTrack, toggleTrack, trackSnapshot } 
 // desktop Shell on phone-width web clients. v1 ships the frame + working
 // Chat and Dashboards; Home/Checklist arrive with their screens (S03/S08).
 
-type CrewSub = "" | "walk" | "comms" | "leader";
+// Director's own screens ride the same history: screens, sound, video, dash.
+type CrewSub = "" | "walk" | "comms" | "leader" | DirectorSub;
 interface CrewView {
   tab: CrewTab;
   sub: CrewSub;
@@ -113,10 +116,12 @@ function useEdgeSwipeBack() {
 }
 
 export function MobileShell() {
-  const shotTab = IS_SHOTS && SHOT_TAB && ["home", "chat", "checklist", "dashboards", "more"].includes(SHOT_TAB) ? (SHOT_TAB as CrewTab) : null;
+  const shotTab = IS_SHOTS && SHOT_TAB && ["home", "chat", "checklist", "dashboards", "director", "more"].includes(SHOT_TAB) ? (SHOT_TAB as CrewTab) : null;
   // Where the phone is: a tab, and maybe a screen opened from it (No sound?,
   // Comms, Leader board). Each change is a history step, so a swipe back (or
   // Android's back) returns to the screen before (lib/navHistory).
+  const wide = useCrewWide();
+  const split = useCrewSplit();
   const view = useNavHistory<CrewView>("crew", { tab: shotTab ?? "home", sub: IS_SHOTS && SHOT_TAB === "walk" ? "walk" : "" });
   const { tab, sub } = view.value;
   const setTab = (t: CrewTab) => view.go({ tab: t, sub: "" });
@@ -127,6 +132,11 @@ export function MobileShell() {
     if (!goBack()) view.replace({ tab, sub: "" });
   };
   useEdgeSwipeBack();
+  // A screen opened from a tab (Director's Screens, the Leader board) starts
+  // at its top, not wherever the screen before it was scrolled.
+  useEffect(() => {
+    if (sub) document.querySelector(".crew-main")?.scrollTo({ top: 0 });
+  }, [tab, sub]);
   useEffect(() => {
     setCrashTag("layout", "crew");
     setCrashTag("crew_app", IN_CREW_APP ? "yes" : "no");
@@ -170,6 +180,8 @@ export function MobileShell() {
   useEffect(() => onGatewayState(setBoothUp), []);
   // Leader board is admin-only; the gateway enforces the underlying calls too.
   const { isAdmin, can } = usePerms();
+  // Director takes Dashboards' place in the tab bar (CrewNav crewTabs).
+  const director = can("director");
   const leader = sub === "leader";
   // Identity (id + role) is fetched ONCE at the shell so every tab agrees.
   // It used to live only in the Checklist tab — Home read an empty role until
@@ -254,8 +266,18 @@ export function MobileShell() {
     );
   }
 
+  // iPhone Duo opened up, or an iPad: a sidebar (wide), and when there's room
+  // for both, More's list beside the screen it opens (split; useCrewWide).
+  const moreDetail = leader ? (
+    <CrewLeader onBack={close} />
+  ) : walk && tab === "more" ? (
+    <CrewWalk onBack={close} />
+  ) : comms && commsOn ? (
+    <CrewComms onBack={close} />
+  ) : null;
+
   return (
-    <div className="crew">
+    <div className={`crew ${wide ? "crew-wide" : ""}`}>
       <div className="crew-chip-stack">
         <CommsChip
           hidden={!commsOn || (tab === "more" && comms && !walk && !leader)}
@@ -263,6 +285,7 @@ export function MobileShell() {
         />
         <ListenChip />
       </div>
+      <div className="crew-body">
       <main className="crew-main">
         {tab === "home" && walk && <CrewWalk onBack={close} />}
         {/* Onboarding's last step, until page notifications are on. */}
@@ -274,11 +297,22 @@ export function MobileShell() {
           </div>
         )}
         {tab === "checklist" && <CrewChecklist />}
-        {tab === "dashboards" && <CrewDash />}
-        {tab === "more" && leader && <CrewLeader onBack={close} />}
-        {tab === "more" && !leader && walk && <CrewWalk onBack={close} />}
-        {tab === "more" && !leader && !walk && comms && commsOn && <CrewComms onBack={close} />}
-        {tab === "more" && !leader && !walk && !(comms && commsOn) && (
+        {tab === "dashboards" && !director && <CrewDash />}
+        {(tab === "director" || (tab === "dashboards" && director)) &&
+          (leader ? (
+            <CrewLeader onBack={close} />
+          ) : (
+            <CrewDirector
+              sub={sub === "screens" || sub === "sound" || sub === "video" || sub === "dash" ? sub : ""}
+              onOpen={(s) => view.go({ tab: "director", sub: s })}
+              onBack={close}
+              onPeople={() => view.go({ tab: "director", sub: "leader" })}
+            />
+          ))}
+        {tab === "director" && !director && <CrewDash />}
+        {tab === "more" && !split && moreDetail}
+        {tab === "more" && (split || !moreDetail) && (
+          <div className={split ? "crew-split" : "crew-split-off"}>
           <div className="crew-page crew-more">
             <h1 className="crew-title">More</h1>
 
@@ -293,11 +327,11 @@ export function MobileShell() {
             </div>
 
             <MoreGroup label="Tools">
-              {commsOn && <MoreRow icon={<IconComms />} title="Comms" sub="Talk to the crew" onClick={() => open("comms")} />}
+              {commsOn && <MoreRow icon={<IconComms />} title="Comms" sub="Talk to the crew" active={split && comms} onClick={() => open("comms")} />}
               <TallyRow onStart={() => tallyOn(true)} />
-              <MoreRow icon={<IconNoSound />} title="No sound?" sub="Find the fault, step by step" onClick={() => open("walk")} />
+              <MoreRow icon={<IconNoSound />} title="No sound?" sub="Find the fault, step by step" active={split && walk} onClick={() => open("walk")} />
               {(isAdmin || can("manage")) && (
-                <MoreRow icon={<IconPeople />} title="Leader board" sub="Who's here, who needs help" onClick={() => open("leader")} />
+                <MoreRow icon={<IconPeople />} title="Leader board" sub="Who's here, who needs help" active={split && leader} onClick={() => open("leader")} />
               )}
             </MoreGroup>
 
@@ -362,11 +396,19 @@ export function MobileShell() {
               </p>
             )}
           </div>
+          {split && (
+            <div className="crew-split-detail">
+              {moreDetail ?? <p className="crew-split-empty">Pick something on the left.</p>}
+            </div>
+          )}
+          </div>
         )}
       </main>
       <TrackBar />
+      </div>
       <CrewNav
-        active={tab}
+        director={director}
+        active={tab === "dashboards" && director ? "director" : tab === "director" && !director ? "dashboards" : tab}
         unread={chat.unread}
         overdue={overdueCount > 0}
         onSelect={(t) => {
@@ -590,6 +632,7 @@ function MoreRow({
   onClick,
   trailing,
   danger,
+  active,
 }: {
   icon: React.ReactNode;
   title: string;
@@ -597,6 +640,8 @@ function MoreRow({
   onClick?: () => void;
   trailing?: React.ReactNode;
   danger?: boolean;
+  /** Open beside the list (split). */
+  active?: boolean;
 }) {
   const body = (
     <>
@@ -611,7 +656,7 @@ function MoreRow({
     </>
   );
   return onClick && !trailing ? (
-    <button className={`more-row${danger ? " danger" : ""}`} onClick={onClick}>
+    <button className={`more-row${danger ? " danger" : ""}${active ? " on" : ""}`} aria-current={active || undefined} onClick={onClick}>
       {body}
     </button>
   ) : (

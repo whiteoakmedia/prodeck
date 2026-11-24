@@ -6,7 +6,9 @@
 //    this same file at prodeck.live too, and every crew host serves it as well.
 //  - iPhone or iPad without the app: a short page with "Get ProDeck Crew"
 //    (App Store) and "Continue in the browser". Never a forced redirect.
-//  - Android and computers: the church's join page, as before.
+//  - Android with the app: Android opens it straight into the church (App
+//    Links). Without it: the same page, with Google Play.
+//  - Computers: the church's join page, as before.
 //
 // Only the links the app handles are claimed: /join, and the crew link and
 // personal invite (?join= / ?invite=). Everything else stays in the browser.
@@ -15,6 +17,7 @@ export const TEAM_ID = "2B77WL3HZ6";
 export const IOS_BUNDLE = "app.prodeck.crew";
 export const APP_STORE_ID = "6829868156";
 export const APP_STORE_URL = `https://apps.apple.com/app/id${APP_STORE_ID}`;
+export const PLAY_URL = "https://play.google.com/store/apps/details?id=app.prodeck.crew";
 
 /**
  * Android App Links: the app's package and the SHA-256 fingerprints of the
@@ -84,16 +87,21 @@ export function wellKnown(path: string): Response | null {
 }
 
 /**
- * Show the "Get ProDeck Crew" step? Only a crew code (/join) opened in an
- * iPhone or iPad browser, not inside the app, and not once they chose the
- * browser (?web=1). An iPad that asks as a Mac gets the browser page, which
- * is still a working way in.
+ * Show the "Get ProDeck Crew" step? Only a crew code (/join) opened in a
+ * phone or tablet browser (iPhone, iPad, Android), not inside the app, and
+ * not once they chose the browser (?web=1). An iPad that asks as a Mac gets
+ * the browser page, which is still a working way in.
  */
 export function wantsAppStep(method: string, path: string, search: URLSearchParams, userAgent: string): boolean {
   if (method !== "GET" || path !== "/join") return false;
   if (search.has("web")) return false;
   if (/\bProDeckCrew\//.test(userAgent)) return false;
-  return /\b(iPhone|iPad|iPod)\b/.test(userAgent);
+  return /\b(iPhone|iPad|iPod|Android)\b/.test(userAgent);
+}
+
+/** The store for this phone: Google Play on Android, the App Store otherwise. */
+export function storeUrl(userAgent: string): string {
+  return /\bAndroid\b/.test(userAgent) ? PLAY_URL : APP_STORE_URL;
 }
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -105,7 +113,7 @@ const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
  * again. Once a Crew build with applinks:*.prodeck.live is out, it can say the
  * camera opens the app straight into the church.
  */
-export function appStepPage(self: string): string {
+export function appStepPage(self: string, userAgent = ""): string {
   const browser = new URL(self);
   browser.searchParams.set("web", "1");
   return `<!doctype html>
@@ -136,7 +144,7 @@ a.ghost{color:var(--accent)}
 <li>Get the free ProDeck Crew app.</li>
 <li>Open ProDeck Crew, tap Scan crew code and scan this code.</li>
 </ol>
-<a class="btn primary" href="${APP_STORE_URL}">Get ProDeck Crew</a>
+<a class="btn primary" href="${storeUrl(userAgent)}">Get ProDeck Crew</a>
 <a class="btn ghost" href="${esc(browser.toString())}">Continue in the browser</a>
 </main></body></html>
 `;

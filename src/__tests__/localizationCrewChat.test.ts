@@ -57,7 +57,8 @@ const copy: [string, string][] = [
   [
     "            Clear confidence banner",
     "            Quitar aviso de Pantalla Retorno"
-  ]
+  ],
+  ['Pick a channel.', 'Elegí un canal.']
 ];
 
 it("preserves behavior and caller data outside reviewed CrewChat copy", () => {

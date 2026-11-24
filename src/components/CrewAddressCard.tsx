@@ -92,8 +92,8 @@ export function CrewAddressCard({ form, set }: { form: Settings; set: (on: boole
           )}
           <p className="muted small">
             {st?.linked ? "Conectado: los celulares fuera de la iglesia acceden a Control en vivo." : "Sin conexión por ahora."} Última copia
-            enviada {ago(st?.last_sync_ms ?? 0)}. Los enlaces del equipo y el afiche siguen usando la dirección de esta computadora;
-            el celular cambia automáticamente a la dirección del equipo cuando no puede acceder a Control.
+            enviada {ago(st?.last_sync_ms ?? 0)}. El código del equipo y el afiche apuntan a la dirección del equipo para funcionar desde cualquier lugar.
+            Los celulares conectados al Wi-Fi de la iglesia siguen comunicándose directamente con esta computadora.
           </p>
           {st?.error && (
             <div className="hint">

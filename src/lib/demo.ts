@@ -285,6 +285,19 @@ function ppStatusPayloads(): { stream: string; data: unknown }[] {
       data: { slide: true, media: idx === 6, audio: false, props: false, announcements: idx === 0, messages: false, video_input: false },
     },
     { stream: "stage_message", data: { message: demoStageMessage } },
+    { stream: "current_timers", data: demoTimers() },
+  ];
+}
+
+/** ProPresenter's timers, demo side: a sermon clock counting down, and the
+ *  pre-service countdown finished at zero. */
+function demoTimers() {
+  const left = 30 * 60 - Math.floor((NOW() / 1000) % (30 * 60));
+  const hms = (t: number) =>
+    [Math.floor(t / 3600), Math.floor((t % 3600) / 60), t % 60].map((n) => String(n).padStart(2, "0")).join(":");
+  return [
+    { id: { uuid: "demo-timer-sermon", name: "Sermon" }, time: hms(left), state: "running" },
+    { id: { uuid: "demo-timer-countdown", name: "Service Countdown" }, time: "00:00:00", state: "complete" },
   ];
 }
 
@@ -791,7 +804,7 @@ export async function demoInvoke<T>(cmd: string, args?: Record<string, unknown>)
       if (path.includes("/items")) return out(pcoItems());
       if (path.includes("/team_members")) return out(pcoTeam());
       if (path.includes("/plan_times")) return out(pcoPlanTimes());
-      if (path.endsWith("/live")) return out(pcoLive());
+      if (path.endsWith("/live") || path.includes("/live/current_item_time")) return out(pcoLive());
       if (path.includes("service_types?")) return out(pcoServiceTypes());
       if (path.includes("/plans")) return out(pcoPlans());
       return out({ data: [] });
@@ -856,6 +869,12 @@ export async function demoInvoke<T>(cmd: string, args?: Record<string, unknown>)
     }
     case "identity_list":
       return out(CREW);
+    case "director_log":
+      return out([
+        { ts: NOW() - 2 * 60_000, who: "Devon Clark", what: "moved PCO Live to the next item" },
+        { ts: NOW() - 9 * 60_000, who: "Devon Clark", what: "paged 1 person: \u201cCheck your mic\u201d" },
+        { ts: NOW() - 14 * 60_000, who: "Renee Alvarez", what: "stage message: \u201cWalk in music down at 9:58\u201d" },
+      ]);
     case "identity_roles":
       return out(Array.from(new Set(CREW.map((c) => c.role))));
     case "checkin_list": {
@@ -865,7 +884,7 @@ export async function demoInvoke<T>(cmd: string, args?: Record<string, unknown>)
     }
     case "web_whoami":
       // The demo booth is an admin: every grant, so every control shows.
-      return out({ tier: "admin", perms: ["page", "stage", "control", "tap", "manage"], name: "Booth" });
+      return out({ tier: "admin", perms: ["page", "stage", "control", "tap", "manage", "director"], name: "Booth" });
     case "keepalive_status":
       return out({
         installed: true, program: "/Applications/ProDeck.app/Contents/MacOS/prodeck",
@@ -942,6 +961,20 @@ export async function demoInvoke<T>(cmd: string, args?: Record<string, unknown>)
       ]);
     case "page_list":
       return out([]);
+    case "page_send": {
+      // Answer like the booth: the page as sent, to whoever it was for.
+      const ids: string[] = Array.isArray(args?.recipients) ? args.recipients.map(String) : [];
+      const to = ids.length ? CREW.filter((c) => ids.includes(c.id)) : CREW;
+      return out({
+        id: NOW(),
+        from: "Devon Clark",
+        body: String(args?.body ?? ""),
+        recipients: to.map((c) => ({ id: c.id, name: c.name })),
+        buzz: !!args?.buzz,
+        sent_ms: NOW(),
+        receipts: [],
+      });
+    }
     case "diag_recent_log":
       return out(["(demo mode: the real log is hidden while sample data is on)"]);
     case "pp_get": {

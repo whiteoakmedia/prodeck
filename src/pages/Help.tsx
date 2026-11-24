@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { HELP_BY_ID, HELP_GROUP_ORDER, HELP_TOPICS, type HelpTopic } from "../help/topics";
 import { contextFor, searchHelp } from "../help/search";
-import { getSettings, helpAsk, IS_WEB, diagOpenIssue, REPORT_REPO, DOCS_URL, helpOpen } from "../lib/tauri";
+import { assistComplete, assistStatus, getSettings, helpAsk, IS_WEB, diagOpenIssue, REPORT_REPO, DOCS_URL, helpOpen, type Json } from "../lib/tauri";
+import { answerParts, answerText, helpRequest, type HelpMsg } from "../lib/helpAsk";
 import { Icon } from "../components/Icon";
 import { openFeedback } from "../lib/feedback";
 import { openWhatsNew } from "../lib/whatsNew";
@@ -9,12 +10,16 @@ import { openWhatsNew } from "../lib/whatsNew";
 /**
  * Help: ask a question, get an answer, inside the app.
  *
- * Search runs over the topics as you type. If a Gemini key is configured the
- * same box can ask the assistant, which answers ONLY from those topics and says
- * so when it can't. Neither path needs the internet for the basic case; the
+ * Search runs over the topics as you type. With the troubleshooter's Anthropic
+ * key (Settings, App & help, Troubleshooter) the same box asks Claude, which
+ * reads every topic, answers only from them, links the topics it used and
+ * takes follow-up questions (lib/helpAsk.ts). Without it, a Gemini key still
+ * gives the older keyword-matched answer. Neither path needs the internet for the basic case; the
  * topics are compiled in, so this works on a booth with no connection and on a
  * phone in a basement.
  */
+
+const HELP_IDS = new Set(HELP_TOPICS.map((t) => t.id));
 
 // Tiny renderer for the topic markup: bullets, steps, callouts, **bold**, `code`.
 function Body({ text }: { text: string }) {
@@ -75,14 +80,31 @@ export function HelpPage({
     if (initialTopic) setTopicId(initialTopic);
   }, [initialTopic]);
 
-  // The assistant needs the church's Gemini key. Members don't see the key
-  // (settings arrive redacted) and can't call help_ask anyway, so on the crew
-  // tier this simply never appears.
+  // Claude through the booth's troubleshooter key first: phones may use it
+  // too when the booth allows crew to ask. Gemini (booth only, its key is
+  // redacted for phones) is the fallback for churches with only that key.
+  const [askVia, setAskVia] = useState<"claude" | "gemini" | null>(null);
   useEffect(() => {
-    getSettings()
-      .then((s) => setCanAsk(!!(s as { gemini_api_key?: string | null }).gemini_api_key))
+    assistStatus()
+      .then((st) => {
+        if (st?.configured) {
+          setAskVia("claude");
+          setCanAsk(true);
+          return;
+        }
+        return getSettings().then((s) => {
+          const g = !!(s as { gemini_api_key?: string | null }).gemini_api_key;
+          setAskVia(g ? "gemini" : null);
+          setCanAsk(g);
+        });
+      })
       .catch(() => setCanAsk(false));
   }, []);
+  // The conversation with Claude, so a follow-up knows what came before.
+  // Assistant turns keep their full content (thinking included): Claude
+  // needs them back unchanged.
+  const conv = useRef<HelpMsg[]>([]);
+  const [followUp, setFollowUp] = useState("");
 
   useEffect(() => {
     if (!topicId) inputRef.current?.focus();
@@ -91,23 +113,43 @@ export function HelpPage({
   const hits = useMemo(() => searchHelp(q), [q]);
   const topic: HelpTopic | null = topicId ? HELP_BY_ID[topicId] ?? null : null;
 
-  async function ask() {
-    const question = q.trim();
+  async function ask(followingUp = false) {
+    const question = (followingUp ? followUp : q).trim();
     if (!question) return;
+    if (!followingUp) {
+      conv.current = [];
+      setAnswer(null);
+    }
     setAsking(true);
     setAskErr("");
-    setAnswer(null);
     try {
-      const ctx = contextFor(question)
-        .map((t) => `## ${t.title}\n${t.body}`)
-        .join("\n\n");
-      setAnswer(await helpAsk(question, ctx));
+      if (askVia === "claude") {
+        const reply = (await assistComplete(helpRequest(HELP_TOPICS, conv.current, question) as unknown as Json)) as {
+          content?: unknown;
+          stop_reason?: string;
+        };
+        const text = answerText(reply);
+        conv.current = [...conv.current, { role: "user", content: question }, { role: "assistant", content: reply?.content ?? [] }];
+        setAnswer(text || "I can't answer that one from Help. Try Report a bug or Request a feature, at the bottom of the sidebar.");
+        setFollowUp("");
+      } else {
+        const ctx = contextFor(question)
+          .map((t) => `## ${t.title}\n${t.body}`)
+          .join("\n\n");
+        setAnswer(await helpAsk(question, ctx));
+      }
     } catch (e) {
       setAskErr(String(e));
     } finally {
       setAsking(false);
     }
   }
+
+  // A topic the answer cited: open it below, keeping the answer up.
+  const openCited = (id: string) => {
+    setTopicId(id);
+    document.querySelector(".help-topic")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   function askOnGithub() {
     const title = q.trim().slice(0, 80) || "Question";
@@ -171,7 +213,7 @@ export function HelpPage({
             ))}
             <div className="help-more">
               {canAsk && (
-                <button className="btn small primary" disabled={asking} onClick={ask}>
+                <button className="btn small primary" disabled={asking} onClick={() => ask()}>
                   {asking ? "Thinking…" : "Ask the assistant"}
                 </button>
               )}
@@ -192,7 +234,7 @@ export function HelpPage({
               </button>
               {!canAsk && !IS_WEB && (
                 <span className="muted small">
-                  Add a Gemini key in Settings → Gemini Smart Matching and this box can answer questions in its own words, using only this help.
+                  Add an Anthropic key in Settings, App & help, Troubleshooter and this box answers questions in its own words, using only this Help.
                 </span>
               )}
             </div>
@@ -200,8 +242,43 @@ export function HelpPage({
             {answer && (
               <div className="help-answer">
                 <span className="help-answer-label">Assistant · answered from the built-in help</span>
-                <p>{answer}</p>
-                <span className="muted small">Check it against the topics above before acting on it during a service.</span>
+                {askVia === "claude" ? (
+                  <p className="help-answer-text">
+                    {answerParts(answer, HELP_IDS).map((p, i) =>
+                      p.kind === "text" ? (
+                        <span key={i}>{p.text}</span>
+                      ) : (
+                        <button key={i} className="help-cite" onClick={() => openCited(p.id)}>
+                          {HELP_BY_ID[p.id].title}
+                        </button>
+                      ),
+                    )}
+                  </p>
+                ) : (
+                  <p>{answer}</p>
+                )}
+                {askVia === "claude" && (
+                  <form
+                    className="help-followup"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      ask(true);
+                    }}
+                  >
+                    <input
+                      className="input"
+                      id="help-followup"
+                      placeholder="Ask a follow up"
+                      value={followUp}
+                      disabled={asking}
+                      onChange={(e) => setFollowUp(e.target.value)}
+                    />
+                    <button className="btn small" disabled={asking || !followUp.trim()}>
+                      {asking ? "Thinking…" : "Ask"}
+                    </button>
+                  </form>
+                )}
+                <span className="muted small">Check it against the topics before acting on it during a service.</span>
               </div>
             )}
           </div>

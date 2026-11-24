@@ -48,9 +48,12 @@ function initials(name: string): string {
 export function CrewChannels({
   myRole,
   onOpen,
+  selected,
 }: {
   myRole: string;
   onOpen: (c: Channel) => void;
+  /** The open channel, marked when it shows beside the list (wide). */
+  selected?: string;
 }) {
   const chat = useChat();
   const [roles, setRoles] = useState<string[]>([]);
@@ -72,12 +75,17 @@ export function CrewChannels({
   const mine = channels.filter((c) => c.mine);
   const others = channels.filter((c) => !c.mine);
 
-  const Row = ({ c }: { c: Channel }) => {
+  // A plain function, not a component made inside render: that remounted
+  // every row on each new message, which could swallow a tap mid-press.
+  const row = (c: Channel) => {
     const last = lastIn(c.id);
     const n = chat.unreadBy[c.id] ?? 0;
+    const on = selected === c.id;
     return (
       <button
-        className={`crew-chan ${n > 0 ? "unread" : ""}`}
+        key={c.id}
+        className={`crew-chan ${n > 0 ? "unread" : ""} ${on ? "on" : ""}`}
+        aria-current={on || undefined}
         onClick={() => onOpen(c)}
       >
         <span className="crew-chan-avatar">{initials(c.label)}</span>
@@ -104,27 +112,21 @@ export function CrewChannels({
         <span className="mono crew-sheet-label">Team</span>
         {mine
           .filter((c) => c.id === "team")
-          .map((c) => (
-            <Row key={c.id} c={c} />
-          ))}
+          .map(row)}
 
         {mine.some((c) => c.id !== "team") && (
           <>
             <span className="mono crew-sheet-label">My roles</span>
             {mine
               .filter((c) => c.id !== "team")
-              .map((c) => (
-                <Row key={c.id} c={c} />
-              ))}
+              .map(row)}
           </>
         )}
 
         {others.length > 0 && (
           <>
             <span className="mono crew-sheet-label">Other roles</span>
-            {others.map((c) => (
-              <Row key={c.id} c={c} />
-            ))}
+            {others.map(row)}
           </>
         )}
 

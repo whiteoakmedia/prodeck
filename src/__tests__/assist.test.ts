@@ -122,7 +122,14 @@ describe("the loop", () => {
     expect(r.toolCalls).toBe(2);
     expect(r.text).toMatch(/Check pack 7/);
     expect(r.cites.map((c) => c.nodeId)).toEqual([chId("39"), "src:ulxd4q-5-8:07"]);
-    expect(calls[0].system).toMatch(/How to troubleshoot/);
+    // Doctrine, map and knowledge in a cached block; what's live after it.
+    expect(calls[0].system[0].text).toMatch(/How to troubleshoot/);
+    expect(calls[0].system[0].cache_control).toEqual({ type: "ephemeral" });
+    expect(calls[0].system[0].text).not.toMatch(/## Right now/);
+    expect(calls[0].system[1].text).toMatch(/## Right now/);
+    expect(calls[0].system[1].cache_control).toBeUndefined();
+    expect(calls[0].cache_control).toEqual({ type: "ephemeral" });
+    expect(calls[0].max_tokens).toBeGreaterThanOrEqual(8000);
     expect(calls[0].tools).toHaveLength(6);
     expect(calls[0].messages[0]).toEqual({ role: "user", content: "ruth's mic is dead" });
   });
@@ -130,5 +137,9 @@ describe("the loop", () => {
     const complete = async () => ({ stop_reason: "tool_use", content: [{ type: "tool_use", id: "x", name: "status", input: {} }] });
     const r = await ask(ctx(), [], "hmm", complete);
     expect(r.text).toMatch(/No pude terminar la consulta/);
+  });
+  it("says plainly when Claude declines, instead of an empty answer", async () => {
+    const r = await ask(ctx(), [], "hmm", async () => ({ stop_reason: "refusal", content: [] }));
+    expect(r.text).toMatch(/can't help with that one/);
   });
 });

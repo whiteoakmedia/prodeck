@@ -26,7 +26,7 @@ const copy: [string, string][] = [
   ['                    Next <Icon', '                    Próximo <Icon'],
   ["When the live item changes, its linked ProPresenter presentation fires automatically (slide actions included)", "Cuando cambia el elemento en curso, se activa automáticamente la presentación vinculada de ProPresenter, incluidas las acciones de diapositiva"],
   ["Auto-fire slides", "Activar diapositivas automáticamente"],
-  ["When ProPresenter changes presentations, PCO Live advances to the matching item by name", "Cuando cambia la presentación de ProPresenter, PCO Live avanza al elemento con el mismo nombre"],
+  ["When ProPresenter changes presentations, PCO Live advances to the matching item by name, from 5 minutes before each service time", "Cuando cambia la presentación de ProPresenter, PCO Live avanza al elemento con el mismo nombre desde cinco minutos antes de cada horario del evento"],
   ["Follow ProPresenter", "Seguir ProPresenter"],
   ["When a song goes live (ProPresenter first, else PCO LIVE), recall its leader's Avantis scene (set up under Setup → Leader scenes). Independent of Automix.", "Cuando comienza una canción, se carga la escena Avantis de su líder. Se usa ProPresenter primero o PCO Live si no está disponible. Se configura en Configuración, en escenas de líderes, y funciona independientemente de Automix."],
   ["}Desk scenes", "}Escenas de consola"],

@@ -222,6 +222,28 @@ function digest(ctx: AssistCtx): string {
 }
 
 export function buildSystem(ctx: AssistCtx): string {
+  return buildSystemBlocks(ctx)
+    .map((b) => b.text)
+    .join("\n\n");
+}
+
+/** One block of the system prompt; `cache_control` marks where the cached
+ *  part ends. */
+export interface SystemBlock {
+  type: "text";
+  text: string;
+  cache_control?: { type: "ephemeral" };
+}
+
+/**
+ * The system prompt as two blocks. The first (doctrine, the map digest, the
+ * knowledge files, how to use the tools) is the same on every call, so it's
+ * cached: the 20,000 or so tokens are read back from the cache on each tool
+ * round instead of sent fresh, which is most of the time and cost of a
+ * question. The second is what's true right now (desk connected, who's on
+ * mics), which changes, so it sits after the cache mark.
+ */
+export function buildSystemBlocks(ctx: AssistCtx): SystemBlock[] {
   const live = [
     `Desk mirror: ${ctx.status.deskConnected ? "connected (mutes, faders and names are live)" : "NOT connected — mute and fader state is unknown"}.`,
     `ProPresenter: ${ctx.status.ppConnected ? "connected" : "not connected"}.`,
@@ -236,15 +258,37 @@ export function buildSystem(ctx: AssistCtx): string {
     .filter(Boolean)
     .join("\n");
   const knowledge = ctx.knowledge.map((k) => `### ${k.name}\n${k.text}`).join("\n\n");
-  return [
+  const stable = [
     doctrine.trim(),
     "Respond in Spanish using clear language for Latin America. Keep names, identifiers, technical terms and quoted user data unchanged; preserve exact citation syntax and identifiers so links continue to work.",
     "## This building — the routing map digest\n\n" + digest(ctx),
     knowledge ? "## This building — the knowledge files\n\n" + knowledge : "## This building — knowledge files\n\n(None written yet. Rely on the map digest and tools.)",
-    "## Right now\n\n" + live,
     "## Tools\n\nUse `find` first when the person names a person, a thing or a place. Use `walk` on the node they mean before answering about it; put its ticks and crosses first. Use `channel`, `socket`, `watchlist`, `status` as needed. Do not answer from memory about this building.",
   ].join("\n\n");
+  return [
+    { type: "text", text: stable, cache_control: { type: "ephemeral" } },
+    { type: "text", text: "## Right now\n\n" + live },
+  ];
 }
+
+/** The model the booth will use for a saved setting, as the Settings picker
+ *  should show it. Mirrors assist.rs effective_model: empty is the default,
+ *  and last generation's picks move to their successors. */
+export function assistModel(saved: string | null | undefined): string {
+  const s = (saved ?? "").trim();
+  const moved: Record<string, string> = {
+    "": "claude-opus-5-5",
+    "claude-sonnet-5": "claude-sonnet-5-5",
+    "claude-opus-5": "claude-opus-5-5",
+    "claude-haiku-4-5-20251001": "claude-haiku-5-5",
+    "claude-haiku-4-5": "claude-haiku-5-5",
+  };
+  return moved[s] ?? s;
+}
+
+/** Room for the model to think before it answers: Claude Opus 5.5 always
+ *  thinks, and thinking counts against this. The booth caps it too. */
+export const MAX_OUTPUT_TOKENS = 8000;
 
 /* --------------------------------------------------------------- loop */
 
@@ -253,11 +297,16 @@ type Complete = (body: Record<string, unknown>) => Promise<any>;
 /** Run the conversation one user turn forward. `history` is prior turns
  *  (user/assistant text only); returns the assistant's final text. */
 export async function ask(ctx: AssistCtx, history: Msg[], question: string, complete: Complete): Promise<AssistResult> {
-  const system = buildSystem(ctx);
+  const system = buildSystemBlocks(ctx);
   const messages: Msg[] = [...history, { role: "user", content: question }];
   let toolCalls = 0;
   for (let round = 0; round < MAX_ROUNDS; round++) {
-    const res = await complete({ system, messages, tools: TOOLS, max_tokens: 1500 });
+    // Top-level cache_control caches the conversation so far as well, so
+    // each tool round reads the earlier rounds back from the cache.
+    const res = await complete({ system, messages, tools: TOOLS, max_tokens: MAX_OUTPUT_TOKENS, cache_control: { type: "ephemeral" } });
+    if (res?.stop_reason === "refusal") {
+      return { text: "I can't help with that one. Ask about a person, a channel or a place in the building.", cites: [], toolCalls };
+    }
     const content: any[] = Array.isArray(res?.content) ? res.content : [];
     const uses = content.filter((b) => b.type === "tool_use");
     if (uses.length === 0 || res?.stop_reason !== "tool_use") {

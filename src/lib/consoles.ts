@@ -6,7 +6,7 @@
 // (ahmap.rs DeskModel::parse). "other" is never saved: it is the setup
 // step's "my desk isn't listed" answer.
 
-export type ConsoleId = "avantis" | "dlive" | "sq" | "qu" | "x32" | "yamaha";
+export type ConsoleId = "avantis" | "dlive" | "sq" | "qu" | "x32" | "wing" | "yamaha";
 
 export interface ConsoleInfo {
   id: ConsoleId;
@@ -87,6 +87,17 @@ export const CONSOLES: ConsoleInfo[] = [
     control: true,
   },
   {
+    id: "wing",
+    name: "WING",
+    option: "Behringer WING / WING Compact / WING Rack",
+    label: "WING",
+    hint: "Behringer WING, Compact or Rack · nothing to set on the desk",
+    port: 2223,
+    midi: false,
+    maxBase: 1,
+    control: true,
+  },
+  {
     id: "yamaha",
     name: "Yamaha",
     option: "Yamaha CL, QL or TF",
@@ -100,7 +111,7 @@ export const CONSOLES: ConsoleInfo[] = [
 ];
 
 /** Every port that is some desk's default, so switching desks can swap it. */
-const DEFAULT_PORTS = new Set([51325, 51328, 10023, 49280]);
+const DEFAULT_PORTS = new Set([51325, 51328, 10023, 2223, 49280]);
 
 export function consoleInfo(model: string | null | undefined): ConsoleInfo | undefined {
   return CONSOLES.find((c) => c.id === (model || "").trim().toLowerCase());

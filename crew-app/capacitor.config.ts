@@ -17,7 +17,9 @@ const config: CapacitorConfig = {
   backgroundColor: "#0e131b",
   // Lets the booth's crew app know it's inside the app (src/lib/crewApp.ts):
   // no "Add to Home Screen", and a Switch church button.
-  appendUserAgent: "ProDeckCrew/0.1",
+  // "Biometric": this build can open the booth's Director with Face ID or
+  // fingerprint (src/director.ts; the booth checks for it, directorLock.ts).
+  appendUserAgent: "ProDeckCrew/0.1 Biometric",
   android: {
     // The shell checks a booth over plain http on the church network.
     allowMixedContent: true,

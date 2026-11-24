@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { useChat } from "../chatStore";
 import { usePages } from "../pagesStore";
 import { CrewPageComposer, CrewPageTracking } from "./CrewPages";
-import { CrewChannels, type Channel } from "./CrewChannels";
+import { CrewChannels, channelsFrom, type Channel } from "./CrewChannels";
 import { IS_WEB, type ChatMsg, type CrewPage } from "../lib/tauri";
 import { usePerms } from "../lib/perms";
+import { useCrewSplit } from "./useCrewWide";
 
 // S05a / S05b — chat thread (design/mobile/README.md).
 //
@@ -42,6 +43,9 @@ export function CrewChat() {
   const { can, isAdmin } = usePerms();
   // null = the channel list (S04). Opening a channel scopes the thread to it.
   const [channel, setChannel] = useState<Channel | null>(null);
+  // Side by side only with room for both: upright, iPhone Duo's inner screen
+  // would leave the thread too narrow to type in, so there it's list, then thread.
+  const wide = useCrewSplit();
   const myRole = localStorage.getItem("prodeck.crewRole") ?? "";
 
   // Messages filed to the open channel. Older messages predate channels and
@@ -87,9 +91,27 @@ export function CrewChat() {
         ? "Send to Stage"
         : "Send to Confidence";
 
-  if (!channel) return <CrewChannels myRole={myRole} onOpen={openChannel} />;
+  // Wide (iPhone Duo opened and turned, an iPad): the channel list stays beside the
+  // conversation, and the team thread opens rather than an empty half screen.
+  useEffect(() => {
+    if (wide && !channel) openChannel(channelsFrom([], myRole)[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wide, channel]);
+  const list = <CrewChannels myRole={myRole} onOpen={openChannel} selected={wide ? channel?.id : undefined} />;
+  if (!channel) {
+    return wide ? (
+      <div className="crew-split">
+        <div className="crew-split-list">{list}</div>
+        <div className="crew-split-detail">
+          <p className="crew-split-empty">Pick a channel.</p>
+        </div>
+      </div>
+    ) : (
+      list
+    );
+  }
 
-  return (
+  const thread = (
     <div className="crew-thread">
       <header className="crew-thread-head">
         <button className="crew-back" onClick={() => setChannel(null)} aria-label="Back">
@@ -209,5 +231,13 @@ export function CrewChat() {
         />
       )}
     </div>
+  );
+  return wide ? (
+    <div className="crew-split">
+      <div className="crew-split-list">{list}</div>
+      <div className="crew-split-detail">{thread}</div>
+    </div>
+  ) : (
+    thread
   );
 }

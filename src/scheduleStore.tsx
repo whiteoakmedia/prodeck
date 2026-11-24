@@ -54,6 +54,9 @@ export interface ScheduledAlert {
   /** Address a PCO team by name instead of hand-picking crew, so the alert
    *  follows whoever is rostered that week. Empty = use `recipients`. */
   team: string;
+  /** Team alerts only: page just the people who have checked in. Off = every
+   *  team member on this week's plan, wherever they are. */
+  hereOnly: boolean;
   buzz: boolean;
   enabled: boolean;
   /** Service keys this alert has already fired for. */
@@ -128,7 +131,50 @@ export function migrate(a: Partial<ScheduledAlert>): ScheduledAlert {
     serviceTypeId: a.serviceTypeId ?? "",
     days: a.days ?? [],
     team: a.team ?? "",
+    // Team alerts used to page only people who had checked in; alerts saved
+    // before the switch existed keep doing that until someone turns it off.
+    hereOnly: a.hereOnly ?? !!(a.team ?? "").trim(),
   };
+}
+
+/** One service an alert can fire for: its fired-record key and due time. */
+export interface FireSlot {
+  key: string;
+  due: number;
+}
+
+/**
+ * When an alert is due today. A "before service" alert fires for EVERY
+ * service time on today's plan (9:00 and 11:00 each get their page), keyed
+ * per service so each fires once. It used to watch only the selected service
+ * time, so the second service of the morning never got one. A clock alert
+ * fires once a day for the selected service, as before.
+ */
+export function fireSlots(
+  a: Pick<ScheduledAlert, "kind" | "beforeMin" | "at">,
+  planId: string,
+  times: { id: string; ts: number }[],
+  selectedTimeId: string,
+  now: number,
+): FireSlot[] {
+  if (a.kind === "relative") {
+    const today = new Date(now).toDateString();
+    return times
+      .filter((t) => t.ts > 0 && new Date(t.ts).toDateString() === today)
+      .sort((x, y) => x.ts - y.ts)
+      .map((t) => ({ key: `${planId}::${t.id}`, due: t.ts - a.beforeMin * 60_000 }));
+  }
+  const [h, m] = a.at.split(":").map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return [];
+  const d = new Date(now);
+  d.setHours(h, m, 0, 0);
+  return [{ key: `${planId}::${selectedTimeId}`, due: d.getTime() }];
+}
+
+/** The slot to fire now, if any: due, not yet fired, and not long overdue
+ *  (starting ProDeck at 11am must not replay the morning's pages). */
+export function slotToFire(slots: FireSlot[], firedFor: string[], now: number): FireSlot | null {
+  return slots.find((s) => !firedFor.includes(s.key) && now >= s.due && now - s.due <= 10 * 60_000) ?? null;
 }
 
 /** Whether the calendar lets this alert fire today, for this service. */
@@ -140,19 +186,6 @@ export function matchesOccasion(
   if (a.serviceTypeId && a.serviceTypeId !== serviceTypeId) return false;
   if (a.days.length > 0 && !a.days.includes(now.getDay())) return false;
   return true;
-}
-
-/** Epoch ms this alert is due, for the currently-selected service. */
-function dueAt(a: ScheduledAlert, serviceStart: number): number | null {
-  if (a.kind === "relative") {
-    if (!serviceStart) return null; // no service time → nothing to be relative to
-    return serviceStart - a.beforeMin * 60_000;
-  }
-  const [h, m] = a.at.split(":").map(Number);
-  if (Number.isNaN(h) || Number.isNaN(m)) return null;
-  const d = new Date();
-  d.setHours(h, m, 0, 0);
-  return d.getTime();
 }
 
 export function ScheduleProvider({ children }: { children: ReactNode }) {
@@ -172,8 +205,14 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
   teamRef.current = pco.team;
   const stRef = useRef("");
   stRef.current = pco.selectedServiceTypeId ?? "";
-  const keyRef = useRef("");
-  keyRef.current = `${pco.selectedPlanId ?? ""}::${pco.selectedServiceTimeId ?? ""}`;
+  const planRef = useRef("");
+  planRef.current = pco.selectedPlanId ?? "";
+  const selTimeRef = useRef("");
+  selTimeRef.current = pco.selectedServiceTimeId ?? "";
+  const timesRef = useRef<{ id: string; ts: number }[]>([]);
+  timesRef.current = pco.serviceTimes.map((t) => ({ id: t.id, ts: t.ts ?? 0 }));
+  const slotsFor = (a: ScheduledAlert, now: number) =>
+    fireSlots(a, planRef.current, timesRef.current, selTimeRef.current, now);
   const sendRef = useRef(send);
   sendRef.current = send;
 
@@ -212,7 +251,6 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
     const tick = async () => {
       if (!loaded.current) return;
       const now = Date.now();
-      const key = keyRef.current;
       // One arrival-sheet read per tick: team alerts page only people IN THE
       // BUILDING, so firing decisions need it up front — marking an alert
       // fired first and filtering later would eat the retry window.
@@ -222,14 +260,11 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
         : null;
       let changed = false;
       const next = alertsRef.current.map((a) => {
-        if (!a.enabled || a.firedFor.includes(key)) return a;
+        if (!a.enabled) return a;
         // Wrong service type or wrong day of the week — not this alert's turn.
         if (!matchesOccasion(a, stRef.current, new Date())) return a;
-        const due = dueAt(a, startRef.current);
-        if (due === null || now < due) return a;
-        // Don't fire an alert we've only just discovered was long overdue —
-        // starting ProDeck at 11am must not replay the morning's alerts.
-        if (now - due > 10 * 60_000) return a;
+        const slot = slotToFire(slotsFor(a, now), a.firedFor, now);
+        if (!slot) return a;
         const { ids, problem } = resolveRecipients(a, teamRef.current, crewRef.current);
         // Unresolvable → skip WITHOUT marking it fired. Better to miss a page
         // than to send one to everybody; the overdue guard above stops this
@@ -240,7 +275,7 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
         // chosen. The call-time nudge below is the deliberate opposite: it
         // pages exactly the people who are NOT here yet.
         let to = ids;
-        if (a.team.trim()) {
+        if (a.team.trim() && a.hereOnly) {
           // Sheet unreadable → don't fire and don't mark fired; the
           // 10-minute overdue window retries on the next tick.
           if (arrived === null) return a;
@@ -254,7 +289,7 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
         if (to.length === 0) return a;
         sendRef.current(a.body || a.label, to, a.buzz).catch(() => {});
         changed = true;
-        return { ...a, firedFor: [...a.firedFor, key] };
+        return { ...a, firedFor: [...a.firedFor, slot.key].slice(-60) };
       });
       if (changed) persist(next);
     };
@@ -384,13 +419,18 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
       return "not scheduled for today's service";
     const problem = resolve(a).problem;
     if (problem) return `won't fire — ${problem}`;
-    const due = dueAt(a, startRef.current);
-    if (due === null)
-      return a.kind === "relative" ? "no service time selected" : "invalid time";
-    if (a.firedFor.includes(keyRef.current)) return "already fired for this service";
-    const mins = Math.round((due - Date.now()) / 60000);
-    const when = new Date(due).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    return mins >= 0 ? `fires ${when} (in ${mins} min)` : `${when} — passed`;
+    const now = Date.now();
+    const slots = slotsFor(a, now);
+    if (slots.length === 0)
+      return a.kind === "relative" ? "no service times today on this plan" : "invalid time";
+    const fmt = (t: number) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    const left = slots.filter((s) => !a.firedFor.includes(s.key) && s.due > now - 10 * 60_000);
+    if (left.length === 0) return "already sent for today's services";
+    const first = left[0];
+    const mins = Math.round((first.due - now) / 60000);
+    const then = left.slice(1).map((s) => fmt(s.due));
+    const head = mins >= 0 ? `fires ${fmt(first.due)} (in ${mins} min)` : `sending now for the ${fmt(first.due)} slot`;
+    return then.length ? `${head}, then ${then.join(", ")}` : head;
   }
 
   return (
@@ -411,6 +451,7 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
               serviceTypeId: "",
               days: [],
               team: "",
+              hereOnly: false,
               buzz: true,
               enabled: false,
               firedFor: [],

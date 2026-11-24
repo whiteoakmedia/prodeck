@@ -14,5 +14,8 @@ project(':capacitor-push-notifications').projectDir = new File('../node_modules/
 include ':capacitor-status-bar'
 project(':capacitor-status-bar').projectDir = new File('../node_modules/@capacitor/status-bar/android')
 
+include ':capgo-capacitor-native-biometric'
+project(':capgo-capacitor-native-biometric').projectDir = new File('../node_modules/@capgo/capacitor-native-biometric/android')
+
 include ':mhaberler-capacitor-zeroconf-nsd'
 project(':mhaberler-capacitor-zeroconf-nsd').projectDir = new File('../node_modules/@mhaberler/capacitor-zeroconf-nsd/android')

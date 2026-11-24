@@ -501,7 +501,7 @@ export interface Settings {
   keep_awake: boolean;
   avantis_enabled: boolean;
   avantis_host: string;
-  /** Which console: "avantis" | "dlive" | "sq" | "qu" | "x32" | "yamaha". */
+  /** Which console: "avantis" | "dlive" | "sq" | "qu" | "x32" | "wing" | "yamaha". */
   avantis_model: string;
   /** TCP port — 51325 for Avantis / dLive MixRack / SQ, 51328 for a dLive Surface. */
   avantis_port: number;
@@ -583,7 +583,7 @@ export interface AvantisSoftkey {
 
 // Avantis console mirror (read-only). Keys are "kind:index", e.g. "input:5".
 export interface AvantisSnapshot {
-  /** "avantis" | "dlive" | "sq" | "qu" | "x32" | "yamaha": which protocol the mirror is speaking. */
+  /** "avantis" | "dlive" | "sq" | "qu" | "x32" | "wing" | "yamaha": which protocol the mirror is speaking. */
   model?: string;
   /** False on desks ProDeck only watches (Yamaha, for now). */
   controlSupported?: boolean;
@@ -1163,6 +1163,17 @@ export interface PcoController {
   controllerName: string | null;
   meId: string | null;
 }
+/** PCO Live from a phone: the booth checks who holds the controller first,
+ *  takes it only when nobody does, then steps (web.rs pco_live_step). */
+export const pcoLiveStep = (serviceTypeId: string, planId: string, action: "next" | "previous") =>
+  invoke<Json | null>("pco_live_step", { serviceTypeId, planId, action });
+/** What phones did to the room, newest first (web.rs director_log). */
+export interface DirectorLogEntry {
+  ts: number;
+  who: string;
+  what: string;
+}
+export const directorLog = () => invoke<DirectorLogEntry[]>("director_log");
 export const pcoLiveController = (serviceTypeId: string, planId: string) =>
   invoke<PcoController>("pco_live_controller", { serviceTypeId, planId });
 export const loadPcoData = () => invoke<Json | null>("load_pco_data");
@@ -1552,6 +1563,7 @@ export const PERMS = [
   { id: "control", label: "Control", blurb: "Controlar ProPresenter, la consola de sonido, escenas de OBS y Planning Center LIVE" },
   { id: "tap", label: "Discos TapLink", blurb: "Cambiar el destino de los discos NFC del vestíbulo" },
   { id: "manage", label: "Administrar equipo", blurb: "Aprobar, editar y quitar integrantes; gestionar invitaciones y acceso" },
+  { id: "director", label: "Director", blurb: "Pestaña Director en el celular: avisos, cronograma, pantallas y video. Incluye Avisos, Escenario y Control" },
 ] as const;
 export type Perm = (typeof PERMS)[number]["id"];
 

@@ -19,6 +19,7 @@ import {
   pcoGet,
   pcoGetAll,
   pcoLiveAction,
+  pcoLiveStep,
   pcoLiveController,
   pcoSetLiveInterval,
   pcoStartSync,
@@ -38,6 +39,7 @@ import {
 import { cloudPlanSnapshot } from "./lib/crewCloud";
 import { normTitle, bestMatch } from "./lib/match";
 import { autoTargetPlan, mergePlanPages } from "./lib/planPick";
+import { pcoLiveErrorMessage } from "./lib/pcoLiveError";
 import { micPool } from "./lib/micPool";
 
 export interface ServiceType {
@@ -549,6 +551,16 @@ export function parseLiveEndsAt(j: Json | null): number | null {
   return null;
 }
 
+/** What Follow ProPresenter last did. `heldUntil`: it matched, but kept
+ *  Planning Center Live still because it's practice (lib/serviceWindow
+ *  followWindow); the epoch ms it opens, or null when no later service today. */
+export interface FollowStatus {
+  presName: string;
+  matched: boolean;
+  held?: boolean;
+  heldUntil?: number | null;
+}
+
 export interface ServiceTime {
   id: string;
   name: string;
@@ -669,14 +681,14 @@ interface PcoStore {
   ) => { uuid: string; name: string; auto: boolean } | null;
   autoAdvance: boolean;
   followPro: boolean;
-  followStatus: { presName: string; matched: boolean } | null;
-  setFollowStatus: (s: { presName: string; matched: boolean } | null) => void;
+  followStatus: FollowStatus | null;
+  setFollowStatus: (s: FollowStatus | null) => void;
   library: { uuid: string; name: string }[];
   setLink: (title: string, link: { uuid: string; name: string } | null) => void;
   suppressLink: (title: string) => void;
   setAutoAdvance: (on: boolean) => void;
   setFollowPro: (on: boolean) => void;
-  goToItem: (itemId: string) => void;
+  goToItem: (itemId: string) => Promise<void>;
   loadLibrary: () => Promise<void>;
   triggerPresentation: (uuid: string, force?: boolean) => void;
   saveCredentials: (appId: string, secret: string) => Promise<void>;
@@ -773,10 +785,7 @@ export function PcoProvider({ children }: { children: ReactNode }) {
   >({});
   const [autoAdvance, setAutoAdvanceState] = useState(false);
   const [followPro, setFollowProState] = useState(false);
-  const [followStatus, setFollowStatus] = useState<{
-    presName: string;
-    matched: boolean;
-  } | null>(null);
+  const [followStatus, setFollowStatus] = useState<FollowStatus | null>(null);
   const [library, setLibrary] = useState<{ uuid: string; name: string }[]>([]);
   const lastAdvanced = useRef<string | null>(null);
   const advancing = useRef(false);
@@ -1023,6 +1032,13 @@ export function PcoProvider({ children }: { children: ReactNode }) {
     setLiveBusy(true);
     setLiveError(null);
     try {
+      // A phone (Director, a crew dashboard) can't read the controller
+      // itself, so the booth does the same check and step in one call. The
+      // new live item arrives on the pco:live event.
+      if (IS_WEB && !IS_DEMO && action !== "toggle_control") {
+        await pcoLiveStep(st, plan, action === "go_to_next_item" ? "next" : "previous");
+        return;
+      }
       // PCO ignores next/previous unless someone holds the controller, and an
       // untouched plan has nobody holding it — which is why these buttons did
       // nothing at all. Take control first when it's free. Never take it from
@@ -1069,8 +1085,8 @@ export function PcoProvider({ children }: { children: ReactNode }) {
       // Surfaced on the widget itself now. This used to go only to pco.status,
       // which is rendered on the Planning Center page — so a failure pressed
       // from a dashboard was completely invisible.
-      setLiveError(String(e));
-      setStatus(String(e));
+      setLiveError(pcoLiveErrorMessage(e, "button"));
+      setStatus(pcoLiveErrorMessage(e, "button"));
     } finally {
       setLiveBusy(false);
     }
@@ -1566,8 +1582,16 @@ export function PcoProvider({ children }: { children: ReactNode }) {
         return;
       }
       if (!c.controllerId) {
-        await pcoLiveAction(st, plan, "toggle_control");
-        await refreshController();
+        // Caught here because Follow calls this without awaiting it: a login
+        // without permission to control Services Live (PCO 403) used to escape
+        // as an unhandled rejection on every slide change.
+        try {
+          await pcoLiveAction(st, plan, "toggle_control");
+          await refreshController();
+        } catch (e) {
+          setLiveError(pcoLiveErrorMessage(e, "follow"));
+          return;
+        }
       }
       for (let i = 0; i < 30; i++) {
         try {

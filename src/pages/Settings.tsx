@@ -1,3 +1,4 @@
+import { assistModel } from "../lib/assist";
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { openWhatsNew } from "../lib/whatsNew";
 import { tvStatus, type TvScreen } from "../lib/tvScreens";
@@ -768,6 +769,8 @@ export function SettingsPage() {
                     ? "(MixRack 51325 · Surface 51328)"
                     : (form.avantis_model || "avantis") === "x32"
                       ? "(10023)"
+                      : (form.avantis_model || "avantis") === "wing"
+                        ? "(2223)"
                       : (form.avantis_model || "avantis") === "yamaha"
                         ? "(49280, rarely needs a change)"
                         : "(51325)"}
@@ -805,6 +808,15 @@ export function SettingsPage() {
                 10023 and reads every channel, DCA, bus, matrix and mute group on
                 connect. Give the desk a fixed IP so this keeps working after a router
                 restart. Scenes 1–100.
+              </p>
+            )}
+            {(form.avantis_model || "avantis") === "wing" && (
+              <p className="hint wide">
+                Nothing to set on the console, as long as Remote Lock for OSC is off (Setup → Remote). ProDeck
+                connects over OSC on port 2223 and reads every channel, aux input, bus, matrix, main, DCA and mute
+                group. Scene recall loads scenes from the show open on the desk. The WING sends live changes to one
+                OSC app at a time; if Companion also talks OSC to it, ProDeck still catches up every 30 seconds.
+                Give the desk a fixed IP so this keeps working after a router restart.
               </p>
             )}
             {(form.avantis_model || "avantis") === "yamaha" && (
@@ -1275,10 +1287,10 @@ export function SettingsPage() {
             </label>
             <label className="field">
               <span>Model</span>
-              <select className="input" value={form.assist_model || "claude-sonnet-5"} onChange={(e) => set("assist_model", e.target.value)}>
-                <option value="claude-sonnet-5">Claude Sonnet 5 — fast, recommended</option>
-                <option value="claude-opus-5">Claude Opus 5 — deeper, slower</option>
-                <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 — cheapest</option>
+              <select className="input" id="set-assist-model" value={assistModel(form.assist_model)} onChange={(e) => set("assist_model", e.target.value)}>
+                <option value="claude-opus-5-5">Claude Opus 5.5, best answers (recommended)</option>
+                <option value="claude-sonnet-5-5">Claude Sonnet 5.5, about half the cost</option>
+                <option value="claude-haiku-5-5">Claude Haiku 5.5, cheapest</option>
               </select>
             </label>
             <label className="field">
@@ -1619,8 +1631,8 @@ export function SettingsPage() {
               <div className={`guide-step ${form.web_invite_token ? "done" : ""}`}>
                 <span className="guide-step-n">2</span>
                 <div>
-                  <strong>Open joining and share the poster — or send personal invites</strong>
-                  <span className="muted small">The poster works only while joining is open (below). A personal invite is for one person and arrives pre-approved.</span>
+                  <strong>Share the poster, or send personal invites</strong>
+                  <span className="muted small">While joining is open (below), people who scan the poster join straight away. While it's closed, they ask to join and you approve them here. A personal invite is for one person and arrives pre-approved.</span>
                 </div>
               </div>
               <div className={`guide-step ${crew.some((u) => u.approved) ? "done" : ""}`}>
@@ -2254,7 +2266,7 @@ function ScheduledAlerts({ crew }: { crew: CrewUser[] }) {
   return (
     <section className="card">
       <div className="card-head">
-        <h3>Scheduled alerts</h3>
+        <h3 id="set-schedule">Scheduled alerts</h3>
         <button className="btn small" onClick={sch.add}>
           Add alert
         </button>
@@ -2266,7 +2278,8 @@ function ScheduledAlerts({ crew }: { crew: CrewUser[] }) {
       <p className="muted small">
         Scope an alert to a service type and the days it runs, and it stays out of the way of
         every other service. Address a PCO team instead of named people and it follows whoever
-        is rostered that week.
+        is rostered that week. A before service alert fires for each service time on the day's
+        plan, and reaches the ProDeck Crew app on locked phones.
       </p>
 
       {sch.alerts.length === 0 && (
@@ -2363,6 +2376,16 @@ function ScheduledAlerts({ crew }: { crew: CrewUser[] }) {
                 </option>
               ))}
             </select>
+            {a.team && (
+              <label className="field check" style={{ margin: 0 }} title="Off: everyone from the team on this week's plan, wherever they are">
+                <input
+                  type="checkbox"
+                  checked={a.hereOnly}
+                  onChange={(e) => sch.update(a.id, { hereOnly: e.target.checked })}
+                />
+                <span>Only people who have checked in</span>
+              </label>
+            )}
           </div>
 
           <div className="sched-days">

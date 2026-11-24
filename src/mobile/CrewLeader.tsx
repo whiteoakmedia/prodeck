@@ -10,6 +10,7 @@ import {
   type CrewUser,
 } from "../lib/tauri";
 import { CrewPageComposer } from "./CrewPages";
+import { usePerms } from "../lib/perms";
 
 // S09 — leader board (admin).
 //
@@ -32,6 +33,8 @@ const clock = (ms: number) =>
 
 export function CrewLeader({ onBack }: { onBack?: () => void }) {
   const pco = usePco();
+  // Director opens this too; inviting is Manage crew's.
+  const canManage = usePerms().can("manage");
   const [crew, setCrew] = useState<CrewUser[]>([]);
   const [arrivals, setArrivals] = useState<Record<string, number>>({});
   const [nudge, setNudge] = useState<CrewUser | null>(null);
@@ -214,6 +217,8 @@ export function CrewLeader({ onBack }: { onBack?: () => void }) {
         </>
       )}
 
+      {canManage && (
+        <>
       <span className="mono crew-sheet-label">Invite someone</span>
       <div className="field-row" style={{ alignItems: "center" }}>
         <input
@@ -240,6 +245,8 @@ export function CrewLeader({ onBack }: { onBack?: () => void }) {
         Pre-approved one-time link: they tap it, install, pick a PIN, no
         password, no waiting.
       </p>
+        </>
+      )}
 
       {nudge && (
         <CrewPageComposer

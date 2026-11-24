@@ -27,6 +27,7 @@ describe("vocabulario de configuración", () => {
       ["control", "Control", "Controlar ProPresenter, la consola de sonido, escenas de OBS y Planning Center LIVE"],
       ["tap", "Discos TapLink", "Cambiar el destino de los discos NFC del vestíbulo"],
       ["manage", "Administrar equipo", "Aprobar, editar y quitar integrantes; gestionar invitaciones y acceso"],
+      ["director", "Director", "Pestaña Director en el celular: avisos, cronograma, pantallas y video. Incluye Avisos, Escenario y Control"],
     ]);
   });
 });

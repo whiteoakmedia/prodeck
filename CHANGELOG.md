@@ -44,6 +44,85 @@ numbers below are the ones shown in **Settings → Software Update**.
 
 ---
 
+## 0.9.131 — 22 November 2026
+
+Everything in 0.9.130, plus:
+
+### New
+
+- **Director countdowns:** ProPresenter's timers at the top of Director,
+  ticking live.
+
+### Fixed
+
+- Paging on iPhone Duo turned sideways and iPad stays clear of the status
+  bar, at a phone's width.
+
+## 0.9.130 — 22 November 2026
+
+Everything in 0.9.129, plus:
+
+### New
+
+- **Director:** a crew app tab for whoever runs the service. PCO Live, Pro
+  slides and clears, pages, screens, video, people and a log, with a new
+  Director permission. Sound is view only. Opens with the crew PIN.
+
+### Fixed
+
+- PCO Live buttons on phones now move LIVE, checked at the booth first.
+- Chat taps no longer get lost when a message arrives.
+
+## 0.9.129 — 22 November 2026
+
+Everything in 0.9.128, plus:
+
+### New
+
+- **Crew screens on iPhone Duo and iPad:** a sidebar, and lists beside what
+  they open. Folding switches back to the phone layout live.
+
+## 0.9.128 — 19 November 2026
+
+Everything in 0.9.127, plus:
+
+### New
+
+- **Ask ProDeck is quicker and sharper:** Claude Opus 5.5, with the routing
+  map and notes kept ready between steps.
+- **Help answers from all of Help,** with links to the topics it used and
+  follow up questions, using the troubleshooter's key.
+- **A fully updated Help section.**
+- **ProDeck Crew on Google Play.**
+
+## 0.9.127 — 15 November 2026
+
+Everything in 0.9.126, plus:
+
+### New
+
+- **Pages before every service.** Before service alerts fire for each
+  service time on the day's plan and reach the whole team on this week's
+  plan, checked in or not.
+
+## 0.9.126 — 15 November 2026
+
+Everything in 0.9.125, plus:
+
+### New
+
+- **Practice never moves Planning Center LIVE.** Follow ProPresenter only
+  moves LIVE from 5 minutes before each service until it's over.
+
+## 0.9.125 — 15 November 2026
+
+Everything in 0.9.124, plus:
+
+### New
+
+- **Behringer WING, WING Compact and WING Rack.** Names, mutes and faders for
+  every channel, bus, matrix, main, DCA and mute group, plus scene recall.
+
 ## 0.9.124 — 12 November 2026
 
 Everything in 0.9.123, plus:

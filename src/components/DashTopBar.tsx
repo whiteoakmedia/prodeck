@@ -315,7 +315,7 @@ export function DashTopBar({
               >
                 Follow ProPresenter
                 <span className="pb-item-sub">
-                  Mark the rundown live from what's on the screens, matched by name.
+                  Mark the rundown live from what's on the screens, matched by name, from 5 minutes before each service.
                 </span>
               </button>
             </>

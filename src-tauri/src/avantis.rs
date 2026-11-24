@@ -186,8 +186,12 @@ pub async fn avantis_set_mute(
         return Err(e);
     }
     // OSC consoles speak a different transport entirely.
-    if model.is_osc() {
-        crate::x32::set_mute(&app, &id, muted).await?;
+    if model.is_osc() || model.is_wing() {
+        if model.is_wing() {
+            crate::wing::set_mute(&app, &id, muted).await?;
+        } else {
+            crate::x32::set_mute(&app, &id, muted).await?;
+        }
         let mut s = st.lock().unwrap_or_else(|p| p.into_inner());
         s.mutes.insert(id, muted);
         drop(s);
@@ -221,8 +225,12 @@ pub async fn avantis_recall_scene(
     if !(1..=model.max_scene()).contains(&scene) {
         return Err(format!("scene must be 1-{} on the {}", model.max_scene(), model.label()));
     }
-    if model.is_osc() {
-        crate::x32::recall_scene(&app, scene).await?;
+    if model.is_osc() || model.is_wing() {
+        if model.is_wing() {
+            crate::wing::recall_scene(&app, scene).await?;
+        } else {
+            crate::x32::recall_scene(&app, scene).await?;
+        }
         let mut s = st.lock().unwrap_or_else(|p| p.into_inner());
         s.scene = Some(scene);
         drop(s);
@@ -258,8 +266,12 @@ pub async fn avantis_set_name(
     if let Some(e) = read_only(&app, model) {
         return Err(e);
     }
-    if model.is_osc() {
-        crate::x32::set_name(&app, &id, &clean).await?;
+    if model.is_osc() || model.is_wing() {
+        if model.is_wing() {
+            crate::wing::set_name(&app, &id, &clean).await?;
+        } else {
+            crate::x32::set_name(&app, &id, &clean).await?;
+        }
         let mut s = st.lock().unwrap_or_else(|p| p.into_inner());
         s.names.insert(id, clean);
         drop(s);
@@ -295,8 +307,12 @@ pub async fn avantis_set_fader(
     if let Some(e) = read_only(&app, model) {
         return Err(e);
     }
-    if model.is_osc() {
-        crate::x32::set_fader(&app, &id, v).await?;
+    if model.is_osc() || model.is_wing() {
+        if model.is_wing() {
+            crate::wing::set_fader(&app, &id, v).await?;
+        } else {
+            crate::x32::set_fader(&app, &id, v).await?;
+        }
         let mut s = st.lock().unwrap_or_else(|p| p.into_inner());
         s.faders.insert(id, v);
         drop(s);

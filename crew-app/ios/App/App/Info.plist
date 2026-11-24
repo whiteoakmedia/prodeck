@@ -48,6 +48,8 @@
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>ProDeck Crew uses the camera to scan your church crew code.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Face ID opens Director, the booth controls on your phone.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>ProDeck Crew looks for your church production booth on this Wi-Fi and connects to it.</string>
 	<key>NSMicrophoneUsageDescription</key>

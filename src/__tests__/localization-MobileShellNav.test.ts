@@ -148,7 +148,8 @@ const copy: [string, string][] = [
   [
     ">Stop</span>",
     ">Detener</span>"
-  ]
+  ],
+  ['Pick something on the left.', 'Elegí una opción de la izquierda.']
 ];
 it("preserves mobile navigation and actions outside reviewed copy", () => {
  let expected = readFileSync("src/__tests__/fixtures/localization/MobileShellNavBaseline.txt", "utf8");

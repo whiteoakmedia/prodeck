@@ -198,7 +198,7 @@ export function PlanningCenter() {
                 </button>
                 <button
                   className={`btn small ${pco.followPro ? "primary" : "ghost"}`}
-                  title="Cuando cambia la presentación de ProPresenter, PCO Live avanza al elemento con el mismo nombre"
+                  title="Cuando cambia la presentación de ProPresenter, PCO Live avanza al elemento con el mismo nombre desde cinco minutos antes de cada horario del evento"
                   onClick={() => pco.setFollowPro(!pco.followPro)}
                 >
                   {pco.followPro ? "✓ " : ""}Seguir ProPresenter
@@ -213,6 +213,14 @@ export function PlanningCenter() {
               </div>
             </div>
             <AutoSceneLine />
+            {pco.followPro && pco.followStatus?.held && (
+              <p className="hint small">
+                Practice, so Follow is keeping Planning Center Live where it is.
+                {pco.followStatus.heldUntil
+                  ? ` It starts moving it at ${new Date(pco.followStatus.heldUntil).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}, 5 minutes before the service.`
+                  : " It starts moving it 5 minutes before the next service."}
+              </p>
+            )}
 
             {pco.items.length === 0 ? (
               <p className="muted">No hay elementos.</p>

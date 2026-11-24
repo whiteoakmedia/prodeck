@@ -7988,6 +7988,30 @@ select.input {
   white-space: pre-wrap;
   line-height: 1.5;
 }
+.help-cite {
+  display: inline;
+  padding: 0 6px;
+  margin: 0 2px;
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.85em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.help-cite:hover {
+  background: var(--accent-soft);
+}
+.help-followup {
+  display: flex;
+  gap: 8px;
+}
+.help-followup .input {
+  flex: 1;
+  min-width: 0;
+}
 .help-answer-label {
   font-size: 11px;
   text-transform: uppercase;

@@ -5,7 +5,7 @@
 
 import type { ReactElement } from "react";
 
-export type CrewTab = "home" | "chat" | "checklist" | "dashboards" | "more";
+export type CrewTab = "home" | "chat" | "checklist" | "dashboards" | "director" | "more";
 
 const ICONS: Record<CrewTab, ReactElement> = {
   // The ProDeck mark silhouette: three tiles.
@@ -35,6 +35,13 @@ const ICONS: Record<CrewTab, ReactElement> = {
       <rect x="11.9" y="11.9" width="7.6" height="7.6" rx="2.2" />
     </svg>
   ),
+  // A dial: the service, in your hand.
+  director: (
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <circle cx="11" cy="11" r="8.5" />
+      <path d="M11 6.5V11l3 2" />
+    </svg>
+  ),
   more: (
     <svg width="22" height="22" viewBox="0 0 22 22" fill="currentColor">
       <circle cx="4.5" cy="11" r="2.1" />
@@ -49,26 +56,35 @@ const LABELS: Record<CrewTab, string> = {
   chat: "Chat",
   checklist: "Lista de tareas",
   dashboards: "Paneles de control",
+  director: "Director",
   more: "Más",
 };
+
+/** The five tabs. Director takes Dashboards' place for whoever has it
+ *  (Dashboards is inside Director then). */
+export function crewTabs(director: boolean): CrewTab[] {
+  return ["home", "chat", "checklist", director ? "director" : "dashboards", "more"];
+}
 
 export function CrewNav({
   active,
   unread,
   overdue,
+  director = false,
   onSelect,
 }: {
   active: CrewTab;
   unread: number;
   overdue: boolean;
+  director?: boolean;
   onSelect: (t: CrewTab) => void;
 }) {
   return (
     <nav className="crew-nav">
-      {(Object.keys(LABELS) as CrewTab[]).map((t) => (
+      {crewTabs(director).map((t) => (
         <button
           key={t}
-          className={`crew-nav-item ${active === t ? "active" : ""}`}
+          className={`crew-nav-item ${active === t ? "active" : ""}${t === "director" ? " director" : ""}`}
           onClick={() => onSelect(t)}
         >
           <span className="crew-nav-icon">
